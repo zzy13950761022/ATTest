@@ -1,4 +1,4 @@
-# TestAgent-CLI
+# ATTest-CLI
 
 一个可控的 CLI Agent，用于在固定的、人工批准的工作流下为 Python 算子/API（PyTorch、TensorFlow 等）生成和运行测试用例。
 
@@ -21,7 +21,7 @@
 ### 安装
 
 ```bash
-cd TestAgent-CLI
+cd ATTest-CLI
 pip install -e .
 ```
 
@@ -75,7 +75,7 @@ testagent run -f torch.add --resume
 
 ```
 ╔═══════════════════════════════════════════════════╗
-║   TestAgent Workflow - torch.add (python)        ║
+║   ATTest Workflow - torch.add (python)        ║
 ╠═══════════════════════════════════════════════════╣
 ║ [●] 1. Understand Function                       ║
 ║ [●] 2. Generate Requirements                     ║
@@ -203,7 +203,7 @@ testagent run -f package.module:function \
 ## 📂 项目结构
 
 ```
-TestAgent-CLI/
+ATTest-CLI/
 ├── src/testagent_cli/
 │   ├── cli.py                    # CLI 入口
 │   ├── config.py                 # 配置管理

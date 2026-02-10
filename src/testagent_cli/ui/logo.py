@@ -64,7 +64,7 @@ def show_welcome(model: str, workspace: str, version: str = "0.1.0"):
     console.print("  • [bold]/workflow <target_fqn>[/bold] - Start test generation workflow")
     console.print("  • [bold]/model[/bold] - Show current model information")
     console.print("  • [bold]/help[/bold] - Show all available commands")
-    console.print("  • [bold]/quit[/bold] - Exit TestAgent")
+    console.print("  • [bold]/quit[/bold] - Exit ATTest")
     console.print()
 
 

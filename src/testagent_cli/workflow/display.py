@@ -34,7 +34,7 @@ def _show_progress_rich(state: WorkflowState, stages: List[str]):
     
     # Create progress tree
     target = getattr(state, "target", state.op)
-    tree = Tree(f"[bold cyan]TestAgent Workflow[/bold cyan] - {target} ({state.arch})")
+    tree = Tree(f"[bold cyan]ATTest Workflow[/bold cyan] - {target} ({state.arch})")
     
     for i, stage_name in enumerate(stages):
         # Determine status
@@ -66,7 +66,7 @@ def _show_progress_plain(state: WorkflowState, stages: List[str]):
     width = 61
     print("╔" + "═" * width + "╗")
     target = getattr(state, "target", state.op)
-    title = f"TestAgent Workflow - {target} ({state.arch})"
+    title = f"ATTest Workflow - {target} ({state.arch})"
     padding = (width - len(title)) // 2
     print(f"║{' ' * padding}{title}{' ' * (width - padding - len(title))}║")
     print("╠" + "═" * width + "╣")

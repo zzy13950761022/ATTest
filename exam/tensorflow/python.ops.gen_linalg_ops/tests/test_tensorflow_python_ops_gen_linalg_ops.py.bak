@@ -1,6 +1,6 @@
 """
 Test cases for tensorflow.python.ops.gen_linalg_ops module.
-Generated with TestAgent-CLI.
+Generated with ATTest-CLI.
 """
 
 import math

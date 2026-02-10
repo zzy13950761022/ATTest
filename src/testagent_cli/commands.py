@@ -112,7 +112,7 @@ def show_help(use_rich: bool = False):
         )
         help_table.add_row(
             "/quit",
-            "Exit TestAgent",
+            "Exit ATTest",
             "/quit"
         )
         
@@ -124,7 +124,7 @@ def show_help(use_rich: bool = False):
         print("  /workflow <target_fqn>      - Start test generation workflow")
         print("  /model                       - Show current model information")
         print("  /help                        - Show this help message")
-        print("  /quit                        - Exit TestAgent")
+        print("  /quit                        - Exit ATTest")
         print()
 
 

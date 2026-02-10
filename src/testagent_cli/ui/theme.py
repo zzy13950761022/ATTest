@@ -3,7 +3,7 @@ Color theme and style configurations.
 """
 from rich.theme import Theme
 
-# TestAgent color theme
+# ATTest color theme
 TESTAGENT_THEME = Theme({
     "info": "cyan",
     "warning": "yellow",

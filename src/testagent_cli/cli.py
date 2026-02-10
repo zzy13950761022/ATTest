@@ -19,7 +19,7 @@ from .chat import run_chat
 from .utils import slugify_target
 
 
-app = typer.Typer(help="TestAgent CLI - Python API test generation assistant")
+app = typer.Typer(help="ATTest CLI - Python API test generation assistant")
 config_app = typer.Typer(help="配置管理")
 sessions_app = typer.Typer(help="会话管理")
 app.add_typer(config_app, name="config")
@@ -33,7 +33,7 @@ def main(
     auto_approve: bool = typer.Option(False, help="自动批准写/执行"),
 ):
     """
-    TestAgent CLI - Python/PyTorch/TensorFlow 测试用例生成工具
+    ATTest CLI - Python/PyTorch/TensorFlow 测试用例生成工具
 
     默认启动交互式聊天模式，可使用 /workflow 命令进入测试生成工作流
     """
@@ -62,7 +62,7 @@ def run_interactive_mode(workspace: str, auto_approve: bool = False):
     except ImportError:
         # Fallback if rich is not installed
         print("=" * 60)
-        print("TestAgent CLI - Intelligent Test Generation")
+        print("ATTest CLI - Intelligent Test Generation")
         print("=" * 60)
         print(f"Model: {model_name}")
         print(f"Workspace: {workspace}")

@@ -132,13 +132,13 @@ def run_chat(workspace: str, auto_approve: bool = False):
                         console.print()
                         console.print(Panel(
                             response.content,
-                            title="[bold green]TestAgent[/bold green]",
+                            title="[bold green]ATTest[/bold green]",
                             border_style="green",
                             padding=(0, 1)
                         ))
                         console.print()
                     else:
-                        print(f"\nTestAgent: {response.content}\n")
+                        print(f"\nATTest: {response.content}\n")
                     append_message(session_id, "assistant", response.content, workspace=workspace)
                     break
                 

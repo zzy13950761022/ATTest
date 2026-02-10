@@ -314,7 +314,7 @@ class WorkflowEngine:
             console.print()
             use_rich = True
         except ImportError:
-            print(f"\n=== Starting TestAgent Workflow ===")
+            print(f"\n=== Starting ATTest Workflow ===")
             print(f"Target: {self.state.target} (slug={self.state.target_slug})")
             print(f"Architecture: {self.arch}")
             print(f"Mode: {mode}")
