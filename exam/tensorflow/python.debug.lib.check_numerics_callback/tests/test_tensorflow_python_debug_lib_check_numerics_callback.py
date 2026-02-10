@@ -1,0 +1,819 @@
+"""
+Unit tests for tensorflow.python.debug.lib.check_numerics_callback
+"""
+import math
+import threading
+import numpy as np
+import pytest
+import tensorflow as tf
+from unittest import mock
+
+# Import the target functions
+from tensorflow.python.debug.lib.check_numerics_callback import (
+    enable_check_numerics,
+    disable_check_numerics,
+    CheckNumericsCallback,
+    IGNORE_OP_OUTPUTS,
+    SAFE_OPS
+)
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+@pytest.fixture
+def mock_op_callbacks():
+    """Mock op_callbacks module to track callback registration."""
+    with mock.patch('tensorflow.python.framework.op_callbacks') as mock_callbacks:
+        mock_callbacks.add_op_callback = mock.MagicMock()
+        mock_callbacks.remove_op_callback = mock.MagicMock()
+        yield mock_callbacks
+
+@pytest.fixture
+def mock_logging():
+    """Mock logging to verify info messages."""
+    with mock.patch('tensorflow.python.debug.lib.check_numerics_callback.logging') as mock_log:
+        mock_log.info = mock.MagicMock()
+        yield mock_log
+
+@pytest.fixture
+def mock_threading():
+    """Mock threading for thread name verification."""
+    with mock.patch('tensorflow.python.debug.lib.check_numerics_callback.threading') as mock_thread:
+        mock_thread.current_thread.return_value.name = "TestThread"
+        yield mock_thread
+
+@pytest.fixture
+def clear_state():
+    """Clear thread-local state before each test."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    yield
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+def test_enable_check_numerics_basic(clear_state):
+    """Test basic enable_check_numerics functionality (TC-01)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Test with default parameters using public API
+    tf.debugging.enable_check_numerics()
+    
+    # Verify thread-local state was updated
+    assert hasattr(_state, 'check_numerics_callback')
+    assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+    # Test with custom parameters
+    # Clear state first
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    tf.debugging.enable_check_numerics(stack_height_limit=20, path_length_limit=40)
+    
+    # Verify state has callback
+    assert hasattr(_state, 'check_numerics_callback')
+    
+    # Verify callback parameters
+    callback = _state.check_numerics_callback
+    # Note: We can't verify exact parameter values without accessing private attributes
+    # But we can verify the instance exists
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("dtype,value", [
+    ("float32", "nan"),
+    ("float64", "nan")
+])
+def test_nan_detection(dtype, value, clear_state):
+    """Test NaN detection in floating-point tensors (TC-02)."""
+    # Enable check numerics
+    enable_check_numerics()
+    
+    # Create a tensor with NaN values based on dtype
+    if dtype == "float32":
+        if value == "nan":
+            test_tensor = tf.constant([np.nan], dtype=tf.float32)
+        else:
+            test_tensor = tf.constant([1.0], dtype=tf.float32)
+    elif dtype == "float64":
+        if value == "nan":
+            test_tensor = tf.constant([np.nan], dtype=tf.float64)
+        else:
+            test_tensor = tf.constant([1.0], dtype=tf.float64)
+    
+    # Verify that an operation with NaN tensor raises InvalidArgumentError
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        # Perform a simple operation that will trigger the callback
+        result = tf.math.sqrt(test_tensor)
+        # Force execution in eager mode
+        _ = result.numpy()
+    
+    # Verify exception contains NaN information
+    error_msg = str(exc_info.value)
+    assert "NaN" in error_msg or "nan" in error_msg.lower()
+    
+    # Verify exception type is correct
+    assert exc_info.type == tf.errors.InvalidArgumentError
+    
+    # Clean up
+    disable_check_numerics()
+
+# Additional test for specific NaN detection scenarios
+def test_nan_detection_specific_scenarios(clear_state):
+    """Test specific NaN detection scenarios."""
+    # Enable check numerics
+    enable_check_numerics()
+    
+    # Test 1: sqrt of negative number produces NaN
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        x = tf.constant([-1.0], dtype=tf.float32)
+        result = tf.math.sqrt(x)
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "NaN" in error_msg or "nan" in error_msg.lower()
+    
+    # Test 2: division by zero produces NaN
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        x = tf.constant([0.0], dtype=tf.float32)
+        y = tf.constant([0.0], dtype=tf.float32)
+        result = tf.math.divide(x, y)
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "NaN" in error_msg or "nan" in error_msg.lower()
+    
+    # Clean up
+    disable_check_numerics()
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+def test_enable_check_numerics_idempotent(clear_state):
+    """Test idempotency of enable_check_numerics (TC-03)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # First call - use tf.debugging API
+    tf.debugging.enable_check_numerics()
+    assert hasattr(_state, 'check_numerics_callback')
+    first_callback = _state.check_numerics_callback
+    
+    # Second call - should be idempotent
+    tf.debugging.enable_check_numerics()
+    second_callback = _state.check_numerics_callback
+    
+    # Verify same callback instance (idempotent)
+    assert first_callback is second_callback
+    
+    # Third call with different parameters - should still be idempotent
+    tf.debugging.enable_check_numerics(stack_height_limit=40, path_length_limit=60)
+    third_callback = _state.check_numerics_callback
+    
+    # Verify same callback instance despite different parameters
+    assert first_callback is third_callback
+    
+    # Verify state is consistent
+    assert hasattr(_state, 'check_numerics_callback')
+    assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+    # Test that parameters don't change on subsequent calls
+    # (Callback should retain initial parameters due to idempotency)
+    initial_stack_limit = first_callback._stack_height_limit
+    initial_path_limit = first_callback._path_length_limit
+    
+    # These should remain the same even after calling with different params
+    assert third_callback._stack_height_limit == initial_stack_limit
+    assert third_callback._path_length_limit == initial_path_limit
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+
+def test_idempotency_with_state_check(clear_state):
+    """Additional test for idempotency with explicit state checks."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Track state changes
+    state_history = []
+    
+    # Multiple calls
+    for i in range(3):
+        tf.debugging.enable_check_numerics()
+        state_history.append(_state.check_numerics_callback if hasattr(_state, 'check_numerics_callback') else None)
+    
+    # Verify all calls reference the same callback instance
+    assert all(cb is state_history[0] for cb in state_history if cb is not None)
+    
+    # Verify state has the callback
+    assert hasattr(_state, 'check_numerics_callback')
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("stack_height_limit,path_length_limit", [
+    (1, 1),
+    (100, 200)
+])
+def test_enable_check_numerics_parameter_boundaries(stack_height_limit, path_length_limit, clear_state):
+    """Test enable_check_numerics with boundary parameter values (TC-04)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Enable check numerics with boundary parameters
+    tf.debugging.enable_check_numerics(
+        stack_height_limit=stack_height_limit,
+        path_length_limit=path_length_limit
+    )
+    
+    # Verify callback was registered
+    assert hasattr(_state, 'check_numerics_callback')
+    assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+    # Verify parameters were applied correctly
+    callback = _state.check_numerics_callback
+    assert callback._stack_height_limit == stack_height_limit
+    assert callback._path_length_limit == path_length_limit
+    
+    # Test that the callback works with the parameters
+    # Create a tensor with NaN to trigger the callback
+    nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+    
+    # Verify that an operation with NaN tensor raises InvalidArgumentError
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        result = tf.math.sqrt(nan_tensor)
+        _ = result.numpy()
+    
+    # Verify exception contains NaN information
+    error_msg = str(exc_info.value)
+    assert "NaN" in error_msg or "nan" in error_msg.lower()
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+    
+    # Verify state was cleared
+    assert not hasattr(_state, 'check_numerics_callback')
+
+def test_enable_check_numerics_zero_parameters(clear_state):
+    """Test enable_check_numerics with zero parameter values (param extension)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Enable check numerics with zero parameters
+    # Note: According to requirements, parameters must be positive integers
+    # Zero values might be edge cases that need testing
+    tf.debugging.enable_check_numerics(
+        stack_height_limit=0,
+        path_length_limit=0
+    )
+    
+    # Verify callback was registered even with zero parameters
+    assert hasattr(_state, 'check_numerics_callback')
+    assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+    # Verify zero parameters were applied
+    callback = _state.check_numerics_callback
+    assert callback._stack_height_limit == 0
+    assert callback._path_length_limit == 0
+    
+    # Test that the callback still works with zero parameters
+    # Create a tensor with NaN to trigger the callback
+    nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+    
+    # Verify that an operation with NaN tensor raises InvalidArgumentError
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        result = tf.math.sqrt(nan_tensor)
+        _ = result.numpy()
+    
+    # Verify exception contains NaN information
+    error_msg = str(exc_info.value)
+    assert "NaN" in error_msg or "nan" in error_msg.lower()
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+    
+    # Verify state was cleared
+    assert not hasattr(_state, 'check_numerics_callback')
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("dtype,value", [
+    ("float32", "inf"),
+    ("float32", "-inf")
+])
+def test_infinity_detection(dtype, value, clear_state):
+    """Test Infinity detection in floating-point tensors (TC-05)."""
+    # Enable check numerics
+    enable_check_numerics()
+    
+    # Create a tensor with Infinity values based on dtype and value
+    if dtype == "float32":
+        if value == "inf":
+            test_tensor = tf.constant([np.inf], dtype=tf.float32)
+        elif value == "-inf":
+            test_tensor = tf.constant([-np.inf], dtype=tf.float32)
+        else:
+            test_tensor = tf.constant([1.0], dtype=tf.float32)
+    
+    # Verify that an operation with Infinity tensor raises InvalidArgumentError
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        # Perform a simple operation that will trigger the callback
+        result = tf.math.add(test_tensor, tf.constant([0.0], dtype=tf.float32))
+        # Force execution in eager mode
+        _ = result.numpy()
+    
+    # Verify exception contains Infinity information
+    error_msg = str(exc_info.value)
+    assert "Infinity" in error_msg or "inf" in error_msg.lower()
+    
+    # Verify exception type is correct
+    assert exc_info.type == tf.errors.InvalidArgumentError
+    
+    # Clean up
+    disable_check_numerics()
+
+def test_infinity_detection_float64(clear_state):
+    """Test Infinity detection for float64 dtype (param extension)."""
+    # Enable check numerics
+    enable_check_numerics()
+    
+    # Test positive infinity for float64
+    inf_tensor = tf.constant([np.inf], dtype=tf.float64)
+    
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        result = tf.math.add(inf_tensor, tf.constant([0.0], dtype=tf.float64))
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "Infinity" in error_msg or "inf" in error_msg.lower()
+    
+    # Test negative infinity for float64
+    neg_inf_tensor = tf.constant([-np.inf], dtype=tf.float64)
+    
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info2:
+        result = tf.math.add(neg_inf_tensor, tf.constant([0.0], dtype=tf.float64))
+        _ = result.numpy()
+    
+    error_msg2 = str(exc_info2.value)
+    assert "Infinity" in error_msg2 or "inf" in error_msg2.lower()
+    
+    # Clean up
+    disable_check_numerics()
+
+def test_infinity_detection_specific_scenarios(clear_state):
+    """Test specific Infinity detection scenarios."""
+    # Enable check numerics
+    enable_check_numerics()
+    
+    # Test 1: Division by zero produces Infinity
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        x = tf.constant([1.0], dtype=tf.float32)
+        y = tf.constant([0.0], dtype=tf.float32)
+        result = tf.math.divide(x, y)
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "Infinity" in error_msg or "inf" in error_msg.lower()
+    
+    # Test 2: log(0) produces -Infinity
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        x = tf.constant([0.0], dtype=tf.float32)
+        result = tf.math.log(x)
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "Infinity" in error_msg or "inf" in error_msg.lower()
+    
+    # Test 3: exp(large number) produces Infinity
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        x = tf.constant([1000.0], dtype=tf.float32)  # Large enough to cause overflow
+        result = tf.math.exp(x)
+        _ = result.numpy()
+    
+    error_msg = str(exc_info.value)
+    assert "Infinity" in error_msg or "inf" in error_msg.lower()
+    
+    # Clean up
+    disable_check_numerics()
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+def test_disable_check_numerics_basic(clear_state):
+    """Test basic disable_check_numerics functionality (TC-06)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # First enable check numerics using public API
+    tf.debugging.enable_check_numerics()
+    
+    # Verify state was updated
+    assert hasattr(_state, 'check_numerics_callback')
+    
+    # Now disable check numerics
+    tf.debugging.disable_check_numerics()
+    
+    # Verify thread-local state was cleared
+    assert not hasattr(_state, 'check_numerics_callback')
+    
+    # Test idempotency of disable
+    # Second disable call should also work (idempotent)
+    tf.debugging.disable_check_numerics()
+    
+    # Verify state is still clear
+    assert not hasattr(_state, 'check_numerics_callback')
+
+def test_disable_without_enable(clear_state):
+    """Test disable_check_numerics without prior enable (should not error)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Ensure state is clear
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Disable without enabling first (should not raise exception)
+    try:
+        tf.debugging.disable_check_numerics()
+        # If we get here, no exception was raised (expected)
+        assert True
+    except Exception as e:
+        pytest.fail(f"disable_check_numerics raised unexpected exception: {e}")
+    
+    # Verify state is still clear
+    assert not hasattr(_state, 'check_numerics_callback')
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+def test_enable_disable_cycle(clear_state):
+    """Test enable/disable check numerics cycles (TC-07)."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Test multiple enable/disable cycles
+    cycles = 2
+    
+    for cycle in range(cycles):
+        # Enable check numerics
+        tf.debugging.enable_check_numerics()
+        
+        # Verify state was updated
+        assert hasattr(_state, 'check_numerics_callback')
+        assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+        
+        # Test that callback is working - create a new tensor each time
+        nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            result = tf.math.sqrt(nan_tensor)
+            _ = result.numpy()
+        
+        # Disable check numerics
+        tf.debugging.disable_check_numerics()
+        
+        # Verify state was cleared
+        assert not hasattr(_state, 'check_numerics_callback')
+        
+        # IMPORTANT: We need to verify that the callback is actually removed
+        # by testing with a normal operation that should NOT trigger the callback
+        # Create a new tensor with normal values (not NaN/Inf)
+        normal_tensor = tf.constant([4.0], dtype=tf.float32)
+        
+        # This should NOT raise an exception since check numerics is disabled
+        # and we're using normal values
+        result = tf.math.sqrt(normal_tensor)
+        value = result.numpy()
+        assert np.allclose(value, [2.0])
+    
+    # Verify final state is clear
+    assert not hasattr(_state, 'check_numerics_callback')
+
+def test_enable_disable_cycle_with_state_tracking(clear_state):
+    """Test enable/disable cycles with explicit state tracking."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # Track state transitions
+    state_history = []
+    
+    # Perform multiple enable/disable cycles
+    for i in range(3):
+        # Enable
+        tf.debugging.enable_check_numerics()
+        state_history.append(("enable", hasattr(_state, 'check_numerics_callback')))
+        
+        # Verify enabled
+        assert hasattr(_state, 'check_numerics_callback')
+        
+        # Test with a new tensor
+        nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            result = tf.math.sqrt(nan_tensor)
+            _ = result.numpy()
+        
+        # Disable
+        tf.debugging.disable_check_numerics()
+        state_history.append(("disable", hasattr(_state, 'check_numerics_callback')))
+        
+        # Verify disabled
+        assert not hasattr(_state, 'check_numerics_callback')
+        
+        # Test with a normal tensor after disable
+        normal_tensor = tf.constant([9.0], dtype=tf.float32)
+        result = tf.math.sqrt(normal_tensor)
+        value = result.numpy()
+        assert np.allclose(value, [3.0])
+    
+    # Verify state transitions were correct
+    expected_history = [
+        ("enable", True),
+        ("disable", False),
+        ("enable", True),
+        ("disable", False),
+        ("enable", True),
+        ("disable", False)
+    ]
+    
+    assert state_history == expected_history
+    
+    # Test idempotency within cycles
+    # Multiple enables should not create multiple callbacks
+    tf.debugging.enable_check_numerics()
+    callback1 = _state.check_numerics_callback
+    
+    tf.debugging.enable_check_numerics()  # Second enable should be idempotent
+    callback2 = _state.check_numerics_callback
+    
+    assert callback1 is callback2  # Same instance due to idempotency
+    
+    # Multiple disables should also be idempotent
+    tf.debugging.disable_check_numerics()
+    assert not hasattr(_state, 'check_numerics_callback')
+    
+    tf.debugging.disable_check_numerics()  # Second disable should also work
+    assert not hasattr(_state, 'check_numerics_callback')
+    
+    # Clean up
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+
+def test_enable_disable_cycle_with_different_parameters(clear_state):
+    """Test enable/disable cycles with different parameters."""
+    from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+    # Clear any existing state
+    if hasattr(_state, 'check_numerics_callback'):
+        delattr(_state, 'check_numerics_callback')
+    
+    # First enable with default parameters
+    tf.debugging.enable_check_numerics()
+    assert hasattr(_state, 'check_numerics_callback')
+    callback1 = _state.check_numerics_callback
+    
+    # Test with default parameters
+    nan_tensor1 = tf.constant([np.nan], dtype=tf.float32)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        result = tf.math.sqrt(nan_tensor1)
+        _ = result.numpy()
+    
+    # Disable
+    tf.debugging.disable_check_numerics()
+    assert not hasattr(_state, 'check_numerics_callback')
+    
+    # Test with normal tensor to verify callback is removed
+    normal_tensor1 = tf.constant([16.0], dtype=tf.float32)
+    result = tf.math.sqrt(normal_tensor1)
+    value = result.numpy()
+    assert np.allclose(value, [4.0])
+    
+    # Second enable with different parameters
+    tf.debugging.enable_check_numerics(stack_height_limit=10, path_length_limit=20)
+    assert hasattr(_state, 'check_numerics_callback')
+    callback2 = _state.check_numerics_callback
+    
+    # Verify this is a new callback instance (not the same as before)
+    # Note: Due to idempotency within a single enabled state, but after disable
+    # and re-enable, we should get a new instance
+    assert callback1 is not callback2
+    
+    # Verify new parameters were applied
+    assert callback2._stack_height_limit == 10
+    assert callback2._path_length_limit == 20
+    
+    # Test with new parameters
+    nan_tensor2 = tf.constant([np.nan], dtype=tf.float32)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        result = tf.math.sqrt(nan_tensor2)
+        _ = result.numpy()
+    
+    # Disable again
+    tf.debugging.disable_check_numerics()
+    assert not hasattr(_state, 'check_numerics_callback')
+    
+    # Test with normal tensor again
+    normal_tensor2 = tf.constant([25.0], dtype=tf.float32)
+    result = tf.math.sqrt(normal_tensor2)
+    value = result.numpy()
+    assert np.allclose(value, [5.0])
+    
+    # Third enable with original parameters
+    tf.debugging.enable_check_numerics()  # Default parameters
+    assert hasattr(_state, 'check_numerics_callback')
+    callback3 = _state.check_numerics_callback
+    
+    # Verify this is yet another new instance
+    assert callback3 is not callback1
+    assert callback3 is not callback2
+    
+    # Verify default parameters were applied
+    assert callback3._stack_height_limit == 30  # Default
+    assert callback3._path_length_limit == 50   # Default
+    
+    # Test with default parameters again
+    nan_tensor3 = tf.constant([np.nan], dtype=tf.float32)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        result = tf.math.sqrt(nan_tensor3)
+        _ = result.numpy()
+    
+    # Clean up
+    tf.debugging.disable_check_numerics()
+    assert not hasattr(_state, 'check_numerics_callback')
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Placeholder for CASE_08: 线程局部行为验证 (DEFERRED)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+def test_check_numerics_callback_instantiation():
+    """Test CheckNumericsCallback class instantiation (TC-09)."""
+    # Test with default-like parameters
+    callback = CheckNumericsCallback(stack_height_limit=30, path_length_limit=50)
+    
+    # Verify instance was created
+    assert callback is not None
+    assert isinstance(callback, CheckNumericsCallback)
+    
+    # Verify attributes are set correctly
+    assert callback._stack_height_limit == 30
+    assert callback._path_length_limit == 50
+    
+    # Verify internal data structures
+    assert isinstance(callback._placeholder_to_debug_tensor, dict)
+    assert len(callback._placeholder_to_debug_tensor) == 0
+    
+    # Test with different parameters
+    callback2 = CheckNumericsCallback(stack_height_limit=10, path_length_limit=20)
+    
+    # Verify different parameters are respected
+    assert callback2._stack_height_limit == 10
+    assert callback2._path_length_limit == 20
+    
+    # Verify instances are different
+    assert callback is not callback2
+    assert callback._stack_height_limit != callback2._stack_height_limit
+    
+    # Test callback method exists
+    assert hasattr(callback, 'callback')
+    assert callable(callback.callback)
+    
+    # Test _get_output_tensor method exists
+    assert hasattr(callback, '_get_output_tensor')
+    assert callable(callback._get_output_tensor)
+
+def test_check_numerics_callback_attributes():
+    """Test CheckNumericsCallback attributes and methods."""
+    # Create callback instance
+    callback = CheckNumericsCallback(stack_height_limit=25, path_length_limit=35)
+    
+    # Verify all expected attributes exist
+    expected_attrs = [
+        '_stack_height_limit',
+        '_path_length_limit', 
+        '_placeholder_to_debug_tensor',
+        'callback',
+        '_get_output_tensor'
+    ]
+    
+    for attr in expected_attrs:
+        assert hasattr(callback, attr), f"Missing attribute: {attr}"
+    
+    # Verify attribute types
+    assert isinstance(callback._stack_height_limit, int)
+    assert isinstance(callback._path_length_limit, int)
+    assert isinstance(callback._placeholder_to_debug_tensor, dict)
+    
+    # Verify parameter values
+    assert callback._stack_height_limit == 25
+    assert callback._path_length_limit == 35
+    
+    # Test that callback can be called (basic signature check)
+    # Note: We don't test actual callback logic here as it's complex
+    # and requires proper mocking of TensorFlow internals
+    
+    # Test with extreme parameter values
+    callback3 = CheckNumericsCallback(stack_height_limit=1, path_length_limit=1)
+    assert callback3._stack_height_limit == 1
+    assert callback3._path_length_limit == 1
+    
+    callback4 = CheckNumericsCallback(stack_height_limit=1000, path_length_limit=1000)
+    assert callback4._stack_height_limit == 1000
+    assert callback4._path_length_limit == 1000
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# Placeholder for CASE_10: 非浮点数据类型忽略 (DEFERRED)
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# Placeholder for CASE_11: IGNORE_OP_OUTPUTS 列表验证 (DEFERRED)
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test classes and helper functions
+class TestCheckNumericsCallback:
+    """Test class for CheckNumericsCallback functionality."""
+    
+    def test_callback_initialization(self):
+        """Test CheckNumericsCallback initialization with parameters."""
+        callback = CheckNumericsCallback(stack_height_limit=30, path_length_limit=50)
+        assert callback._stack_height_limit == 30
+        assert callback._path_length_limit == 50
+        assert isinstance(callback._placeholder_to_debug_tensor, dict)
+        assert len(callback._placeholder_to_debug_tensor) == 0
+
+# Helper function to create test tensors
+def create_test_tensor(dtype, value, shape=(2, 2)):
+    """Create a test tensor with specified dtype and value."""
+    if dtype == "float32":
+        if value == "nan":
+            return tf.constant(np.full(shape, np.nan, dtype=np.float32))
+        elif value == "inf":
+            return tf.constant(np.full(shape, np.inf, dtype=np.float32))
+        elif value == "-inf":
+            return tf.constant(np.full(shape, -np.inf, dtype=np.float32))
+        else:
+            return tf.constant(np.ones(shape, dtype=np.float32))
+    elif dtype == "float64":
+        if value == "nan":
+            return tf.constant(np.full(shape, np.nan, dtype=np.float64))
+        elif value == "inf":
+            return tf.constant(np.full(shape, np.inf, dtype=np.float64))
+        elif value == "-inf":
+            return tf.constant(np.full(shape, -np.inf, dtype=np.float64))
+        else:
+            return tf.constant(np.ones(shape, dtype=np.float64))
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+
+# Cleanup function to ensure proper state reset
+def cleanup_check_numerics():
+    """Ensure check numerics is disabled after tests."""
+    try:
+        disable_check_numerics()
+    except:
+        pass
+
+# Alternative mock strategy for op_callbacks to avoid import issues
+@pytest.fixture
+def simple_mock_op_callbacks():
+    """Simple mock for op_callbacks that avoids complex import paths."""
+    # Create a simple mock module
+    mock_module = mock.MagicMock()
+    mock_module.add_op_callback = mock.MagicMock()
+    mock_module.remove_op_callback = mock.MagicMock()
+    
+    # Save original and patch
+    import sys
+    original_op_callbacks = sys.modules.get('tensorflow.python.debug.lib.check_numerics_callback.op_callbacks')
+    
+    # Patch the module
+    sys.modules['tensorflow.python.debug.lib.check_numerics_callback.op_callbacks'] = mock_module
+    
+    yield mock_module
+    
+    # Restore original
+    if original_op_callbacks is not None:
+        sys.modules['tensorflow.python.debug.lib.check_numerics_callback.op_callbacks'] = original_op_callbacks
+    else:
+        del sys.modules['tensorflow.python.debug.lib.check_numerics_callback.op_callbacks']
+# ==== BLOCK:FOOTER END ====

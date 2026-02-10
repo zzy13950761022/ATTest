@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGenParsingOps.test_parse_example_mixed_sparse_dense_features[example_proto_bytes-dense_keys0-dense_defaults0-dense_shapes0-sparse_keys0-sparse_types0]",
+      "block_id": "CASE_02",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "dense_defaults形状[1]与dense_shapes[3]不兼容"
+    },
+    {
+      "test": "TestGenParsingOps.test_decode_compressed_support[compressed_data-ZLIB]",
+      "block_id": "CASE_04",
+      "error_type": "DataLossError",
+      "action": "rewrite_block",
+      "note": "未压缩数据作为压缩数据传递导致解压失败"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestGenParsingOps.test_decode_compressed_support[gzip_compressed_data-GZIP]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

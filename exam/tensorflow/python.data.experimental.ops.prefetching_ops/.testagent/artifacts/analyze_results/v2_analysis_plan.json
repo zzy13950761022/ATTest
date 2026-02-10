@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_copy_to_device_gpu_support",
+      "block_id": "CASE_06",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "GPU测试被跳过，需要添加CPU回退测试用例"
+    },
+    {
+      "test": "test_copy_to_device_invalid_device",
+      "block_id": "CASE_07",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "无效设备测试覆盖率不足，需要调整断言逻辑"
+    },
+    {
+      "test": "HEADER",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "辅助函数分支覆盖率不足，需要添加测试用例覆盖所有分支"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

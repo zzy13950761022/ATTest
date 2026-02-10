@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_mel_ops.py::test_htk_formula_verification",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "滤波器列和未归一化到1.0附近，实际值远大于1，可能是HTK公式实现问题或测试期望值需要调整"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败集合完全重复：同一测试用例（test_htk_formula_verification）在连续两轮中因相同原因失败，表明问题可能在于测试期望值或HTK公式实现本身，而非代码错误"
+}

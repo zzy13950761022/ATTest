@@ -1,0 +1,322 @@
+=== Run Tests ===
+FsFFFsFsF..                                                              [100%]
+================================== FAILURES ===================================
+_ test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 1.0, output_keep_prob = 1.0
+state_keep_prob = 1.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 2, time_steps = 3, input_dim = 4, units = 5
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                1.0,
+                1.0,
+                1.0,
+                False,
+                "float32",
+                2,
+                3,
+                4,
+                5
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                0.8,
+                0.9,
+                0.7,
+                False,
+                "float64",
+                4,
+                5,
+                8,
+                10
+            )
+        ]
+    )
+    def test_dropout_wrapper_basic_functionality(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test basic DropoutWrapper functionality with various parameters."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:106: TypeError
+_ test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 0.0, output_keep_prob = 0.5
+state_keep_prob = 1.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 1, time_steps = 2, input_dim = 3, units = 4
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                0.0,
+                0.5,
+                1.0,
+                False,
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                1.0,
+                0.0,
+                0.0,
+                False,
+                "float32",
+                3,
+                1,
+                5,
+                5
+            )
+        ]
+    )
+    def test_dropout_wrapper_probability_boundaries(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DropoutWrapper with boundary probability values."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:218: TypeError
+_ test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 1.0, output_keep_prob = 0.0
+state_keep_prob = 0.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 3, time_steps = 1, input_dim = 5, units = 5
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                0.0,
+                0.5,
+                1.0,
+                False,
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                1.0,
+                0.0,
+                0.0,
+                False,
+                "float32",
+                3,
+                1,
+                5,
+                5
+            )
+        ]
+    )
+    def test_dropout_wrapper_probability_boundaries(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DropoutWrapper with boundary probability values."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:218: TypeError
+___ test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3] ____
+
+cell_type = 'BasicRNNCell', input_dim = 6, units = 6, dtype = 'float32'
+batch_size = 2, time_steps = 3
+
+    @pytest.mark.parametrize(
+        "cell_type,input_dim,units,dtype,batch_size,time_steps",
+        [
+            (
+                "BasicRNNCell",
+                6,
+                6,
+                "float32",
+                2,
+                3
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                8,
+                8,
+                "float64",
+                4,
+                10
+            )
+        ]
+    )
+    def test_residual_wrapper_dimension_matching(
+        cell_type,
+        input_dim,
+        units,
+        dtype,
+        batch_size,
+        time_steps
+    ):
+        """Test ResidualWrapper with matching input and output dimensions."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:350: TypeError
+__ test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4] __
+
+cell_type = 'BasicRNNCell', device = '/cpu:0', dtype = 'float32', batch_size = 1
+time_steps = 2, input_dim = 3, units = 4
+
+    @pytest.mark.parametrize(
+        "cell_type,device,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                "/cpu:0",
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                "/cpu:0",
+                "float64",
+                2,
+                4,
+                6,
+                8
+            )
+        ]
+    )
+    def test_device_wrapper_device_placement(
+        cell_type,
+        device,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DeviceWrapper places tensors on correct device."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:460: TypeError
+_ test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4] _
+
+wrapper_type = 'DropoutWrapper', cell_type = 'BasicRNNCell'
+input_keep_prob = 0.6, output_keep_prob = 0.7, dtype = 'float32', units = 4
+
+    @pytest.mark.parametrize(
+        "wrapper_type,cell_type,input_keep_prob,output_keep_prob,dtype,units",
+        [
+            (
+                "DropoutWrapper",
+                "BasicRNNCell",
+                0.6,
+                0.7,
+                "float32",
+                4
+            )
+        ]
+    )
+    def test_wrapper_serialization_cycle(
+        wrapper_type,
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        dtype,
+        units
+    ):
+        """Test serialization/deserialization cycle for wrappers."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:584: TypeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                               Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py     231    176     44      6    24%   25-28, 33-36, 41-43, 47, 51, 107-167, 219-308, 351-415, 461-539, 586-676, 714-722, 726-727
+--------------------------------------------------------------------------------------------------------------
+TOTAL                                                                231    176     44      6    24%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]
+6 failed, 2 passed, 3 skipped in 1.62s
+
+Error: exit 1

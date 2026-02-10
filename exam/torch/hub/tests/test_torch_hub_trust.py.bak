@@ -1,0 +1,344 @@
+"""
+Test cases for torch.hub.load - Trust and cache management (Group G2)
+"""
+import os
+import sys
+import tempfile
+import shutil
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, call
+
+import pytest
+import torch
+import torch.hub
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for torch.hub.load - Trust and cache management (Group G2)
+"""
+import os
+import sys
+import tempfile
+import shutil
+import json
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, call
+
+import pytest
+import torch
+import torch.hub
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
+@pytest.fixture
+def mock_trust_mechanism():
+    """Mock hubconf.py with a trust model."""
+    def create_mock_model(*args, **kwargs):
+        model = Mock(spec=torch.nn.Module)
+        model.__class__.__name__ = "TrustModel"
+        model.forward = Mock(return_value=torch.randn(1, 5))
+        model.eval = Mock()
+        model.train = Mock()
+        return model
+    
+    return create_mock_model
+
+
+@pytest.fixture
+def mock_github_download():
+    """Mock GitHub download operations."""
+    with patch('torch.hub.download_url_to_file') as mock_download, \
+         patch('torch.hub._git_archive_link') as mock_git_archive_link, \
+         patch('torch.hub.urlparse') as mock_urlparse:
+        
+        mock_download.return_value = None
+        mock_git_archive_link.return_value = "https://github.com/test/trust_repo/zipball/main"
+        
+        # Mock URL parsing
+        mock_url = Mock()
+        mock_url.scheme = 'https'
+        mock_url.netloc = 'github.com'
+        mock_urlparse.return_value = mock_url
+        
+        yield {
+            'download': mock_download,
+            'git_archive_link': mock_git_archive_link,
+            'urlparse': mock_urlparse
+        }
+
+
+@pytest.fixture
+def mock_cache_dir(temp_dir):
+    """Mock torch.hub cache directory."""
+    cache_dir = temp_dir / '.cache' / 'torch' / 'hub'
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    with patch('torch.hub.get_dir') as mock_get_dir:
+        mock_get_dir.return_value = str(cache_dir)
+        yield cache_dir
+
+
+@pytest.fixture
+def mock_import_module():
+    """Mock importlib.import_module for hubconf import."""
+    with patch('importlib.import_module') as mock_import:
+        yield mock_import
+
+
+@pytest.fixture
+def mock_user_input():
+    """Mock user input for trust prompts."""
+    with patch('builtins.input') as mock_input:
+        yield mock_input
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+def test_trust_mechanism(
+    mock_trust_mechanism,
+    mock_github_download,
+    mock_cache_dir,
+    mock_import_module,
+    mock_user_input
+):
+    """
+    Test trust mechanism (CASE_03).
+    
+    This test verifies that torch.hub.load handles trust_repo=True parameter
+    correctly, updating the trust list without user prompts.
+    
+    Weak assertions:
+    1. returns_object: Function returns a valid object
+    2. trust_list_updated: Trust list is updated after loading
+    3. no_user_prompt: No user input is requested when trust_repo=True
+    """
+    # Setup mock import module to return our mock hubconf
+    mock_module = Mock()
+    mock_module.trust_model = mock_trust_mechanism
+    mock_import_module.return_value = mock_module
+    
+    # Setup cache directory structure
+    repo_dir = mock_cache_dir / 'test_trust_repo_master'
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create a dummy hubconf.py file in cache
+    hubconf_file = repo_dir / 'hubconf.py'
+    hubconf_file.write_text('# Mock hubconf.py file for trust testing')
+    
+    # Mock the trust repo check and addition
+    # Note: torch.hub doesn't have _is_trusted_repo or _add_trusted_repo functions
+    # Instead, we need to mock the internal trust mechanism
+    with patch('torch.hub._get_cache_or_reload') as mock_cache_reload, \
+         patch('torch.hub._check_module_exists') as mock_check_module:
+        
+        # Mock cache reload to return the repo directory
+        mock_cache_reload.return_value = str(repo_dir)
+        mock_check_module.return_value = True
+        
+        # Mock the trust warning mechanism
+        with patch('warnings.warn') as mock_warn:
+            
+            # Call torch.hub.load with trust_repo=True
+            model = torch.hub.load(
+                repo_or_dir='test/trust_repo',
+                model='trust_model',
+                source='github',
+                trust_repo=True,  # Explicitly trust the repo
+                force_reload=False,
+                verbose=False,  # Silent mode for trust test
+                skip_validation=False
+            )
+            
+            # Weak assertion 1: returns_object
+            assert model is not None, "torch.hub.load should return a model object"
+            
+            # Weak assertion 2: trust_list_updated
+            # When trust_repo=True, torch.hub should not show warnings
+            # Check that no warning was issued about trust_repo=None
+            for call_args in mock_warn.call_args_list:
+                if 'trust_repo' in str(call_args):
+                    # If trust_repo=True, there should be no warning about trust_repo
+                    assert 'trust_repo' not in str(call_args), \
+                        "Should not warn about trust_repo when trust_repo=True"
+            
+            # Weak assertion 3: no_user_prompt
+            # Verify that input() was NOT called (no user interaction needed)
+            mock_user_input.assert_not_called()
+            
+            # Additional weak assertions from common pattern
+            # Check that the model has a forward method (is callable)
+            assert hasattr(model, 'forward'), "Model should have forward method"
+            assert callable(model.forward), "Model.forward should be callable"
+            
+            # Test forward call
+            test_input = torch.randn(1, 5)
+            output = model.forward(test_input)
+            assert output is not None, "Model.forward should return output"
+            assert isinstance(output, torch.Tensor), "Output should be a torch.Tensor"
+            
+            # Check for common model attributes
+            expected_attrs = ['eval', 'train']
+            for attr in expected_attrs:
+                assert hasattr(model, attr), f"Model should have {attr} attribute"
+            
+            # Verify the model has the expected class name
+            assert model.__class__.__name__ == "TrustModel", \
+                f"Model should be TrustModel, got {model.__class__.__name__}"
+            
+            # Verify mock calls
+            mock_import_module.assert_called_once()
+            assert mock_module.trust_model.called, "trust_model factory should be called"
+            
+            # Verify download was triggered
+            mock_github_download['download'].assert_called()
+            
+            # Verify cache operations were called
+            mock_cache_reload.assert_called()
+            mock_check_module.assert_called()
+            
+            # Verify verbose=False means no extra print calls (weak check)
+            # We don't assert specific print calls, just that function completed
+            
+            print(f"✓ Trust mechanism test passed. Model type: {type(model)}")
+            print(f"  Trust repo: test/trust_repo")
+            print(f"  trust_repo=True handled without warnings")
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Test case: Additional trust scenario 1 (deferred)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Test case: Additional trust scenario 2 (deferred)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Helper functions for trust and cache tests
+
+def test_trust_repo_check_mode(mock_user_input):
+    """Test trust_repo='check' mode with user input."""
+    # This would test the interactive trust prompt
+    # For now, just a placeholder
+    pass
+
+
+def test_trust_repo_false_with_prompt(mock_user_input):
+    """Test trust_repo=False with expected user prompt."""
+    # This would test when user needs to confirm trust
+    # For now, just a placeholder
+    pass
+
+
+def test_force_reload_with_trust(mock_github_download):
+    """Test force_reload=True with trusted repo."""
+    # This would test cache invalidation for trusted repos
+    # For now, just a placeholder
+    pass
+
+
+# Test utilities for edge cases
+
+def test_invalid_trust_repo_value():
+    """Test that invalid trust_repo value raises appropriate error."""
+    # Mock network requests to avoid actual HTTP calls
+    with patch('torch.hub.urlopen') as mock_urlopen, \
+         patch('torch.hub._read_url') as mock_read_url:
+        
+        # Mock successful API response for repo validation
+        mock_response = Mock()
+        mock_response.read.return_value = b'[{"name": "main"}]'
+        mock_response.headers.get_content_charset.return_value = 'utf-8'
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        # Mock _read_url for API calls
+        mock_read_url.return_value = '[{"name": "main"}]'
+        
+        with pytest.raises((ValueError, TypeError)):
+            # trust_repo should be bool, "check", or None
+            torch.hub.load(
+                repo_or_dir='test/repo',
+                model='test_model',
+                source='github',
+                trust_repo='invalid_value'  # Not a valid value
+            )
+
+
+def test_network_failure_handling():
+    """Test handling of network failures during download."""
+    with patch('torch.hub.download_url_to_file') as mock_download:
+        mock_download.side_effect = Exception("Network error")
+        
+        # Also mock other network dependencies
+        with patch('torch.hub.urlopen') as mock_urlopen, \
+             patch('torch.hub._read_url') as mock_read_url:
+            
+            # Mock successful API response for repo validation
+            mock_response = Mock()
+            mock_response.read.return_value = b'[{"name": "main"}]'
+            mock_response.headers.get_content_charset.return_value = 'utf-8'
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+            
+            # Mock _read_url for API calls
+            mock_read_url.return_value = '[{"name": "main"}]'
+            
+            with pytest.raises((RuntimeError, Exception)):
+                torch.hub.load(
+                    repo_or_dir='test/repo',
+                    model='test_model',
+                    source='github',
+                    trust_repo=None
+                )
+
+
+def test_cache_permission_error(temp_dir):
+    """Test handling of cache directory permission errors."""
+    # Create a cache directory without write permissions
+    cache_dir = temp_dir / 'readonly_cache'
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir.chmod(0o444)  # Read-only
+    
+    with patch('torch.hub.get_dir') as mock_get_dir:
+        mock_get_dir.return_value = str(cache_dir)
+        
+        # Mock network requests to avoid actual HTTP calls
+        with patch('torch.hub.urlopen') as mock_urlopen, \
+             patch('torch.hub._read_url') as mock_read_url:
+            
+            # Mock successful API response for repo validation
+            mock_response = Mock()
+            mock_response.read.return_value = b'[{"name": "main"}]'
+            mock_response.headers.get_content_charset.return_value = 'utf-8'
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+            
+            # Mock _read_url for API calls
+            mock_read_url.return_value = '[{"name": "main"}]'
+            
+            with pytest.raises((PermissionError, OSError)):
+                torch.hub.load(
+                    repo_or_dir='test/repo',
+                    model='test_model',
+                    source='github',
+                    trust_repo=None
+                )
+    
+    # Restore permissions for cleanup
+    cache_dir.chmod(0o755)
+
+
+def test_concurrent_loading_same_repo():
+    """Test concurrent loading of the same repository."""
+    # This would test thread safety for cache operations
+    # For now, just a placeholder
+    pass
+
+
+if __name__ == '__main__':
+    # Simple test runner for debugging
+    import sys
+    sys.exit(pytest.main([__file__, '-v']))
+# ==== BLOCK:FOOTER END ====

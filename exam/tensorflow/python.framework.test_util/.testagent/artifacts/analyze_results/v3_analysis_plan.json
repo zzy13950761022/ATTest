@@ -1,0 +1,87 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 16,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_gpu_device_name_detection[True-True-True]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock.patch路径错误：tensorflow.python模块不存在"
+    },
+    {
+      "test": "test_create_local_cluster_basic_creation[2-1-True]",
+      "block_id": "CASE_05",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock.patch路径错误：tensorflow.python模块不存在"
+    },
+    {
+      "test": "test_device_context_manager[True-True]",
+      "block_id": "CASE_10",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock.patch路径错误：tensorflow.python模块不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_gpu_device_name_detection[False-True-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_create_local_cluster_basic_creation[1-0-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_create_local_cluster_basic_creation[0-2-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_create_local_cluster_basic_creation[3-0-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_device_context_manager[True-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_device_context_manager[False-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_device_context_manager[False-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_is_gpu_available_detection[True-False-None-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_is_gpu_available_detection[False-False-None-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_is_gpu_available_detection[True-True-None-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_is_gpu_available_detection[True-False-min_compute_capability3-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_is_gpu_available_detection[True-False-min_compute_capability4-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestDeviceManagement.test_device_context_manager_in_test_case",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

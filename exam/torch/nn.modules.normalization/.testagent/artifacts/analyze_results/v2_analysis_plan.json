@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_layernorm_forward_basic[normalized_shape0-1e-05-True-dtype0-cpu-shape0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "权重形状类型不匹配：torch.Size([8, 8]) vs ([8, 8],)"
+    },
+    {
+      "test": "test_layernorm_forward_basic[8-1e-06-False-dtype1-cpu-shape1]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "F.layer_norm期望normalized_shape为元组，但传入的是整数"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

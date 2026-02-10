@@ -1,0 +1,462 @@
+"""
+Test cases for tensorflow.python.ops.ragged.ragged_concat_ops
+"""
+import math
+import pytest
+import numpy as np
+import tensorflow as tf
+from tensorflow.python.ops.ragged import ragged_concat_ops
+
+# ==== BLOCK:HEADER START ====
+# Test class and helper functions
+class TestRaggedConcatOps:
+    """Test class for ragged_concat_ops module."""
+    
+    def setup_method(self):
+        """Setup test method."""
+        tf.random.set_seed(42)
+        np.random.seed(42)
+    
+    def _create_ragged_tensor(self, values, dtype=None):
+        """Helper to create ragged tensor."""
+        return tf.ragged.constant(values, dtype=dtype)
+    
+    def _create_dense_tensor(self, values, dtype=None):
+        """Helper to create dense tensor."""
+        return tf.constant(values, dtype=dtype)
+    
+    def _assert_ragged_structure(self, result, expected_shape=None, expected_dtype=None):
+        """Assert basic ragged tensor properties."""
+        assert isinstance(result, tf.RaggedTensor), f"Expected RaggedTensor, got {type(result)}"
+        if expected_dtype:
+            assert result.dtype == expected_dtype, f"Expected dtype {expected_dtype}, got {result.dtype}"
+        if expected_shape:
+            assert result.shape.as_list() == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize(
+        "function,values_type,axis,dtype,shapes,flags",
+        [
+            (
+                "concat",
+                "mixed_ragged_dense",
+                0,
+                "int32",
+                [[[1, 2], [3]], [[4, 5, 6]]],
+                [],
+            ),
+            # Parameter extension: dense_only, axis=1, float64
+            (
+                "concat",
+                "dense_only",
+                1,
+                "float64",
+                [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+                [],
+            ),
+        ],
+        ids=["concat_mixed_axis0_int32", "concat_dense_axis1_float64"]
+    )
+    def test_concat_basic_mixed_tensors_axis0(self, function, values_type, axis, dtype, shapes, flags):
+        """TC-01: concat基本功能-混合张量沿axis=0连接"""
+        # Create test tensors based on values_type
+        if values_type == "mixed_ragged_dense":
+            # First tensor: ragged tensor
+            tensor1 = self._create_ragged_tensor(shapes[0], dtype=getattr(tf, dtype))
+            # Second tensor: dense tensor (convert to 2D dense)
+            tensor2 = self._create_dense_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        elif values_type == "dense_only":
+            # Both tensors are dense
+            tensor1 = self._create_dense_tensor(shapes[0], dtype=getattr(tf, dtype))
+            tensor2 = self._create_dense_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        else:
+            pytest.fail(f"Unsupported values_type: {values_type}")
+        
+        # Call the function
+        if function == "concat":
+            result = ragged_concat_ops.concat(values, axis=axis)
+        else:
+            result = ragged_concat_ops.stack(values, axis=axis)
+        
+        # Weak assertions (round 1)
+        # 1. shape_match: Check basic shape properties
+        if function == "concat":
+            # For concat along axis=0, outer dimension should be sum of outer dimensions
+            if axis == 0:
+                expected_outer_dim = tensor1.shape[0] + tensor2.shape[0]
+                assert result.shape[0] == expected_outer_dim, \
+                    f"Expected outer dimension {expected_outer_dim}, got {result.shape[0]}"
+            elif axis == 1:
+                # For axis=1 concat, check shape consistency
+                # When both tensors are dense, result should be dense with concatenated inner dimension
+                if values_type == "dense_only":
+                    expected_inner_dim = tensor1.shape[1] + tensor2.shape[1]
+                    assert result.shape[1] == expected_inner_dim, \
+                        f"Expected inner dimension {expected_inner_dim}, got {result.shape[1]}"
+        else:
+            # For stack, rank should increase by 1
+            assert result.shape.rank == tensor1.shape.rank + 1, \
+                f"Expected rank {tensor1.shape.rank + 1}, got {result.shape.rank}"
+        
+        # 2. dtype_match: Check dtype
+        assert result.dtype == getattr(tf, dtype), \
+            f"Expected dtype {dtype}, got {result.dtype}"
+        
+        # 3. ragged_structure: Verify structure based on input types
+        if values_type == "mixed_ragged_dense":
+            # When mixing ragged and dense, result should be RaggedTensor
+            assert isinstance(result, tf.RaggedTensor), \
+                f"Expected RaggedTensor for mixed inputs, got {type(result)}"
+        elif values_type == "dense_only":
+            # When both inputs are dense, result may be regular Tensor
+            # This is acceptable behavior
+            pass
+        
+        # 4. basic_connectivity: Check that values are preserved
+        # For concat along axis=0, first rows should be from tensor1
+        if function == "concat" and axis == 0:
+            # Check first element (from first tensor)
+            tf.debugging.assert_equal(result[0], tensor1[0])
+            # Check element at position tensor1.shape[0] (from second tensor)
+            tf.debugging.assert_equal(result[tensor1.shape[0]], tensor2[0])
+        
+        # Additional verification for specific cases
+        if values_type == "dense_only" and function == "concat" and axis == 1:
+            # Verify concatenation along axis=1 for dense tensors
+            # First row should be concatenation of first rows
+            expected_first_row = tf.concat([tensor1[0], tensor2[0]], axis=0)
+            tf.debugging.assert_equal(result[0], expected_first_row)
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize(
+        "function,values_type,axis,dtype,shapes,flags",
+        [
+            (
+                "stack",
+                "mixed_ragged_dense",
+                1,
+                "float32",
+                [[[1.0, 2.0], [3.0]], [[4.0], [5.0, 6.0]]],
+                [],
+            ),
+        ],
+        ids=["stack_mixed_axis1_float32"]
+    )
+    def test_stack_basic_mixed_tensors_axis1(self, function, values_type, axis, dtype, shapes, flags):
+        """TC-02: stack基本功能-混合张量沿axis=1堆叠"""
+        # Create test tensors based on values_type
+        if values_type == "mixed_ragged_dense":
+            # First tensor: ragged tensor
+            tensor1 = self._create_ragged_tensor(shapes[0], dtype=getattr(tf, dtype))
+            # Second tensor: dense tensor (convert to ragged-like structure)
+            # Note: shapes[1] is [[4.0], [5.0, 6.0]] which is already ragged
+            tensor2 = self._create_ragged_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        
+        # Call the function
+        if function == "concat":
+            result = ragged_concat_ops.concat(values, axis=axis)
+        else:
+            result = ragged_concat_ops.stack(values, axis=axis)
+        
+        # Weak assertions (round 1)
+        # 1. rank_increase: For stack, rank should increase by 1
+        if function == "stack":
+            assert result.shape.rank == tensor1.shape.rank + 1, \
+                f"Expected rank {tensor1.shape.rank + 1}, got {result.shape.rank}"
+        else:
+            # For concat, rank should stay the same
+            assert result.shape.rank == tensor1.shape.rank, \
+                f"Expected rank {tensor1.shape.rank}, got {result.shape.rank}"
+        
+        # 2. shape_match: Check basic shape properties
+        # For RaggedTensor, shape[dim] might be None, so we need to check differently
+        if function == "stack":
+            # Instead of checking shape[axis] directly, check the actual structure
+            # The stacking dimension should have size equal to number of values
+            # We can verify this by checking that we can index along that dimension
+            try:
+                # Try to access elements along the stacking dimension
+                for i in range(len(values)):
+                    # This should work if stacking dimension is correct
+                    _ = result[i] if axis == 0 else result[0, i] if axis == 1 else result[0, 0, i]
+            except (IndexError, TypeError) as e:
+                pytest.fail(f"Cannot access element along stacking axis {axis}: {e}")
+        
+        # 3. dtype_match: Check dtype
+        assert result.dtype == getattr(tf, dtype), \
+            f"Expected dtype {dtype}, got {result.dtype}"
+        
+        # 4. ragged_structure: Verify it's a RaggedTensor
+        self._assert_ragged_structure(result, expected_dtype=getattr(tf, dtype))
+        
+        # Additional verification for stack operation
+        if function == "stack":
+            # Check that stacking along axis=1 creates the right structure
+            # result[0, 0] should be tensor1[0]
+            tf.debugging.assert_equal(result[0, 0], tensor1[0])
+            # result[0, 1] should be tensor2[0]
+            tf.debugging.assert_equal(result[0, 1], tensor2[0])
+            
+            # Verify the stacking dimension by checking the structure
+            # For axis=1 stacking of 2 tensors, we should have 2 elements along axis=1
+            # We can check this by verifying the length along that dimension
+            if axis == 1:
+                # Check that we have 2 elements along axis=1 for the first outer dimension
+                # This is a more robust check than shape[1] which might be None
+                try:
+                    # Try to access both positions along axis=1
+                    elem0 = result[0, 0]
+                    elem1 = result[0, 1]
+                    # If we get here, we successfully accessed both positions
+                    # Now verify they match the original tensors
+                    tf.debugging.assert_equal(elem0, tensor1[0])
+                    tf.debugging.assert_equal(elem1, tensor2[0])
+                except (IndexError, TypeError) as e:
+                    pytest.fail(f"Cannot access both positions along axis=1: {e}")
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize(
+        "function,values_type,axis,dtype,shapes,flags",
+        [
+            (
+                "concat",
+                "empty_list",
+                0,
+                "int32",
+                [],
+                ["expect_error"],
+            ),
+            (
+                "stack",
+                "empty_list",
+                0,
+                "float32",
+                [],
+                ["expect_error"],
+            ),
+        ],
+        ids=["concat_empty_list", "stack_empty_list"]
+    )
+    def test_empty_values_list_exception(self, function, values_type, axis, dtype, shapes, flags):
+        """TC-03: 边界处理-空values列表异常"""
+        # Create empty values list
+        values = []
+        
+        # Weak assertions (round 1)
+        # 1. exception_type: Should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            if function == "concat":
+                ragged_concat_ops.concat(values, axis=axis)
+            else:
+                ragged_concat_ops.stack(values, axis=axis)
+        
+        # 2. error_message_contains: Error message should indicate empty values
+        error_msg = str(exc_info.value).lower()
+        assert "empty" in error_msg or "values" in error_msg, \
+            f"Error message should mention empty values, got: {error_msg}"
+        
+        # Additional verification
+        assert "expect_error" in flags, "Test case should expect error"
+        
+        # Verify the exception is indeed ValueError
+        assert isinstance(exc_info.value, ValueError), \
+            f"Expected ValueError, got {type(exc_info.value)}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize(
+        "function,values_type,axis,dtype,shapes,flags",
+        [
+            (
+                "concat",
+                "mixed_rank",
+                0,
+                "int32",
+                [[[1, 2], [3]], [1, 2, 3]],
+                ["expect_error"],
+            ),
+        ],
+        ids=["concat_mixed_rank_axis0"]
+    )
+    def test_rank_mismatch_error(self, function, values_type, axis, dtype, shapes, flags):
+        """TC-04: 错误路径-输入张量秩不匹配"""
+        # Create test tensors with mismatched ranks
+        if values_type == "mixed_rank":
+            # First tensor: 2D ragged tensor (rank 2)
+            tensor1 = self._create_ragged_tensor(shapes[0], dtype=getattr(tf, dtype))
+            # Second tensor: 1D dense tensor (rank 1) - this should cause rank mismatch
+            # shapes[1] is [1, 2, 3] which is 1D
+            tensor2 = self._create_dense_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        
+        # Weak assertions (round 1)
+        # 1. exception_type: Should raise ValueError for rank mismatch
+        with pytest.raises(ValueError) as exc_info:
+            if function == "concat":
+                ragged_concat_ops.concat(values, axis=axis)
+            else:
+                ragged_concat_ops.stack(values, axis=axis)
+        
+        # 2. error_message_contains: Error message should indicate rank mismatch
+        error_msg = str(exc_info.value).lower()
+        # Check for rank-related error messages
+        rank_keywords = ["rank", "dimension", "shape"]
+        found_keyword = any(keyword in error_msg for keyword in rank_keywords)
+        assert found_keyword, \
+            f"Error message should mention rank/dimension/shape mismatch, got: {error_msg}"
+        
+        # Additional verification
+        assert "expect_error" in flags, "Test case should expect error"
+        
+        # Verify the tensors indeed have different ranks
+        assert tensor1.shape.rank != tensor2.shape.rank, \
+            f"Tensors should have different ranks for this test: {tensor1.shape.rank} vs {tensor2.shape.rank}"
+        
+        # Verify the exception is indeed ValueError
+        assert isinstance(exc_info.value, ValueError), \
+            f"Expected ValueError, got {type(exc_info.value)}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize(
+        "function,values_type,axis,dtype,shapes,flags",
+        [
+            (
+                "concat",
+                "ragged_only",
+                -1,
+                "int32",
+                [[[1, 2], [3, 4, 5]], [[6], [7, 8]]],
+                [],
+            ),
+            # Parameter extension: stack with mixed_ragged_dense, axis=-2, float32
+            (
+                "stack",
+                "mixed_ragged_dense",
+                -2,
+                "float32",
+                [[[1.0], [2.0, 3.0]], [[4.0, 5.0], [6.0]]],
+                [],
+            ),
+        ],
+        ids=["concat_ragged_axis_neg1_int32", "stack_mixed_axis_neg2_float32"]
+    )
+    def test_negative_axis_handling_with_static_rank(self, function, values_type, axis, dtype, shapes, flags):
+        """TC-05: 负axis值处理-有静态已知秩"""
+        # Create test tensors based on values_type
+        if values_type == "ragged_only":
+            # Both tensors are ragged
+            tensor1 = self._create_ragged_tensor(shapes[0], dtype=getattr(tf, dtype))
+            tensor2 = self._create_ragged_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        elif values_type == "mixed_ragged_dense":
+            # First tensor: ragged tensor
+            tensor1 = self._create_ragged_tensor(shapes[0], dtype=getattr(tf, dtype))
+            # Second tensor: dense tensor (convert to ragged-like structure)
+            # shapes[1] is [[4.0, 5.0], [6.0]] which is ragged
+            tensor2 = self._create_ragged_tensor(shapes[1], dtype=getattr(tf, dtype))
+            values = [tensor1, tensor2]
+        else:
+            pytest.fail(f"Unsupported values_type: {values_type}")
+        
+        # Weak assertions (round 1)
+        # 1. shape_match: Check basic shape properties
+        # First, verify that tensors have static rank (required for negative axis)
+        assert tensor1.shape.rank is not None, "tensor1 should have static rank for negative axis"
+        assert tensor2.shape.rank is not None, "tensor2 should have static rank for negative axis"
+        
+        # Calculate positive equivalent of negative axis
+        rank = tensor1.shape.rank
+        positive_axis = axis if axis >= 0 else rank + axis
+        
+        # Call the function
+        if function == "concat":
+            result = ragged_concat_ops.concat(values, axis=axis)
+        else:
+            result = ragged_concat_ops.stack(values, axis=axis)
+        
+        # 2. dtype_match: Check dtype
+        assert result.dtype == getattr(tf, dtype), \
+            f"Expected dtype {dtype}, got {result.dtype}"
+        
+        # 3. negative_axis_handled: Verify negative axis is handled correctly
+        # Check that operation succeeded (no exception)
+        assert result is not None, "Result should not be None"
+        
+        # Verify the result has the expected structure
+        if function == "concat":
+            # For concat, rank should stay the same
+            assert result.shape.rank == rank, \
+                f"Expected rank {rank} for concat, got {result.shape.rank}"
+            
+            # Check that concat along negative axis produces same result as positive axis
+            # Create a reference result using positive axis
+            if values_type == "ragged_only":
+                ref_result = ragged_concat_ops.concat(values, axis=positive_axis)
+                # Compare values
+                # For ragged tensors, we need to compare nested structure
+                # Convert to list for comparison
+                result_values = result.to_list()
+                ref_values = ref_result.to_list()
+                assert result_values == ref_values, \
+                    f"Negative axis {axis} should produce same result as positive axis {positive_axis}"
+        
+        elif function == "stack":
+            # For stack, rank should increase by 1
+            assert result.shape.rank == rank + 1, \
+                f"Expected rank {rank + 1} for stack, got {result.shape.rank}"
+            
+            # Check that stack along negative axis produces same result as positive axis
+            # Create a reference result using positive axis
+            if values_type == "mixed_ragged_dense":
+                # Note: For stack with axis=-2, positive axis would be rank-2
+                # Since rank is 2 for 2D tensors, positive axis would be 0
+                ref_result = ragged_concat_ops.stack(values, axis=positive_axis)
+                # Compare values
+                result_values = result.to_list()
+                ref_values = ref_result.to_list()
+                assert result_values == ref_values, \
+                    f"Negative axis {axis} should produce same result as positive axis {positive_axis}"
+        
+        # Additional verification for specific cases
+        if values_type == "ragged_only" and function == "concat":
+            # Verify concat along last axis (axis=-1) for ragged tensors
+            # This should concatenate inner dimensions
+            # tensor1: [[1, 2], [3, 4, 5]]
+            # tensor2: [[6], [7, 8]]
+            # Expected result along axis=-1: [[1, 2, 6], [3, 4, 5, 7, 8]]
+            expected_result = tf.ragged.constant([[1, 2, 6], [3, 4, 5, 7, 8]], dtype=getattr(tf, dtype))
+            result_values = result.to_list()
+            expected_values = expected_result.to_list()
+            assert result_values == expected_values, \
+                f"Concat along axis=-1 failed. Got {result_values}, expected {expected_values}"
+        
+        elif values_type == "mixed_ragged_dense" and function == "stack":
+            # Verify stack along axis=-2 for mixed tensors
+            # tensor1: [[1.0], [2.0, 3.0]]
+            # tensor2: [[4.0, 5.0], [6.0]]
+            # Expected result along axis=-2 (which is axis=0 for rank=2):
+            # [[[1.0], [2.0, 3.0]], [[4.0, 5.0], [6.0]]]
+            expected_result = tf.ragged.constant(
+                [[[1.0], [2.0, 3.0]], [[4.0, 5.0], [6.0]]], 
+                dtype=getattr(tf, dtype)
+            )
+            result_values = result.to_list()
+            expected_values = expected_result.to_list()
+            assert result_values == expected_values, \
+                f"Stack along axis=-2 failed. Got {result_values}, expected {expected_values}"
+        
+        # Verify that result is a RaggedTensor
+        self._assert_ragged_structure(result, expected_dtype=getattr(tf, dtype))
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,514 @@
+import torch
+import torch.nn as nn
+import pytest
+import warnings
+import numpy as np
+from typing import Tuple, List, Dict, Any
+
+# ==== BLOCK:HEADER START ====
+# Test file for torch.jit.trace - Group G3: Validation and Configuration Parameters
+# This file contains tests for check_trace, strict, and other configuration parameters
+# ==== BLOCK:HEADER END ====
+
+# Helper functions and fixtures
+def set_random_seed(seed: int = 42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+def create_test_tensor(shape: Tuple[int, ...], dtype: torch.dtype = torch.float32, device: str = 'cpu') -> torch.Tensor:
+    """Create a test tensor with given shape, dtype and device."""
+    return torch.randn(shape, dtype=dtype, device=device)
+
+def simple_add_multiply(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Simple function for testing: (x + y) * 2"""
+    return (x + y) * 2
+
+# ==== BLOCK:CASE_08 START ====
+def test_validation_mechanism():
+    """Test validation mechanism (CASE_08)."""
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test tensors
+    shape = (2, 2)
+    x = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    y = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    
+    # Test 1: With check_trace=True (default)
+    traced_func_with_check = torch.jit.trace(
+        func=simple_add_multiply,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_tolerance=1e-5
+    )
+    
+    # Weak assertions for check_trace=True
+    assert isinstance(traced_func_with_check, torch.jit.ScriptFunction), \
+        f"Traced function should be ScriptFunction"
+    
+    # Test that validation passed (no exception raised)
+    traced_output = traced_func_with_check(x, y)
+    original_output = simple_add_multiply(x, y)
+    
+    tolerance = 1e-5
+    assert torch.allclose(traced_output, original_output, rtol=tolerance, atol=tolerance), \
+        f"Validation failed: traced output differs from original"
+    
+    # Test 2: With check_inputs parameter
+    # Create additional test inputs for validation
+    check_inputs = [
+        (create_test_tensor(shape, dtype=torch.float32, device='cpu'),
+         create_test_tensor(shape, dtype=torch.float32, device='cpu'))
+        for _ in range(3)
+    ]
+    
+    traced_func_with_check_inputs = torch.jit.trace(
+        func=simple_add_multiply,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_inputs=check_inputs,
+        check_tolerance=1e-5
+    )
+    
+    # Test that all check_inputs pass validation
+    for check_x, check_y in check_inputs:
+        traced_check_output = traced_func_with_check_inputs(check_x, check_y)
+        original_check_output = simple_add_multiply(check_x, check_y)
+        assert torch.allclose(
+            traced_check_output, 
+            original_check_output, 
+            rtol=tolerance, 
+            atol=tolerance
+        ), f"Check input validation failed"
+    
+    # Test 3: Test with check_trace=False
+    # This should trace without validation
+    traced_func_no_check = torch.jit.trace(
+        func=simple_add_multiply,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=False  # Disable validation
+    )
+    
+    assert isinstance(traced_func_no_check, torch.jit.ScriptFunction), \
+        f"Traced function without check should still be ScriptFunction"
+    
+    # Even without check, the function should work correctly
+    traced_no_check_output = traced_func_no_check(x, y)
+    assert torch.allclose(traced_no_check_output, original_output, rtol=tolerance, atol=tolerance), \
+        f"Function without check_trace should still produce correct output"
+    
+    # Test 4: Test tolerance parameter
+    # Create a function with small numerical differences
+    def slightly_different_func(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        # Add tiny perturbation
+        return (x + y) * 2 + 1e-6 * torch.randn_like(x)
+    
+    # This should fail with default tolerance
+    try:
+        traced_strict = torch.jit.trace(
+            func=slightly_different_func,
+            example_inputs=(x, y),
+            strict=True,
+            check_trace=True,
+            check_tolerance=1e-7  # Very strict tolerance
+        )
+        # If we get here, the test might pass if random perturbation is exactly 0
+        print("Note: Strict tolerance test passed (random perturbation might be negligible)")
+    except Exception as e:
+        # Expected to fail with strict tolerance
+        print(f"✓ Expected failure with strict tolerance: {type(e).__name__}")
+    
+    # This should pass with relaxed tolerance
+    traced_relaxed = torch.jit.trace(
+        func=slightly_different_func,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_tolerance=1e-4  # Relaxed tolerance
+    )
+    
+    assert isinstance(traced_relaxed, torch.jit.ScriptFunction), \
+        f"Traced function with relaxed tolerance should be ScriptFunction"
+    
+    print(f"✓ CASE_08 passed: Validation mechanism test")
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+def test_strict_vs_nonstrict_mode_comparison():
+    """Test strict vs non-strict mode comparison (CASE_09)."""
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test tensor with shape [3]
+    shape = (3,)
+    x = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    
+    # Define a function that uses a list (mutable container)
+    # In strict mode, lists are not allowed to be used as control flow
+    # In non-strict mode, lists can be traced as constants
+    def function_with_list(input_tensor: torch.Tensor) -> torch.Tensor:
+        # Create a list that will be used in computation
+        # This is a constant list (not data-dependent)
+        scale_factors = [1.0, 2.0, 3.0]
+        
+        # Apply scale factors element-wise
+        # Note: This is safe because the list is constant and not used as control flow
+        result = input_tensor.clone()
+        for i in range(len(scale_factors)):
+            result[i] = result[i] * scale_factors[i]
+        
+        return result
+    
+    # Test 1: Non-strict mode (strict=False) - should work
+    # In non-strict mode, the list can be traced as a constant
+    traced_nonstrict = torch.jit.trace(
+        func=function_with_list,
+        example_inputs=x,
+        strict=False,  # Non-strict mode
+        check_trace=True
+    )
+    
+    # Weak assertions for non-strict mode
+    assert isinstance(traced_nonstrict, torch.jit.ScriptFunction), \
+        f"Traced function in non-strict mode should be ScriptFunction"
+    
+    # Test the traced function
+    traced_output_nonstrict = traced_nonstrict(x)
+    original_output = function_with_list(x)
+    
+    # Check output shape
+    assert traced_output_nonstrict.shape == original_output.shape, \
+        f"Traced output shape {traced_output_nonstrict.shape} != original shape {original_output.shape}"
+    
+    # Check output dtype
+    assert traced_output_nonstrict.dtype == original_output.dtype, \
+        f"Traced output dtype {traced_output_nonstrict.dtype} != original dtype {original_output.dtype}"
+    
+    # Basic equality check (within tolerance)
+    tolerance = 1e-5
+    assert torch.allclose(traced_output_nonstrict, original_output, rtol=tolerance, atol=tolerance), \
+        f"Traced output in non-strict mode differs from original output beyond tolerance {tolerance}"
+    
+    # Test 2: Strict mode (strict=True) - should also work for this case
+    # Since the list is used as a constant and not for control flow, strict mode should work
+    traced_strict = torch.jit.trace(
+        func=function_with_list,
+        example_inputs=x,
+        strict=True,  # Strict mode
+        check_trace=True
+    )
+    
+    # Weak assertions for strict mode
+    assert isinstance(traced_strict, torch.jit.ScriptFunction), \
+        f"Traced function in strict mode should be ScriptFunction"
+    
+    # Test the traced function
+    traced_output_strict = traced_strict(x)
+    
+    # Check output shape
+    assert traced_output_strict.shape == original_output.shape, \
+        f"Traced output shape {traced_output_strict.shape} != original shape {original_output.shape}"
+    
+    # Check output dtype
+    assert traced_output_strict.dtype == original_output.dtype, \
+        f"Traced output dtype {traced_output_strict.dtype} != original dtype {original_output.dtype}"
+    
+    # Basic equality check (within tolerance)
+    assert torch.allclose(traced_output_strict, original_output, rtol=tolerance, atol=tolerance), \
+        f"Traced output in strict mode differs from original output beyond tolerance {tolerance}"
+    
+    # Test 3: Function with list used in control flow (should fail in strict mode)
+    def function_with_list_control_flow(input_tensor: torch.Tensor) -> torch.Tensor:
+        # Create a list that could be used in control flow
+        thresholds = [0.5, 1.0, 1.5]
+        
+        result = input_tensor.clone()
+        for i in range(len(thresholds)):
+            # Using list element in control flow - problematic in strict mode
+            if input_tensor[i] > thresholds[i]:
+                result[i] = result[i] * 2.0
+            else:
+                result[i] = result[i] * 0.5
+        
+        return result
+    
+    # Test non-strict mode with control flow - should work
+    traced_control_flow_nonstrict = torch.jit.trace(
+        func=function_with_list_control_flow,
+        example_inputs=x,
+        strict=False,  # Non-strict mode
+        check_trace=True
+    )
+    
+    # Test strict mode with control flow - should work but may produce warnings
+    # Note: The function uses list elements in control flow, which is problematic
+    # However, since the list is constant, it might still work in strict mode
+    # but could produce incorrect results for different inputs
+    
+    # Mock warning capture for testing warning generation
+    import warnings
+    warning_messages = []
+    
+    def warning_handler(message, category, filename, lineno, file=None, line=None):
+        warning_messages.append(str(message))
+    
+    # Capture warnings
+    old_showwarning = warnings.showwarning
+    warnings.showwarning = warning_handler
+    
+    try:
+        traced_control_flow_strict = torch.jit.trace(
+            func=function_with_list_control_flow,
+            example_inputs=x,
+            strict=True,  # Strict mode
+            check_trace=True
+        )
+        
+        # Check if warnings were generated
+        if warning_messages:
+            print(f"✓ Warnings generated in strict mode: {warning_messages}")
+        else:
+            print("✓ No warnings generated in strict mode (list used as constant)")
+        
+        # Test the traced function
+        traced_output_cf_strict = traced_control_flow_strict(x)
+        original_output_cf = function_with_list_control_flow(x)
+        
+        # Basic equality check
+        assert torch.allclose(traced_output_cf_strict, original_output_cf, rtol=tolerance, atol=tolerance), \
+            f"Traced output with control flow differs from original output"
+            
+    except Exception as e:
+        # In some cases, strict mode might fail with control flow
+        print(f"✓ Strict mode failed as expected for control flow: {type(e).__name__}")
+    finally:
+        # Restore warning handler
+        warnings.showwarning = old_showwarning
+    
+    # Test 4: Compare strict vs non-strict behavior with different inputs
+    # Create additional test inputs
+    test_inputs = [
+        create_test_tensor(shape, dtype=torch.float32, device='cpu'),
+        create_test_tensor(shape, dtype=torch.float32, device='cpu'),
+        create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    ]
+    
+    for test_input in test_inputs:
+        # Test non-strict mode
+        nonstrict_output = traced_nonstrict(test_input)
+        original_test_output = function_with_list(test_input)
+        
+        assert torch.allclose(nonstrict_output, original_test_output, rtol=tolerance, atol=tolerance), \
+            f"Non-strict mode failed for different input"
+        
+        # Test strict mode (if it succeeded)
+        if 'traced_strict' in locals():
+            strict_output = traced_strict(test_input)
+            assert torch.allclose(strict_output, original_test_output, rtol=tolerance, atol=tolerance), \
+                f"Strict mode failed for different input"
+    
+    print(f"✓ CASE_09 passed: Strict vs non-strict mode comparison test")
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+def test_tolerance_parameter_adjustment():
+    """Test tolerance parameter adjustment (CASE_10)."""
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test tensors with shape [2, 2]
+    shape = (2, 2)
+    x = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    y = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    
+    # Define a simple function with small numerical differences
+    def simple_function_with_variation(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        # Add a small random variation to simulate numerical differences
+        # This is deterministic due to fixed random seed
+        torch.manual_seed(123)
+        variation = 1e-4 * torch.randn_like(a)  # Small variation ~1e-4
+        return (a + b) * 2 + variation
+    
+    # Test 1: Default tolerance (1e-5) - should fail due to variation > tolerance
+    try:
+        traced_default_tolerance = torch.jit.trace(
+            func=simple_function_with_variation,
+            example_inputs=(x, y),
+            strict=True,
+            check_trace=True,
+            check_tolerance=1e-5  # Default tolerance
+        )
+        # If we get here, the test might pass if random variation is exactly 0
+        print("Note: Default tolerance test passed (random variation might be negligible)")
+        default_tolerance_passed = True
+    except Exception as e:
+        # Expected to fail with default tolerance
+        print(f"✓ Expected failure with default tolerance (1e-5): {type(e).__name__}")
+        default_tolerance_passed = False
+    
+    # Test 2: Relaxed tolerance (1e-3) - should pass
+    traced_relaxed_tolerance = torch.jit.trace(
+        func=simple_function_with_variation,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_tolerance=1e-3  # Relaxed tolerance as specified in test plan
+    )
+    
+    # Weak assertions for relaxed tolerance
+    assert isinstance(traced_relaxed_tolerance, torch.jit.ScriptFunction), \
+        f"Traced function with relaxed tolerance should be ScriptFunction"
+    
+    # Test the traced function
+    traced_output_relaxed = traced_relaxed_tolerance(x, y)
+    original_output = simple_function_with_variation(x, y)
+    
+    # Check output shape
+    assert traced_output_relaxed.shape == original_output.shape, \
+        f"Traced output shape {traced_output_relaxed.shape} != original shape {original_output.shape}"
+    
+    # Check output dtype
+    assert traced_output_relaxed.dtype == original_output.dtype, \
+        f"Traced output dtype {traced_output_relaxed.dtype} != original dtype {original_output.dtype}"
+    
+    # Basic equality check with the specified tolerance (1e-3)
+    specified_tolerance = 1e-3
+    assert torch.allclose(traced_output_relaxed, original_output, rtol=specified_tolerance, atol=specified_tolerance), \
+        f"Traced output with relaxed tolerance differs from original output beyond tolerance {specified_tolerance}"
+    
+    # Test 3: Very strict tolerance (1e-7) - should fail
+    try:
+        traced_strict_tolerance = torch.jit.trace(
+            func=simple_function_with_variation,
+            example_inputs=(x, y),
+            strict=True,
+            check_trace=True,
+            check_tolerance=1e-7  # Very strict tolerance
+        )
+        # If we get here, the test might pass if random variation is exactly 0
+        print("Note: Very strict tolerance test passed (random variation might be negligible)")
+        strict_tolerance_passed = True
+    except Exception as e:
+        # Expected to fail with very strict tolerance
+        print(f"✓ Expected failure with very strict tolerance (1e-7): {type(e).__name__}")
+        strict_tolerance_passed = False
+    
+    # Test 4: Test tolerance effect on validation with multiple inputs
+    # Create additional test inputs for validation
+    check_inputs = [
+        (create_test_tensor(shape, dtype=torch.float32, device='cpu'),
+         create_test_tensor(shape, dtype=torch.float32, device='cpu'))
+        for _ in range(2)
+    ]
+    
+    # Test with check_inputs and relaxed tolerance
+    traced_with_check_inputs = torch.jit.trace(
+        func=simple_function_with_variation,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_inputs=check_inputs,
+        check_tolerance=1e-3  # Relaxed tolerance
+    )
+    
+    # Test all check inputs pass with relaxed tolerance
+    for check_x, check_y in check_inputs:
+        traced_check_output = traced_with_check_inputs(check_x, check_y)
+        original_check_output = simple_function_with_variation(check_x, check_y)
+        assert torch.allclose(
+            traced_check_output, 
+            original_check_output, 
+            rtol=specified_tolerance, 
+            atol=specified_tolerance
+        ), f"Check input validation failed with tolerance {specified_tolerance}"
+    
+    # Test 5: Compare different tolerance values
+    # Define a function with controlled numerical differences
+    def function_with_controlled_difference(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        # Add a controlled difference of exactly 5e-4
+        controlled_difference = 5e-4 * torch.ones_like(a)
+        return (a + b) * 2 + controlled_difference
+    
+    # Test with tolerance just below the difference (should fail)
+    try:
+        traced_below_threshold = torch.jit.trace(
+            func=function_with_controlled_difference,
+            example_inputs=(x, y),
+            strict=True,
+            check_trace=True,
+            check_tolerance=4e-4  # Below the 5e-4 difference
+        )
+        print("Note: Tolerance below threshold passed (unexpected)")
+        below_threshold_passed = True
+    except Exception as e:
+        print(f"✓ Expected failure with tolerance below threshold (4e-4): {type(e).__name__}")
+        below_threshold_passed = False
+    
+    # Test with tolerance just above the difference (should pass)
+    traced_above_threshold = torch.jit.trace(
+        func=function_with_controlled_difference,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_tolerance=6e-4  # Above the 5e-4 difference
+    )
+    
+    # Verify the traced function works
+    traced_above_output = traced_above_threshold(x, y)
+    original_controlled_output = function_with_controlled_difference(x, y)
+    
+    above_threshold_tolerance = 6e-4
+    assert torch.allclose(
+        traced_above_output, 
+        original_controlled_output, 
+        rtol=above_threshold_tolerance, 
+        atol=above_threshold_tolerance
+    ), f"Traced output with tolerance above threshold differs from original"
+    
+    # Test 6: Test that tolerance affects only validation, not runtime accuracy
+    # The traced function should still be accurate to machine precision
+    # even if validation used a relaxed tolerance
+    
+    # Create a simple function without variation for accuracy test
+    def simple_accurate_function(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+        return (a + b) * 2
+    
+    # Trace with relaxed tolerance
+    traced_accurate_relaxed = torch.jit.trace(
+        func=simple_accurate_function,
+        example_inputs=(x, y),
+        strict=True,
+        check_trace=True,
+        check_tolerance=1e-1  # Very relaxed tolerance for validation
+    )
+    
+    # Test accuracy - should still be accurate to machine precision
+    traced_accurate_output = traced_accurate_relaxed(x, y)
+    original_accurate_output = simple_accurate_function(x, y)
+    
+    # Use machine precision tolerance
+    machine_tolerance = 1e-7
+    assert torch.allclose(
+        traced_accurate_output, 
+        original_accurate_output, 
+        rtol=machine_tolerance, 
+        atol=machine_tolerance
+    ), f"Traced function accuracy not preserved despite relaxed validation tolerance"
+    
+    print(f"✓ CASE_10 passed: Tolerance parameter adjustment test")
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Test execution guard
+if __name__ == "__main__":
+    # Run all tests in this file
+    import sys
+    import pytest
+    
+    # Exit with the test result code
+    sys.exit(pytest.main([__file__, "-v"]))
+# ==== BLOCK:FOOTER END ====

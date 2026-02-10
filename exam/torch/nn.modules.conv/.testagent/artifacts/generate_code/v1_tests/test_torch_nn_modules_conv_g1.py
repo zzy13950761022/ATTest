@@ -1,0 +1,354 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+"""
+Test module for torch.nn.modules.conv - G1 Group
+Generated based on test_plan.json
+Group G1: Conv2d 核心功能测试
+Entrypoints: Conv2d, _ConvNd
+"""
+
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from unittest.mock import patch, MagicMock
+
+
+def set_random_seed():
+    """Set random seed for reproducibility"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+
+@pytest.fixture(scope="function")
+def random_seed():
+    """Fixture to set random seed for each test"""
+    set_random_seed()
+    return 42
+
+
+class TestConvModulesG1:
+    """Test class for torch.nn.modules.conv - G1 Group"""
+    
+    def setup_method(self):
+        """Setup method for each test"""
+        set_random_seed()
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize(
+        "conv_type,in_channels,out_channels,kernel_size,dtype,device,input_shape",
+        [
+            (
+                "Conv2d",
+                3,
+                16,
+                3,
+                torch.float32,
+                "cpu",
+                (2, 3, 32, 32),
+            ),
+        ],
+    )
+    def test_conv2d_basic_instantiation_and_forward(
+        self,
+        conv_type,
+        in_channels,
+        out_channels,
+        kernel_size,
+        dtype,
+        device,
+        input_shape,
+        random_seed,
+    ):
+        """
+        TC-01: Conv2d 基本实例化与前向传播
+        """
+        # 1. 实例化模块
+        if conv_type == "Conv2d":
+            conv_module = nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                dtype=dtype,
+            )
+        else:
+            raise ValueError(f"Unsupported conv_type: {conv_type}")
+        
+        # 2. 验证模块属性
+        assert conv_module is not None, "Module should be instantiated"
+        assert conv_module.in_channels == in_channels, f"in_channels should be {in_channels}"
+        assert conv_module.out_channels == out_channels, f"out_channels should be {out_channels}"
+        assert conv_module.kernel_size == (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size, \
+            f"kernel_size should be {kernel_size}"
+        
+        # 3. 准备输入数据
+        x = torch.randn(*input_shape, dtype=dtype, device=device)
+        
+        # 4. 前向传播
+        output = conv_module(x)
+        
+        # 5. 验证输出
+        assert output is not None, "Forward pass should produce output"
+        assert output.dtype == dtype, f"Output dtype should be {dtype}"
+        
+        # 6. 验证输出形状
+        # 计算期望的输出形状
+        # 公式: out_size = floor((in_size + 2*padding - dilation*(kernel_size-1) - 1) / stride + 1)
+        # 默认参数: padding=0, stride=1, dilation=1
+        expected_h = input_shape[2] - kernel_size + 1
+        expected_w = input_shape[3] - kernel_size + 1
+        expected_shape = (input_shape[0], out_channels, expected_h, expected_w)
+        
+        assert output.shape == expected_shape, \
+            f"Output shape should be {expected_shape}, got {output.shape}"
+        
+        # 7. 验证值有限性
+        assert torch.isfinite(output).all(), "Output should contain only finite values"
+        
+        # 8. 使用torch.nn.functional.conv2d作为oracle验证
+        with torch.no_grad():
+            # 获取卷积权重和偏置
+            weight = conv_module.weight
+            bias = conv_module.bias
+            
+            # 使用functional.conv2d计算
+            expected_output = F.conv2d(
+                x,
+                weight,
+                bias,
+                stride=conv_module.stride,
+                padding=conv_module.padding,
+                dilation=conv_module.dilation,
+                groups=conv_module.groups,
+            )
+            
+            # 比较结果（使用容差）
+            torch.testing.assert_close(
+                output,
+                expected_output,
+                rtol=1e-5,
+                atol=1e-5,
+                msg="Output should match functional.conv2d result",
+            )
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize(
+        "test_type,in_channels,out_channels,kernel_size,groups,padding_mode,expect_error",
+        [
+            (
+                "invalid_groups",
+                8,
+                16,
+                3,
+                3,  # groups=3 不整除 in_channels=8
+                "zeros",
+                ValueError,
+            ),
+            (
+                "invalid_padding_mode",
+                3,
+                16,
+                3,
+                1,
+                "invalid",  # 无效的padding_mode
+                ValueError,
+            ),
+        ],
+    )
+    def test_parameter_validation_and_exception_handling(
+        self,
+        test_type,
+        in_channels,
+        out_channels,
+        kernel_size,
+        groups,
+        padding_mode,
+        expect_error,
+        random_seed,
+    ):
+        """
+        TC-02: 参数验证与异常处理
+        """
+        # 验证异常被正确抛出
+        with pytest.raises(expect_error) as exc_info:
+            if test_type == "invalid_groups":
+                # groups 不整除 in_channels 的情况
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    groups=groups,
+                )
+            elif test_type == "invalid_padding_mode":
+                # 无效 padding_mode 的情况
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    padding_mode=padding_mode,
+                )
+            else:
+                raise ValueError(f"Unknown test_type: {test_type}")
+        
+        # 验证错误消息包含关键信息
+        error_msg = str(exc_info.value).lower()
+        
+        if test_type == "invalid_groups":
+            # 检查错误消息是否提到 groups 或整除性
+            assert "groups" in error_msg or "divisible" in error_msg, \
+                f"Error message should mention groups or divisibility, got: {error_msg}"
+            
+            # 验证具体的错误条件
+            # groups 应该整除 in_channels 和 out_channels
+            if groups > in_channels:
+                assert "greater" in error_msg or "exceed" in error_msg, \
+                    f"Error message should mention groups exceeding in_channels, got: {error_msg}"
+        
+        elif test_type == "invalid_padding_mode":
+            # 检查错误消息是否提到 padding_mode
+            assert "padding_mode" in error_msg or "padding mode" in error_msg, \
+                f"Error message should mention padding_mode, got: {error_msg}"
+            
+            # 检查是否提到了允许的值
+            allowed_modes = ["zeros", "reflect", "replicate", "circular"]
+            for mode in allowed_modes:
+                if mode in error_msg:
+                    break
+            else:
+                # 如果没有提到任何允许的模式，至少应该提到"invalid"或"not supported"
+                assert "invalid" in error_msg or "not supported" in error_msg or "not one of" in error_msg, \
+                    f"Error message should mention invalid or unsupported, got: {error_msg}"
+        
+        # 验证异常类型正确
+        assert isinstance(exc_info.value, expect_error), \
+            f"Exception type should be {expect_error}, got {type(exc_info.value)}"
+        
+        # 验证没有其他异常被意外抛出
+        # （通过with pytest.raises已经确保）
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize(
+        "padding,stride,kernel_size,input_shape,padding_mode",
+        [
+            (
+                "same",
+                1,
+                3,
+                (2, 3, 32, 32),
+                "zeros",
+            ),
+            (
+                1,
+                1,
+                3,
+                (2, 3, 32, 32),
+                "reflect",
+            ),
+        ],
+    )
+    def test_padding_same_and_special_modes(
+        self,
+        padding,
+        stride,
+        kernel_size,
+        input_shape,
+        padding_mode,
+        random_seed,
+    ):
+        """
+        TC-04: padding='same' 与特殊模式
+        """
+        # 1. 实例化模块
+        conv_module = nn.Conv2d(
+            in_channels=input_shape[1],
+            out_channels=16,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            padding_mode=padding_mode,
+        )
+        
+        # 2. 验证模块属性
+        assert conv_module is not None, "Module should be instantiated"
+        assert conv_module.padding_mode == padding_mode, \
+            f"padding_mode should be {padding_mode}, got {conv_module.padding_mode}"
+        
+        # 3. 准备输入数据
+        x = torch.randn(*input_shape, dtype=torch.float32)
+        
+        # 4. 前向传播
+        output = conv_module(x)
+        
+        # 5. 验证输出
+        assert output is not None, "Forward pass should produce output"
+        assert torch.isfinite(output).all(), "Output should contain only finite values"
+        
+        # 6. 验证输出形状
+        if padding == "same":
+            # padding='same' 时，输出形状应该与输入形状相同（除了通道数）
+            # 公式: out_size = ceil(in_size / stride)
+            # 对于 stride=1，输出大小应该等于输入大小
+            expected_h = input_shape[2]
+            expected_w = input_shape[3]
+            expected_shape = (input_shape[0], 16, expected_h, expected_w)
+            
+            assert output.shape == expected_shape, \
+                f"With padding='same' and stride={stride}, output shape should be {expected_shape}, got {output.shape}"
+            
+            # 验证 stride=1 的条件（padding='same' 要求 stride=1）
+            assert stride == 1, "padding='same' requires stride=1"
+        
+        else:
+            # 普通 padding 情况
+            # 公式: out_size = floor((in_size + 2*padding - dilation*(kernel_size-1) - 1) / stride + 1)
+            # 默认 dilation=1
+            padding_val = padding if isinstance(padding, int) else 0
+            expected_h = math.floor((input_shape[2] + 2 * padding_val - (kernel_size - 1) - 1) / stride + 1)
+            expected_w = math.floor((input_shape[3] + 2 * padding_val - (kernel_size - 1) - 1) / stride + 1)
+            expected_shape = (input_shape[0], 16, expected_h, expected_w)
+            
+            assert output.shape == expected_shape, \
+                f"Output shape should be {expected_shape}, got {output.shape}"
+        
+        # 7. 特殊验证：reflect padding 模式
+        if padding_mode == "reflect":
+            # reflect padding 应该能正常工作
+            # 验证输出值有限且没有 NaN/Inf
+            assert not torch.isnan(output).any(), "Output should not contain NaN values"
+            assert not torch.isinf(output).any(), "Output should not contain Inf values"
+            
+            # 验证输出值在合理范围内
+            # reflect padding 可能导致值稍微变大，但应该在合理范围内
+            output_abs_max = torch.abs(output).max().item()
+            assert output_abs_max < 100.0, \
+                f"Output values seem too large for reflect padding: max abs value = {output_abs_max}"
+        
+        # 8. 验证没有异常抛出
+        # （通过成功执行到此处已经验证）
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    # TC-05: 权重初始化验证 (DEFERRED_SET，首轮仅占位)
+    # 将在后续迭代中实现
+    pass
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+    # TC-06: 占位用例 (DEFERRED_SET，首轮仅占位)
+    # 将在后续迭代中实现
+    pass
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# ==== BLOCK:FOOTER END ====

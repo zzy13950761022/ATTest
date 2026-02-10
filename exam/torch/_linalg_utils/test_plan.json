@@ -1,0 +1,339 @@
+{
+  "plan_version": 2,
+  "target": "torch._linalg_utils",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_torch_linalg_utils.py",
+    "all_pattern": "tests/test_torch_linalg_utils_*.py",
+    "groups": {
+      "G1": "tests/test_torch_linalg_utils_g1.py",
+      "G2": "tests/test_torch_linalg_utils_g2.py",
+      "G3": "tests/test_torch_linalg_utils_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "矩阵运算核心函数",
+      "entrypoints": ["matmul", "bform", "qform"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试矩阵乘法、双线性形式和二次形式计算"
+    },
+    {
+      "group_id": "G2",
+      "title": "特征值与正交基函数",
+      "entrypoints": ["symeig", "basis"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试对称矩阵特征值计算和正交基生成"
+    },
+    {
+      "group_id": "G3",
+      "title": "辅助函数与异常处理",
+      "entrypoints": ["conjugate", "transpose", "transjugate", "get_floating_dtype"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11", "CASE_12"],
+      "note": "测试辅助函数和已弃用函数的异常处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "matmul基本功能测试",
+      "priority": "High",
+      "param_matrix": [
+        {"A_type": "dense", "dtype": "float32", "device": "cpu", "shape_A": [3, 4], "shape_B": [4, 5], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "matmul_identity"]
+      },
+      "oracle": "torch.matmul",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "matmul稀疏矩阵测试",
+      "priority": "High",
+      "param_matrix": [
+        {"A_type": "sparse", "dtype": "float32", "device": "cpu", "shape_A": [3, 4], "shape_B": [4, 5], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["approx_equal", "sparse_dense_equivalence"]
+      },
+      "oracle": "torch.sparse.mm",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "bform双线性形式测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape_X": [3, 2], "shape_A": [3, 4], "shape_Y": [4, 2], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["approx_equal", "bilinear_property"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "qform二次形式测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape_A": [3, 3], "shape_S": [3, 2], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["approx_equal", "quadratic_property"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "symeig对称矩阵特征值",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape": [3, 3], "largest": false, "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "eigenvalue_order"],
+        "strong": ["approx_equal", "orthogonality", "reconstruction"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "basis正交基生成CPU",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape": [4, 3], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "orthogonality_weak"],
+        "strong": ["approx_equal", "orthogonality", "span_preservation"]
+      },
+      "oracle": "torch.linalg.qr",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "basis正交基生成CUDA",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cuda", "shape": [4, 3], "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "orthogonality_weak"],
+        "strong": ["approx_equal", "orthogonality", "span_preservation"]
+      },
+      "oracle": "torch.linalg.qr",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "symeig特征值排序测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape": [3, 3], "largest": true, "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "eigenvalue_order"],
+        "strong": ["approx_equal", "order_reversal"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "conjugate复数与非复数处理",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape": [2, 2], "is_complex": false, "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "identity_check"],
+        "strong": ["approx_equal", "conjugate_property"]
+      },
+      "oracle": "torch.conj",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "get_floating_dtype类型映射",
+      "priority": "Medium",
+      "param_matrix": [
+        {"input_dtype": "int32", "expected_dtype": "float32", "flags": []}
+      ],
+      "asserts": {
+        "weak": ["dtype_mapping"],
+        "strong": ["exact_match"]
+      },
+      "oracle": "manual_mapping",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "已弃用函数异常测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"function": "matrix_rank", "flags": []}
+      ],
+      "asserts": {
+        "weak": ["exception_type", "error_message"],
+        "strong": ["exact_error_match"]
+      },
+      "oracle": "RuntimeError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-12",
+      "block_id": "CASE_12",
+      "group_id": "G3",
+      "name": "transpose和transjugate测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype": "float32", "device": "cpu", "shape": [2, 3], "function": "transpose", "flags": []}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["approx_equal", "transpose_property"]
+      },
+      "oracle": "torch.transpose",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"A_type": "dense", "dtype": "float64", "device": "cpu", "shape_A": [5, 3], "shape_B": [3, 2], "flags": []},
+      "note": "作为参数扩展：不同精度和形状"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {"A_type": "dense", "dtype": "float32", "device": "cuda", "shape_A": [3, 4], "shape_B": [4, 5], "flags": []},
+      "note": "作为参数扩展：CUDA设备"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "device": "cpu", "shape": [4, 4], "largest": false, "flags": []},
+      "note": "作为参数扩展：不同精度和矩阵大小"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "device": "cpu", "shape": [5, 2], "flags": []},
+      "note": "作为参数扩展：不同精度和形状"
+    },
+    {
+      "base_block_id": "CASE_09",
+      "priority": "Medium",
+      "params": {"dtype": "complex64", "device": "cpu", "shape": [2, 2], "is_complex": true, "flags": []},
+      "note": "作为参数扩展：复数类型处理"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_06", "CASE_09"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_07", "CASE_08", "CASE_10", "CASE_11", "CASE_12"]
+}

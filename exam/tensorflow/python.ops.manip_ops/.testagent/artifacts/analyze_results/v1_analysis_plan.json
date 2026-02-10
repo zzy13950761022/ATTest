@@ -1,0 +1,43 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": true,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensorflow_python_ops_manip_ops.py",
+      "block_id": "HEADER",
+      "error_type": "CollectionError",
+      "action": "rewrite_block",
+      "note": "测试方法缺少类定义，pytest无法收集测试"
+    },
+    {
+      "test": "test_tensorflow_python_ops_manip_ops.py",
+      "block_id": "CASE_01",
+      "error_type": "CollectionError",
+      "action": "rewrite_block",
+      "note": "测试方法应包含在测试类中"
+    },
+    {
+      "test": "test_tensorflow_python_ops_manip_ops.py",
+      "block_id": "CASE_02",
+      "error_type": "CollectionError",
+      "action": "rewrite_block",
+      "note": "测试方法应包含在测试类中"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_tensorflow_python_ops_manip_ops.py",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_tensorflow_python_ops_manip_ops.py",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

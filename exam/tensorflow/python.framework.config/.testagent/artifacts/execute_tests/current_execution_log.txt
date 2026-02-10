@@ -1,0 +1,204 @@
+=== Run Tests ===
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+________ test_device_list_query_basic_functionality[CPU-mock_devices0] ________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+device_type = 'CPU'
+mock_devices = [{'device_type': 'CPU', 'name': '/physical_device:CPU:0'}]
+
+    @pytest.mark.parametrize(
+        "device_type,mock_devices",
+        [
+            (
+                "CPU",
+                [{"name": "/physical_device:CPU:0", "device_type": "CPU"}]
+            ),
+        ]
+    )
+    def test_device_list_query_basic_functionality(device_type, mock_devices):
+        """
+        TC-01: Device list query basic functionality
+        Weak assertions: returns_list, has_device_type_field, device_count_match
+        """
+        # Create mock context
+        mock_context_instance = MagicMock()
+    
+        # Setup mock devices
+        mock_device_objects = []
+        for device_info in mock_devices:
+            device_mock = MagicMock()
+            device_mock.name = device_info["name"]
+            device_mock.device_type = device_info["device_type"]
+            mock_device_objects.append(device_mock)
+    
+        mock_context_instance.list_physical_devices.return_value = mock_device_objects
+    
+        # Patch tensorflow.python.eager.context.context to return our mock
+>       with patch('tensorflow.python.eager.context.context') as mock_context_func:
+
+tests\test_tensorflow_python_framework_config_g1.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_______ test_thread_configuration_set_and_query_consistency[4-intra_op] _______
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+thread_count = 4, config_type = 'intra_op'
+
+    @pytest.mark.parametrize(
+        "thread_count,config_type",
+        [
+            (4, "intra_op"),
+        ]
+    )
+    def test_thread_configuration_set_and_query_consistency(thread_count, config_type):
+        """
+        TC-02: Thread configuration set and query consistency
+        Weak assertions: set_succeeds, get_returns_set_value, no_exception
+        """
+        # Create mock context
+        mock_context_instance = MagicMock()
+        mock_context_instance.intra_op_parallelism_threads = 0  # Initial value
+    
+        # Patch tensorflow.python.eager.context.context to return our mock
+>       with patch('tensorflow.python.eager.context.context') as mock_context_func:
+
+tests\test_tensorflow_python_framework_config_g1.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_______ test_invalid_device_type_exception_handling[INVALID-ValueError] _______
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+device_type = 'INVALID', expected_exception = <class 'ValueError'>
+
+    @pytest.mark.parametrize(
+        "device_type,expected_exception",
+        [
+            ("INVALID", ValueError),
+        ]
+    )
+    def test_invalid_device_type_exception_handling(device_type, expected_exception):
+        """
+        TC-05: Invalid device type exception handling
+        Weak assertions: raises_expected_exception, exception_type_match, no_side_effects
+        """
+        # Create mock context
+        mock_context_instance = MagicMock()
+    
+        # Setup mock to raise ValueError for invalid device type
+        mock_context_instance.list_physical_devices.side_effect = ValueError(
+            f"Invalid device type: {device_type}"
+        )
+    
+        # Patch tensorflow.python.eager.context.context to return our mock
+>       with patch('tensorflow.python.eager.context.context') as mock_context_func:
+
+tests\test_tensorflow_python_framework_config_g1.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_config_g1.py      89     48      6      1    46%   16-19, 24-27, 32-35, 42-43, 76-96, 117-150, 186-208, 226
+-------------------------------------------------------------------------------------------------
+TOTAL                                                    89     48      6      1    46%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_config_g1.py::test_device_list_query_basic_functionality[CPU-mock_devices0]
+FAILED tests\test_tensorflow_python_framework_config_g1.py::test_thread_configuration_set_and_query_consistency[4-intra_op]
+FAILED tests\test_tensorflow_python_framework_config_g1.py::test_invalid_device_type_exception_handling[INVALID-ValueError]
+3 failed in 1.79s
+
+Error: exit 1

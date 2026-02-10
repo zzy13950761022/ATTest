@@ -1,0 +1,66 @@
+=== Run Tests ===
+EE....                                                                   [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestDistributedC10DCollectiveOps.test_all_reduce_basic_operations[tensor_shape0-float32-cpu-SUM-False-2] _
+
+    @pytest.fixture
+    def mock_process_group():
+        """Mock process group for testing."""
+        pg = Mock(spec=dist.ProcessGroup)
+        pg.rank.return_value = 0
+        pg.size.return_value = 2
+>       pg.backend.return_value = "gloo"
+
+tests/test_torch_distributed_distributed_c10d_g2.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock spec='ProcessGroup' id='4865980880'>, name = 'backend'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+>               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'backend'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:643: AttributeError
+_ ERROR at setup of TestDistributedC10DCollectiveOps.test_broadcast_basic_functionality[tensor_shape0-float32-cpu-0-False-2] _
+
+    @pytest.fixture
+    def mock_process_group():
+        """Mock process group for testing."""
+        pg = Mock(spec=dist.ProcessGroup)
+        pg.rank.return_value = 0
+        pg.size.return_value = 2
+>       pg.backend.return_value = "gloo"
+
+tests/test_torch_distributed_distributed_c10d_g2.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock spec='ProcessGroup' id='4866523392'>, name = 'backend'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+>               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'backend'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:643: AttributeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests/test_torch_distributed_distributed_c10d_g2.py     126     84      8      0    31%   22, 27-31, 36-38, 43-45, 50-52, 57-58, 63-64, 69-71, 76-78, 113-160, 192-246
+-------------------------------------------------------------------------------------------------
+TOTAL                                                   126     84      8      0    31%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+ERROR tests/test_torch_distributed_distributed_c10d_g2.py::TestDistributedC10DCollectiveOps::test_all_reduce_basic_operations[tensor_shape0-float32-cpu-SUM-False-2]
+ERROR tests/test_torch_distributed_distributed_c10d_g2.py::TestDistributedC10DCollectiveOps::test_broadcast_basic_functionality[tensor_shape0-float32-cpu-0-False-2]
+4 passed, 2 errors in 0.75s
+
+Error: exit 1

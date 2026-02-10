@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_audio_ops.py::TestGenAudioOps::test_audio_spectrogram_basic[input_shape0-512-256-False-float32]",
+      "block_id": "CASE_01",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "audio_spectrogram期望2D输入但实际维度不匹配，需要调整输入张量形状"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_audio_ops.py::TestGenAudioOps::test_mfcc_feature_extraction[spectrogram_shape0-16000-4000.0-20.0-40-13-float32]",
+      "block_id": "CASE_03",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "mfcc期望3D频谱图输入但实际为2D，需要添加批次维度"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_audio_ops.py::TestGenAudioOps::test_audio_spectrogram_basic[input_shape2-256-128-False-float32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_audio_ops.py::TestGenAudioOps::test_mfcc_feature_extraction[spectrogram_shape1-8000-2000.0-100.0-20-20-float32]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

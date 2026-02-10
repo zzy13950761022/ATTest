@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_embeddingbag_sum_mode[10-3-max-None-input_shape1-offsets1-dtype1-cpu]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "max模式范数断言过于严格，需要调整阈值或重新设计断言逻辑"
+    },
+    {
+      "test": "test_embeddingbag_invalid_parameters",
+      "block_id": "HEADER",
+      "error_type": "Failed",
+      "action": "rewrite_block",
+      "note": "EmbeddingBag构造函数未对num_embeddings<=0抛出ValueError，需要修复参数验证逻辑"
+    },
+    {
+      "test": "test_embeddingbag_edge_cases",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "单包测试未提供offsets参数，需要正确处理无offsets的情况或修改测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

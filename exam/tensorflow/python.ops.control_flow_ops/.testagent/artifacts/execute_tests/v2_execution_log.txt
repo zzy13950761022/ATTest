@@ -1,0 +1,251 @@
+=== Run Tests ===
+EEEEE                                                                    [100%]
+=================================== ERRORS ====================================
+__________ ERROR at setup of test_cond_basic_functionality[True-1.0] __________
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+>               with patch.object(gen_ops_module, 'gen_control_flow_ops') as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1404: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x000001CD8A632AC0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'tensorflow.python.ops.gen_control_flow_ops' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\ops\\gen_control_flow_ops.py'> does not have the attribute 'gen_control_flow_ops'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1377: AttributeError
+_________ ERROR at setup of test_cond_basic_functionality[False-0.0] __________
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+>               with patch.object(gen_ops_module, 'gen_control_flow_ops') as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1404: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x000001CD8B7862B0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'tensorflow.python.ops.gen_control_flow_ops' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\ops\\gen_control_flow_ops.py'> does not have the attribute 'gen_control_flow_ops'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1377: AttributeError
+_ ERROR at setup of test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0] _
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+>               with patch.object(gen_ops_module, 'gen_control_flow_ops') as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1404: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x000001CD8B77FB20>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'tensorflow.python.ops.gen_control_flow_ops' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\ops\\gen_control_flow_ops.py'> does not have the attribute 'gen_control_flow_ops'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1377: AttributeError
+_ ERROR at setup of test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5] _
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+>               with patch.object(gen_ops_module, 'gen_control_flow_ops') as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1404: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x000001CD8A79C3A0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'tensorflow.python.ops.gen_control_flow_ops' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\ops\\gen_control_flow_ops.py'> does not have the attribute 'gen_control_flow_ops'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1377: AttributeError
+________ ERROR at setup of test_gradient_verification[cond-eager-True] ________
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+>               with patch.object(gen_ops_module, 'gen_control_flow_ops') as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1404: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x000001CD8B789D60>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'tensorflow.python.ops.gen_control_flow_ops' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\ops\\gen_control_flow_ops.py'> does not have the attribute 'gen_control_flow_ops'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1377: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                   Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_control_flow_ops.py     136     93     22      1    28%   17-18, 50-54, 61-65, 69-73, 77-80, 84-87, 100-134, 152-176, 195-247, 259-316, 325
+--------------------------------------------------------------------------------------------------
+TOTAL                                                    136     93     22      1    28%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[True-1.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[False-0.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_gradient_verification[cond-eager-True]
+5 errors in 1.76s
+
+Error: exit 1

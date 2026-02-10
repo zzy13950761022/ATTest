@@ -1,0 +1,247 @@
+=== Run Tests ===
+....F...F..F                                                             [100%]
+================================== FAILURES ===================================
+____ test_basic_data_type_conversion[values4-string-7-shape4-string array] ____
+
+values = [['hello', 'world'], ['foo', 'bar']], dtype_str = 'string'
+expected_dtype = 7, shape = [2, 2], description = 'string array'
+
+    @pytest.mark.parametrize("values,dtype_str,expected_dtype,shape,description", [
+        # Basic Python lists (original test cases)
+        ([1, 2, 3, 4], "int32", dtypes.int32.as_datatype_enum, None, "int32 list"),
+        ([1.0, 2.0, 3.0], "float32", dtypes.float32.as_datatype_enum, None, "float32 list"),
+        ([True, False, True], "bool", dtypes.bool.as_datatype_enum, None, "bool list"),
+    
+        # Parameter extension 1: numpy ndarray with float64
+        (np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]], dtype=np.float64),
+         "float64", dtypes.float64.as_datatype_enum, [3, 3], "numpy float64 array"),
+    
+        # Parameter extension 2: string array
+        ([["hello", "world"], ["foo", "bar"]],
+         "string", dtypes.string.as_datatype_enum, [2, 2], "string array"),
+    ])
+    def test_basic_data_type_conversion(values, dtype_str, expected_dtype, shape, description):
+        """TC-01: Basic data type conversion (weak assertions).
+    
+        Test that make_tensor_proto correctly converts various inputs
+        to TensorProto with appropriate data types.
+    
+        Includes parameter extensions:
+        1. numpy ndarray input with float64 dtype
+        2. string data type support
+        """
+        # Convert string dtype to actual dtype
+        dtype = getattr(dtypes, dtype_str)
+    
+        # Create tensor proto
+        proto = tensor_util.make_tensor_proto(
+            values=values,
+            dtype=dtype,
+            shape=shape,
+            verify_shape=False,
+            allow_broadcast=False
+        )
+    
+        # Weak assertions
+        # 1. proto_type: Result should be TensorProto
+        assert isinstance(proto, tensor_pb2.TensorProto), \
+            f"{description}: Result should be TensorProto"
+    
+        # 2. dtype_match: Check dtype matches expected
+        assert proto.dtype == expected_dtype, \
+            f"{description}: Expected dtype {expected_dtype}, got {proto.dtype}"
+    
+        # 3. shape_match: Check shape is inferred correctly
+        if shape is not None:
+            expected_shape = shape
+        elif isinstance(values, list):
+            # For lists, infer shape
+            if isinstance(values[0], list):
+                # 2D list
+                expected_shape = [len(values), len(values[0])]
+            else:
+                # 1D list
+                expected_shape = [len(values)]
+        else:
+            # For numpy arrays
+            expected_shape = list(values.shape)
+    
+        actual_shape = [dim.size for dim in proto.tensor_shape.dim]
+        assert actual_shape == expected_shape, \
+            f"{description}: Expected shape {expected_shape}, got {actual_shape}"
+    
+        # 4. values_preserved: Check values are preserved
+        actual_array = tensor_util.MakeNdarray(proto)
+    
+        # Prepare expected array
+        if isinstance(values, list):
+            expected_array = np.array(values)
+        else:
+            expected_array = values
+    
+        # Different comparison strategies based on dtype
+        if dtype_str in ["float32", "float64"]:
+            # Float comparison with tolerance
+            np.testing.assert_allclose(actual_array, expected_array, rtol=1e-6, atol=1e-8,
+                                      err_msg=f"{description}: Values not preserved")
+        elif dtype_str == "string":
+            # String comparison - convert to list for easier comparison
+            actual_list = actual_array.tolist()
+            expected_list = expected_array.tolist()
+>           assert actual_list == expected_list, \
+                f"{description}: String values not preserved. Expected {expected_list}, got {actual_list}"
+E           AssertionError: string array: String values not preserved. Expected [['hello', 'world'], ['foo', 'bar']], got [[b'hello', b'world'], [b'foo', b'bar']]
+E           assert [[b'hello', b...foo', b'bar']] == [['hello', 'w...'foo', 'bar']]
+E             
+E             At index 0 diff: [b'hello', b'world'] != ['hello', 'world']
+E             Use -v to get more diff
+
+tests\test_tensorflow_python_framework_tensor_util.py:156: AssertionError
+________________________ test_broadcast_functionality _________________________
+
+    def test_broadcast_functionality():
+        """Parameter extension: Broadcast functionality verification.
+    
+        Test that allow_broadcast=True enables scalar and length-1 vector
+        broadcasting to the specified shape.
+        """
+        # Test 1: Scalar broadcasting to [1, 1] shape
+        scalar_value = 5
+        proto = tensor_util.make_tensor_proto(
+            values=scalar_value,
+            dtype=dtypes.int32,
+            shape=[1, 1],
+            verify_shape=False,
+            allow_broadcast=True
+        )
+    
+        # Check shape
+        actual_shape = [dim.size for dim in proto.tensor_shape.dim]
+        assert actual_shape == [1, 1], f"Expected shape [1, 1], got {actual_shape}"
+    
+        # Check value - should be broadcasted
+        actual_array = tensor_util.MakeNdarray(proto)
+        expected_array = np.array([[5]], dtype=np.int32)
+        np.testing.assert_array_equal(actual_array, expected_array)
+    
+        # Test 2: Length-1 vector broadcasting to [2, 2] shape
+        vector_value = [7]
+        proto2 = tensor_util.make_tensor_proto(
+            values=vector_value,
+            dtype=dtypes.int32,
+            shape=[2, 2],
+            verify_shape=False,
+            allow_broadcast=True
+        )
+    
+        # Check shape
+        actual_shape2 = [dim.size for dim in proto2.tensor_shape.dim]
+        assert actual_shape2 == [2, 2], f"Expected shape [2, 2], got {actual_shape2}"
+    
+        # Check value - should be broadcasted
+        actual_array2 = tensor_util.MakeNdarray(proto2)
+        expected_array2 = np.array([[7, 7], [7, 7]], dtype=np.int32)
+        np.testing.assert_array_equal(actual_array2, expected_array2)
+    
+        # Test 3: Without allow_broadcast, scalar should fail for mismatched shape
+        with pytest.raises((ValueError, TypeError)) as exc_info:
+>           tensor_util.make_tensor_proto(
+                values=scalar_value,
+                dtype=dtypes.int32,
+                shape=[2, 2],
+                verify_shape=False,
+                allow_broadcast=False
+            )
+E           Failed: DID NOT RAISE (<class 'ValueError'>, <class 'TypeError'>)
+
+tests\test_tensorflow_python_framework_tensor_util.py:278: Failed
+______________ test_special_data_type_support[bfloat16-<lambda>] ______________
+
+dtype_str = 'bfloat16'
+values_factory = <function <lambda> at 0x0000020C05A01A60>
+
+    @pytest.mark.parametrize("dtype_str,values_factory", [
+        ("float16", lambda: np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float16)),
+        ("bfloat16", lambda: np.array([1.5, 2.5, 3.5, 4.5], dtype=np.float32).astype(np.uint16).view(np.bfloat16)),
+    ])
+    def test_special_data_type_support(dtype_str, values_factory):
+        """TC-04: Special data type support (weak assertions).
+    
+        Test that make_tensor_proto correctly handles special data types
+        like float16 and bfloat16.
+    
+        Weak assertions:
+        1. dtype_supported: Function should not crash with special dtypes
+        2. values_approximate: Values should be preserved approximately
+        3. no_crash: Function should complete without errors
+        """
+        # Create numpy array with special dtype
+>       values = values_factory()
+
+tests\test_tensorflow_python_framework_tensor_util.py:346: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_tensorflow_python_framework_tensor_util.py:332: in <lambda>
+    ("bfloat16", lambda: np.array([1.5, 2.5, 3.5, 4.5], dtype=np.float32).astype(np.uint16).view(np.bfloat16)),
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+attr = 'bfloat16'
+
+    def __getattr__(attr):
+        # Warn for expired attributes, and return a dummy function
+        # that always raises an exception.
+        try:
+            msg = __expired_functions__[attr]
+        except KeyError:
+            pass
+        else:
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    
+            def _expired(*args, **kwds):
+                raise RuntimeError(msg)
+    
+            return _expired
+    
+        # Emit warnings for deprecated attributes
+        try:
+            val, msg = __deprecated_attrs__[attr]
+        except KeyError:
+            pass
+        else:
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            return val
+    
+        # Importing Tester requires importing all of UnitTest which is not a
+        # cheap import Since it is mainly used in test suits, we lazy import it
+        # here to save on the order of 10 ms of import time for most users
+        #
+        # The previous way Tester was imported also had a side effect of adding
+        # the full `numpy.testing` namespace
+        if attr == 'testing':
+            import numpy.testing as testing
+            return testing
+        elif attr == 'Tester':
+            from .testing import Tester
+            return Tester
+    
+>       raise AttributeError("module {!r} has no attribute "
+                             "{!r}".format(__name__, attr))
+E       AttributeError: module 'numpy' has no attribute 'bfloat16'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\numpy\__init__.py:315: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                    Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------
+test_bfloat16.py                                           23     23      2      0     0%   1-36
+tests\test_tensorflow_python_framework_tensor_util.py     133     34     34      4    68%   21-28, 33-44, 48-70, 126, 132, 287-288, 378-380, 419-420
+---------------------------------------------------------------------------------------------------
+TOTAL                                                     156     57     36      4    59%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_tensor_util.py::test_basic_data_type_conversion[values4-string-7-shape4-string array]
+FAILED tests\test_tensorflow_python_framework_tensor_util.py::test_broadcast_functionality
+FAILED tests\test_tensorflow_python_framework_tensor_util.py::test_special_data_type_support[bfloat16-<lambda>]
+3 failed, 9 passed in 1.61s
+
+Error: exit 1

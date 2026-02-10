@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_stft_perfect_reconstruction[dtype0-cpu-signal_shape0-32-16-32-False-hann_window]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "STFT完美重构测试失败：重构信号形状(96,)与原始信号形状(100,)不匹配，pad_end=False时形状应完全匹配"
+    },
+    {
+      "test": "test_stft_invalid_inputs",
+      "block_id": "CASE_06",
+      "error_type": "Failed",
+      "action": "add_case",
+      "note": "新增无效输入测试：frame_length<=0时未抛出预期异常(ValueError或InvalidArgumentError)"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_stft_perfect_reconstruction[dtype1-cpu-signal_shape1-48-24-48-False-hann_window]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

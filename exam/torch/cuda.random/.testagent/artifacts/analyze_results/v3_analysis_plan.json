@@ -1,0 +1,111 @@
+{
+  "status": "未完全通过",
+  "passed": 34,
+  "failed": 22,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_get_rng_state_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "期望RuntimeError但实际抛出AssertionError，需要调整断言类型"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_get_rng_state_all_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "期望抛出RuntimeError但实际未抛出异常，需要检查函数行为"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_set_rng_state_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "期望RuntimeError但实际未抛出异常，需要检查函数行为"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_set_rng_state_all_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_initial_seed_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_empty_state_list_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_invalid_device_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_non_byte_tensor_state_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_get_rng_state_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_set_rng_state_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_initial_seed_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_invalid_device_index_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_non_byte_tensor_state_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_single_device_state_management_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1_cuda_unavailable.py::TestTorchCudaRandomG1CudaUnavailable::test_device_string_format_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_get_rng_state_all_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_set_rng_state_all_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_empty_state_list_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_invalid_device_index_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_multi_device_batch_management_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_state_list_length_mismatch_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_zero_length_tensor_state_cuda_unavailable",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

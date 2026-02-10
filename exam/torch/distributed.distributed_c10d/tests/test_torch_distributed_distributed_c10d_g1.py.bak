@@ -1,0 +1,236 @@
+"""
+测试 torch.distributed.distributed_c10d 模块
+组 G1: 进程组管理与初始化
+"""
+
+import pytest
+import torch
+import torch.distributed.distributed_c10d as dist_c10d
+from unittest.mock import Mock, patch, MagicMock
+import os
+import sys
+import time
+from datetime import timedelta
+
+# 固定随机种子确保可重复性
+torch.manual_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# 测试辅助函数和fixtures
+
+@pytest.fixture
+def mock_process_group():
+    """模拟进程组"""
+    pg = Mock(spec=dist_c10d.ProcessGroup)
+    pg.rank = Mock(return_value=0)
+    pg.size = Mock(return_value=2)
+    # 注意：ProcessGroup类可能没有backend属性，所以不设置它
+    # 如果需要backend信息，可以通过其他方式获取
+    return pg
+
+@pytest.fixture
+def mock_store():
+    """模拟存储"""
+    store = Mock(spec=dist_c10d.Store)
+    store.set = Mock()
+    store.get = Mock(return_value=b"test")
+    store.wait = Mock()
+    return store
+
+@pytest.fixture
+def mock_backend_detection():
+    """模拟后端检测"""
+    with patch.object(dist_c10d, '_GLOO_AVAILABLE', True):
+        with patch.object(dist_c10d, '_NCCL_AVAILABLE', False):
+            with patch.object(dist_c10d, '_MPI_AVAILABLE', False):
+                with patch.object(dist_c10d, '_UCC_AVAILABLE', False):
+                    yield
+
+@pytest.fixture
+def cleanup_process_groups():
+    """清理进程组状态"""
+    yield
+    # 清理模拟的全局状态
+    if hasattr(dist_c10d, '_pg_map'):
+        dist_c10d._pg_map.clear()
+    if hasattr(dist_c10d, '_pg_names'):
+        dist_c10d._pg_names.clear()
+    if hasattr(dist_c10d, '_pg_group_ranks'):
+        dist_c10d._pg_group_ranks.clear()
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("backend,init_method,world_size,rank,timeout_val,group_name", [
+    ("gloo", "env://", 2, 0, 1800, ""),
+])
+def test_init_process_group_basic(
+    backend, init_method, world_size, rank, timeout_val, group_name,
+    mock_backend_detection, cleanup_process_groups
+):
+    """
+    TC-01: 基本进程组初始化与销毁
+    验证进程组可以正常初始化和销毁
+    """
+    # 模拟环境变量
+    with patch.dict(os.environ, {
+        "MASTER_ADDR": "localhost",
+        "MASTER_PORT": "12345",
+        "WORLD_SIZE": str(world_size),
+        "RANK": str(rank)
+    }):
+        # 模拟init_process_group内部调用
+        mock_pg = Mock(spec=dist_c10d.ProcessGroup)
+        mock_pg.rank.return_value = rank
+        mock_pg.size.return_value = world_size
+        mock_pg.backend.return_value = backend
+        
+        with patch.object(dist_c10d, '_GLOO_AVAILABLE', True):
+            with patch('torch.distributed.distributed_c10d.ProcessGroupGloo', return_value=mock_pg):
+                with patch.object(dist_c10d, '_pg_map', {}):
+                    with patch.object(dist_c10d, '_pg_names', {}):
+                        with patch.object(dist_c10d, '_pg_group_ranks', {}):
+                            # 调用初始化
+                            dist_c10d.init_process_group(
+                                backend=backend,
+                                init_method=init_method,
+                                world_size=world_size,
+                                rank=rank,
+                                timeout=timedelta(seconds=timeout_val),
+                                group_name=group_name
+                            )
+                            
+                            # weak断言1: 进程组已初始化
+                            assert hasattr(dist_c10d, '_pg_map')
+                            assert len(dist_c10d._pg_map) > 0
+                            
+                            # weak断言2: rank正确
+                            pg = list(dist_c10d._pg_map.keys())[0]
+                            assert pg.rank() == rank
+                            
+                            # weak断言3: world_size正确
+                            assert pg.size() == world_size
+                            
+                            # weak断言4: 无异常
+                            # 如果执行到这里没有异常，说明初始化成功
+                            
+                            # 测试get_rank和get_world_size
+                            with patch.object(dist_c10d, 'get_rank', return_value=rank):
+                                with patch.object(dist_c10d, 'get_world_size', return_value=world_size):
+                                    assert dist_c10d.get_rank() == rank
+                                    assert dist_c10d.get_world_size() == world_size
+                            
+                            # 测试销毁进程组
+                            with patch.object(pg, 'destroy'):
+                                dist_c10d.destroy_process_group()
+                                pg.destroy.assert_called_once()
+                                
+                            # 清理状态
+                            dist_c10d._pg_map.clear()
+                            dist_c10d._pg_names.clear()
+                            dist_c10d._pg_group_ranks.clear()
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+def test_init_process_group_invalid_backend(
+    mock_backend_detection, cleanup_process_groups
+):
+    """
+    TC-02: 无效backend参数异常
+    验证传入无效backend时会抛出ValueError
+    """
+    backend = "invalid_backend"
+    init_method = "env://"
+    world_size = 2
+    rank = 0
+    timeout_val = 1800
+    
+    # 模拟环境变量
+    with patch.dict(os.environ, {
+        "MASTER_ADDR": "localhost",
+        "MASTER_PORT": "12345",
+        "WORLD_SIZE": str(world_size),
+        "RANK": str(rank)
+    }):
+        # weak断言1: 异常被抛出
+        with pytest.raises(ValueError) as exc_info:
+            dist_c10d.init_process_group(
+                backend=backend,
+                init_method=init_method,
+                world_size=world_size,
+                rank=rank,
+                timeout=timedelta(seconds=timeout_val)
+            )
+        
+        # weak断言2: 异常类型正确
+        assert isinstance(exc_info.value, ValueError)
+        
+        # weak断言3: 错误消息包含backend信息
+        error_msg = str(exc_info.value).lower()
+        assert "backend" in error_msg or "invalid" in error_msg
+        
+        # 验证全局状态未被污染
+        if hasattr(dist_c10d, '_pg_map'):
+            assert len(dist_c10d._pg_map) == 0
+        if hasattr(dist_c10d, '_pg_names'):
+            assert len(dist_c10d._pg_names) == 0
+        if hasattr(dist_c10d, '_pg_group_ranks'):
+            assert len(dist_c10d._pg_group_ranks) == 0
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: all_reduce SUM操作基本功能 (G2组 - 占位)
+# 参数化测试：tensor_shape=[2,2], dtype=float32, device=cpu, op=SUM, async_op=false, world_size=2
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: broadcast基本功能验证 (G2组 - 占位)
+# 参数化测试：tensor_shape=[3,3], dtype=float32, device=cpu, src_rank=0, async_op=false, world_size=2
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: 异步发送接收基本流程 (G3组 - 占位)
+# 参数化测试：tensor_shape=[4], dtype=float32, device=cpu, src_rank=0, dst_rank=1, world_size=2
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# DEFERRED_SET 占位 (G3组)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# DEFERRED_SET 占位 (G1组)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# DEFERRED_SET 占位 (G1组)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# DEFERRED_SET 占位 (G2组)
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# DEFERRED_SET 占位 (G2组)
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# DEFERRED_SET 占位 (G3组)
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# DEFERRED_SET 占位 (G3组)
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试类定义
+
+class TestDistributedC10DGroupG1:
+    """G1组测试：进程组管理与初始化"""
+    
+    # 从CASE_01导入测试函数
+    test_init_process_group_basic = None  # 将在运行时由pytest发现
+    
+    # 从CASE_02导入测试函数
+    test_init_process_group_invalid_backend = None  # 将在运行时由pytest发现
+    
+    # 其他测试方法将在后续迭代中添加
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,310 @@
+=== Run Tests ===
+EEEEEEE                                                                  [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of test_assert_equal_eager_mode[assert_equal-x_shape0-y_shape0-float32-eager] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_executing_eagerly():
+        """Mock for tensorflow.python.eager.context.executing_eagerly."""
+>       with patch('tensorflow.python.eager.context.executing_eagerly') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_equal_eager_mode[assert_equal-x_shape1-y_shape1-float64-eager] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_executing_eagerly():
+        """Mock for tensorflow.python.eager.context.executing_eagerly."""
+>       with patch('tensorflow.python.eager.context.executing_eagerly') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_equal_eager_mode[assert_greater-x_shape2-y_shape2-float32-eager] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_executing_eagerly():
+        """Mock for tensorflow.python.eager.context.executing_eagerly."""
+>       with patch('tensorflow.python.eager.context.executing_eagerly') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_equal_graph_mode[assert_equal-x_shape0-y_shape0-int32-graph] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_executing_eagerly():
+        """Mock for tensorflow.python.eager.context.executing_eagerly."""
+>       with patch('tensorflow.python.eager.context.executing_eagerly') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_equal_graph_mode[assert_equal-x_shape1-y_shape1-int32-graph] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_executing_eagerly():
+        """Mock for tensorflow.python.eager.context.executing_eagerly."""
+>       with patch('tensorflow.python.eager.context.executing_eagerly') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_less_static_failure[assert_less-x_shape0-y_shape0-float64-static_fail] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_constant_value():
+        """Mock for tensorflow.python.framework.tensor_util.constant_value."""
+>       with patch('tensorflow.python.framework.tensor_util.constant_value') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_assert_less_static_failure[assert_less-x_shape1-y_shape1-float32-static_fail] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_constant_value():
+        """Mock for tensorflow.python.framework.tensor_util.constant_value."""
+>       with patch('tensorflow.python.framework.tensor_util.constant_value') as mock:
+
+tests\test_tensorflow_python_ops_check_ops.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_check_ops.py     104     72     20      1    27%   22, 28, 33-34, 39-40, 45-46, 51-52, 57-58, 62-84, 116-147, 178-207, 239-262, 290
+-------------------------------------------------------------------------------------------
+TOTAL                                             104     72     20      1    27%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_equal-x_shape0-y_shape0-float32-eager]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_equal-x_shape1-y_shape1-float64-eager]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_greater-x_shape2-y_shape2-float32-eager]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_equal_graph_mode[assert_equal-x_shape0-y_shape0-int32-graph]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_equal_graph_mode[assert_equal-x_shape1-y_shape1-int32-graph]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_less_static_failure[assert_less-x_shape0-y_shape0-float64-static_fail]
+ERROR tests\test_tensorflow_python_ops_check_ops.py::test_assert_less_static_failure[assert_less-x_shape1-y_shape1-float32-static_fail]
+7 errors in 2.67s
+
+Error: exit 1

@@ -1,0 +1,96 @@
+=== Run Tests ===
+..s...F...                                                               [100%]
+=================================== FAILURES ===================================
+_______ TestCosineSimilarity.test_cosine_similarity_dimension_exception ________
+
+self = <test_torch_nn_modules_distance_cosine.TestCosineSimilarity object at 0x123291b10>
+
+    def test_cosine_similarity_dimension_exception(self):
+        """CASE_08: CosineSimilarity维度异常测试"""
+        # Test parameters from test_plan.json
+        dtype = torch.float32
+        device = "cpu"
+        shape = (3, 4)
+        dim = 3  # Invalid dimension for shape (3, 4)
+        eps = 1e-8
+    
+        # Create test inputs
+        x1 = torch.randn(shape, dtype=dtype, device=device)
+        x2 = torch.randn(shape, dtype=dtype, device=device)
+    
+        # Create CosineSimilarity module with invalid dimension
+        # This should raise an error when used
+        cosine_sim = nn.CosineSimilarity(dim=dim, eps=eps)
+    
+        # Weak assertions: exception should be raised
+        # When dim is out of range, torch.nn.functional.cosine_similarity should raise an error
+        # Note: PyTorch may raise RuntimeError instead of IndexError
+        with pytest.raises((IndexError, RuntimeError)) as exc_info:
+            # This should fail because dim=3 is invalid for 2D tensor
+            result = cosine_sim(x1, x2)
+    
+        # Check exception type is either IndexError or RuntimeError
+        assert exc_info.type in (IndexError, RuntimeError), \
+            f"Expected IndexError or RuntimeError, got {exc_info.type}"
+    
+        # Check exception message contains relevant information
+        # The exact message may vary, but should indicate dimension issue
+        error_msg = str(exc_info.value).lower()
+        # Check for various possible error messages
+        error_keywords = ["dim", "dimension", "index", "out of range", "out of bounds", "size"]
+        assert any(keyword in error_msg for keyword in error_keywords), \
+            f"Error message should mention dimension/index/size issue. Got: {error_msg}"
+    
+        # Now test negative dimension (should work) - this ensures line 288 is covered
+        # Negative dimensions wrap around in PyTorch
+        cosine_sim_neg = nn.CosineSimilarity(dim=-1, eps=eps)
+        result_neg = cosine_sim_neg(x1, x2)
+        expected_neg = F.cosine_similarity(x1, x2, dim=-1, eps=eps)
+    
+        # Verify negative dimension works
+        assert torch.allclose(result_neg, expected_neg, rtol=1e-5, atol=1e-6), \
+            "Negative dimension should work (wraps around)"
+    
+        # Additional test: also test with dim=2 (should work for 2D tensor)
+        # This is another valid dimension for 2D tensor
+        cosine_sim_dim2 = nn.CosineSimilarity(dim=2, eps=eps)
+>       result_dim2 = cosine_sim_dim2(x1, x2)
+
+tests/test_torch_nn_modules_distance_cosine.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CosineSimilarity()
+x1 = tensor([[ 0.3367,  0.1288,  0.2345,  0.2303],
+        [-1.1229, -0.1863,  2.2082, -0.6380],
+        [ 0.4617,  0.2674,  0.5349,  0.8094]])
+x2 = tensor([[ 1.1103, -1.6898, -0.9890,  0.9580],
+        [ 1.3221,  0.8172, -0.7658, -0.7506],
+        [ 1.3525,  0.6863, -0.3278,  0.7950]])
+
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
+>       return F.cosine_similarity(x1, x2, self.dim, self.eps)
+E       IndexError: Dimension out of range (expected to be in range of [-2, 1], but got 2)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/distance.py:87: IndexError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+cleanup.py                                             6      6      4      0     0%   1-8
+delete_temp_files.py                                   9      9      4      0     0%   1-10
+run_test.py                                            8      8      0      0     0%   1-10
+test_dim_behavior.py                                  40     40      0      0     0%   1-49
+tests/test_torch_nn_modules_distance_cosine.py       102      3      6      1    96%   292-295, 301
+tests/test_torch_nn_modules_distance_pairwise.py      55      1      6      2    95%   126->131, 160
+----------------------------------------------------------------------------------------------
+TOTAL                                                220     67     20      3    68%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_distance_cosine.py::TestCosineSimilarity::test_cosine_similarity_dimension_exception
+1 failed, 8 passed, 1 skipped in 0.77s
+
+Error: exit 1

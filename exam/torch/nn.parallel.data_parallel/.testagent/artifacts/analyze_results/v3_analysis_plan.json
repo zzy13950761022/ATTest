@@ -1,0 +1,63 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 10,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_cpu_as_output_device[test_config0]",
+      "block_id": "CASE_03",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "CPU环境下device_ids为空列表导致索引错误，需要修复CPU环境处理逻辑"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case0]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "参数验证测试中错误消息模式不匹配，需要调整断言或错误处理逻辑"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case2]",
+      "block_id": "CASE_05",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "边界条件测试中空device_ids在CPU环境下导致索引错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_cpu_as_output_device[test_config1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case4]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case4]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case5]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,282 @@
+{
+  "plan_version": 2,
+  "target": "torch.random",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_random.py",
+    "all_pattern": "tests/test_torch_random_*.py",
+    "groups": {
+      "G1": "tests/test_torch_random_g1.py",
+      "G2": "tests/test_torch_random_g2.py",
+      "G3": "tests/test_torch_random_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "种子管理与状态操作",
+      "entrypoints": ["manual_seed", "seed", "initial_seed"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试种子设置、生成和初始种子获取功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "状态保存与恢复",
+      "entrypoints": ["set_rng_state", "get_rng_state"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试RNG状态保存、恢复和序列一致性"
+    },
+    {
+      "group_id": "G3",
+      "title": "上下文隔离与设备管理",
+      "entrypoints": ["fork_rng"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_11", "CASE_12"],
+      "note": "测试上下文管理器隔离和多设备状态管理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "manual_seed基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "seed": 42,
+          "expected_type": "torch._C.Generator"
+        }
+      ],
+      "asserts": {
+        "weak": ["返回类型正确", "种子设置成功", "随机序列确定"],
+        "strong": ["负种子映射正确", "边界值处理", "生成器属性验证"]
+      },
+      "oracle": "manual_seed文档规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "seed和initial_seed基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "seed",
+          "expected_type": "int"
+        },
+        {
+          "operation": "initial_seed",
+          "expected_type": "int"
+        }
+      ],
+      "asserts": {
+        "weak": ["返回类型正确", "值在有效范围", "initial_seed一致性"],
+        "strong": ["seed非确定性", "initial_seed稳定性", "连续调用行为"]
+      },
+      "oracle": "seed/initial_seed文档规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "状态保存与恢复基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "state_type": "valid",
+          "operation_sequence": ["get", "set"]
+        }
+      ],
+      "asserts": {
+        "weak": ["get返回ByteTensor", "set无返回值", "状态恢复成功"],
+        "strong": ["状态张量结构", "序列完全恢复", "多次操作一致性"]
+      },
+      "oracle": "set_rng_state/get_rng_state文档规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "fork_rng基本上下文管理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "devices": null,
+          "enabled": true,
+          "context_type": "basic"
+        }
+      ],
+      "asserts": {
+        "weak": ["上下文管理器工作", "外部状态恢复", "内部隔离有效"],
+        "strong": ["多设备处理", "enabled=False行为", "嵌套上下文"]
+      },
+      "oracle": "fork_rng文档规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "torch.cuda.device_count",
+        "torch.cuda.get_rng_state_all",
+        "torch.cuda.set_rng_state_all"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "manual_seed边界值测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "seed": -9223372036854775808,
+          "description": "负边界值"
+        },
+        {
+          "seed": 18446744073709551615,
+          "description": "正边界值"
+        }
+      ],
+      "asserts": {
+        "weak": ["边界值接受", "返回类型正确", "不触发异常"],
+        "strong": ["负种子映射验证", "极端值处理", "生成器功能正常"]
+      },
+      "oracle": "manual_seed边界规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "状态操作异常处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "invalid_input": "non_byte_tensor",
+          "expected_exception": "TypeError"
+        },
+        {
+          "invalid_input": "wrong_shape",
+          "expected_exception": "RuntimeError"
+        }
+      ],
+      "asserts": {
+        "weak": ["异常类型正确", "错误信息合理", "状态未损坏"],
+        "strong": ["异常触发条件", "状态回滚", "后续操作正常"]
+      },
+      "oracle": "set_rng_state错误处理规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "seed": 0,
+        "expected_type": "torch._C.Generator"
+      },
+      "note": "零种子测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "seed": -1,
+        "expected_type": "torch._C.Generator"
+      },
+      "note": "负种子映射测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "state_type": "empty",
+        "operation_sequence": ["get", "set"]
+      },
+      "note": "空状态处理测试"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "devices": [0],
+        "enabled": true,
+        "context_type": "single_device"
+      },
+      "note": "单设备上下文测试"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "devices": null,
+        "enabled": false,
+        "context_type": "disabled"
+      },
+      "note": "禁用上下文测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_09", "CASE_10", "CASE_11", "CASE_12"]
+}

@@ -1,0 +1,121 @@
+=== Run Tests ===
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____________ test_init_process_group_basic[gloo-env://-2-0-1800-] _____________
+
+backend = 'gloo', init_method = 'env://', world_size = 2, rank = 0
+timeout_val = 1800, group_name = '', mock_backend_detection = None
+cleanup_process_groups = None
+
+    @pytest.mark.parametrize("backend,init_method,world_size,rank,timeout_val,group_name", [
+        ("gloo", "env://", 2, 0, 1800, ""),
+    ])
+    def test_init_process_group_basic(
+        backend, init_method, world_size, rank, timeout_val, group_name,
+        mock_backend_detection, cleanup_process_groups
+    ):
+        """
+        TC-01: 基本进程组初始化与销毁
+        验证进程组可以正常初始化和销毁
+        """
+        # 模拟环境变量
+        with patch.dict(os.environ, {
+            "MASTER_ADDR": "localhost",
+            "MASTER_PORT": "12345",
+            "WORLD_SIZE": str(world_size),
+            "RANK": str(rank)
+        }):
+            # 模拟init_process_group内部调用
+            mock_pg = Mock(spec=dist_c10d.ProcessGroup)
+            mock_pg.rank.return_value = rank
+            mock_pg.size.return_value = world_size
+>           mock_pg.backend.return_value = backend
+
+tests/test_torch_distributed_distributed_c10d_g1.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock spec='ProcessGroup' id='4831342608'>, name = 'backend'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+>               raise AttributeError("Mock object has no attribute %r" % name)
+E               AttributeError: Mock object has no attribute 'backend'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:643: AttributeError
+___________________ test_init_process_group_invalid_backend ____________________
+
+mock_backend_detection = None, cleanup_process_groups = None
+
+    def test_init_process_group_invalid_backend(
+        mock_backend_detection, cleanup_process_groups
+    ):
+        """
+        TC-02: 无效backend参数异常
+        验证传入无效backend时会抛出RuntimeError
+        """
+        backend = "invalid_backend"
+        init_method = "env://"
+        world_size = 2
+        rank = 0
+        timeout_val = 1800
+    
+        # 模拟环境变量
+        with patch.dict(os.environ, {
+            "MASTER_ADDR": "localhost",
+            "MASTER_PORT": "12345",
+            "WORLD_SIZE": str(world_size),
+            "RANK": str(rank)
+        }):
+            # weak断言1: 异常被抛出
+            with pytest.raises(RuntimeError) as exc_info:
+>               dist_c10d.init_process_group(
+                    backend=backend,
+                    init_method=init_method,
+                    world_size=world_size,
+                    rank=rank,
+                    timeout=timedelta(seconds=timeout_val)
+                )
+
+tests/test_torch_distributed_distributed_c10d_g1.py:156: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:734: in init_process_group
+    backend = Backend(backend)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'torch.distributed.distributed_c10d.Backend'>
+name = 'invalid_backend'
+
+    def __new__(cls, name: str):
+        if not isinstance(name, string_classes):
+            raise ValueError("Backend name must be a string, but got: {}".format(name))
+        value = getattr(Backend, name.upper(), Backend.UNDEFINED)
+    
+        if value == Backend.TCP:
+            raise ValueError(
+                "TCP backend has been deprecated. Please use "
+                "Gloo or MPI backend for collective operations "
+                "on CPU tensors."
+            )
+        elif value == Backend.UNDEFINED:
+>           raise ValueError("Invalid backend: '{}'".format(name))
+E           ValueError: Invalid backend: 'invalid_backend'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:187: ValueError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests/test_torch_distributed_distributed_c10d_g1.py      88     40     24      3    49%   24-28, 33-37, 53->55, 55->57, 57->exit, 87-130, 165-177
+-------------------------------------------------------------------------------------------------
+TOTAL                                                    88     40     24      3    49%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_basic[gloo-env://-2-0-1800-]
+FAILED tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_invalid_backend
+2 failed in 0.59s
+
+Error: exit 1

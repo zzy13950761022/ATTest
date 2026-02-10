@@ -1,0 +1,25 @@
+{
+  "status": "成功",
+  "passed": 18,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "CASE_05",
+      "reason": "覆盖率缺口，需要添加测试用例覆盖缺失代码路径"
+    },
+    {
+      "test": "CASE_06", 
+      "reason": "覆盖率缺口，需要添加测试用例覆盖缺失代码路径"
+    },
+    {
+      "test": "CASE_07",
+      "reason": "覆盖率缺口，需要添加测试用例覆盖缺失代码路径"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

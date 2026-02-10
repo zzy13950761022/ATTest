@@ -1,0 +1,55 @@
+{
+  "status": "成功",
+  "passed": 22,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_combined",
+      "block_id": "CASE_10",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "组合测试覆盖率85%，需要添加重叠参数测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "CASE_04",
+      "reason": "错误处理测试，优先级较低"
+    },
+    {
+      "test": "CASE_08",
+      "reason": "错误处理测试，优先级较低"
+    },
+    {
+      "test": "CASE_11",
+      "reason": "组合dilation测试，优先级较低"
+    },
+    {
+      "test": "coverage_gap_fold",
+      "reason": "CASE_03: 连续两轮错误类型重复，跳过该代码块"
+    },
+    {
+      "test": "coverage_gap_unfold",
+      "reason": "CASE_07: 连续两轮错误类型重复，跳过该代码块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": "",
+  "skipped_blocks": [
+    {
+      "test": "coverage_gap_fold",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "reason": "连续两轮错误类型重复，跳过该代码块"
+    },
+    {
+      "test": "coverage_gap_unfold",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "reason": "连续两轮错误类型重复，跳过该代码块"
+    }
+  ]
+}

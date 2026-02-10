@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 19,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_init_g2.py::test_invalid_inputs",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息正则表达式不匹配：期望 'nonlinearity not found'，实际 'Unsupported nonlinearity invalid_nonlinearity'"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

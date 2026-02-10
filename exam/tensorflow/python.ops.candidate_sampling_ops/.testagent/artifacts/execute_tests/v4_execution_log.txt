@@ -1,0 +1,172 @@
+=== Run Tests ===
+....FF                                                                   [100%]
+================================== FAILURES ===================================
+_ TestComputeAccidentalHits.test_compute_accidental_hits_basic[true_classes_shape0-sampled_candidates_shape0-2-456] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestComputeAccidentalHits object at 0x000001E3A97C18E0>
+true_classes_shape = [3, 2], sampled_candidates_shape = [4], num_true = 2
+seed = 456
+
+    @pytest.mark.parametrize("true_classes_shape,sampled_candidates_shape,num_true,seed", [
+        ([3, 2], [4], 2, 456),  # Base case from test plan
+        ([1, 5], [10], 5, 555),  # Extension case
+    ])
+    def test_compute_accidental_hits_basic(
+        self, true_classes_shape, sampled_candidates_shape, num_true, seed
+    ):
+        """Test compute_accidental_hits with basic parameters."""
+        batch_size, _ = true_classes_shape
+        num_sampled = sampled_candidates_shape[0]
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, 10, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Create sampled_candidates tensor
+        sampled_candidates = tf.constant(
+            np.random.randint(0, 10, size=sampled_candidates_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'compute_accidental_hits') as mock_op:
+    
+            # Setup mock return values
+            # For accidental hits, we need indices where true_classes match sampled_candidates
+            mock_indices = tf.constant(
+                np.random.randint(0, batch_size * num_true, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int32
+            )
+            mock_ids = tf.constant(
+                np.random.randint(0, num_sampled, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int64
+            )
+            mock_weights = tf.constant(
+                np.random.uniform(-1.0, 1.0, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (mock_indices, mock_ids, mock_weights)
+    
+            # Call the function under test
+            result = candidate_sampling_ops.compute_accidental_hits(
+                true_classes=true_classes,
+                sampled_candidates=sampled_candidates,
+                num_true=num_true,
+                seed=seed
+            )
+    
+            indices, ids, weights = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+    
+            # The underlying C++ op is called with positional arguments
+            # Check the call arguments - first 3 are positional, last 3 are keyword
+            call_args = mock_op.call_args
+    
+            # Check positional arguments (first 3)
+            assert call_args[0][0] is true_classes, "First positional arg should be true_classes"
+            assert call_args[0][1] is sampled_candidates, "Second positional arg should be sampled_candidates"
+            assert call_args[0][2] == num_true, f"Third positional arg should be num_true={num_true}"
+    
+            # Check keyword arguments (seed, seed2, name)
+>           assert call_args[1]['seed'] == seed, f"Expected seed={seed}"
+E           AssertionError: Expected seed=456
+E           assert 87654321 == 456
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:359: AssertionError
+_ TestComputeAccidentalHits.test_compute_accidental_hits_basic[true_classes_shape1-sampled_candidates_shape1-5-555] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestComputeAccidentalHits object at 0x000001E3A97C1280>
+true_classes_shape = [1, 5], sampled_candidates_shape = [10], num_true = 5
+seed = 555
+
+    @pytest.mark.parametrize("true_classes_shape,sampled_candidates_shape,num_true,seed", [
+        ([3, 2], [4], 2, 456),  # Base case from test plan
+        ([1, 5], [10], 5, 555),  # Extension case
+    ])
+    def test_compute_accidental_hits_basic(
+        self, true_classes_shape, sampled_candidates_shape, num_true, seed
+    ):
+        """Test compute_accidental_hits with basic parameters."""
+        batch_size, _ = true_classes_shape
+        num_sampled = sampled_candidates_shape[0]
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, 10, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Create sampled_candidates tensor
+        sampled_candidates = tf.constant(
+            np.random.randint(0, 10, size=sampled_candidates_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'compute_accidental_hits') as mock_op:
+    
+            # Setup mock return values
+            # For accidental hits, we need indices where true_classes match sampled_candidates
+            mock_indices = tf.constant(
+                np.random.randint(0, batch_size * num_true, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int32
+            )
+            mock_ids = tf.constant(
+                np.random.randint(0, num_sampled, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int64
+            )
+            mock_weights = tf.constant(
+                np.random.uniform(-1.0, 1.0, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (mock_indices, mock_ids, mock_weights)
+    
+            # Call the function under test
+            result = candidate_sampling_ops.compute_accidental_hits(
+                true_classes=true_classes,
+                sampled_candidates=sampled_candidates,
+                num_true=num_true,
+                seed=seed
+            )
+    
+            indices, ids, weights = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+    
+            # The underlying C++ op is called with positional arguments
+            # Check the call arguments - first 3 are positional, last 3 are keyword
+            call_args = mock_op.call_args
+    
+            # Check positional arguments (first 3)
+            assert call_args[0][0] is true_classes, "First positional arg should be true_classes"
+            assert call_args[0][1] is sampled_candidates, "Second positional arg should be sampled_candidates"
+            assert call_args[0][2] == num_true, f"Third positional arg should be num_true={num_true}"
+    
+            # Check keyword arguments (seed, seed2, name)
+>           assert call_args[1]['seed'] == seed, f"Expected seed={seed}"
+E           AssertionError: Expected seed=555
+E           assert 87654321 == 555
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:359: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                         Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py     149     33     20      4    72%   26-29, 37, 48, 56-64, 71-75, 360-390, 407
+--------------------------------------------------------------------------------------------------------
+TOTAL                                                          149     33     20      4    72%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape0-sampled_candidates_shape0-2-456]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape1-sampled_candidates_shape1-5-555]
+2 failed, 4 passed in 1.92s
+
+Error: exit 1

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_basic_functionality",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "deprecation warning未被warnings.catch_warnings捕获，需调整警告捕获方式或使用tf.compat.v1.logging"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_nested_structure_matching",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "与CASE_01相同问题：deprecation warning捕获失败"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,269 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.batchnorm",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_batchnorm.py",
+    "all_pattern": "tests/test_torch_nn_modules_batchnorm_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_batchnorm_g1.py",
+      "G2": "tests/test_torch_nn_modules_batchnorm_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础前向传播与模式切换",
+      "entrypoints": ["BatchNorm1d", "BatchNorm2d", "BatchNorm3d"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试基础前向传播和训练/评估模式切换"
+    },
+    {
+      "group_id": "G2",
+      "title": "参数配置与边界验证",
+      "entrypoints": ["affine=False", "track_running_stats=False", "momentum=None"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07", "CASE_08"],
+      "note": "测试不同参数配置和边界情况"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "BatchNorm1d基础前向传播",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "BatchNorm1d",
+          "num_features": 10,
+          "input_shape": [4, 10],
+          "dtype": "float32",
+          "device": "cpu",
+          "mode": "train",
+          "affine": true,
+          "track_running_stats": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "output_finite", "running_mean_updated"],
+        "strong": ["output_approx_equal", "statistics_correct", "gradient_check"]
+      },
+      "oracle": "F.batch_norm",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "训练评估模式切换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "BatchNorm2d",
+          "num_features": 8,
+          "input_shape": [2, 8, 16, 16],
+          "dtype": "float32",
+          "device": "cpu",
+          "mode": "train",
+          "affine": true,
+          "track_running_stats": true
+        }
+      ],
+      "asserts": {
+        "weak": ["mode_switch_works", "running_stats_used_in_eval", "output_shape_consistent"],
+        "strong": ["statistics_preserved", "deterministic_eval_output"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "BatchNorm3d基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "BatchNorm3d",
+          "num_features": 6,
+          "input_shape": [2, 6, 8, 8, 8],
+          "dtype": "float32",
+          "device": "cpu",
+          "mode": "train",
+          "affine": true,
+          "track_running_stats": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "running_var_updated", "weight_bias_exist"],
+        "strong": ["3d_normalization_correct", "spatial_dimensions_independent"]
+      },
+      "oracle": "F.batch_norm",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "懒加载类延迟初始化",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "class_name": "LazyBatchNorm1d",
+          "num_features": -1,
+          "input_shape": [4, 12],
+          "dtype": "float32",
+          "device": "cpu",
+          "mode": "train",
+          "affine": true,
+          "track_running_stats": true
+        }
+      ],
+      "asserts": {
+        "weak": ["lazy_initialization_works", "num_features_inferred", "first_forward_succeeds"],
+        "strong": ["parameters_created_correctly", "subsequent_forwards_consistent"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "affine=False配置",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "BatchNorm2d",
+          "num_features": 8,
+          "input_shape": [2, 8, 16, 16],
+          "dtype": "float32",
+          "device": "cpu",
+          "mode": "train",
+          "affine": false,
+          "track_running_stats": true
+        }
+      ],
+      "asserts": {
+        "weak": ["no_weight_parameter", "no_bias_parameter", "output_shape_correct", "normalization_applied"],
+        "strong": ["centered_output", "unit_variance_approx"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "class_name": "BatchNorm1d",
+        "num_features": 10,
+        "input_shape": [4, 10, 32],
+        "dtype": "float32",
+        "device": "cpu",
+        "mode": "train",
+        "affine": true,
+        "track_running_stats": true
+      },
+      "note": "BatchNorm1d 3D输入扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "class_name": "BatchNorm1d",
+        "num_features": 10,
+        "input_shape": [4, 10],
+        "dtype": "float64",
+        "device": "cpu",
+        "mode": "train",
+        "affine": true,
+        "track_running_stats": true
+      },
+      "note": "float64数据类型扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "class_name": "BatchNorm2d",
+        "num_features": 8,
+        "input_shape": [2, 8, 16, 16],
+        "dtype": "float32",
+        "device": "cpu",
+        "mode": "eval",
+        "affine": true,
+        "track_running_stats": true
+      },
+      "note": "评估模式扩展"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "class_name": "BatchNorm2d",
+        "num_features": 8,
+        "input_shape": [2, 8, 16, 16],
+        "dtype": "float32",
+        "device": "cpu",
+        "mode": "train",
+        "affine": false,
+        "track_running_stats": false
+      },
+      "note": "track_running_stats=False扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_08"]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_string_ops.py::test_additional_string_ops",
+      "block_id": "CASE_06",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "string_join函数期望separator参数为Python字符串，但传入的是TensorFlow张量。需要将tf.constant(' ')改为普通字符串' '。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

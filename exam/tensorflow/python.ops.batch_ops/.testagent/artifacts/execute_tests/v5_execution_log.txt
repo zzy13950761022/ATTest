@@ -1,0 +1,809 @@
+=== Run Tests ===
+FFFFFFFs                                                                 [100%]
+================================== FAILURES ===================================
+_ TestBatchOps.test_basic_decorator_functionality[1-2-1000-None-10-True-True-input_shape0-float32] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C286970>
+num_batch_threads = 1, max_batch_size = 2, batch_timeout_micros = 1000
+allowed_batch_sizes = None, max_enqueued_batches = 10, autograph = True
+enable_large_batch_splitting = True, input_shape = [2, 3], dtype = 'float32'
+mock_batch_function = <MagicMock name='batch_function' id='2252914435312'>
+mock_defun = <MagicMock name='defun' id='2252914322352'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252914541328'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252914561808'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[ 0.49671414, -0.1382643 ,  0.64768857],
+       [ 1.5230298 , -0.23415338, -0.23413695]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8C2A74C0>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype", [
+        (1, 2, 1000, None, 10, True, True, [2, 3], "float32"),
+        (4, 8, 10000, [2, 4, 8], 20, False, False, [4, 5], "float64"),
+    ])
+    def test_basic_decorator_functionality(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-01: 基本装饰器功能
+        测试基本装饰器创建和调用功能
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for first round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. 函数可调用
+        assert decorated_func is not None, "Decorated function should be created"
+        assert callable(decorated_func), "Decorated function should be callable"
+    
+        # 3. 返回Tensor类型 - Skipped because we don't call the function
+        # assert tf.is_tensor(result), "Result should be a Tensor"
+    
+        # Verify mock calls
+        # batch_function should be called with correct parameters
+        # Actually, batch_function is called inside the decorated function,
+        # not when creating the decorator. So we don't assert this here.
+        # mock_batch_function.assert_called()
+    
+        # defun should be called with autograph parameter
+        # In batch_ops.py, defun is used as a decorator: @function.defun(autograph=autograph)
+        # which calls defun with autograph parameter
+        if autograph:
+>           mock_defun.assert_called_with(autograph=True)
+
+tests\test_tensorflow_python_ops_batch_ops.py:207: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='defun' id='2252914322352'>, args = ()
+kwargs = {'autograph': True}, expected = 'defun(autograph=True)'
+actual = 'not called.'
+error_message = 'expected call not found.\nExpected: defun(autograph=True)\nActual: not called.'
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\nActual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: defun(autograph=True)
+E           Actual: not called.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:898: AssertionError
+---------------------------- Captured stderr setup ----------------------------
+2026-01-21 13:18:20.416007: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+_ TestBatchOps.test_basic_decorator_functionality[4-8-10000-allowed_batch_sizes1-20-False-False-input_shape1-float64] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C2869D0>
+num_batch_threads = 4, max_batch_size = 8, batch_timeout_micros = 10000
+allowed_batch_sizes = [2, 4, 8], max_enqueued_batches = 20, autograph = False
+enable_large_batch_splitting = False, input_shape = [4, 5], dtype = 'float64'
+mock_batch_function = <MagicMock name='batch_function' id='2252914434784'>
+mock_defun = <MagicMock name='defun' id='2252933651712'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252933634896'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252933692576'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[ 0.24196227, -1.9132802 , -1.7249179 ],
+       [-0.5622875 , -1.0128311 ,  0.31424734]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D589B80>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype", [
+        (1, 2, 1000, None, 10, True, True, [2, 3], "float32"),
+        (4, 8, 10000, [2, 4, 8], 20, False, False, [4, 5], "float64"),
+    ])
+    def test_basic_decorator_functionality(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-01: 基本装饰器功能
+        测试基本装饰器创建和调用功能
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for first round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. 函数可调用
+        assert decorated_func is not None, "Decorated function should be created"
+        assert callable(decorated_func), "Decorated function should be callable"
+    
+        # 3. 返回Tensor类型 - Skipped because we don't call the function
+        # assert tf.is_tensor(result), "Result should be a Tensor"
+    
+        # Verify mock calls
+        # batch_function should be called with correct parameters
+        # Actually, batch_function is called inside the decorated function,
+        # not when creating the decorator. So we don't assert this here.
+        # mock_batch_function.assert_called()
+    
+        # defun should be called with autograph parameter
+        # In batch_ops.py, defun is used as a decorator: @function.defun(autograph=autograph)
+        # which calls defun with autograph parameter
+        if autograph:
+            mock_defun.assert_called_with(autograph=True)
+        else:
+>           mock_defun.assert_called_with(autograph=False)
+
+tests\test_tensorflow_python_ops_batch_ops.py:209: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='defun' id='2252933651712'>, args = ()
+kwargs = {'autograph': False}, expected = 'defun(autograph=False)'
+actual = 'not called.'
+error_message = 'expected call not found.\nExpected: defun(autograph=False)\nActual: not called.'
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\nActual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: defun(autograph=False)
+E           Actual: not called.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:898: AssertionError
+_ TestBatchOps.test_parameter_validation[2-4-5000-allowed_batch_sizes0-5-False-False-input_shape0-float64] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C286D90>
+num_batch_threads = 2, max_batch_size = 4, batch_timeout_micros = 5000
+allowed_batch_sizes = [2, 4], max_enqueued_batches = 5, autograph = False
+enable_large_batch_splitting = False, input_shape = [1, 5], dtype = 'float64'
+mock_batch_function = <MagicMock name='batch_function' id='2252914435024'>
+mock_defun = <MagicMock name='defun' id='2252933658320'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252933900656'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252933782016'>
+mock_validate_allowed_batch_sizes = <MagicMock name='_validate_allowed_batch_sizes' id='2252933944896'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[-1.328186  ,  0.19686124,  0.73846656],
+       [ 0.17136829, -0.11564828, -0.30110368]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D589670>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype", [
+        (2, 4, 5000, [2, 4], 5, False, False, [1, 5], "float64"),
+        (1, 1, 100, [1], 1, True, True, [1, 1], "float32"),
+    ])
+    def test_parameter_validation(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        mock_validate_allowed_batch_sizes,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-02: 参数验证测试
+        测试allowed_batch_sizes参数验证逻辑
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Configure mock for _validate_allowed_batch_sizes
+        mock_validate_allowed_batch_sizes.return_value = None
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for first round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. allowed_batch_sizes验证通过
+        if allowed_batch_sizes is not None:
+>           mock_validate_allowed_batch_sizes.assert_called_once_with(
+                allowed_batch_sizes, max_batch_size
+            )
+
+tests\test_tensorflow_python_ops_batch_ops.py:284: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='_validate_allowed_batch_sizes' id='2252933944896'>
+args = ([2, 4], 4), kwargs = {}
+msg = "Expected '_validate_allowed_batch_sizes' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected '_validate_allowed_batch_sizes' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+_ TestBatchOps.test_parameter_validation[1-1-100-allowed_batch_sizes1-1-True-True-input_shape1-float32] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C29D190>
+num_batch_threads = 1, max_batch_size = 1, batch_timeout_micros = 100
+allowed_batch_sizes = [1], max_enqueued_batches = 1, autograph = True
+enable_large_batch_splitting = True, input_shape = [1, 1], dtype = 'float32'
+mock_batch_function = <MagicMock name='batch_function' id='2252933781920'>
+mock_defun = <MagicMock name='defun' id='2252933801680'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252933881712'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252933795456'>
+mock_validate_allowed_batch_sizes = <MagicMock name='_validate_allowed_batch_sizes' id='2252933868944'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[-1.7630402 ,  0.32408398, -0.38508227],
+       [-0.676922  ,  0.6116763 ,  1.0309995 ]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D5B11F0>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype", [
+        (2, 4, 5000, [2, 4], 5, False, False, [1, 5], "float64"),
+        (1, 1, 100, [1], 1, True, True, [1, 1], "float32"),
+    ])
+    def test_parameter_validation(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        mock_validate_allowed_batch_sizes,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-02: 参数验证测试
+        测试allowed_batch_sizes参数验证逻辑
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Configure mock for _validate_allowed_batch_sizes
+        mock_validate_allowed_batch_sizes.return_value = None
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for first round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. allowed_batch_sizes验证通过
+        if allowed_batch_sizes is not None:
+>           mock_validate_allowed_batch_sizes.assert_called_once_with(
+                allowed_batch_sizes, max_batch_size
+            )
+
+tests\test_tensorflow_python_ops_batch_ops.py:284: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='_validate_allowed_batch_sizes' id='2252933868944'>
+args = ([1], 1), kwargs = {}
+msg = "Expected '_validate_allowed_batch_sizes' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected '_validate_allowed_batch_sizes' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+_ TestBatchOps.test_error_handling[1-2-1000-allowed_batch_sizes0-10-True-True-input_shape0-float32-True] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C286460>
+num_batch_threads = 1, max_batch_size = 2, batch_timeout_micros = 1000
+allowed_batch_sizes = [1, 3], max_enqueued_batches = 10, autograph = True
+enable_large_batch_splitting = True, input_shape = [2, 3], dtype = 'float32'
+should_fail = True
+mock_batch_function = <MagicMock name='batch_function' id='2252914158320'>
+mock_defun = <MagicMock name='defun' id='2252933810784'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252933782064'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252934487920'>
+mock_validate_allowed_batch_sizes = <MagicMock name='_validate_allowed_batch_sizes' id='2252933669216'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[-0.83921754, -0.3092124 ,  0.33126342],
+       [ 0.9755451 , -0.47917423, -0.18565898]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D5B1550>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype,should_fail", [
+        (1, 2, 1000, [1, 3], 10, True, True, [2, 3], "float32", True),
+    ])
+    def test_error_handling(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        should_fail,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        mock_validate_allowed_batch_sizes,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-03: 错误处理测试
+        测试allowed_batch_sizes验证失败场景
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Configure mock for _validate_allowed_batch_sizes to raise ValueError
+        # when allowed_batch_sizes doesn't satisfy conditions
+        if should_fail and allowed_batch_sizes is not None:
+            # Simulate validation failure: last element doesn't equal max_batch_size
+            mock_validate_allowed_batch_sizes.side_effect = ValueError(
+                f"allowed_batch_sizes must be empty or end with max_batch_size, got {allowed_batch_sizes}"
+            )
+    
+        # Act & Assert
+        if should_fail:
+            # Test that ValueError is raised when validation fails
+            with pytest.raises(ValueError) as exc_info:
+                # Create the batch decorator (should fail during validation)
+>               batch_decorator = batch_ops.batch_function(
+                    num_batch_threads=num_batch_threads,
+                    max_batch_size=max_batch_size,
+                    batch_timeout_micros=batch_timeout_micros,
+                    allowed_batch_sizes=allowed_batch_sizes,
+                    max_enqueued_batches=max_enqueued_batches,
+                    autograph=autograph,
+                    enable_large_batch_splitting=enable_large_batch_splitting
+                )
+E               Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_ops_batch_ops.py:360: Failed
+_ TestBatchOps.test_concurrent_batch_processing[2-4-10000-None-20-True-True-input_shape0-float32-3] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C29DAF0>
+num_batch_threads = 2, max_batch_size = 4, batch_timeout_micros = 10000
+allowed_batch_sizes = None, max_enqueued_batches = 20, autograph = True
+enable_large_batch_splitting = True, input_shape = [1, 3], dtype = 'float32'
+concurrent_calls = 3
+mock_batch_function = <MagicMock name='batch_function' id='2252914159040'>
+mock_defun = <MagicMock name='defun' id='2254430706176'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252914564640'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252933697008'>
+mock_BatchFunction = <MagicMock name='_BatchFunction' id='2252914521856'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[ 0.361636  , -0.6451197 ,  0.3613956 ],
+       [ 1.5380366 , -0.03582604,  1.5646436 ]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D589430>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype,concurrent_calls", [
+        (2, 4, 10000, None, 20, True, True, [1, 3], "float32", 3),
+        (1, 10, 5000, None, 5, True, True, [2, 10], "float32", 5),
+    ])
+    def test_concurrent_batch_processing(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        concurrent_calls,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        mock_BatchFunction,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-04: 并发批处理测试
+        测试多个会话并发调用时的批处理行为
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Note: We don't actually call decorated_func, so we don't need to configure
+        # side effects for mock_batch_function
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for current round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. 并发调用不崩溃 - skipped because we don't call the function
+        # assert len(results) == concurrent_calls, f"Should get {concurrent_calls} results"
+        # for result in results:
+        #     assert tf.is_tensor(result), "Each result should be a Tensor"
+    
+        # 3. 基本功能正常
+        # batch_function should be called (at least once, possibly more for concurrent calls)
+        # Actually, batch_function is called inside decorated function, not here
+        # assert mock_batch_function.called, "batch_function should be called"
+    
+        # Verify defun was called with correct autograph parameter
+        # In batch_ops implementation, defun is always called
+        if autograph:
+>           mock_defun.assert_called_with(autograph=True)
+
+tests\test_tensorflow_python_ops_batch_ops.py:494: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='defun' id='2254430706176'>, args = ()
+kwargs = {'autograph': True}, expected = 'defun(autograph=True)'
+actual = 'not called.'
+error_message = 'expected call not found.\nExpected: defun(autograph=True)\nActual: not called.'
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\nActual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: defun(autograph=True)
+E           Actual: not called.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:898: AssertionError
+_ TestBatchOps.test_concurrent_batch_processing[1-10-5000-None-5-True-True-input_shape1-float32-5] _
+
+self = <test_tensorflow_python_ops_batch_ops.TestBatchOps object at 0x0000020C8C29DF10>
+num_batch_threads = 1, max_batch_size = 10, batch_timeout_micros = 5000
+allowed_batch_sizes = None, max_enqueued_batches = 5, autograph = True
+enable_large_batch_splitting = True, input_shape = [2, 10], dtype = 'float32'
+concurrent_calls = 5
+mock_batch_function = <MagicMock name='batch_function' id='2252934487248'>
+mock_defun = <MagicMock name='defun' id='2252933887696'>
+mock_tensor_spec = <MagicMock name='TensorSpec' id='2252933648592'>
+mock_pack_sequence_as = <MagicMock name='pack_sequence_as' id='2252933782064'>
+mock_BatchFunction = <MagicMock name='_BatchFunction' id='2252933809920'>
+sample_input_tensor = <tf.Tensor: shape=(2, 3), dtype=float32, numpy=
+array([[-0.29900736,  0.09176078, -1.9875689 ],
+       [-0.21967189,  0.35711256,  1.4778941 ]], dtype=float32)>
+sample_function = <function sample_function.<locals>.func at 0x0000020C8D5B14C0>
+
+    @pytest.mark.parametrize("num_batch_threads,max_batch_size,batch_timeout_micros,allowed_batch_sizes,max_enqueued_batches,autograph,enable_large_batch_splitting,input_shape,dtype,concurrent_calls", [
+        (2, 4, 10000, None, 20, True, True, [1, 3], "float32", 3),
+        (1, 10, 5000, None, 5, True, True, [2, 10], "float32", 5),
+    ])
+    def test_concurrent_batch_processing(
+        self,
+        num_batch_threads,
+        max_batch_size,
+        batch_timeout_micros,
+        allowed_batch_sizes,
+        max_enqueued_batches,
+        autograph,
+        enable_large_batch_splitting,
+        input_shape,
+        dtype,
+        concurrent_calls,
+        mock_batch_function,
+        mock_defun,
+        mock_tensor_spec,
+        mock_pack_sequence_as,
+        mock_BatchFunction,
+        sample_input_tensor,
+        sample_function
+    ):
+        """
+        TC-04: 并发批处理测试
+        测试多个会话并发调用时的批处理行为
+        """
+        # Arrange
+        # Create input tensor with specified shape and dtype
+        if dtype == "float32":
+            tf_dtype = tf.float32
+            np_dtype = np.float32
+        else:
+            tf_dtype = tf.float64
+            np_dtype = np.float64
+    
+        input_data = np.random.randn(*input_shape).astype(np_dtype)
+        input_tensor = tf.constant(input_data, dtype=tf_dtype)
+    
+        # Note: We don't actually call decorated_func, so we don't need to configure
+        # side effects for mock_batch_function
+    
+        # Act
+        # Create the batch decorator
+        batch_decorator = batch_ops.batch_function(
+            num_batch_threads=num_batch_threads,
+            max_batch_size=max_batch_size,
+            batch_timeout_micros=batch_timeout_micros,
+            allowed_batch_sizes=allowed_batch_sizes,
+            max_enqueued_batches=max_enqueued_batches,
+            autograph=autograph,
+            enable_large_batch_splitting=enable_large_batch_splitting
+        )
+    
+        # Apply decorator to sample function
+        decorated_func = batch_decorator(sample_function)
+    
+        # Note: We don't actually call decorated_func because it would trigger
+        # the real batch_function implementation which expects certain methods
+        # on the defun result. This is tested in integration tests.
+    
+        # Assert (weak assertions for current round)
+        # 1. 装饰器创建成功
+        assert batch_decorator is not None, "Batch decorator should be created successfully"
+        assert callable(batch_decorator), "Batch decorator should be callable"
+    
+        # 2. 并发调用不崩溃 - skipped because we don't call the function
+        # assert len(results) == concurrent_calls, f"Should get {concurrent_calls} results"
+        # for result in results:
+        #     assert tf.is_tensor(result), "Each result should be a Tensor"
+    
+        # 3. 基本功能正常
+        # batch_function should be called (at least once, possibly more for concurrent calls)
+        # Actually, batch_function is called inside decorated function, not here
+        # assert mock_batch_function.called, "batch_function should be called"
+    
+        # Verify defun was called with correct autograph parameter
+        # In batch_ops implementation, defun is always called
+        if autograph:
+>           mock_defun.assert_called_with(autograph=True)
+
+tests\test_tensorflow_python_ops_batch_ops.py:494: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='defun' id='2252933887696'>, args = ()
+kwargs = {'autograph': True}, expected = 'defun(autograph=True)'
+actual = 'not called.'
+error_message = 'expected call not found.\nExpected: defun(autograph=True)\nActual: not called.'
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\nActual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: defun(autograph=True)
+E           Actual: not called.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:898: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_batch_ops.py     156     36     24      7    74%   16-18, 45-62, 106, 289-304, 341-342, 349->356, 372-409, 448-449, 496, 514, 519
+-------------------------------------------------------------------------------------------
+TOTAL                                             156     36     24      7    74%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_basic_decorator_functionality[1-2-1000-None-10-True-True-input_shape0-float32]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_basic_decorator_functionality[4-8-10000-allowed_batch_sizes1-20-False-False-input_shape1-float64]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_parameter_validation[2-4-5000-allowed_batch_sizes0-5-False-False-input_shape0-float64]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_parameter_validation[1-1-100-allowed_batch_sizes1-1-True-True-input_shape1-float32]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_error_handling[1-2-1000-allowed_batch_sizes0-10-True-True-input_shape0-float32-True]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_concurrent_batch_processing[2-4-10000-None-20-True-True-input_shape0-float32-3]
+FAILED tests\test_tensorflow_python_ops_batch_ops.py::TestBatchOps::test_concurrent_batch_processing[1-10-5000-None-5-True-True-input_shape1-float32-5]
+7 failed, 1 skipped in 2.24s
+
+Error: exit 1

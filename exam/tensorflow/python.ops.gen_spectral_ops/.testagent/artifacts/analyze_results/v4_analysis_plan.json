@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_batch_fft_dimension_preservation[dtype0-shape0-batch_fft]",
+      "block_id": "CASE_03",
+      "error_type": "NotFoundError",
+      "action": "fix_dependency",
+      "note": "BatchFFT操作未注册：需要检查TensorFlow版本或使用mock替代"
+    },
+    {
+      "test": "test_fft_length_padding_behavior[dtype0-shape0-16]",
+      "block_id": "CASE_05",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "fft_length参数格式错误：应为形状[1]的张量，当前为标量"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_batch_fft_dimension_preservation[dtype1-shape1-batch_fft2d]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

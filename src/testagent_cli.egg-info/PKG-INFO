@@ -1,0 +1,317 @@
+Metadata-Version: 2.4
+Name: testagent-cli
+Version: 0.1.0
+Summary: A controllable CLI agent for C operator test generation
+Author: TestAgent Authors
+Requires-Python: <3.11,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: typer<0.13,>=0.9.0
+Requires-Dist: click<8.1,>=8.0.0
+Requires-Dist: openai<2,>=1.0.0
+Requires-Dist: requests<3,>=2.31.0
+Requires-Dist: rich<14,>=13.7.0
+
+# TestAgent-CLI
+
+一个可控的 CLI Agent，用于在固定的、人工批准的工作流下为 Python 算子/API（PyTorch、TensorFlow 等）生成和运行测试用例。
+
+## ✨ 核心特性
+
+### 双模式操作
+- **🔧 Tool Mode (Chat)**: 临时查询和文件操作
+- **🔄 Workflow Mode**: 7阶段智能测试生成流程
+
+### Workflow 亮点
+- **7 阶段流程**: 算子理解 → 需求生成 → 测试计划 → 代码生成 → 执行测试 → 结果分析 → 报告生成
+- **智能反馈**: 支持自然语言反馈和特殊命令（`/regenerate`, `/goto`, `/retry`）
+- **状态持久化**: 支持中断恢复，所有产物版本化管理
+- **自定义执行**: 可配置 pytest 命令、环境变量与依赖安装
+
+---
+
+## 🚀 快速开始
+
+### 安装
+
+```bash
+cd TestAgent-CLI
+pip install -e .
+```
+
+### 基础使用
+
+#### Chat 模式（临时任务）
+
+```bash
+testagent chat --workspace ~/my-project
+```
+
+#### Workflow 模式（完整测试生成）
+
+```bash
+# 交互式模式（推荐）
+testagent run -f torch.nn.functional.relu --workspace ~/my-project
+
+# 全自动模式
+testagent run -f torch.add --mode full-auto
+
+# 全自动 + 多轮迭代优化（3 轮）
+testagent run -f torch.add --mode full-auto --epoch 3
+
+# 指定项目根目录（当与 workspace 不同时）
+testagent run -f torch.add --workspace ~/my-project --project-root ~/my-project/src
+
+# 恢复中断的工作流
+testagent run -f torch.add --resume
+```
+
+---
+
+## 📖 文档
+
+- **[WORKFLOW_GUIDE.md](./WORKFLOW_GUIDE.md)** - 完整使用指南（推荐）
+  - Workflow 模式详解
+  - 配置自定义构建命令
+  - 测试与调试
+  - 扩展与定制
+
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - 快速参考卡片
+  - 常用命令速查
+  - Workflow 交互命令
+  - 配置示例
+
+- **[USAGE.md](./USAGE.md)** - Chat 模式使用指南
+
+---
+
+## 🎯  Workflow 7 阶段
+
+```
+╔═══════════════════════════════════════════════════╗
+║   TestAgent Workflow - torch.add (python)        ║
+╠═══════════════════════════════════════════════════╣
+║ [●] 1. Understand Function                       ║
+║ [●] 2. Generate Requirements                     ║
+║ [▶] 3. Design Test Plan        ← Current Stage   ║
+║ [ ] 4. Generate Code                             ║
+║ [ ] 5. Execute Tests                             ║
+║ [ ] 6. Analyze Results                           ║
+║ [ ] 7. Generate Report                           ║
+╚═══════════════════════════════════════════════════╝
+```
+
+每个阶段完成后可以：
+- `Enter` - 继续
+- `/regenerate` - 重新生成
+- `/goto <stage>` - 跳转
+- `自然语言反馈` - 智能理解
+
+---
+
+## 🔧 配置自定义构建命令
+
+需要调整 pytest 命令或环境变量时，编辑 `~/.testagent_cli/config.json`：
+
+```json
+{
+  "api": {
+    "model": "deepseek-chat",
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "your-api-key",
+    "temperature": 0.2,
+    "max_tokens": 4096
+  },
+  "preferences": {
+    "auto_approve": false
+  },
+  "project": {
+    "root": ".",
+    "test_file_template": "tests/test_{target_slug}.py",
+    "build_dir": "",
+    "output_binary_template": ""
+  },
+  "commands": {
+    "compile": "",
+    "install": "",
+    "run_test": "PYTHONPATH={project_root}:$PYTHONPATH pytest -q {test_file_path}"
+  }
+}
+```
+
+**可用变量**:
+- `{target}` / `{target_slug}` - 目标函数 FQN 及其 slug
+- `{project_root}` - 项目根目录
+- `{test_file_path}` - 生成的 pytest 文件路径
+
+详见 [WORKFLOW_GUIDE.md - 配置自定义构建命令](./WORKFLOW_GUIDE.md#配置自定义构建命令)
+
+---
+
+## 📋 命令参考
+
+### 配置管理
+
+```bash
+testagent config list              # 查看所有配置
+testagent config set KEY VALUE     # 设置配置项
+testagent config get KEY           # 获取配置项
+```
+
+### 会话管理
+
+```bash
+testagent sessions list            # 列出所有会话
+testagent sessions clear ID        # 清除指定会话
+```
+
+### Chat 模式
+
+```bash
+testagent chat [--workspace DIR] [--auto-approve]
+```
+
+### Workflow 模式
+
+```bash
+testagent run -f package.module:function \
+  [--workspace DIR] \
+  [--project-root DIR] \
+  [--mode interactive|full-auto] \
+  [--epoch N] \
+  [--resume]
+```
+
+**参数说明**：
+- `-f, --func`: 目标函数全限定名（必需）
+- `--workspace`: 工作目录，默认为当前目录
+- `--project-root`: 项目根目录，默认与 workspace 相同
+- `--mode`: 运行模式，`interactive` 或 `full-auto`，默认 `interactive`
+- `--epoch`: 全自动模式下的迭代轮数（在 analyze_results 后回到 generate_code 迭代），默认 1
+- `--resume`: 恢复中断的工作流
+
+---
+
+## 🛠️ 扩展与定制
+
+### 添加新 Tool
+
+1. 在 `src/testagent_cli/tools/builtin.py` 创建 Tool 类
+2. 在 `src/testagent_cli/tools/runner.py` 注册
+3. 在 Stage 的 `tools` 列表中使用
+
+### 修改 Stage Prompt
+
+编辑对应的 Stage 文件（例如 `src/testagent_cli/workflow/stages/requirements.py`），修改 `_get_prompt_template()` 方法。
+
+### 添加新 Stage
+
+1. 创建 `src/testagent_cli/workflow/stages/your_stage.py`
+2. 在 `stages/__init__.py` 中注册
+3. 在 `workflow/engine.py` 的 `STAGE_NAMES` 中添加
+
+详见 [WORKFLOW_GUIDE.md - 扩展与定制](./WORKFLOW_GUIDE.md#扩展与定制)
+
+---
+
+## 📂 项目结构
+
+```
+TestAgent-CLI/
+├── src/testagent_cli/
+│   ├── cli.py                    # CLI 入口
+│   ├── config.py                 # 配置管理
+│   ├── llm.py                    # LLM 客户端
+│   ├── session.py                # 会话管理
+│   ├── chat.py                   # Chat 模式
+│   ├── tools/                    # 工具系统
+│   │   ├── base.py
+│   │   ├── builtin.py
+│   │   └── runner.py
+│   └── workflow/                 # Workflow 引擎（新）
+│       ├── engine.py             # 主控制器
+│       ├── state.py              # 状态管理
+│       ├── stage.py              # Stage 基类
+│       ├── supervisor.py         # 反馈理解
+│       ├── display.py            # 进度显示
+│       └── stages/               # 各个阶段
+│           ├── understand.py
+│           ├── requirements.py
+│           ├── planning.py
+│           ├── codegen.py
+│           ├── execution.py
+│           ├── analysis.py
+│           └── report.py
+├── WORKFLOW_GUIDE.md             # 完整使用指南
+├── QUICK_REFERENCE.md            # 快速参考
+└── USAGE.md                      # Chat模式指南
+```
+
+---
+
+## 🧪 测试
+
+```bash
+# 测试核心框架
+python test_milestone1.py
+
+# 测试自定义命令
+python test_custom_commands.py
+```
+
+---
+
+## 📝 示例
+
+### PyTorch 算子全自动工作流
+
+```bash
+testagent run -f torch.add --workspace ~/my-project --mode full-auto
+```
+
+自动生成 pytest 用例、执行并输出测试报告。
+
+### 带自定义 pytest 命令的工作流
+
+```bash
+testagent config set commands.run_test "PYTHONPATH={project_root}:$PYTHONPATH pytest -q {test_file_path}"
+testagent run -f torch.nn.functional.relu --workspace ~/my-project --mode interactive
+```
+
+使用自定义命令运行生成的测试（可在虚拟环境或 CI 中复用）。
+
+### Chat 模式快速检查
+
+```bash
+testagent chat --workspace ~/my-project --auto-approve
+```
+
+临时查看/分析文件，或生成小片段测试代码。
+
+---
+
+## 🤝 贡献
+
+欢迎贡献！主要的扩展点：
+- 新的 Tool（文件操作、分析工具等）
+- 新的 Workflow Stage（性能测试、覆盖率分析等）
+- 改进的 Prompt 模板
+- 更好的错误处理
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+## 🙏 致谢
+
+灵感来源：
+- **CliAgent** - Flow-first 设计
+- **Cougar-CLI** - Config/Session 管理
+- **mini-kode** - 权限化工具执行
+
+---
+
+**快速开始**: 查看 [WORKFLOW_GUIDE.md](./WORKFLOW_GUIDE.md) 了解详细用法！

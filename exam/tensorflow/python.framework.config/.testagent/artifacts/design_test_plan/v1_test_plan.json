@@ -1,0 +1,228 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.framework.config",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_framework_config.py",
+    "all_pattern": "tests/test_tensorflow_python_framework_config_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_framework_config_g1.py",
+      "G2": "tests/test_tensorflow_python_framework_config_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "设备与线程配置",
+      "entrypoints": [
+        "list_physical_devices",
+        "get_intra_op_parallelism_threads",
+        "set_intra_op_parallelism_threads"
+      ],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "核心设备查询和线程配置功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "内存与实验功能",
+      "entrypoints": [
+        "get_memory_info",
+        "set_memory_growth",
+        "enable_tensor_float_32_execution"
+      ],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_06"],
+      "note": "内存管理和实验性功能控制"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "设备列表查询基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device_type": "CPU",
+          "mock_devices": [{"name": "/physical_device:CPU:0", "device_type": "CPU"}]
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_list", "has_device_type_field", "device_count_match"],
+        "strong": ["device_details_complete", "ordering_consistent"]
+      },
+      "oracle": "mock_device_list",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "线程配置设置与查询一致性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "thread_count": 4,
+          "config_type": "intra_op"
+        }
+      ],
+      "asserts": {
+        "weak": ["set_succeeds", "get_returns_set_value", "no_exception"],
+        "strong": ["threads_actually_used", "performance_impact"]
+      },
+      "oracle": "thread_config_api",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "内存增长配置基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device": "GPU:0",
+          "enable_growth": true,
+          "mock_gpu": true
+        }
+      ],
+      "asserts": {
+        "weak": ["set_succeeds", "no_exception", "config_applied"],
+        "strong": ["memory_behavior_changed", "allocation_impact"]
+      },
+      "oracle": "memory_growth_api",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "TensorFloat-32开关状态控制",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "enable_tf32": false,
+          "mock_gpu": true
+        }
+      ],
+      "asserts": {
+        "weak": ["disable_succeeds", "get_returns_false", "no_exception"],
+        "strong": ["precision_actually_changed", "performance_impact"]
+      },
+      "oracle": "tf32_config_api",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "无效设备类型异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device_type": "INVALID",
+          "expected_exception": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_expected_exception", "exception_type_match", "no_side_effects"],
+        "strong": ["error_message_contains", "state_preserved"]
+      },
+      "oracle": "exception_handling",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "device_type": "GPU",
+        "mock_devices": [
+          {"name": "/physical_device:GPU:0", "device_type": "GPU"},
+          {"name": "/physical_device:GPU:1", "device_type": "GPU"}
+        ]
+      },
+      "note": "多GPU设备查询"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "thread_count": 8,
+        "config_type": "inter_op"
+      },
+      "note": "inter_op线程配置"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "device": "GPU:1",
+        "enable_growth": false,
+        "mock_gpu": true
+      },
+      "note": "禁用内存增长"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "enable_tf32": true,
+        "mock_gpu": true
+      },
+      "note": "启用TensorFloat-32"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": ["CASE_06"]
+}

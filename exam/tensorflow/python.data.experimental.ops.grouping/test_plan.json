@@ -1,0 +1,414 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.data.experimental.ops.grouping",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_data_experimental_ops_grouping.py",
+    "all_pattern": "tests/test_tensorflow_python_data_experimental_ops_grouping_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_data_experimental_ops_grouping_g1.py",
+      "G2": "tests/test_tensorflow_python_data_experimental_ops_grouping_g2.py",
+      "G3": "tests/test_tensorflow_python_data_experimental_ops_grouping_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "group_by_reducer 核心功能",
+      "entrypoints": ["group_by_reducer"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试分组归约基本功能与参数验证"
+    },
+    {
+      "group_id": "G2",
+      "title": "bucket_by_sequence_length 序列分桶",
+      "entrypoints": ["bucket_by_sequence_length"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试序列长度分桶、填充和批处理"
+    },
+    {
+      "group_id": "G3",
+      "title": "group_by_window 与异常处理",
+      "entrypoints": ["group_by_window"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11", "CASE_12"],
+      "note": "测试窗口分组（已弃用）和通用异常场景"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "group_by_reducer 基本分组归约",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "key_func_type": "simple_mod",
+          "reducer_type": "sum_reducer",
+          "dataset_size": 10,
+          "num_keys": 3
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "correct_group_count", "reducer_applied"],
+        "strong": ["exact_output_values", "memory_efficiency", "performance_baseline"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "group_by_reducer 参数验证异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "invalid_key_func_type": "wrong_return_type",
+          "expected_exception": "InvalidArgumentError"
+        },
+        {
+          "invalid_key_func_type": "non_scalar_return",
+          "expected_exception": "InvalidArgumentError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "error_message_contains"],
+        "strong": ["exception_details", "stack_trace_validation"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "group_by_reducer 空数据集处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dataset_size": 0,
+          "key_func_type": "simple_mod",
+          "reducer_type": "sum_reducer"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "empty_output"],
+        "strong": ["no_crash", "resource_cleanup"]
+      },
+      "oracle": "empty_dataset_behavior",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "group_by_reducer 复杂嵌套结构",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dataset_type": "nested_dict",
+          "key_func_type": "extract_field",
+          "reducer_type": "concat_reducer"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "structure_preserved"],
+        "strong": ["nested_structure_correct", "type_preservation"]
+      },
+      "oracle": "structure_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "bucket_by_sequence_length 基本分桶",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "bucket_boundaries": [5, 10, 15],
+          "bucket_batch_sizes": [2, 2, 2, 2],
+          "padding_values": null,
+          "dataset_size": 20
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "batch_sizes_correct", "sequences_bucketed"],
+        "strong": ["padding_correct", "order_preserved", "no_data_loss"]
+      },
+      "oracle": "manual_bucket_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 110,
+      "max_params": 9,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "bucket_by_sequence_length 参数验证异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "invalid_scenario": "mismatched_batch_sizes",
+          "expected_exception": "InvalidArgumentError"
+        },
+        {
+          "invalid_scenario": "non_increasing_boundaries",
+          "expected_exception": "InvalidArgumentError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "error_message_contains"],
+        "strong": ["exception_details", "parameter_validation_complete"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "bucket_by_sequence_length 填充选项",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "padding_values": "zeros",
+          "pad_to_bucket_boundary": false,
+          "dataset_type": "variable_length"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "padding_applied", "batch_shape_consistent"],
+        "strong": ["padding_values_correct", "no_overflow", "memory_efficient"]
+      },
+      "oracle": "padding_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 95,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "bucket_by_sequence_length 边界序列",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "edge_scenario": "very_long_sequences",
+          "boundary_handling": "largest_bucket"
+        },
+        {
+          "edge_scenario": "zero_length_sequences",
+          "boundary_handling": "smallest_bucket"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "no_crash", "handles_edge_case"],
+        "strong": ["correct_bucket_assignment", "no_data_loss", "performance_stable"]
+      },
+      "oracle": "edge_case_handling",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "group_by_window 基本功能与弃用警告",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "key_func_type": "simple_mod",
+          "reduce_func_type": "take_first",
+          "window_size": 3,
+          "dataset_size": 12
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_callable", "dataset_interface", "deprecation_warning", "window_grouping"],
+        "strong": ["exact_window_output", "warning_details", "alternative_suggestion"]
+      },
+      "oracle": "deprecated_api_behavior",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "group_by_window 参数互斥验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "invalid_scenario": "both_window_size_and_func",
+          "expected_exception": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "error_message_contains"],
+        "strong": ["mutual_exclusion_clear", "api_documentation_aligned"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "通用异常 - 无效数据集输入",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "function": "group_by_reducer",
+          "invalid_dataset": "non_dataset_object"
+        },
+        {
+          "function": "bucket_by_sequence_length",
+          "invalid_dataset": "non_dataset_object"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "meaningful_error"],
+        "strong": ["error_context", "user_guidance"]
+      },
+      "oracle": "type_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-12",
+      "block_id": "CASE_12",
+      "group_id": "G3",
+      "name": "通用异常 - 函数包装器错误",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "error_scenario": "key_func_raises_exception",
+          "expected_behavior": "exception_propagated"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_propagated", "wrapped_correctly", "clean_error_handling"],
+        "strong": ["stack_trace_preserved", "no_resource_leak"]
+      },
+      "oracle": "error_propagation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "key_func_type": "complex_hash",
+        "reducer_type": "average_reducer",
+        "dataset_size": 100,
+        "num_keys": 10
+      },
+      "note": "扩展测试更大数据集和复杂键函数"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "bucket_boundaries": [10, 20, 30, 40],
+        "bucket_batch_sizes": [4, 4, 4, 4, 4],
+        "padding_values": "custom",
+        "dataset_size": 50
+      },
+      "note": "扩展测试更多桶和自定义填充"
+    },
+    {
+      "base_block_id": "CASE_09",
+      "priority": "Medium",
+      "params": {
+        "key_func_type": "extract_numeric",
+        "reduce_func_type": "concatenate",
+        "window_size_func": "dynamic_window",
+        "dataset_size": 24
+      },
+      "note": "扩展测试动态窗口大小函数"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_06", "CASE_09"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_07", "CASE_08", "CASE_10", "CASE_11", "CASE_12"]
+}

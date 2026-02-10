@@ -1,0 +1,75 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 13,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedArrayOps.test_boolean_mask_basic[data_shape0-mask_shape0-expected_shape0]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "ragged_tensor.constant不存在，应使用正确的方法创建RaggedTensor"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_tile_replication[input_shape0-multiples0-expected_shape0]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "ragged_tensor.constant不存在，应使用正确的方法创建RaggedTensor"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_dimension_expansion[input_shape0-0-1]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "ragged_tensor.constant不存在，应使用正确的方法创建RaggedTensor"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedArrayOps.test_boolean_mask_basic[data_shape1-mask_shape1-expected_shape1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_boolean_mask_basic[data_shape2-mask_shape2-expected_shape2]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_tile_replication[input_shape1-multiples1-expected_shape1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_tile_replication[input_shape2-multiples2-expected_shape2]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_dimension_expansion[input_shape1--1-1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_dimension_expansion[input_shape2-1-1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_dimension_expansion[input_shape3--2-1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_boolean_mask_invalid_mask_shape",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_tile_invalid_multiples_length",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_invalid_axis",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

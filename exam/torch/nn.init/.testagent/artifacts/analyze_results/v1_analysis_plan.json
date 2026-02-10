@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 1,
+  "collection_errors": true,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_init_g1.py",
+      "block_id": "HEADER",
+      "error_type": "FileNotFoundError",
+      "action": "fix_dependency",
+      "note": "测试文件缺失，需要创建G1组测试文件"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,75 @@
+=== Run Tests ===
+.....FF                                                                  [100%]
+=================================== FAILURES ===================================
+_______________ TestSpectralNorm.test_non_positive_eps_exception _______________
+
+self = <test_torch_nn_utils_spectral_norm.TestSpectralNorm object at 0x136cb5930>
+
+    def test_non_positive_eps_exception(self):
+        """TC-11: 非正eps值异常处理"""
+        # 创建线性层
+        linear = nn.Linear(in_features=10, out_features=20)
+    
+        # 测试 eps = 0 的情况
+>       with pytest.raises(ValueError) as exc_info:
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_torch_nn_utils_spectral_norm.py:279: Failed
+______________ TestSpectralNorm.test_invalid_dim_index_exception _______________
+
+self = <test_torch_nn_utils_spectral_norm.TestSpectralNorm object at 0x136cb5c30>
+
+    def test_invalid_dim_index_exception(self):
+        """TC-12: 无效dim索引异常处理"""
+        # 创建线性层（权重形状为 [20, 10]，即2维）
+        linear = nn.Linear(in_features=10, out_features=20)
+    
+        # 测试 dim 超出权重张量维度范围的情况
+        # 线性层权重是2维张量，有效dim索引是0或1
+        with pytest.raises(IndexError) as exc_info:
+>           spectral_norm(
+                module=linear,
+                name='weight',
+                n_power_iterations=1,
+                eps=1e-12,
+                dim=2  # 无效的dim索引，应该抛出 IndexError
+            )
+
+tests/test_torch_nn_utils_spectral_norm.py:331: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/spectral_norm.py:282: in spectral_norm
+    SpectralNorm.apply(module, name, n_power_iterations, dim, eps)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/spectral_norm.py:133: in apply
+    weight_mat = fn.reshape_weight_to_matrix(weight)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.nn.utils.spectral_norm.SpectralNorm object at 0x136d47c70>
+weight = Parameter containing:
+tensor([[ 0.2418,  0.2625, -0.0741,  0.2905, -0.0693,  0.0638, -0.1540,  0.1857,
+          0.278...0.0559, -0.0942,  0.2021,  0.2718, -0.0313, -0.0708,  0.0046, -0.0189,
+          0.0760,  0.0886]], requires_grad=True)
+
+    def reshape_weight_to_matrix(self, weight: torch.Tensor) -> torch.Tensor:
+        weight_mat = weight
+        if self.dim != 0:
+            # permute dim to front
+>           weight_mat = weight_mat.permute(self.dim,
+                                            *[d for d in range(weight_mat.dim()) if d != self.dim])
+E           RuntimeError: permute(sparse_coo): number of dimensions in the tensor input does not match the length of the desired ordering of dimensions i.e. input.dim() = 2 is not equal to len(dims) = 3
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/spectral_norm.py:40: RuntimeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/test_torch_nn_utils_spectral_norm.py     111     23      2      1    79%   290-318, 341-366, 373
+----------------------------------------------------------------------------------------
+TOTAL                                          111     23      2      1    79%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_non_positive_eps_exception
+FAILED tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_invalid_dim_index_exception
+2 failed, 5 passed in 0.55s
+
+Error: exit 1

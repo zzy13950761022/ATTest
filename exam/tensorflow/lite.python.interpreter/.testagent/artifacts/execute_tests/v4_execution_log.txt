@@ -1,0 +1,127 @@
+=== Run Tests ===
+F....                                                                    [100%]
+================================== FAILURES ===================================
+__ test_signature_runner_basic_functionality[signed_model-serving_default-1] __
+
+model_type = 'signed_model', signature_key = 'serving_default', num_threads = 1
+signed_model_path = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpmv6bh2ba.tflite'
+mock_interpreter_with_signatures = (<Mock name='Interpreter()' id='1369581549648'>, <Mock name='Interpreter().get_signature_runner()' id='1369581550320'>)
+
+    @pytest.mark.parametrize("model_type,signature_key,num_threads", [
+        ("signed_model", "serving_default", 1),
+    ])
+    def test_signature_runner_basic_functionality(
+        model_type, signature_key, num_threads,
+        signed_model_path, mock_interpreter_with_signatures
+    ):
+        """
+        Test basic functionality of signature runners.
+    
+        Weak assertions:
+        - signature_runner_created: SignatureRunner instance can be created
+        - signatures_listed: get_signature_list() returns valid signature list
+        - inputs_outputs_accessible: Can get input/output details from signature runner
+        """
+        # Skip if tensorflow not available
+        if not TFLITE_AVAILABLE:
+            pytest.skip("TensorFlow Lite not available")
+    
+        try:
+            # Create interpreter - this may fail if model is invalid
+            interpreter = Interpreter(
+                model_path=signed_model_path,
+                num_threads=num_threads
+            )
+    
+            # Get signature list
+            signature_list = interpreter.get_signature_list()
+    
+            # Weak assertion: signatures_listed
+>           validate_signature_list(signature_list)
+
+tests\test_tensorflow_lite_python_interpreter_g2.py:214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+signatures = {'serving_default': {'inputs': ['input_1'], 'outputs': ['output_1', 'output_2']}}
+
+    def validate_signature_list(signatures):
+        """Validate signature list structure."""
+>       assert isinstance(signatures, list), "Signature list should be a list"
+E       AssertionError: Signature list should be a list
+E       assert False
+E        +  where False = isinstance({'serving_default': {'inputs': ['input_1'], 'outputs': ['output_1', 'output_2']}}, list)
+
+tests\test_tensorflow_lite_python_interpreter_g2.py:167: AssertionError
+---------------------------- Captured stderr setup ----------------------------
+2026-01-18 11:10:12.367553: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-01-18 11:10:12.475034: W tensorflow/python/util/util.cc:368] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.
+2026-01-18 11:10:12.634788: W tensorflow/compiler/mlir/lite/python/tf_tfl_flatbuffer_helpers.cc:357] Ignored output_format.
+2026-01-18 11:10:12.634865: W tensorflow/compiler/mlir/lite/python/tf_tfl_flatbuffer_helpers.cc:360] Ignored drop_control_dependency.
+2026-01-18 11:10:12.635811: I tensorflow/cc/saved_model/reader.cc:43] Reading SavedModel from: C:\Users\ADMINI~1\AppData\Local\Temp\tmp1u_yjv0t
+2026-01-18 11:10:12.637203: I tensorflow/cc/saved_model/reader.cc:78] Reading meta graph with tags { serve }
+2026-01-18 11:10:12.637214: I tensorflow/cc/saved_model/reader.cc:119] Reading SavedModel debug info (if present) from: C:\Users\ADMINI~1\AppData\Local\Temp\tmp1u_yjv0t
+2026-01-18 11:10:12.640118: I tensorflow/cc/saved_model/loader.cc:228] Restoring SavedModel bundle.
+2026-01-18 11:10:12.661070: I tensorflow/cc/saved_model/loader.cc:212] Running initialization op on SavedModel bundle at path: C:\Users\ADMINI~1\AppData\Local\Temp\tmp1u_yjv0t
+2026-01-18 11:10:12.663881: I tensorflow/cc/saved_model/loader.cc:301] SavedModel load for tags { serve }; Status: success: OK. Took 28133 microseconds.
+2026-01-18 11:10:12.673647: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:237] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+============================== warnings summary ===============================
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\meta_graph.py:818: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    distutils_version.LooseVersion(tf_version)
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\meta_graph.py:819: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    >= distutils_version.LooseVersion("1.9"))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:5890: DeprecationWarning: numElems is deprecated.
+    operatorCodes = builder.EndVector(len(self.operatorCodes))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:10306: DeprecationWarning: numElems is deprecated.
+    tensors = builder.EndVector(len(self.tensors))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:10330: DeprecationWarning: numElems is deprecated.
+    operators = builder.EndVector(len(self.operators))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:5898: DeprecationWarning: numElems is deprecated.
+    subgraphs = builder.EndVector(len(self.subgraphs))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:5908: DeprecationWarning: numElems is deprecated.
+    buffers = builder.EndVector(len(self.buffers))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:5924: DeprecationWarning: numElems is deprecated.
+    metadata = builder.EndVector(len(self.metadata))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:8976: DeprecationWarning: numElems is deprecated.
+    inputs = builder.EndVector(len(self.inputs))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:8984: DeprecationWarning: numElems is deprecated.
+    outputs = builder.EndVector(len(self.outputs))
+
+exam/tensorflow/lite.python.interpreter/tests/test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\lite\python\schema_py_generated.py:5932: DeprecationWarning: numElems is deprecated.
+    signatureDefs = builder.EndVector(len(self.signatureDefs))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests\test_tensorflow_lite_python_interpreter_g2.py     202    129     36      2    32%   17-54, 87-88, 101-103, 107-115, 131-132, 161-163, 168-170, 174-179, 201, 217-328, 334-361, 401, 405
+-------------------------------------------------------------------------------------------------
+TOTAL                                                   202    129     36      2    32%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+1 failed, 4 passed, 11 warnings in 1.92s
+
+Error: exit 1

@@ -1,0 +1,460 @@
+import math
+import pytest
+import torch
+import torch.nn.utils.rnn as rnn_utils
+from typing import List, Tuple
+
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.utils.rnn as rnn_utils
+from typing import List, Tuple
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+
+# Helper functions
+def generate_padded_sequence(
+    batch_size: int,
+    max_len: int,
+    feature_dim: int = 3,
+    dtype: torch.dtype = torch.float32,
+    device: str = "cpu",
+    batch_first: bool = False
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Generate a padded sequence and corresponding lengths."""
+    lengths = torch.randint(1, max_len + 1, (batch_size,), device=device)
+    lengths = lengths.sort(descending=True).values
+    
+    if batch_first:
+        padded = torch.zeros(batch_size, max_len, feature_dim, dtype=dtype, device=device)
+        for i, length in enumerate(lengths):
+            padded[i, :length] = torch.randn(length, feature_dim, dtype=dtype, device=device)
+    else:
+        padded = torch.zeros(max_len, batch_size, feature_dim, dtype=dtype, device=device)
+        for i, length in enumerate(lengths):
+            padded[:length, i] = torch.randn(length, feature_dim, dtype=dtype, device=device)
+    
+    return padded, lengths
+
+def generate_sequence_list(
+    num_sequences: int,
+    max_len: int,
+    feature_dim: int = 3,
+    dtype: torch.dtype = torch.float32,
+    device: str = "cpu"
+) -> List[torch.Tensor]:
+    """Generate a list of variable-length sequences."""
+    sequences = []
+    for _ in range(num_sequences):
+        length = torch.randint(1, max_len + 1, (1,)).item()
+        seq = torch.randn(length, feature_dim, dtype=dtype, device=device)
+        sequences.append(seq)
+    return sequences
+
+# Fixtures
+@pytest.fixture
+def device_cpu():
+    """CPU device fixture."""
+    return "cpu"
+
+@pytest.fixture(params=[torch.float32, torch.float64])
+def dtype_fixture(request):
+    """Dtype fixture for parameterized tests."""
+    return request.param
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("dtype", [torch.float32])
+@pytest.mark.parametrize("device", ["cpu"])
+@pytest.mark.parametrize("batch_first", [False])
+@pytest.mark.parametrize("enforce_sorted", [True])
+def test_pack_padded_sequence_basic(
+    dtype: torch.dtype,
+    device: str,
+    batch_first: bool,
+    enforce_sorted: bool
+):
+    """TC-01: pack_padded_sequence基本功能"""
+    # Test parameters from param_matrix
+    batch_size = 3
+    max_len = 5
+    padding_value = 0.0
+    feature_dim = 3
+    
+    # Generate test data
+    padded, lengths = generate_padded_sequence(
+        batch_size=batch_size,
+        max_len=max_len,
+        feature_dim=feature_dim,
+        dtype=dtype,
+        device=device,
+        batch_first=batch_first
+    )
+    
+    # Call the function
+    packed = rnn_utils.pack_padded_sequence(
+        padded,
+        lengths,
+        batch_first=batch_first,
+        enforce_sorted=enforce_sorted
+    )
+    
+    # Weak assertions (epoch 1)
+    # 1. output_type: Should return PackedSequence
+    assert isinstance(packed, rnn_utils.PackedSequence), \
+        f"Expected PackedSequence, got {type(packed)}"
+    
+    # 2. shape_consistency: data shape should be consistent
+    total_elements = lengths.sum().item()
+    expected_data_shape = (total_elements, feature_dim)
+    assert packed.data.shape == expected_data_shape, \
+        f"Expected data shape {expected_data_shape}, got {packed.data.shape}"
+    
+    # 3. device_match: data device should match input
+    assert packed.data.device.type == device, \
+        f"Expected device {device}, got {packed.data.device.type}"
+    
+    # 4. dtype_match: data dtype should match input
+    assert packed.data.dtype == dtype, \
+        f"Expected dtype {dtype}, got {packed.data.dtype}"
+    
+    # 5. lengths_preserved: batch_sizes should sum to total length
+    assert packed.batch_sizes.sum().item() == total_elements, \
+        f"batch_sizes sum {packed.batch_sizes.sum().item()} != total elements {total_elements}"
+    
+    # Additional weak assertions from requirements
+    # sorted_indices and unsorted_indices should be present as attributes
+    assert hasattr(packed, 'sorted_indices'), "PackedSequence should have sorted_indices attribute"
+    assert hasattr(packed, 'unsorted_indices'), "PackedSequence should have unsorted_indices attribute"
+    
+    # Check sorted_indices behavior based on enforce_sorted
+    if enforce_sorted:
+        # When enforce_sorted=True, sorted_indices should be None
+        # (as per the implementation in pack_padded_sequence)
+        assert packed.sorted_indices is None, \
+            f"When enforce_sorted=True, sorted_indices should be None, got {packed.sorted_indices}"
+    else:
+        # When enforce_sorted=False, sorted_indices should be a tensor
+        assert packed.sorted_indices is not None, \
+            "When enforce_sorted=False, sorted_indices should not be None"
+        assert isinstance(packed.sorted_indices, torch.Tensor), \
+            f"sorted_indices should be torch.Tensor, got {type(packed.sorted_indices)}"
+        assert packed.sorted_indices.dtype == torch.int64, \
+            f"sorted_indices should be int64, got {packed.sorted_indices.dtype}"
+    
+    # Check unsorted_indices (should be None when enforce_sorted=True)
+    if enforce_sorted:
+        assert packed.unsorted_indices is None, \
+            f"When enforce_sorted=True, unsorted_indices should be None, got {packed.unsorted_indices}"
+    else:
+        assert packed.unsorted_indices is not None, \
+            "When enforce_sorted=False, unsorted_indices should not be None"
+        assert isinstance(packed.unsorted_indices, torch.Tensor), \
+            f"unsorted_indices should be torch.Tensor, got {type(packed.unsorted_indices)}"
+        assert packed.unsorted_indices.dtype == torch.int64, \
+            f"unsorted_indices should be int64, got {packed.unsorted_indices.dtype}"
+    
+    # batch_sizes should be on CPU
+    assert packed.batch_sizes.device.type == 'cpu', \
+        f"batch_sizes should be on CPU, got {packed.batch_sizes.device.type}"
+    
+    # Verify that input tensor is not modified
+    original_sum = padded.sum().item()
+    # Create a fresh padded tensor for comparison
+    padded_copy = padded.clone()
+    # The function shouldn't modify input
+    # (We can't directly assert this without mocking, but we can check consistency)
+    
+    # Verify behavior when enforce_sorted=True
+    if enforce_sorted:
+        # When enforce_sorted=True, the input should already be sorted
+        # and no sorting indices are needed
+        pass
+    else:
+        # When enforce_sorted=False, sorted_indices should contain the sorting order
+        # and unsorted_indices should contain the inverse
+        assert packed.sorted_indices is not None
+        assert packed.unsorted_indices is not None
+        # Verify that sorted_indices and unsorted_indices are inverses
+        # (This is a stronger assertion that might be added in later rounds)
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("dtype", [torch.float32])
+@pytest.mark.parametrize("device", ["cpu"])
+@pytest.mark.parametrize("batch_first", [False])
+def test_pad_packed_sequence_inverse(
+    dtype: torch.dtype,
+    device: str,
+    batch_first: bool
+):
+    """TC-02: pad_packed_sequence逆操作"""
+    # Test parameters from param_matrix
+    padding_value = 0.0
+    total_length = None
+    batch_size = 3
+    max_len = 5
+    feature_dim = 3
+    
+    # Generate test data and pack it
+    padded, lengths = generate_padded_sequence(
+        batch_size=batch_size,
+        max_len=max_len,
+        feature_dim=feature_dim,
+        dtype=dtype,
+        device=device,
+        batch_first=batch_first
+    )
+    
+    # First pack the sequence
+    packed = rnn_utils.pack_padded_sequence(
+        padded,
+        lengths,
+        batch_first=batch_first,
+        enforce_sorted=True
+    )
+    
+    # Now pad it back
+    padded_output, output_lengths = rnn_utils.pad_packed_sequence(
+        packed,
+        batch_first=batch_first,
+        padding_value=padding_value,
+        total_length=total_length
+    )
+    
+    # Weak assertions (epoch 1)
+    # 1. output_shape: Should match original shape
+    if batch_first:
+        expected_shape = (batch_size, max_len, feature_dim)
+    else:
+        expected_shape = (max_len, batch_size, feature_dim)
+    
+    assert padded_output.shape == expected_shape, \
+        f"Expected shape {expected_shape}, got {padded_output.shape}"
+    
+    # 2. original_data_recovered: Non-padded elements should match
+    # Compare non-padded elements
+    for i in range(batch_size):
+        length = lengths[i].item()
+        if batch_first:
+            original_slice = padded[i, :length]
+            output_slice = padded_output[i, :length]
+        else:
+            original_slice = padded[:length, i]
+            output_slice = padded_output[:length, i]
+        
+        # Check that non-padded data is recovered (within tolerance)
+        assert torch.allclose(original_slice, output_slice, rtol=1e-6, atol=1e-6), \
+            f"Data mismatch at sequence {i}"
+    
+    # 3. lengths_correct: Output lengths should match input lengths
+    assert torch.equal(lengths, output_lengths), \
+        f"Lengths mismatch: expected {lengths}, got {output_lengths}"
+    
+    # 4. padding_correct: Padded areas should have padding_value
+    for i in range(batch_size):
+        length = lengths[i].item()
+        if length < max_len:
+            if batch_first:
+                padded_area = padded_output[i, length:]
+                expected_padding = torch.full_like(padded_area, padding_value)
+            else:
+                padded_area = padded_output[length:, i]
+                expected_padding = torch.full_like(padded_area, padding_value)
+            
+            assert torch.allclose(padded_area, expected_padding, rtol=1e-6, atol=1e-6), \
+                f"Padding incorrect at sequence {i}"
+    
+    # Additional weak assertions
+    # Device preservation
+    assert padded_output.device.type == device, \
+        f"Output device mismatch: expected {device}, got {padded_output.device.type}"
+    
+    # Dtype preservation
+    assert padded_output.dtype == dtype, \
+        f"Output dtype mismatch: expected {dtype}, got {padded_output.dtype}"
+    
+    # Verify that packed sequence is not modified
+    # (We can check that packed.data still exists and has correct shape)
+    assert hasattr(packed, 'data'), "Packed sequence should still have data attribute"
+    assert packed.data.shape[0] == lengths.sum().item(), \
+        "Packed data should maintain its shape"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: pad_sequence基本功能
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: enforce_sorted参数行为
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("dtype", [torch.float32])
+@pytest.mark.parametrize("device", ["cpu"])
+@pytest.mark.parametrize("enforce_sorted", [True])
+def test_pack_sequence_and_unpack_sequence(
+    dtype: torch.dtype,
+    device: str,
+    enforce_sorted: bool
+):
+    """TC-05: pack_sequence与unpack_sequence"""
+    # Test parameters from param_matrix
+    num_sequences = 3
+    max_len = 5
+    feature_dim = 3
+    
+    # Generate test data - a list of variable-length sequences
+    sequences = []
+    lengths = torch.tensor([5, 3, 2], device=device)  # Sorted lengths for enforce_sorted=True
+    
+    for length in lengths:
+        seq = torch.randn(length.item(), feature_dim, dtype=dtype, device=device)
+        sequences.append(seq)
+    
+    # Weak assertions (epoch 1)
+    # 1. pack_sequence_output: Should return PackedSequence
+    packed = rnn_utils.pack_sequence(
+        sequences,
+        enforce_sorted=enforce_sorted
+    )
+    
+    assert isinstance(packed, rnn_utils.PackedSequence), \
+        f"Expected PackedSequence, got {type(packed)}"
+    
+    # 2. unpack_sequence_output: Should return list of tensors
+    unpacked_sequences = rnn_utils.unpack_sequence(packed)
+    
+    assert isinstance(unpacked_sequences, list), \
+        f"Expected list, got {type(unpacked_sequences)}"
+    
+    # 3. data_preserved: Data should be preserved through pack/unpack
+    assert len(unpacked_sequences) == len(sequences), \
+        f"Expected {len(sequences)} sequences, got {len(unpacked_sequences)}"
+    
+    for i, (original, unpacked) in enumerate(zip(sequences, unpacked_sequences)):
+        # Check shape
+        assert unpacked.shape == original.shape, \
+            f"Sequence {i}: Expected shape {original.shape}, got {unpacked.shape}"
+        
+        # Check data (within tolerance)
+        assert torch.allclose(original, unpacked, rtol=1e-6, atol=1e-6), \
+            f"Sequence {i}: Data mismatch"
+    
+    # 4. lengths_preserved: Lengths should be preserved
+    for i, (original, unpacked) in enumerate(zip(sequences, unpacked_sequences)):
+        assert unpacked.size(0) == original.size(0), \
+            f"Sequence {i}: Expected length {original.size(0)}, got {unpacked.size(0)}"
+    
+    # Additional weak assertions
+    # Check PackedSequence attributes
+    assert hasattr(packed, 'data'), "PackedSequence should have data attribute"
+    assert hasattr(packed, 'batch_sizes'), "PackedSequence should have batch_sizes attribute"
+    assert hasattr(packed, 'sorted_indices'), "PackedSequence should have sorted_indices attribute"
+    assert hasattr(packed, 'unsorted_indices'), "PackedSequence should have unsorted_indices attribute"
+    
+    # Check data device and dtype
+    assert packed.data.device.type == device, \
+        f"Expected device {device}, got {packed.data.device.type}"
+    assert packed.data.dtype == dtype, \
+        f"Expected dtype {dtype}, got {packed.data.dtype}"
+    
+    # Check batch_sizes is on CPU
+    assert packed.batch_sizes.device.type == 'cpu', \
+        f"batch_sizes should be on CPU, got {packed.batch_sizes.device.type}"
+    
+    # Check sorted_indices behavior based on enforce_sorted
+    if enforce_sorted:
+        # When enforce_sorted=True, sorted_indices should be None
+        # (as per the implementation in pack_sequence)
+        assert packed.sorted_indices is None, \
+            f"When enforce_sorted=True, sorted_indices should be None, got {packed.sorted_indices}"
+    else:
+        # When enforce_sorted=False, sorted_indices should be a tensor
+        assert packed.sorted_indices is not None, \
+            "When enforce_sorted=False, sorted_indices should not be None"
+        assert isinstance(packed.sorted_indices, torch.Tensor), \
+            f"sorted_indices should be torch.Tensor, got {type(packed.sorted_indices)}"
+        assert packed.sorted_indices.dtype == torch.int64, \
+            f"sorted_indices should be int64, got {packed.sorted_indices.dtype}"
+    
+    # Check unsorted_indices (should be None when enforce_sorted=True)
+    if enforce_sorted:
+        assert packed.unsorted_indices is None, \
+            f"When enforce_sorted=True, unsorted_indices should be None, got {packed.unsorted_indices}"
+    else:
+        assert packed.unsorted_indices is not None, \
+            "When enforce_sorted=False, unsorted_indices should not be None"
+        assert isinstance(packed.unsorted_indices, torch.Tensor), \
+            f"unsorted_indices should be torch.Tensor, got {type(packed.unsorted_indices)}"
+        assert packed.unsorted_indices.dtype == torch.int64, \
+            f"unsorted_indices should be int64, got {packed.unsorted_indices.dtype}"
+    
+    # Verify total number of elements
+    total_elements = sum(seq.size(0) for seq in sequences)
+    assert packed.data.shape[0] == total_elements, \
+        f"Expected {total_elements} elements in data, got {packed.data.shape[0]}"
+    
+    # Verify that input sequences are not modified
+    for i, seq in enumerate(sequences):
+        original_length = lengths[i].item()
+        assert seq.size(0) == original_length, \
+            f"Sequence {i}: Length changed from {original_length} to {seq.size(0)}"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# DEFERRED CASE
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# DEFERRED CASE
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# DEFERRED CASE
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# DEFERRED CASE
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# DEFERRED CASE
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Test class for grouping related tests (optional)
+class TestPackUnpackFunctions:
+    """Test class for pack/unpack functions."""
+    
+    @staticmethod
+    def test_packed_sequence_attributes():
+        """Test that PackedSequence has required attributes."""
+        # Create a simple packed sequence
+        data = torch.randn(10, 3)
+        batch_sizes = torch.tensor([3, 3, 2, 2], dtype=torch.int64)
+        sorted_indices = torch.tensor([0], dtype=torch.int64)
+        unsorted_indices = torch.tensor([0], dtype=torch.int64)
+        
+        packed = rnn_utils.PackedSequence(data, batch_sizes, sorted_indices, unsorted_indices)
+        
+        # Verify attributes
+        assert hasattr(packed, 'data')
+        assert hasattr(packed, 'batch_sizes')
+        assert hasattr(packed, 'sorted_indices')
+        assert hasattr(packed, 'unsorted_indices')
+        
+        # Verify types
+        assert isinstance(packed.data, torch.Tensor)
+        assert isinstance(packed.batch_sizes, torch.Tensor)
+        assert isinstance(packed.sorted_indices, torch.Tensor)
+        assert isinstance(packed.unsorted_indices, torch.Tensor)
+
+# Cleanup and teardown logic can be added here if needed
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main(sys.argv)
+# ==== BLOCK:FOOTER END ====

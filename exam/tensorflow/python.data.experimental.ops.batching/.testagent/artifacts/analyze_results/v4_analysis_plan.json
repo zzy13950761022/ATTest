@@ -1,0 +1,34 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestDenseToSparseBatch::test_dense_to_sparse_batch_basic[2-row_shape0-compatible-data_type0]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "as_numpy_iterator()不支持SparseTensor类型，需要改用其他方式迭代"
+    },
+    {
+      "test": "TestDenseToSparseBatch::test_dense_to_sparse_batch_basic[3-row_shape1-multi_dimension-data_type1]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "与第一个失败相同，修复CASE_03可解决"
+    },
+    {
+      "test": "TestDenseToSparseBatch::test_dense_to_sparse_batch_row_shape_constraints",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "同样使用as_numpy_iterator()导致TypeError，需要修复迭代方式"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

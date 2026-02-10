@@ -1,0 +1,231 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.manip_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_manip_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_manip_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "一维张量基本滚动",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_shape": [5],
+          "input_dtype": "float32",
+          "shift": 2,
+          "axis": 0,
+          "expected_pattern": "正向滚动2位"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "basic_roll_correctness"],
+        "strong": ["exact_element_match", "edge_case_validation"]
+      },
+      "oracle": "numpy.roll",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "二维张量多轴滚动",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_shape": [3, 4],
+          "input_dtype": "int32",
+          "shift": [1, -1],
+          "axis": [0, 1],
+          "expected_pattern": "行正向滚动1位，列负向滚动1位"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "multi_axis_correctness"],
+        "strong": ["exact_element_match", "independent_axis_validation"]
+      },
+      "oracle": "numpy.roll",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "同轴多次滚动偏移累加",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_shape": [4],
+          "input_dtype": "float64",
+          "shift": [2, -1],
+          "axis": [0, 0],
+          "expected_pattern": "同轴偏移累加（净偏移1位）"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "cumulative_shift_correctness"],
+        "strong": ["exact_element_match", "order_independence"]
+      },
+      "oracle": "numpy.roll",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "边界条件：空张量与标量",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_shape": [0],
+          "input_dtype": "int32",
+          "shift": 0,
+          "axis": 0,
+          "expected_pattern": "空张量滚动无变化"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "empty_tensor_handling"],
+        "strong": ["exact_element_match", "zero_dim_validation"]
+      },
+      "oracle": "numpy.roll",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "类型验证与错误处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_shape": [3],
+          "input_dtype": "float32",
+          "shift": "invalid",
+          "axis": 0,
+          "expected_pattern": "非int类型shift引发异常"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct"],
+        "strong": ["error_message_contains", "specific_error_validation"]
+      },
+      "oracle": "tensorflow异常模式",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_manip_ops.roll"]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "input_shape": [5],
+        "input_dtype": "int64",
+        "shift": -3,
+        "axis": 0,
+        "expected_pattern": "负向滚动3位"
+      },
+      "note": "负向滚动参数扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "input_shape": [7],
+        "input_dtype": "float64",
+        "shift": 10,
+        "axis": 0,
+        "expected_pattern": "大偏移量滚动（超过维度长度）"
+      },
+      "note": "大偏移量参数扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "input_shape": [2, 3, 4],
+        "input_dtype": "float32",
+        "shift": [0, 1, -2],
+        "axis": [0, 1, 2],
+        "expected_pattern": "三维张量多轴滚动"
+      },
+      "note": "高维张量参数扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "input_shape": [],
+        "input_dtype": "float32",
+        "shift": 0,
+        "axis": 0,
+        "expected_pattern": "标量张量滚动无变化"
+      },
+      "note": "标量张量参数扩展"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "input_shape": [3],
+        "input_dtype": "float32",
+        "shift": [1, 2],
+        "axis": [0],
+        "expected_pattern": "shift/axis形状不匹配引发异常"
+      },
+      "note": "形状不匹配异常参数扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

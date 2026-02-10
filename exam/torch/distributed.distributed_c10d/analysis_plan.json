@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_basic[gloo-env://-2-0-1800-]",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "存储屏障超时，需要模拟_store_based_barrier函数"
+    },
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_invalid_backend",
+      "block_id": "CASE_02",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "进程组重复初始化，需要更好的状态隔离"
+    },
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g3_fixed.py::TestDistributedC10DP2PAndUtils::test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "tag参数断言失败，需要检查send函数调用方式"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g3.py::test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2]",
+      "reason": "错误类型重复，跳过该块（g3_fixed.py已包含修复）"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

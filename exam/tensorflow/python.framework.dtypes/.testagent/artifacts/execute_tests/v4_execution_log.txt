@@ -1,0 +1,245 @@
+=== Run Tests ===
+......F.                                                                 [100%]
+================================== FAILURES ===================================
+_ TestTypeConversionAndSpecialTypes.test_as_dtype_numpy_conversion[numpy_type2-bool] _
+
+self = <test_tensorflow_python_framework_dtypes_g2.TestTypeConversionAndSpecialTypes object at 0x000001A58C20EBE0>
+numpy_type = dtype('bool'), expected_name = 'bool'
+
+    @pytest.mark.parametrize(
+        "numpy_type,expected_name",
+        [
+            (np.dtype(np.float32), "float32"),
+            (np.dtype(np.int64), "int64"),
+            (np.dtype(np.bool_), "bool"),
+            # Parameter extension from test_plan.json
+            (np.dtype(np.float64), "float64"),
+        ]
+    )
+    def test_as_dtype_numpy_conversion(self, numpy_type, expected_name):
+        """测试as_dtype函数对NumPy dtype对象的转换功能
+    
+        验证as_dtype能够正确地将NumPy dtype对象转换为对应的TensorFlow DType对象。
+    
+        Args:
+            numpy_type: NumPy dtype对象
+            expected_name: 期望的DType名称
+        """
+        # 执行转换
+        result = dtypes.as_dtype(numpy_type)
+    
+        # 验证转换成功
+        assert result is not None, f"as_dtype({numpy_type}) should return a DType object"
+        assert isinstance(result, dtypes.DType), f"Result should be a DType instance, got {type(result)}"
+    
+        # 验证类型名称匹配
+        assert result.name == expected_name, (
+            f"Expected dtype name '{expected_name}', got '{result.name}'"
+        )
+    
+        # 验证类型枚举值有效
+        assert hasattr(result, '_type_enum'), "DType should have _type_enum attribute"
+        assert result._type_enum > 0, f"Invalid type enum value: {result._type_enum}"
+    
+        # 验证可以转换为numpy dtype（应该与输入匹配）
+        result_numpy_dtype = result.as_numpy_dtype
+        assert result_numpy_dtype == numpy_type, (
+            f"as_numpy_dtype should return {numpy_type}, got {result_numpy_dtype}"
+        )
+    
+        # 验证字符串表示
+        str_repr = str(result)
+        assert expected_name in str_repr, f"String representation should contain '{expected_name}', got '{str_repr}'"
+    
+        # 验证类型一致性：通过as_dtype转换的结果应该与直接访问常量相同
+        if hasattr(dtypes, expected_name):
+            direct_dtype = getattr(dtypes, expected_name)
+            assert result == direct_dtype, (
+                f"as_dtype({numpy_type}) should equal dtypes.{expected_name}"
+            )
+    
+        # 验证往返一致性：将结果再次传递给as_dtype应该返回相同的对象
+        result_again = dtypes.as_dtype(result)
+        assert result_again is result, "as_dtype should return interned DType objects"
+    
+        # 验证基本属性
+        assert hasattr(result, 'size'), "DType should have size attribute"
+        assert result.size > 0, f"Invalid size: {result.size}"
+    
+        # 验证NumPy dtype属性
+        assert isinstance(numpy_type, np.dtype), f"Input should be numpy dtype, got {type(numpy_type)}"
+    
+        # 验证双向映射：从NumPy到TensorFlow，再从TensorFlow回到NumPy
+        tf_to_np = result.as_numpy_dtype
+        assert tf_to_np == numpy_type, "Round-trip conversion should preserve dtype"
+    
+        # 验证is_integer/is_floating属性（如果适用）
+        if expected_name.startswith('int'):
+            assert result.is_integer, f"{expected_name} should be an integer type"
+        elif expected_name.startswith('float'):
+            assert result.is_floating, f"{expected_name} should be a floating point type"
+        elif expected_name == 'bool':
+            assert result == dtypes.bool, "bool type should match dtypes.bool"
+    
+        # 验证NumPy数组兼容性
+        test_array = np.array([1, 2, 3], dtype=numpy_type)
+        assert test_array.dtype == numpy_type, "NumPy array should have correct dtype"
+    
+        # 验证TensorFlow可以接受此dtype
+        try:
+>           tf_constant = tf.constant([1, 2, 3], dtype=result)
+
+tests\test_tensorflow_python_framework_dtypes_g2.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:267: in constant
+    return _constant_impl(value, dtype, shape, name, verify_shape=False,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:279: in _constant_impl
+    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:304: in _constant_eager_impl
+    t = convert_to_eager_tensor(value, ctx, dtype)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = [1, 2, 3]
+ctx = <tensorflow.python.eager.context.Context object at 0x000001A5FF1E35E0>
+dtype = 10
+
+    def convert_to_eager_tensor(value, ctx, dtype=None):
+      """Converts the given `value` to an `EagerTensor`.
+    
+      Note that this function could return cached copies of created constants for
+      performance reasons.
+    
+      Args:
+        value: value to convert to EagerTensor.
+        ctx: value of context.context().
+        dtype: optional desired dtype of the converted EagerTensor.
+    
+      Returns:
+        EagerTensor created from value.
+    
+      Raises:
+        TypeError: if `dtype` is not compatible with the type of t.
+      """
+      if isinstance(value, ops.EagerTensor):
+        if dtype is not None and value.dtype != dtype:
+          raise TypeError(f"Expected tensor {value} with dtype {dtype!r}, but got "
+                          f"dtype {value.dtype!r}.")
+        return value
+      if dtype is not None:
+        try:
+          dtype = dtype.as_datatype_enum
+        except AttributeError:
+          dtype = dtypes.as_dtype(dtype).as_datatype_enum
+      ctx.ensure_initialized()
+>     return ops.EagerTensor(value, ctx.device_name, dtype)
+E     TypeError: Cannot convert [1, 2, 3] to EagerTensor of dtype bool
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:102: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_framework_dtypes_g2.TestTypeConversionAndSpecialTypes object at 0x000001A58C20EBE0>
+numpy_type = dtype('bool'), expected_name = 'bool'
+
+    @pytest.mark.parametrize(
+        "numpy_type,expected_name",
+        [
+            (np.dtype(np.float32), "float32"),
+            (np.dtype(np.int64), "int64"),
+            (np.dtype(np.bool_), "bool"),
+            # Parameter extension from test_plan.json
+            (np.dtype(np.float64), "float64"),
+        ]
+    )
+    def test_as_dtype_numpy_conversion(self, numpy_type, expected_name):
+        """测试as_dtype函数对NumPy dtype对象的转换功能
+    
+        验证as_dtype能够正确地将NumPy dtype对象转换为对应的TensorFlow DType对象。
+    
+        Args:
+            numpy_type: NumPy dtype对象
+            expected_name: 期望的DType名称
+        """
+        # 执行转换
+        result = dtypes.as_dtype(numpy_type)
+    
+        # 验证转换成功
+        assert result is not None, f"as_dtype({numpy_type}) should return a DType object"
+        assert isinstance(result, dtypes.DType), f"Result should be a DType instance, got {type(result)}"
+    
+        # 验证类型名称匹配
+        assert result.name == expected_name, (
+            f"Expected dtype name '{expected_name}', got '{result.name}'"
+        )
+    
+        # 验证类型枚举值有效
+        assert hasattr(result, '_type_enum'), "DType should have _type_enum attribute"
+        assert result._type_enum > 0, f"Invalid type enum value: {result._type_enum}"
+    
+        # 验证可以转换为numpy dtype（应该与输入匹配）
+        result_numpy_dtype = result.as_numpy_dtype
+        assert result_numpy_dtype == numpy_type, (
+            f"as_numpy_dtype should return {numpy_type}, got {result_numpy_dtype}"
+        )
+    
+        # 验证字符串表示
+        str_repr = str(result)
+        assert expected_name in str_repr, f"String representation should contain '{expected_name}', got '{str_repr}'"
+    
+        # 验证类型一致性：通过as_dtype转换的结果应该与直接访问常量相同
+        if hasattr(dtypes, expected_name):
+            direct_dtype = getattr(dtypes, expected_name)
+            assert result == direct_dtype, (
+                f"as_dtype({numpy_type}) should equal dtypes.{expected_name}"
+            )
+    
+        # 验证往返一致性：将结果再次传递给as_dtype应该返回相同的对象
+        result_again = dtypes.as_dtype(result)
+        assert result_again is result, "as_dtype should return interned DType objects"
+    
+        # 验证基本属性
+        assert hasattr(result, 'size'), "DType should have size attribute"
+        assert result.size > 0, f"Invalid size: {result.size}"
+    
+        # 验证NumPy dtype属性
+        assert isinstance(numpy_type, np.dtype), f"Input should be numpy dtype, got {type(numpy_type)}"
+    
+        # 验证双向映射：从NumPy到TensorFlow，再从TensorFlow回到NumPy
+        tf_to_np = result.as_numpy_dtype
+        assert tf_to_np == numpy_type, "Round-trip conversion should preserve dtype"
+    
+        # 验证is_integer/is_floating属性（如果适用）
+        if expected_name.startswith('int'):
+            assert result.is_integer, f"{expected_name} should be an integer type"
+        elif expected_name.startswith('float'):
+            assert result.is_floating, f"{expected_name} should be a floating point type"
+        elif expected_name == 'bool':
+            assert result == dtypes.bool, "bool type should match dtypes.bool"
+    
+        # 验证NumPy数组兼容性
+        test_array = np.array([1, 2, 3], dtype=numpy_type)
+        assert test_array.dtype == numpy_type, "NumPy array should have correct dtype"
+    
+        # 验证TensorFlow可以接受此dtype
+        try:
+            tf_constant = tf.constant([1, 2, 3], dtype=result)
+            assert tf_constant.dtype == result, "TensorFlow constant should have correct dtype"
+        except Exception as e:
+>           pytest.fail(f"Failed to create TensorFlow constant with dtype {result}: {e}")
+E           Failed: Failed to create TensorFlow constant with dtype <dtype: 'bool'>: Cannot convert [1, 2, 3] to EagerTensor of dtype bool
+
+tests\test_tensorflow_python_framework_dtypes_g2.py:177: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_dtypes_g2.py      72      1     18      5    93%   69->76, 88->exit, 139->146, 165->169, 193
+-------------------------------------------------------------------------------------------------
+TOTAL                                                    72      1     18      5    93%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_dtypes_g2.py::TestTypeConversionAndSpecialTypes::test_as_dtype_numpy_conversion[numpy_type2-bool]
+1 failed, 7 passed in 1.58s
+
+Error: exit 1

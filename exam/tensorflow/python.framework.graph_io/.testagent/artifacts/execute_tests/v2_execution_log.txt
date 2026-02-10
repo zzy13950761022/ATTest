@@ -1,0 +1,330 @@
+=== Run Tests ===
+FF..F.FF                                                                 [100%]
+================================== FAILURES ===================================
+_______________ test_write_graph_graph_to_text_file[small-True] _______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+temp_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp411mswem'
+small_graph = <tensorflow.python.framework.ops.Graph object at 0x000002C99B0731F0>
+graph_size = 'small', as_text_value = True
+
+    @pytest.mark.parametrize(
+        "graph_size,as_text_value",
+        [
+            ("small", True),
+        ]
+    )
+    def test_write_graph_graph_to_text_file(temp_dir, small_graph, graph_size, as_text_value):
+        """TC-01: Graph对象写入文本格式文件
+    
+        Weak assertions:
+        - file_exists: 文件应该被创建
+        - path_returned: 函数应该返回正确的文件路径
+        - file_not_empty: 文件不应该为空
+        - basic_content: 文件应该包含基本的图结构信息
+        """
+        # Arrange
+        logdir = temp_dir
+        filename = "graph.pbtxt"
+        expected_path = os.path.join(logdir, filename)
+    
+        # Act
+        # 使用正确的mock路径：tensorflow.python.lib.io.file_io
+        # 注意：我们需要mock整个模块，而不是特定的属性
+>       with mock.patch('tensorflow.python.lib.io.file_io.atomic_write_string_to_file') as mock_write:
+
+tests\test_tensorflow_python_framework_graph_io.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+____________ test_write_graph_graphdef_to_binary_file[small-False] ____________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+temp_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp4gsmemid'
+small_graph_def = node {
+  name: "a"
+  op: "Const"
+  attr {
+    key: "dtype"
+    value {
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key...nput: "a"
+  input: "b"
+  attr {
+    key: "T"
+    value {
+      type: DT_FLOAT
+    }
+  }
+}
+versions {
+  producer: 987
+}
+
+graph_size = 'small', as_text_value = False
+
+    @pytest.mark.parametrize(
+        "graph_size,as_text_value",
+        [
+            ("small", False),
+        ]
+    )
+    def test_write_graph_graphdef_to_binary_file(temp_dir, small_graph_def, graph_size, as_text_value):
+        """TC-02: GraphDef对象写入二进制格式文件
+    
+        Weak assertions:
+        - file_exists: 文件应该被创建
+        - path_returned: 函数应该返回正确的文件路径
+        - file_not_empty: 文件不应该为空
+        - binary_format: 应该以二进制格式写入
+        """
+        # Arrange
+        logdir = temp_dir
+        filename = "graph.pb"
+        expected_path = os.path.join(logdir, filename)
+    
+        # Act
+        # 使用正确的mock路径：tensorflow.python.lib.io.file_io
+>       with mock.patch('tensorflow.python.lib.io.file_io.atomic_write_string_to_file') as mock_write:
+
+tests\test_tensorflow_python_framework_graph_io.py:124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+___________________ test_write_graph_auto_create_directory ____________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+temp_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpa_cbmibj'
+small_graph = <tensorflow.python.framework.ops.Graph object at 0x000002C99C2864C0>
+
+    def test_write_graph_auto_create_directory(temp_dir, small_graph):
+        """TC-04: 本地目录自动创建功能
+    
+        Weak assertions:
+        - directory_created: 目录应该被创建
+        - file_exists: 文件应该被创建
+        - path_returned: 函数应该返回正确的文件路径
+        """
+        # Arrange
+        # 创建一个不存在的子目录
+        non_existent_dir = os.path.join(temp_dir, "nonexistent_subdir")
+        filename = "test.pbtxt"
+        expected_path = os.path.join(non_existent_dir, filename)
+    
+        # 确保目录不存在
+        assert not os.path.exists(non_existent_dir), "测试目录不应该预先存在"
+    
+        # Act
+        # 使用正确的mock路径
+>       with mock.patch('tensorflow.python.lib.io.file_io.atomic_write_string_to_file') as mock_write:
+
+tests\test_tensorflow_python_framework_graph_io.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+______________________ test_write_graph_default_as_text _______________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+temp_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpxqkt0zpi'
+small_graph = <tensorflow.python.framework.ops.Graph object at 0x000002C99C277BE0>
+
+    def test_write_graph_default_as_text(temp_dir, small_graph):
+        """Test that as_text defaults to True."""
+        # Arrange
+        logdir = temp_dir
+        filename = "default_test.pbtxt"
+    
+        # Act
+>       with mock.patch('tensorflow.python.lib.io.file_io.atomic_write_string_to_file') as mock_write:
+
+tests\test_tensorflow_python_framework_graph_io.py:301: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_______________ test_write_graph_gcs_path_no_directory_creation _______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+temp_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmps6a9phmw'
+small_graph = <tensorflow.python.framework.ops.Graph object at 0x000002C9F6C71460>
+
+    def test_write_graph_gcs_path_no_directory_creation(temp_dir, small_graph):
+        """Test that GCS paths don't trigger directory creation."""
+        # Arrange
+        gcs_path = "gs://test-bucket/path"
+        filename = "test.pbtxt"
+    
+        # Act
+>       with mock.patch('tensorflow.python.lib.io.file_io.atomic_write_string_to_file') as mock_write:
+
+tests\test_tensorflow_python_framework_graph_io.py:327: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+test_import.py                                           0      0      0      0   100%
+test_simple.py                                           0      0      0      0   100%
+tests\test_tensorflow_python_framework_graph_io.py     122     50      8      1    59%   67-98, 125-156, 208->exit, 238-263, 302-318, 328-346
+------------------------------------------------------------------------------------------------
+TOTAL                                                  122     50      8      1    59%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_graph_io.py::test_write_graph_graph_to_text_file[small-True]
+FAILED tests\test_tensorflow_python_framework_graph_io.py::test_write_graph_graphdef_to_binary_file[small-False]
+FAILED tests\test_tensorflow_python_framework_graph_io.py::test_write_graph_auto_create_directory
+FAILED tests\test_tensorflow_python_framework_graph_io.py::test_write_graph_default_as_text
+FAILED tests\test_tensorflow_python_framework_graph_io.py::test_write_graph_gcs_path_no_directory_creation
+5 failed, 3 passed in 2.02s
+
+Error: exit 1

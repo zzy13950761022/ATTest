@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_clip_grad_g2.py::test_clip_grad_value_invalid_clip_value",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "clip_grad_value_可能不会对clip_value<=0抛出RuntimeError，需要验证实际行为并调整断言"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

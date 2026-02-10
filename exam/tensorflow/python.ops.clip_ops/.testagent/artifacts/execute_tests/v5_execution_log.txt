@@ -1,0 +1,13 @@
+=== Run Tests ===
+...........                                                              [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                           Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------
+test_clip_behavior.py                             23     23      0      0     0%   1-30
+tests\test_tensorflow_python_ops_clip_ops.py     200     22     50     10    87%   35, 170, 229, 371-374, 378-381, 391-399, 426, 428, 432-435, 445
+------------------------------------------------------------------------------------------
+TOTAL                                            223     45     50     10    80%
+Coverage XML written to file coverage.xml
+
+11 passed in 1.38s

@@ -1,0 +1,12 @@
+{
+  "status": "成功",
+  "passed": 10,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "所有测试通过，无需修复"
+}

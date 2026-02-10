@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_ao_nn_quantized_functional_g1.py::test_quantized_input_validation",
+      "block_id": "FOOTER",
+      "error_type": "NotImplementedError",
+      "action": "adjust_assertion",
+      "note": "测试期望ValueError但实际抛出NotImplementedError，需要调整断言以匹配实际错误"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

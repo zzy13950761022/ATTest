@@ -1,0 +1,47 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_v2_basic[params_shape0-ids_shape0-dtype0-None-mod]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "assert_no_nan_inf无法处理IndexedSlices类型的梯度，需要修改梯度验证逻辑"
+    },
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_sparse_v2_combiner[params_shape0-sparse_indices0-sparse_values0-mean-dtype0-False-None]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径'tensorflow.python.ops.sparse_ops.sparse_segment_mean'无法导入，需要修复mock路径"
+    },
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_v2_norm_clipping[params_shape0-ids_shape0-dtype0-1.0-mod]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径'tensorflow.python.ops.math_ops._clip_by_norm'无法导入，需要修复mock路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_v2_basic[params_shape1-ids_shape1-dtype1-None-div]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_sparse_v2_combiner[params_shape1-sparse_indices1-sparse_values1-sqrtn-dtype1-True-weights_values1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestEmbeddingOps.test_embedding_lookup_v2_norm_clipping[params_shape1-ids_shape1-dtype1-0.5-mod]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,248 @@
+{
+  "plan_version": 2,
+  "target": "torch.hub",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_hub.py",
+    "all_pattern": "tests/test_torch_hub_*.py",
+    "groups": {
+      "G1": "tests/test_torch_hub_load.py",
+      "G2": "tests/test_torch_hub_trust.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心加载功能",
+      "entrypoints": ["torch.hub.load"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_04", "CASE_05"],
+      "note": "测试 GitHub 和本地路径的基本加载功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "信任与缓存管理",
+      "entrypoints": ["torch.hub.load"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试 trust_repo 和 force_reload 参数行为"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "GitHub仓库标准加载",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "repo_or_dir": "pytorch/vision",
+          "model": "resnet50",
+          "source": "github",
+          "trust_repo": null,
+          "force_reload": false,
+          "verbose": true,
+          "skip_validation": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_object", "is_callable", "has_expected_attributes"],
+        "strong": ["model_correctness", "parameter_passing", "cache_behavior"]
+      },
+      "oracle": "mock_hubconf_resnet50",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "本地路径加载",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "repo_or_dir": "/tmp/test_hub_local",
+          "model": "simple_model",
+          "source": "local",
+          "trust_repo": null,
+          "force_reload": false,
+          "verbose": true,
+          "skip_validation": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_object", "is_callable", "has_expected_attributes"],
+        "strong": ["file_system_access", "import_validation", "path_resolution"]
+      },
+      "oracle": "mock_local_hubconf",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "信任机制测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "repo_or_dir": "test/trust_repo",
+          "model": "trust_model",
+          "source": "github",
+          "trust_repo": true,
+          "force_reload": false,
+          "verbose": false,
+          "skip_validation": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_object", "trust_list_updated", "no_user_prompt"],
+        "strong": ["trust_persistence", "cache_interaction", "security_validation"]
+      },
+      "oracle": "mock_trust_mechanism",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 95,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "参数传递验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "repo_or_dir": "test/param_repo",
+          "model": "param_model",
+          "source": "github",
+          "trust_repo": null,
+          "force_reload": false,
+          "verbose": true,
+          "skip_validation": false,
+          "extra_args": ["arg1", 42],
+          "extra_kwargs": {"param1": "value1", "param2": 3.14}
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_object", "args_passed", "kwargs_passed"],
+        "strong": ["arg_validation", "type_conversion", "error_handling"]
+      },
+      "oracle": "mock_param_model",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 10,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "强制重新下载",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "repo_or_dir": "test/cache_repo",
+          "model": "cache_model",
+          "source": "github",
+          "trust_repo": null,
+          "force_reload": true,
+          "verbose": true,
+          "skip_validation": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_object", "download_triggered", "cache_updated"],
+        "strong": ["cache_invalidation", "timestamp_check", "network_retry"]
+      },
+      "oracle": "mock_cache_behavior",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 8,
+      "is_parametrized": false,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "repo_or_dir": "pytorch/vision:v0.10.0",
+        "model": "resnet50",
+        "source": "github",
+        "trust_repo": "check",
+        "force_reload": false,
+        "verbose": false,
+        "skip_validation": true
+      },
+      "note": "扩展：带tag的仓库、check信任模式、静默模式、跳过验证"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "repo_or_dir": "./relative/path",
+        "model": "simple_model",
+        "source": "local",
+        "trust_repo": false,
+        "force_reload": false,
+        "verbose": false,
+        "skip_validation": false
+      },
+      "note": "扩展：相对路径、信任提示模式、静默模式"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "repo_or_dir": "test/trust_repo",
+        "model": "trust_model",
+        "source": "github",
+        "trust_repo": false,
+        "force_reload": false,
+        "verbose": true,
+        "skip_validation": false
+      },
+      "note": "扩展：信任提示模式（需要用户交互mock）"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

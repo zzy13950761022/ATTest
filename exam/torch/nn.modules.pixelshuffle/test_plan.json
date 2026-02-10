@@ -1,0 +1,311 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.pixelshuffle",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_pixelshuffle.py",
+    "all_pattern": "tests/test_torch_nn_modules_pixelshuffle_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_pixelshuffle_g1.py",
+      "G2": "tests/test_torch_nn_modules_pixelshuffle_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "PixelShuffle核心功能",
+      "entrypoints": ["PixelShuffle", "forward"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "PixelShuffle基本形状变换与边界测试"
+    },
+    {
+      "group_id": "G2",
+      "title": "PixelUnshuffle与互逆验证",
+      "entrypoints": ["PixelUnshuffle", "forward"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "PixelUnshuffle功能及与PixelShuffle互逆验证"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "PixelShuffle基本形状变换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "upscale_factor": 2,
+          "input_shape": [1, 16, 4, 4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["exact_values", "gradient_correctness"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "PixelShuffle缩放因子边界",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "upscale_factor": 1,
+          "input_shape": [2, 4, 8, 8],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "input_output_equal", "finite_values"],
+        "strong": ["numerical_identity", "gradient_identity"]
+      },
+      "oracle": "identity_check",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "PixelShuffle不同批次大小",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "upscale_factor": 3,
+          "input_shape": [0, 27, 6, 6],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["batch_independence", "gradient_batch"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 55,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "PixelShuffle不同数据类型",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "upscale_factor": 2,
+          "input_shape": [1, 16, 4, 4],
+          "dtype": "float64",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["precision_consistency", "gradient_precision"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "PixelUnshuffle基本形状变换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "downscale_factor": 2,
+          "input_shape": [1, 4, 8, 8],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["exact_values", "gradient_correctness"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "PixelShuffle与Unshuffle互逆",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "scale_factor": 2,
+          "input_shape": [2, 4, 6, 6],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["identity_after_pair", "shape_preserved", "finite_values"],
+        "strong": ["numerical_identity", "gradient_identity"]
+      },
+      "oracle": "identity_check",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "PixelUnshuffle不同设备",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "downscale_factor": 3,
+          "input_shape": [1, 2, 9, 9],
+          "dtype": "float32",
+          "device": "cuda"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["device_consistency", "gradient_device"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "PixelUnshuffle边界整除",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "downscale_factor": 4,
+          "input_shape": [1, 3, 16, 16],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_preserved", "finite_values"],
+        "strong": ["exact_divisibility", "gradient_boundary"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "upscale_factor": 3,
+        "input_shape": [2, 36, 5, 5],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "扩展不同缩放因子和形状"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "upscale_factor": 2,
+        "input_shape": [4, 16, 10, 10],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "扩展批次大小"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "downscale_factor": 3,
+        "input_shape": [1, 2, 12, 12],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "扩展不同缩放因子"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {
+        "scale_factor": 3,
+        "input_shape": [1, 3, 9, 9],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "扩展不同缩放因子的互逆验证"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_06"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_07", "CASE_08"]
+}

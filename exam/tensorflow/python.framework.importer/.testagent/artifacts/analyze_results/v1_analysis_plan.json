@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_graphdef_import",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "tensorflow.python模块导入失败，需要修复导入路径"
+    },
+    {
+      "test": "test_basic_graphdef_import",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "patch路径需要更新以匹配当前TensorFlow模块结构"
+    },
+    {
+      "test": "test_import_with_input_map",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "patch路径需要更新以匹配当前TensorFlow模块结构"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_import_with_return_elements",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

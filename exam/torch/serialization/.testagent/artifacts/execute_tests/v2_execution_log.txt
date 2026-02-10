@@ -1,0 +1,105 @@
+=== Run Tests ===
+...F..                                                                   [100%]
+=================================== FAILURES ===================================
+_____________________ test_weights_only_with_unsafe_object _____________________
+
+tmp_file_path = '/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/tmp15b57f22.pt'
+
+    def test_weights_only_with_unsafe_object(tmp_file_path):
+        """Test weights_only=True with unsafe object should fail."""
+        # Create an unsafe object (a lambda function)
+        unsafe_obj = lambda x: x + 1
+    
+        # Save the unsafe object
+>       torch.save(unsafe_obj, tmp_file_path)
+
+tests/test_torch_serialization_advanced.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/serialization.py:423: in save
+    _save(obj, opened_zipfile, pickle_module, pickle_protocol)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obj = <function test_weights_only_with_unsafe_object.<locals>.<lambda> at 0x145db5cf0>
+zip_file = <torch.PyTorchFileWriter object at 0x145daacf0>
+pickle_module = <module 'pickle' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/pickle.py'>
+pickle_protocol = 2
+
+    def _save(obj, zip_file, pickle_module, pickle_protocol):
+        serialized_storages = {}
+        id_map: Dict[int, str] = {}
+    
+        # Since loading storages that view the same data with different dtypes is
+        # not supported, we need to keep track of the dtype associated with each
+        # storage data_ptr and throw an error if the dtype is ever different.
+        # TODO: This feature could be added in the future
+        storage_dtypes: Dict[int, torch.dtype] = {}
+    
+        def persistent_id(obj):
+            # FIXME: the docs say that persistent_id should only return a string
+            # but torch store returns tuples. This works only in the binary protocol
+            # see
+            # https://docs.python.org/2/library/pickle.html#pickling-and-unpickling-external-objects
+            # https://github.com/python/cpython/blob/master/Lib/pickle.py#L527-L537
+            if isinstance(obj, torch.storage.TypedStorage) or torch.is_storage(obj):
+    
+                if isinstance(obj, torch.storage.TypedStorage):
+                    # TODO: Once we decide to break serialization FC, this case
+                    # can be deleted
+                    storage = obj._storage
+                    storage_dtype = obj.dtype
+                    storage_type_str = obj.pickle_storage_type()
+                    storage_type = getattr(torch, storage_type_str)
+                    storage_numel = obj.size()
+    
+                else:
+                    storage = obj
+                    storage_dtype = torch.uint8
+                    storage_type = normalize_storage_type(type(obj))
+                    storage_numel = storage.nbytes()
+    
+                # If storage is allocated, ensure that any other saved storages
+                # pointing to the same data all have the same dtype. If storage is
+                # not allocated, don't perform this check
+                if storage.data_ptr() != 0:
+                    if storage.data_ptr() in storage_dtypes:
+                        if storage_dtype != storage_dtypes[storage.data_ptr()]:
+                            raise RuntimeError(
+                                'Cannot save multiple tensors or storages that '
+                                'view the same data as different types')
+                    else:
+                        storage_dtypes[storage.data_ptr()] = storage_dtype
+    
+                storage_key = id_map.setdefault(storage._cdata, str(len(id_map)))
+                location = location_tag(storage)
+                serialized_storages[storage_key] = storage
+    
+                return ('storage',
+                        storage_type,
+                        storage_key,
+                        location,
+                        storage_numel)
+    
+            return None
+    
+        # Write the pickle data for `obj`
+        data_buf = io.BytesIO()
+        pickler = pickle_module.Pickler(data_buf, protocol=pickle_protocol)
+        pickler.persistent_id = persistent_id
+>       pickler.dump(obj)
+E       AttributeError: Can't pickle local object 'test_weights_only_with_unsafe_object.<locals>.<lambda>'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/serialization.py:635: AttributeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/test_torch_serialization_advanced.py      87     10      6      2    85%   32->exit, 45-47, 75-78, 161-166
+----------------------------------------------------------------------------------------
+TOTAL                                           87     10      6      2    85%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_serialization_advanced.py::test_weights_only_with_unsafe_object
+1 failed, 5 passed in 0.57s
+
+Error: exit 1

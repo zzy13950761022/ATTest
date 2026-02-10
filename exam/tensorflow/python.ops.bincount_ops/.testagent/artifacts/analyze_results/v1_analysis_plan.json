@@ -1,0 +1,29 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 1,
+  "collection_errors": true,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_integer_bincount",
+      "block_id": "CASE_01",
+      "error_type": "ParameterError",
+      "action": "rewrite_block",
+      "note": "参数化装饰器与函数签名不匹配：装饰器定义了7个参数但函数只接受1个参数"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_weighted_bincount_float_weights",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_2d_axis_bincount",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

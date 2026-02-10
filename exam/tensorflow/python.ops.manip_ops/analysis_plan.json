@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_boundary_conditions_empty_scalar[input_shape1-input_dtype1-0-0-标量张量滚动无变化]",
+      "block_id": "CASE_04",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "TensorFlow roll操作不支持0维标量张量，需要调整测试逻辑或标记为xfail"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

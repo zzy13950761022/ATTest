@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 3,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_connect_to_remote_host_basic",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Mock不完整，context.context().config返回MagicMock而非ConfigProto"
+    },
+    {
+      "test": "test_connect_to_remote_host_default_job_name",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Mock不完整，context.context().config返回MagicMock而非ConfigProto"
+    },
+    {
+      "test": "test_connect_to_cluster_eager_mode_required",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Mock不完整，cluster_spec.as_cluster_def()返回MagicMock而非ClusterDef"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_connect_to_remote_host_multiple_calls_overwrite",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

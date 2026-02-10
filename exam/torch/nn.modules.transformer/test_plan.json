@@ -1,0 +1,442 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.transformer",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_transformer.py",
+    "all_pattern": "tests/test_torch_nn_modules_transformer_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_transformer_g1.py",
+      "G2": "tests/test_torch_nn_modules_transformer_g2.py",
+      "G3": "tests/test_torch_nn_modules_transformer_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "Transformer 核心类基础功能",
+      "entrypoints": ["Transformer", "Transformer.forward"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试完整 Transformer 模型的基础前向传播"
+    },
+    {
+      "group_id": "G2",
+      "title": "编码器与解码器组件",
+      "entrypoints": ["TransformerEncoder", "TransformerDecoder", "TransformerEncoderLayer", "TransformerDecoderLayer"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08", "CASE_09"],
+      "note": "测试编码器、解码器及其单层组件的独立功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "高级功能与边界条件",
+      "entrypoints": ["mask_handling", "batch_first", "nested_tensor", "custom_activation"],
+      "smoke_set": ["CASE_10"],
+      "deferred_set": ["CASE_11", "CASE_12", "CASE_13", "CASE_14"],
+      "note": "测试掩码处理、维度顺序、嵌套张量等高级功能"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "Transformer 标准前向传播",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "batch_first": false,
+          "nhead": 4,
+          "d_model": 16,
+          "num_encoder_layers": 2,
+          "num_decoder_layers": 2,
+          "dim_feedforward": 64,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [10, 32, 16],
+          "tgt_shape": [20, 32, 16]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "device_match"],
+        "strong": ["gradient_correctness", "numerical_stability", "deterministic_without_dropout"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "Transformer 仅编码器模式",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "batch_first": false,
+          "nhead": 2,
+          "d_model": 8,
+          "num_encoder_layers": 1,
+          "num_decoder_layers": 1,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [5, 16, 8],
+          "tgt": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "no_nan"],
+        "strong": ["encoder_only_consistency", "memory_correctness"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "Transformer batch_first 维度",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "batch_first": true,
+          "nhead": 2,
+          "d_model": 8,
+          "num_encoder_layers": 1,
+          "num_decoder_layers": 1,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [16, 5, 8],
+          "tgt_shape": [16, 10, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape_batch_first", "dimension_order", "finite_check"],
+        "strong": ["batch_first_consistency", "transpose_equivalence"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "Transformer 参数验证异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 3,
+          "d_model": 8,
+          "expected_error": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "error_message_contains"],
+        "strong": ["specific_error_message", "parameter_validation_complete"]
+      },
+      "oracle": "expected_exception",
+      "assertion_level": "weak",
+      "size": "XS",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "TransformerEncoder 基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "num_layers": 2,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [10, 16, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "layer_count"],
+        "strong": ["encoder_gradient", "layer_independence", "norm_correctness"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "TransformerDecoder 基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "num_layers": 2,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "tgt_shape": [10, 16, 8],
+          "memory_shape": [5, 16, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "memory_usage"],
+        "strong": ["decoder_gradient", "attention_masking", "cross_attention"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "TransformerEncoderLayer 单层",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [10, 16, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "residual_connection"],
+        "strong": ["layer_gradient", "dropout_effect", "norm_first_behavior"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "TransformerDecoderLayer 单层",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "tgt_shape": [10, 16, 8],
+          "memory_shape": [5, 16, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "cross_attention_shape"],
+        "strong": ["self_attention_mask", "memory_attention", "layer_composition"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G2",
+      "name": "编码器解码器组合验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "num_encoder_layers": 1,
+          "num_decoder_layers": 1,
+          "dim_feedforward": 32,
+          "dropout": 0.0,
+          "activation": "relu",
+          "src_shape": [5, 16, 8],
+          "tgt_shape": [10, 16, 8]
+        }
+      ],
+      "asserts": {
+        "weak": ["combined_output_shape", "component_consistency", "finite_check"],
+        "strong": ["end_to_end_equivalence", "parameter_sharing", "gradient_flow"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "掩码处理基础",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "nhead": 2,
+          "d_model": 8,
+          "num_encoder_layers": 1,
+          "mask_type": "bool",
+          "src_shape": [5, 16, 8],
+          "mask_shape": [5, 5]
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_applied", "output_finite", "shape_preserved"],
+        "strong": ["mask_effect_verification", "different_mask_types", "padding_mask"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "batch_first": false,
+        "nhead": 8,
+        "d_model": 32,
+        "num_encoder_layers": 3,
+        "num_decoder_layers": 3,
+        "dim_feedforward": 128,
+        "dropout": 0.1,
+        "activation": "gelu",
+        "src_shape": [15, 8, 32],
+        "tgt_shape": [25, 8, 32]
+      },
+      "note": "扩展参数：双精度、更多头、更多层、GELU激活"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Low",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "batch_first": true,
+        "nhead": 4,
+        "d_model": 16,
+        "num_encoder_layers": 2,
+        "num_decoder_layers": 2,
+        "dim_feedforward": 64,
+        "dropout": 0.0,
+        "activation": "relu",
+        "src_shape": [8, 10, 16],
+        "tgt": null
+      },
+      "note": "扩展参数：batch_first模式"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "nhead": 4,
+        "d_model": 16,
+        "num_layers": 3,
+        "dim_feedforward": 64,
+        "dropout": 0.1,
+        "activation": "gelu",
+        "src_shape": [20, 4, 16]
+      },
+      "note": "扩展参数：更多头、更多层、GELU激活、dropout"
+    },
+    {
+      "base_block_id": "CASE_10",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "nhead": 2,
+        "d_model": 8,
+        "num_encoder_layers": 1,
+        "mask_type": "byte",
+        "src_shape": [5, 16, 8],
+        "mask_shape": [5, 5]
+      },
+      "note": "扩展参数：ByteTensor掩码类型"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_04", "CASE_05", "CASE_10"],
+  "deferred_set": ["CASE_03", "CASE_06", "CASE_07", "CASE_08", "CASE_09"]
+}

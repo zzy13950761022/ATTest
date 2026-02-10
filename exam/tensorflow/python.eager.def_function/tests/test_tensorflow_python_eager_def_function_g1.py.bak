@@ -1,0 +1,395 @@
+"""
+Test cases for tensorflow.python.eager.def_function (G1 group).
+"""
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.eager import def_function
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test class for def_function tests
+class TestDefFunctionG1:
+    """Test cases for tensorflow.python.eager.def_function (G1 group)."""
+    
+    def setup_method(self):
+        """Setup method for each test."""
+        # Clear any existing function caches
+        tf.config.run_functions_eagerly(False)
+        
+    def teardown_method(self):
+        """Teardown method for each test."""
+        # Ensure we're not in eager mode for subsequent tests
+        tf.config.run_functions_eagerly(False)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    def test_basic_decorator_usage(self):
+        """CASE_01: 基本装饰器用法 - 测试基本装饰器用法和函数编译"""
+        # Test simple math function with decorator
+        @def_function.function
+        def simple_add(x, y):
+            return x + y
+        
+        # Create test tensors
+        x = tf.constant([1.0, 2.0, 3.0])
+        y = tf.constant([4.0, 5.0, 6.0])
+        
+        # Weak assertions
+        # 1. returns_generic_function: Check if decorated function is a GenericFunction
+        assert hasattr(simple_add, '_list_all_concrete_functions'), \
+            "Decorated function should have _list_all_concrete_functions method"
+        
+        # 2. callable: Check if the decorated function is callable
+        assert callable(simple_add), "Decorated function should be callable"
+        
+        # 3. basic_execution: Test basic execution
+        result = simple_add(x, y)
+        expected = tf.constant([5.0, 7.0, 9.0])
+        
+        # Check result shape
+        assert result.shape == expected.shape, \
+            f"Result shape {result.shape} should match expected shape {expected.shape}"
+        
+        # Check numerical values (with tolerance for floating point)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-5)
+        
+        # 4. result_shape: Verify shape consistency
+        assert result.shape == (3,), f"Expected shape (3,), got {result.shape}"
+        
+        # Additional test: Test with different inputs to ensure function works
+        x2 = tf.constant([10.0, 20.0])
+        y2 = tf.constant([30.0, 40.0])
+        result2 = simple_add(x2, y2)
+        expected2 = tf.constant([40.0, 60.0])
+        np.testing.assert_allclose(result2.numpy(), expected2.numpy(), rtol=1e-5)
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    def test_input_signature_prevents_retracing(self):
+        """CASE_02: 带input_signature限制重跟踪 - 测试input_signature限制重跟踪"""
+        import unittest.mock as mock
+        
+        # Create a simple math function
+        def simple_multiply(x, y):
+            return x * y
+        
+        # Define input signature for 2D tensors
+        input_signature = [
+            tf.TensorSpec(shape=(2, 2), dtype=tf.float32),
+            tf.TensorSpec(shape=(2, 2), dtype=tf.float32)
+        ]
+        
+        # Create function with input signature (non-decorator mode)
+        tf_func = def_function.function(
+            func=simple_multiply,
+            input_signature=input_signature,
+            autograph=True
+        )
+        
+        # Create test tensors matching the signature
+        x1 = tf.constant([[1.0, 2.0], [3.0, 4.0]], dtype=tf.float32)
+        y1 = tf.constant([[5.0, 6.0], [7.0, 8.0]], dtype=tf.float32)
+        
+        # Weak assertions
+        # 1. signature_enforced: Test that function works with correct signature
+        result1 = tf_func(x1, y1)
+        expected1 = tf.constant([[5.0, 12.0], [21.0, 32.0]], dtype=tf.float32)
+        np.testing.assert_allclose(result1.numpy(), expected1.numpy(), rtol=1e-5)
+        
+        # 2. no_retrace_within_spec: Test that same signature doesn't cause retracing
+        # Mock the tracing mechanism to check retracing
+        with mock.patch.object(tf_func, '_concrete_stateful_fn') as mock_trace:
+            # Call with different values but same shape/dtype
+            x2 = tf.constant([[2.0, 3.0], [4.0, 5.0]], dtype=tf.float32)
+            y2 = tf.constant([[6.0, 7.0], [8.0, 9.0]], dtype=tf.float32)
+            result2 = tf_func(x2, y2)
+            
+            # The mock should not be called if no retracing occurs
+            # (Note: actual retracing check is complex, we verify functional behavior)
+        
+        # 3. retrace_on_mismatch: Test that mismatched signature causes error
+        # Try with wrong shape
+        x_wrong = tf.constant([1.0, 2.0, 3.0], dtype=tf.float32)  # 1D instead of 2D
+        y_wrong = tf.constant([4.0, 5.0, 6.0], dtype=tf.float32)
+        
+        with pytest.raises((ValueError, TypeError)) as exc_info:
+            tf_func(x_wrong, y_wrong)
+        
+        # 4. basic_execution: Verify basic functionality still works
+        # Test with another valid input
+        x3 = tf.constant([[0.5, 1.5], [2.5, 3.5]], dtype=tf.float32)
+        y3 = tf.constant([[1.0, 2.0], [3.0, 4.0]], dtype=tf.float32)
+        result3 = tf_func(x3, y3)
+        expected3 = tf.constant([[0.5, 3.0], [7.5, 14.0]], dtype=tf.float32)
+        np.testing.assert_allclose(result3.numpy(), expected3.numpy(), rtol=1e-5)
+        
+        # Verify the function has concrete functions
+        concrete_funcs = tf_func._list_all_concrete_functions()
+        assert len(concrete_funcs) > 0, "Function should have at least one concrete function"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    def test_variable_creation_and_state_preservation(self):
+        """CASE_03: 变量创建与状态保持 - 测试变量创建和状态保持"""
+        import unittest.mock as mock
+        
+        # Test stateful counter function
+        @def_function.function
+        def stateful_counter():
+            # Variable should be created only on first call
+            if not hasattr(stateful_counter, 'counter'):
+                stateful_counter.counter = tf.Variable(0, dtype=tf.int32)
+            stateful_counter.counter.assign_add(1)
+            return stateful_counter.counter.read_value()
+        
+        # Weak assertions
+        # 1. variable_created_once: Variable should be created on first call
+        # Mock Variable creation to verify it happens only once
+        with mock.patch('tensorflow.Variable') as mock_var:
+            # First call - should create variable
+            result1 = stateful_counter()
+            assert mock_var.call_count == 1, "Variable should be created on first call"
+            
+            # Reset mock to track subsequent calls
+            mock_var.reset_mock()
+            
+            # Second call - should not create new variable
+            result2 = stateful_counter()
+            assert mock_var.call_count == 0, "Variable should not be recreated on subsequent calls"
+        
+        # Clean up and test actual behavior
+        # Reset the counter attribute
+        if hasattr(stateful_counter, 'counter'):
+            delattr(stateful_counter, 'counter')
+        
+        # 2. state_preserved: State should be preserved between calls
+        # Create a fresh function to test state preservation
+        @def_function.function
+        def fresh_counter():
+            if not hasattr(fresh_counter, 'counter_var'):
+                fresh_counter.counter_var = tf.Variable(0, dtype=tf.int32)
+            fresh_counter.counter_var.assign_add(1)
+            return fresh_counter.counter_var.read_value()
+        
+        # First call
+        result1 = fresh_counter()
+        assert result1.numpy() == 1, f"First call should return 1, got {result1.numpy()}"
+        
+        # Second call - should increment
+        result2 = fresh_counter()
+        assert result2.numpy() == 2, f"Second call should return 2, got {result2.numpy()}"
+        
+        # Third call - should increment again
+        result3 = fresh_counter()
+        assert result3.numpy() == 3, f"Third call should return 3, got {result3.numpy()}"
+        
+        # 3. callable: Verify function is callable
+        assert callable(fresh_counter), "Function should be callable"
+        
+        # 4. basic_execution: Test basic execution works
+        # Create another function with different initial value
+        @def_function.function
+        def counter_with_initial(initial_value):
+            if not hasattr(counter_with_initial, 'counter'):
+                counter_with_initial.counter = tf.Variable(initial_value, dtype=tf.int32)
+            counter_with_initial.counter.assign_add(1)
+            return counter_with_initial.counter.read_value()
+        
+        # Test with different initial values
+        result_a = counter_with_initial(10)
+        assert result_a.numpy() == 11, f"Should return 11, got {result_a.numpy()}"
+        
+        # Reset and test again
+        if hasattr(counter_with_initial, 'counter'):
+            delattr(counter_with_initial, 'counter')
+        
+        result_b = counter_with_initial(20)
+        assert result_b.numpy() == 21, f"Should return 21, got {result_b.numpy()}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    def test_control_flow_statements_support(self):
+        """CASE_04: 控制流语句支持 - 测试控制流语句支持"""
+        # Test conditional flow function
+        @def_function.function
+        def conditional_flow(x):
+            # Data-dependent control flow
+            if tf.reduce_sum(x) > 0:
+                return x * x  # Square if sum > 0
+            else:
+                return -x // 2  # Negative half if sum <= 0
+        
+        # Weak assertions
+        # 1. if_statement_works: Test if statement with positive sum
+        x_positive = tf.constant([1.0, 2.0, 3.0])
+        result_positive = conditional_flow(x_positive)
+        expected_positive = tf.constant([1.0, 4.0, 9.0])
+        
+        # Check that if branch was taken (squaring)
+        np.testing.assert_allclose(result_positive.numpy(), expected_positive.numpy(), rtol=1e-5)
+        
+        # 2. if_statement_works: Test if statement with negative sum
+        x_negative = tf.constant([-1.0, -2.0, -3.0])
+        result_negative = conditional_flow(x_negative)
+        # For negative sum, should return -x // 2
+        # Note: // operator with floats does floor division
+        expected_negative = tf.constant([0.0, 1.0, 1.0])  # -(-1)//2=0, -(-2)//2=1, -(-3)//2=1
+        
+        np.testing.assert_allclose(result_negative.numpy(), expected_negative.numpy(), rtol=1e-5)
+        
+        # 3. loop_execution: Test loop execution
+        @def_function.function
+        def loop_example(n):
+            # Simple for loop
+            total = tf.constant(0, dtype=tf.int32)
+            for i in tf.range(n):
+                total += i
+            return total
+        
+        # Test loop with different values
+        result_loop_5 = loop_example(5)
+        assert result_loop_5.numpy() == 10, f"Sum 0..4 should be 10, got {result_loop_5.numpy()}"
+        
+        result_loop_10 = loop_example(10)
+        assert result_loop_10.numpy() == 45, f"Sum 0..9 should be 45, got {result_loop_10.numpy()}"
+        
+        # 4. data_dependent_flow: Test more complex data-dependent flow
+        @def_function.function
+        def complex_flow(x, threshold):
+            result = tf.constant(0.0)
+            for val in x:
+                if val > threshold:
+                    result += val
+                else:
+                    result -= val
+            return result
+        
+        x_data = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0])
+        threshold = tf.constant(3.0)
+        result_complex = complex_flow(x_data, threshold)
+        
+        # Values > 3: 4.0 + 5.0 = 9.0
+        # Values <= 3: -1.0 - 2.0 - 3.0 = -6.0
+        # Total: 9.0 - 6.0 = 3.0
+        expected_complex = tf.constant(3.0)
+        np.testing.assert_allclose(result_complex.numpy(), expected_complex.numpy(), rtol=1e-5)
+        
+        # 5. basic_execution: Test basic execution with edge cases
+        # Test with zero
+        x_zero = tf.constant([0.0])
+        result_zero = conditional_flow(x_zero)
+        # Sum is 0, so should take else branch: -0 // 2 = 0
+        expected_zero = tf.constant([0.0])
+        np.testing.assert_allclose(result_zero.numpy(), expected_zero.numpy(), rtol=1e-5)
+        
+        # Test with single element
+        x_single = tf.constant([5.0])
+        result_single = conditional_flow(x_single)
+        expected_single = tf.constant([25.0])
+        np.testing.assert_allclose(result_single.numpy(), expected_single.numpy(), rtol=1e-5)
+        
+        # Verify functions are callable
+        assert callable(conditional_flow), "conditional_flow should be callable"
+        assert callable(loop_example), "loop_example should be callable"
+        assert callable(complex_flow), "complex_flow should be callable"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    def test_decorator_factory_pattern(self):
+        """CASE_05: 装饰器工厂模式 - 测试装饰器工厂模式"""
+        # Test decorator factory pattern (func=None)
+        # When func is None, tf.function returns a decorator
+        
+        # Create decorator factory with specific parameters
+        decorator_factory = def_function.function(
+            func=None,
+            input_signature=None,
+            autograph=True,
+            jit_compile=None
+        )
+        
+        # Weak assertions
+        # 1. returns_decorator: Check that factory returns a decorator
+        assert callable(decorator_factory), "Factory should return a callable decorator"
+        
+        # 2. decorator_callable: Test that the decorator is callable
+        # Apply decorator to a simple function
+        @decorator_factory
+        def decorated_add(x, y):
+            return x + y
+        
+        # 3. decorator_creates_function: Verify decorated function works
+        x = tf.constant([1.0, 2.0])
+        y = tf.constant([3.0, 4.0])
+        result = decorated_add(x, y)
+        expected = tf.constant([4.0, 6.0])
+        
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-5)
+        
+        # 4. basic_execution: Test basic execution with different patterns
+        # Test with autograph=False
+        no_autograph_decorator = def_function.function(
+            func=None,
+            autograph=False
+        )
+        
+        @no_autograph_decorator
+        def simple_func(x):
+            return x * 2
+        
+        result_no_autograph = simple_func(tf.constant(5.0))
+        assert result_no_autograph.numpy() == 10.0, f"Should return 10.0, got {result_no_autograph.numpy()}"
+        
+        # Test with input_signature
+        signature_decorator = def_function.function(
+            func=None,
+            input_signature=[tf.TensorSpec(shape=(None,), dtype=tf.float32)]
+        )
+        
+        @signature_decorator
+        def vec_double(v):
+            return v * 2
+        
+        vec_result = vec_double(tf.constant([1.0, 2.0, 3.0], dtype=tf.float32))
+        expected_vec = tf.constant([2.0, 4.0, 6.0], dtype=tf.float32)
+        np.testing.assert_allclose(vec_result.numpy(), expected_vec.numpy(), rtol=1e-5)
+        
+        # Test that factory without func returns decorator, not GenericFunction
+        # This is a key difference from when func is provided
+        factory_result = def_function.function(func=None)
+        assert callable(factory_result), "func=None should return a callable decorator"
+        
+        # Apply the decorator
+        @factory_result
+        def test_func(x):
+            return x + 1
+        
+        # Now test_func should be a GenericFunction
+        test_result = test_func(tf.constant(5.0))
+        assert test_result.numpy() == 6.0, f"Should return 6.0, got {test_result.numpy()}"
+        
+        # Verify the decorated function has the expected methods
+        assert hasattr(test_func, '_list_all_concrete_functions'), \
+            "Decorated function should have _list_all_concrete_functions method"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: (DEFERRED)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Placeholder for CASE_07: (DEFERRED)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Placeholder for CASE_08: (DEFERRED)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

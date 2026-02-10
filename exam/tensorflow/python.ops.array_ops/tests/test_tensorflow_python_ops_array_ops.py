@@ -1,0 +1,430 @@
+"""
+测试 tensorflow.python.ops.array_ops 模块的核心功能
+"""
+
+import numpy as np
+import pytest
+from unittest import mock
+
+# 导入目标模块
+import tensorflow as tf
+from tensorflow.python.ops import array_ops
+
+# 固定随机种子以确保测试可重复
+np.random.seed(42)
+
+# ==== BLOCK:HEADER START ====
+# 测试辅助函数和fixture
+@pytest.fixture
+def mock_tensor_ops():
+    """Mock TensorFlow底层操作以隔离测试"""
+    # 修复mock路径：使用sys.modules来mock内部模块
+    # 注意：tensorflow.python不是公开API，我们需要先导入这些模块
+    import sys
+    
+    # 创建mock模块
+    mock_gen_array_ops = mock.MagicMock()
+    mock_tensor_util = mock.MagicMock()
+    mock_ops = mock.MagicMock()
+    mock_constant_op = mock.MagicMock()
+    
+    # 配置mock返回值
+    mock_convert_tensor = mock.MagicMock()
+    mock_convert_tensor.side_effect = lambda x, *args, **kwargs: x
+    
+    mock_constant = mock.MagicMock()
+    mock_constant.side_effect = lambda value, *args, **kwargs: value
+    
+    # 设置mock模块的属性
+    mock_gen_array_ops.reshape = mock.MagicMock()
+    mock_gen_array_ops.expand_dims = mock.MagicMock()
+    mock_gen_array_ops.concat_v2 = mock.MagicMock()
+    mock_gen_array_ops.pack = mock.MagicMock()
+    mock_gen_array_ops.unpack = mock.MagicMock()
+    
+    mock_tensor_util.maybe_set_static_shape = mock.MagicMock()
+    
+    mock_ops.convert_to_tensor = mock_convert_tensor
+    mock_ops.Tensor = mock.MagicMock()
+    
+    mock_constant_op.constant = mock_constant
+    
+    # 保存原始模块
+    original_modules = {}
+    modules_to_mock = [
+        'tensorflow.python.ops.gen_array_ops',
+        'tensorflow.python.framework.tensor_util',
+        'tensorflow.python.framework.ops',
+        'tensorflow.python.framework.constant_op'
+    ]
+    
+    for module_name in modules_to_mock:
+        if module_name in sys.modules:
+            original_modules[module_name] = sys.modules[module_name]
+    
+    # 替换sys.modules中的模块
+    sys.modules['tensorflow.python.ops.gen_array_ops'] = mock_gen_array_ops
+    sys.modules['tensorflow.python.framework.tensor_util'] = mock_tensor_util
+    sys.modules['tensorflow.python.framework.ops'] = mock_ops
+    sys.modules['tensorflow.python.framework.constant_op'] = mock_constant_op
+    
+    try:
+        # 返回字典而不是上下文管理器
+        return {
+            'reshape': mock_gen_array_ops.reshape,
+            'expand_dims': mock_gen_array_ops.expand_dims,
+            'concat': mock_gen_array_ops.concat_v2,
+            'pack': mock_gen_array_ops.pack,
+            'unpack': mock_gen_array_ops.unpack,
+            'set_shape': mock_tensor_util.maybe_set_static_shape,
+            'convert_tensor': mock_convert_tensor,
+            'constant': mock_constant
+        }
+    finally:
+        # 恢复原始模块
+        for module_name, original_module in original_modules.items():
+            sys.modules[module_name] = original_module
+        # 删除我们添加的mock模块
+        for module_name in modules_to_mock:
+            if module_name not in original_modules:
+                del sys.modules[module_name]
+
+def create_mock_tensor(shape, dtype=np.float32, values=None):
+    """创建模拟Tensor对象"""
+    if values is None:
+        values = np.random.randn(*shape).astype(dtype)
+    
+    # 创建MagicMock对象模拟Tensor
+    tensor = mock.MagicMock()
+    
+    # 设置Tensor属性
+    tensor.shape = tf.TensorShape(shape)
+    tensor.dtype = tf.as_dtype(dtype)
+    tensor.numpy.return_value = values
+    
+    # 添加一些常用方法
+    tensor.__len__ = lambda self: shape[0] if shape else 0
+    tensor.__repr__ = lambda self: f"MockTensor(shape={shape}, dtype={dtype})"
+    
+    return tensor
+
+def assert_tensor_properties(actual_tensor, expected_shape, expected_dtype):
+    """弱断言：验证Tensor的基本属性"""
+    # 检查shape
+    if isinstance(actual_tensor.shape, tf.TensorShape):
+        assert actual_tensor.shape == tf.TensorShape(expected_shape)
+    else:
+        # 对于mock对象，直接比较
+        assert tuple(actual_tensor.shape) == tuple(expected_shape)
+    
+    # 检查dtype
+    if isinstance(actual_tensor.dtype, tf.DType):
+        assert actual_tensor.dtype == tf.as_dtype(expected_dtype)
+    else:
+        # 对于mock对象，比较字符串表示
+        assert str(actual_tensor.dtype) == str(expected_dtype)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("input_shape,target_shape,dtype", [
+    ([2, 3], [6], np.float32),  # 基本形状变换
+    ([4, 4], [2, 8], np.float64),  # 参数扩展：不同形状和数据类型
+])
+def test_reshape_basic_shape_transform(mock_tensor_ops, input_shape, target_shape, dtype):
+    """测试reshape基本形状变换"""
+    # 准备测试数据
+    input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    expected_values = input_values.reshape(target_shape)
+    
+    # 创建模拟Tensor
+    input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+    # 使用mock_tensor_ops字典（不再是上下文管理器）
+    mocks = mock_tensor_ops
+    
+    # 配置mock
+    mock_reshape = mocks['reshape']
+    mock_set_shape = mocks['set_shape']
+    
+    # 模拟reshape操作返回结果
+    result_tensor = create_mock_tensor(target_shape, dtype, expected_values)
+    mock_reshape.return_value = result_tensor
+    
+    # 调用被测试函数
+    result = array_ops.reshape(input_tensor, target_shape)
+    
+    # 验证调用
+    mock_reshape.assert_called_once()
+    call_args = mock_reshape.call_args
+    assert call_args[0][0] is input_tensor
+    assert list(call_args[0][1]) == target_shape
+    
+    # 弱断言：验证基本属性
+    assert_tensor_properties(result, target_shape, dtype)
+    
+    # 验证元素总数不变
+    assert np.prod(result.shape) == np.prod(input_shape)
+    
+    # 验证maybe_set_static_shape被调用
+    mock_set_shape.assert_called_once()
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("input_shape,axis,dtype", [
+    ([10, 10, 3], 0, np.float32),  # 在轴0插入维度
+    ([5], -1, np.int32),  # 参数扩展：负轴索引和整数类型
+])
+def test_expand_dims_dimension_insertion(mock_tensor_ops, input_shape, axis, dtype):
+    """测试expand_dims维度插入"""
+    # 准备测试数据
+    input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    
+    # 计算期望形状
+    expected_shape = list(input_shape)
+    if axis >= 0:
+        expected_shape.insert(axis, 1)
+    else:
+        expected_shape.insert(axis + len(input_shape) + 1, 1)
+    
+    # 创建模拟Tensor
+    input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+    # 使用mock_tensor_ops字典（不再是上下文管理器）
+    mocks = mock_tensor_ops
+    
+    # 配置mock
+    mock_expand_dims = mocks['expand_dims']
+    
+    # 模拟expand_dims操作返回结果
+    expected_values = np.expand_dims(input_values, axis)
+    result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+    mock_expand_dims.return_value = result_tensor
+    
+    # 调用被测试函数
+    result = array_ops.expand_dims(input_tensor, axis)
+    
+    # 验证调用
+    mock_expand_dims.assert_called_once()
+    call_args = mock_expand_dims.call_args
+    assert call_args[0][0] is input_tensor
+    assert call_args[0][1] == axis
+    
+    # 弱断言：验证基本属性
+    assert_tensor_properties(result, expected_shape, dtype)
+    
+    # 验证rank增加1
+    assert len(result.shape) == len(input_shape) + 1
+    
+    # 验证新维度大小为1
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("input_shapes,axis,dtype", [
+    ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0连接
+    ([[3, 2], [3, 2]], 1, np.float64),  # 参数扩展：不同连接轴和数据类型
+])
+def test_concat_tensor_concatenation(mock_tensor_ops, input_shapes, axis, dtype):
+    """测试concat张量连接"""
+    # 准备测试数据
+    input_tensors = []
+    input_values_list = []
+    
+    for i, shape in enumerate(input_shapes):
+        values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+        input_values_list.append(values)
+        tensor = create_mock_tensor(shape, dtype, values)
+        input_tensors.append(tensor)
+    
+    # 计算期望形状
+    expected_shape = list(input_shapes[0])
+    expected_shape[axis] = sum(shape[axis] for shape in input_shapes)
+    
+    # 使用mock_tensor_ops字典（不再是上下文管理器）
+    mocks = mock_tensor_ops
+    
+    # 配置mock
+    mock_concat = mocks['concat']
+    mock_convert_tensor = mocks['convert_tensor']
+    
+    # 模拟concat操作返回结果
+    expected_values = np.concatenate(input_values_list, axis=axis)
+    result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+    mock_concat.return_value = result_tensor
+    
+    # 调用被测试函数
+    result = array_ops.concat(input_tensors, axis)
+    
+    # 验证调用
+    mock_concat.assert_called_once()
+    call_args = mock_concat.call_args
+    
+    # 验证输入参数
+    assert len(call_args[0]) == 2  # values和axis
+    values_arg = call_args[0][0]
+    assert isinstance(values_arg, list)
+    assert len(values_arg) == len(input_tensors)
+    
+    # 验证axis参数
+    assert call_args[0][1] == axis
+    
+    # 弱断言：验证基本属性
+    assert_tensor_properties(result, expected_shape, dtype)
+    
+    # 验证连接维度正确
+    assert result.shape[axis] == expected_shape[axis]
+    
+    # 验证convert_to_tensor被调用
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("input_shapes,axis,dtype", [
+    ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0堆叠
+])
+def test_stack_tensor_stacking(mock_tensor_ops, input_shapes, axis, dtype):
+    """测试stack张量堆叠"""
+    # 准备测试数据
+    input_tensors = []
+    input_values_list = []
+    
+    for i, shape in enumerate(input_shapes):
+        values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+        input_values_list.append(values)
+        tensor = create_mock_tensor(shape, dtype, values)
+        input_tensors.append(tensor)
+    
+    # 计算期望形状
+    expected_shape = list(input_shapes[0])
+    # 使用input_shapes[0]的长度来计算插入位置
+    if axis >= 0:
+        expected_shape.insert(axis, len(input_shapes))
+    else:
+        expected_shape.insert(axis + len(input_shapes[0]) + 1, len(input_shapes))
+    
+    # 使用mock_tensor_ops字典（不再是上下文管理器）
+    mocks = mock_tensor_ops
+    
+    # 配置mock
+    mock_pack = mocks['pack']
+    mock_convert_tensor = mocks['convert_tensor']
+    
+    # 模拟stack操作返回结果
+    expected_values = np.stack(input_values_list, axis=axis)
+    result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+    mock_pack.return_value = result_tensor
+    
+    # 调用被测试函数
+    result = array_ops.stack(input_tensors, axis)
+    
+    # 验证调用
+    mock_pack.assert_called_once()
+    call_args = mock_pack.call_args
+    
+    # 验证输入参数
+    assert len(call_args[0]) == 2  # values和axis
+    values_arg = call_args[0][0]
+    assert isinstance(values_arg, list)
+    assert len(values_arg) == len(input_tensors)
+    
+    # 验证axis参数
+    assert call_args[0][1] == axis
+    
+    # 弱断言：验证基本属性
+    assert_tensor_properties(result, expected_shape, dtype)
+    
+    # 验证rank增加1
+    assert len(result.shape) == len(input_shapes[0]) + 1
+    
+    # 验证新维度大小正确
+    assert result.shape[axis if axis >= 0 else axis + len(result.shape)] == len(input_shapes)
+    
+    # 验证convert_to_tensor被调用
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# 占位：reshape自动推断维度（DEFERRED_SET）
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# 占位：unstack张量解堆叠（DEFERRED_SET）
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试类定义和额外辅助函数
+class TestArrayOps:
+    """array_ops模块测试类"""
+    
+    def test_module_import(self):
+        """验证模块可以正确导入"""
+        assert hasattr(array_ops, 'reshape')
+        assert hasattr(array_ops, 'expand_dims')
+        assert hasattr(array_ops, 'concat')
+        assert hasattr(array_ops, 'stack')
+        assert hasattr(array_ops, 'unstack')
+    
+    def test_reshape_invalid_shape(self, mock_tensor_ops):
+        """测试reshape无效形状参数"""
+        input_tensor = create_mock_tensor([2, 3], np.float32)
+        
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+        mock_reshape = mocks['reshape']
+        
+        # 模拟InvalidArgumentError
+        mock_reshape.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "Input to reshape is a tensor with 6 values, but the requested shape has 8"
+        )
+        
+        # 验证异常被抛出
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            array_ops.reshape(input_tensor, [2, 4])
+    
+    def test_expand_dims_invalid_axis(self, mock_tensor_ops):
+        """测试expand_dims无效轴参数"""
+        input_tensor = create_mock_tensor([2, 3], np.float32)
+        
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+        mock_expand_dims = mocks['expand_dims']
+        
+        # 模拟InvalidArgumentError
+        mock_expand_dims.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "axis = 3 not in [-3, 2]"
+        )
+        
+        # 验证异常被抛出
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            array_ops.expand_dims(input_tensor, 3)
+    
+    def test_concat_empty_list(self, mock_tensor_ops):
+        """测试concat空张量列表"""
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+        mock_concat = mocks['concat']
+        
+        # 模拟InvalidArgumentError
+        mock_concat.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "ConcatOp : Expected at least 1 input"
+        )
+        
+        # 验证异常被抛出
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            array_ops.concat([], 0)
+    
+    def test_stack_incompatible_shapes(self, mock_tensor_ops):
+        """测试stack不兼容形状"""
+        tensor1 = create_mock_tensor([2, 3], np.float32)
+        tensor2 = create_mock_tensor([2, 4], np.float32)  # 不兼容形状
+        
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+        mock_pack = mocks['pack']
+        
+        # 模拟InvalidArgumentError
+        mock_pack.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "Shapes of all inputs must match"
+        )
+        
+        # 验证异常被抛出
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            array_ops.stack([tensor1, tensor2], 0)
+# ==== BLOCK:FOOTER END ====

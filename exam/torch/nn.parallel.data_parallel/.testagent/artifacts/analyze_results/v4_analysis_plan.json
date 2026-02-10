@@ -1,0 +1,55 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case0]",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "参数验证测试错误消息不匹配：实际错误为device()参数类型错误，而非预期的module参数验证错误"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case1]",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "参数验证测试错误消息不匹配：实际错误为device()参数类型错误，而非预期的inputs参数验证错误"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case2]",
+      "block_id": "HEADER",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "空device_ids列表导致IndexError：需要处理CPU环境下空device_ids的情况"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_parameter_validation_and_exceptions[test_case4]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case4]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_parallel_data_parallel_g2.py::test_edge_case_handling[test_case5]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

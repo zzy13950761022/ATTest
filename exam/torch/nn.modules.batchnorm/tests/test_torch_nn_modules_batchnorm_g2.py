@@ -1,0 +1,246 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.modules.batchnorm import (
+    BatchNorm1d, BatchNorm2d, BatchNorm3d,
+    LazyBatchNorm1d, LazyBatchNorm2d, LazyBatchNorm3d,
+    SyncBatchNorm
+)
+
+
+# ==== BLOCK:HEADER START ====
+# Fixtures and helper functions for batch normalization tests (G2 group)
+
+@pytest.fixture(scope="function")
+def set_random_seed():
+    """Set random seed for reproducibility."""
+    torch.manual_seed(42)
+    return 42
+
+
+def create_test_input(shape, dtype=torch.float32, device="cpu"):
+    """Create test input tensor with fixed random values."""
+    torch.manual_seed(42)
+    return torch.randn(*shape, dtype=dtype, device=device)
+
+
+def assert_tensor_properties(tensor, expected_shape, expected_dtype, test_name=""):
+    """Assert basic tensor properties."""
+    assert tensor.shape == expected_shape, f"{test_name}: shape mismatch"
+    assert tensor.dtype == expected_dtype, f"{test_name}: dtype mismatch"
+    assert torch.isfinite(tensor).all(), f"{test_name}: tensor contains non-finite values"
+
+
+def get_oracle_batch_norm(input_tensor, bn_module):
+    """Get oracle output using F.batch_norm for comparison."""
+    if bn_module.training:
+        # In training mode, use batch statistics
+        return F.batch_norm(
+            input_tensor,
+            running_mean=None,
+            running_var=None,
+            weight=bn_module.weight,
+            bias=bn_module.bias,
+            training=True,
+            momentum=bn_module.momentum,
+            eps=bn_module.eps
+        )
+    else:
+        # In eval mode, use running statistics
+        return F.batch_norm(
+            input_tensor,
+            running_mean=bn_module.running_mean,
+            running_var=bn_module.running_var,
+            weight=bn_module.weight,
+            bias=bn_module.bias,
+            training=False,
+            momentum=bn_module.momentum,
+            eps=bn_module.eps
+        )
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("track_running_stats, input_shape", [
+    (True, [2, 8, 16, 16]),  # Base case from test plan
+    (False, [2, 8, 16, 16]),  # Extension: track_running_stats=False
+])
+def test_affine_false_configuration(track_running_stats, input_shape):
+    """Test BatchNorm2d with affine=False configuration.
+    
+    TC-05: affine=False配置
+    Priority: High
+    Assertion level: weak
+    Group: G2
+    """
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+    
+    # Create BatchNorm2d instance with affine=False
+    bn = BatchNorm2d(
+        num_features=8,
+        eps=1e-5,
+        momentum=0.1,
+        affine=False,  # Key parameter: no learnable affine parameters
+        track_running_stats=track_running_stats
+    )
+    
+    # Create test input
+    input_tensor = torch.randn(*input_shape, dtype=torch.float32)
+    
+    # Set to training mode
+    bn.train()
+    
+    # Save initial state
+    if track_running_stats:
+        initial_running_mean = bn.running_mean.clone()
+        initial_running_var = bn.running_var.clone()
+    
+    # Forward pass
+    output = bn(input_tensor)
+    
+    # Weak assertions from test plan
+    # 1. no_weight_parameter
+    assert bn.weight is None, "weight should be None when affine=False"
+    
+    # 2. no_bias_parameter
+    assert bn.bias is None, "bias should be None when affine=False"
+    
+    # 3. output_shape_correct
+    assert output.shape == input_tensor.shape, \
+        f"Output shape {output.shape} != input shape {input_tensor.shape}"
+    
+    # 4. normalization_applied
+    # Check that normalization is applied by verifying output statistics
+    # When affine=False, output should be approximately zero-mean and unit variance
+    # across batch and spatial dimensions for each feature
+    
+    # Compute mean and variance per feature
+    # For BatchNorm2d: input shape [N, C, H, W]
+    # We compute statistics across batch (dim 0) and spatial dimensions (dim 2, 3)
+    output_reshaped = output.transpose(0, 1).reshape(8, -1)  # [C, N*H*W]
+    
+    for c in range(8):
+        feature_values = output_reshaped[c]
+        feature_mean = feature_values.mean().item()
+        feature_std = feature_values.std().item()
+        
+        # Check approximate zero mean (allow some tolerance due to eps and finite samples)
+        assert abs(feature_mean) < 0.5, \
+            f"Feature {c}: mean {feature_mean:.4f} is not close to zero"
+        
+        # Check approximate unit variance (allow some tolerance)
+        assert 0.8 < feature_std < 1.2, \
+            f"Feature {c}: std {feature_std:.4f} is not close to 1"
+    
+    # Additional checks
+    assert output.dtype == torch.float32, \
+        f"Output dtype {output.dtype} != expected float32"
+    
+    assert torch.isfinite(output).all(), \
+        "Output contains non-finite values"
+    
+    # Check running statistics behavior
+    if track_running_stats:
+        # In training mode with track_running_stats=True, running stats should be updated
+        assert not torch.allclose(bn.running_mean, initial_running_mean), \
+            "running_mean should be updated in training mode with track_running_stats=True"
+        assert not torch.allclose(bn.running_var, initial_running_var), \
+            "running_var should be updated in training mode with track_running_stats=True"
+    else:
+        # With track_running_stats=False, running stats should be None
+        assert bn.running_mean is None, "running_mean should be None when track_running_stats=False"
+        assert bn.running_var is None, "running_var should be None when track_running_stats=False"
+        assert bn.num_batches_tracked is None, "num_batches_tracked should be None when track_running_stats=False"
+    
+    # Test eval mode behavior
+    bn.eval()
+    eval_output = bn(input_tensor)
+    
+    # Output shape should still be correct in eval mode
+    assert eval_output.shape == input_tensor.shape, \
+        f"Eval output shape {eval_output.shape} != input shape {input_tensor.shape}"
+    
+    # With affine=False, eval mode behavior depends on track_running_stats
+    if track_running_stats:
+        # In eval mode with track_running_stats=True, should use running stats
+        # Output should be different from training mode output
+        assert not torch.allclose(eval_output, output, rtol=1e-4), \
+            "Eval mode output should differ from training mode when track_running_stats=True"
+    else:
+        # In eval mode with track_running_stats=False, should use batch statistics
+        # Output should be similar to training mode output
+        assert torch.allclose(eval_output, output, rtol=1e-4), \
+            "Eval mode output should be similar to training mode when track_running_stats=False"
+# ==== BLOCK:CASE_05 END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: Deferred test case for G2
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# Placeholder for CASE_07: Deferred test case for G2
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:CASE_08 START ====
+# Placeholder for CASE_08: Deferred test case for G2
+# ==== BLOCK:CASE_08 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and edge case tests for G2 group
+
+def test_invalid_num_features():
+    """Test that num_features <= 0 raises ValueError."""
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=0)
+    
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=-1)
+
+
+def test_invalid_eps():
+    """Test that eps <= 0 raises ValueError."""
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=10, eps=0.0)
+    
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=10, eps=-1e-5)
+
+
+def test_invalid_momentum():
+    """Test that momentum outside [0, 1] raises ValueError."""
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=10, momentum=1.1)
+    
+    with pytest.raises(ValueError):
+        BatchNorm1d(num_features=10, momentum=-0.1)
+
+
+def test_input_dimension_validation():
+    """Test that input dimensions are validated."""
+    bn1d = BatchNorm1d(num_features=10)
+    bn2d = BatchNorm2d(num_features=10)
+    bn3d = BatchNorm3d(num_features=10)
+    
+    # BatchNorm1d should accept 2D or 3D input
+    input_2d = torch.randn(4, 10)
+    input_3d = torch.randn(4, 10, 32)
+    output_2d = bn1d(input_2d)
+    output_3d = bn1d(input_3d)
+    assert output_2d.shape == input_2d.shape
+    assert output_3d.shape == input_3d.shape
+    
+    # BatchNorm2d should reject 2D input
+    with pytest.raises(RuntimeError):
+        bn2d(input_2d)
+    
+    # BatchNorm3d should reject 2D input
+    with pytest.raises(RuntimeError):
+        bn3d(input_2d)
+# ==== BLOCK:FOOTER END ====

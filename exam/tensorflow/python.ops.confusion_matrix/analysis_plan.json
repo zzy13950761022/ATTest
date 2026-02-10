@@ -1,0 +1,47 @@
+{
+  "status": "成功",
+  "passed": 14,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_data_type_conversion",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：第257行类型转换分支未覆盖"
+    },
+    {
+      "test": "test_edge_case_empty_input",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：第303行权重处理分支和第347行退出分支未覆盖"
+    },
+    {
+      "test": "test_negative_labels_error",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：第441-442行负权重测试分支未覆盖"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_dimension_mismatch_error",
+      "reason": "覆盖率缺口：第393行权重处理分支未覆盖，但优先级较低"
+    },
+    {
+      "test": "test_label_exceeds_num_classes_error",
+      "reason": "覆盖率缺口：第601-604行num_classes=None测试分支未覆盖，但优先级较低"
+    },
+    {
+      "test": "test_weights_shape_mismatch_error",
+      "reason": "覆盖率缺口：第728行FOOTER测试函数未覆盖"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

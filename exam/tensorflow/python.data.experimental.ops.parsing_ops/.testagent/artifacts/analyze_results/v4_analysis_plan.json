@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_parsing_ops_g2.py::TestParsingOpsG2::test_multiple_feature_types_support[feature_types0-dtype_combinations0-False-15]",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "create_string_vector_dataset创建的dataset形状不正确，应为字符串向量(shape=[None])，但实际为标量字符串(shape=[])。需要修改fixture以返回正确形状的数据集。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,100 @@
+=== Run Tests ===
+F..sFFFsss                                                               [100%]
+================================== FAILURES ===================================
+________________ test_take_while_function_type_and_deprecation ________________
+
+    def test_take_while_function_type_and_deprecation():
+        """Test that take_while returns a callable function and triggers deprecation warning"""
+        # Arrange
+        predicate = lambda x: tf.constant(True)
+    
+        # Act - capture deprecation warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = take_while(predicate)
+    
+            # Assert: deprecation warning triggered
+>           assert len(w) == 1, "Expected exactly one deprecation warning"
+E           AssertionError: Expected exactly one deprecation warning
+E           assert 0 == 1
+E            +  where 0 = len([])
+
+tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py:45: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:deprecation.py:337 From D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.take_while_ops\tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py:42: take_while (from tensorflow.python.data.experimental.ops.take_while_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.data.Dataset.take_while(...)
+___________ test_take_while_invalid_predicate_type[None-TypeError] ____________
+
+invalid_predicate = None, expected_error = <class 'TypeError'>
+
+    @pytest.mark.parametrize("invalid_predicate,expected_error", [
+        (None, TypeError),
+        ("not_a_function", TypeError),
+        (123, TypeError),
+    ])
+    def test_take_while_invalid_predicate_type(invalid_predicate, expected_error):
+        """Test that non-function predicate arguments raise TypeError"""
+        # Act & Assert: should raise TypeError
+        with pytest.raises(expected_error) as exc_info:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+>               take_while(invalid_predicate)
+E               Failed: DID NOT RAISE <class 'TypeError'>
+
+tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py:150: Failed
+______ test_take_while_invalid_predicate_type[not_a_function-TypeError] _______
+
+invalid_predicate = 'not_a_function', expected_error = <class 'TypeError'>
+
+    @pytest.mark.parametrize("invalid_predicate,expected_error", [
+        (None, TypeError),
+        ("not_a_function", TypeError),
+        (123, TypeError),
+    ])
+    def test_take_while_invalid_predicate_type(invalid_predicate, expected_error):
+        """Test that non-function predicate arguments raise TypeError"""
+        # Act & Assert: should raise TypeError
+        with pytest.raises(expected_error) as exc_info:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+>               take_while(invalid_predicate)
+E               Failed: DID NOT RAISE <class 'TypeError'>
+
+tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py:150: Failed
+____________ test_take_while_invalid_predicate_type[123-TypeError] ____________
+
+invalid_predicate = 123, expected_error = <class 'TypeError'>
+
+    @pytest.mark.parametrize("invalid_predicate,expected_error", [
+        (None, TypeError),
+        ("not_a_function", TypeError),
+        (123, TypeError),
+    ])
+    def test_take_while_invalid_predicate_type(invalid_predicate, expected_error):
+        """Test that non-function predicate arguments raise TypeError"""
+        # Act & Assert: should raise TypeError
+        with pytest.raises(expected_error) as exc_info:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+>               take_while(invalid_predicate)
+E               Failed: DID NOT RAISE <class 'TypeError'>
+
+tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py:150: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py      77     19      2      1    75%   22, 26-28, 46-59, 105-106, 153-155, 189
+------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                     77     19      2      1    75%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py::test_take_while_function_type_and_deprecation
+FAILED tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py::test_take_while_invalid_predicate_type[None-TypeError]
+FAILED tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py::test_take_while_invalid_predicate_type[not_a_function-TypeError]
+FAILED tests\test_tensorflow_python_data_experimental_ops_take_while_ops.py::test_take_while_invalid_predicate_type[123-TypeError]
+4 failed, 2 passed, 4 skipped in 1.59s
+
+Error: exit 1

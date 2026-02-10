@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_take_while_function_type_and_deprecation",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "弃用警告捕获失败，需要调整警告捕获机制"
+    },
+    {
+      "test": "test_take_while_with_tensorflow_bool_scalar",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "张量类型错误：tf.constant返回张量而非布尔值，需要修复predicate实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_take_while_wraps_predicate_correctly",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

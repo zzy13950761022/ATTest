@@ -1,0 +1,41 @@
+{
+  "status": "成功",
+  "passed": 12,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "CASE_06",
+      "reason": "状态操作异常处理测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_07",
+      "reason": "G1组deferred测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_08",
+      "reason": "G1组deferred测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_09",
+      "reason": "G2组deferred测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_10",
+      "reason": "G2组deferred测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_11",
+      "reason": "G3组deferred测试 - 已标记为deferred"
+    },
+    {
+      "test": "CASE_12",
+      "reason": "G3组deferred测试 - 已标记为deferred"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

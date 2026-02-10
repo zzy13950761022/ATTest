@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 1,
+  "collection_errors": true,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensorflow_python_ops_embedding_ops.py",
+      "block_id": "HEADER",
+      "error_type": "SyntaxError",
+      "action": "rewrite_block",
+      "note": "文件开头存在未闭合的三引号字符串，导致语法解析失败"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

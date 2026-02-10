@@ -1,0 +1,247 @@
+=== Run Tests ===
+.FsF.F....                                                               [100%]
+=================================== FAILURES ===================================
+__ test_iteration_parameters_control[dtype0-cpu-shape0-2-True-ortho-10-1e-08] __
+
+dtype = torch.float64, device = 'cpu', shape = (8, 8), k = 2, largest = True
+method = 'ortho', niter = 10, tol = 1e-08
+
+    @pytest.mark.parametrize("dtype,device,shape,k,largest,method,niter,tol", [
+        (torch.float64, 'cpu', (8, 8), 2, True, 'ortho', 10, 1e-8),
+    ])
+    def test_iteration_parameters_control(dtype, device, shape, k, largest, method, niter, tol):
+        """CASE_07: 迭代参数控制（niter, tol）"""
+        # Create symmetric positive definite matrix
+        A = make_symmetric_positive_definite(shape, dtype=dtype, device=device)
+    
+        # Compute eigenvalues using lobpcg with specified iteration parameters
+        E_lobpcg, X_lobpcg = lobpcg_module.lobpcg(
+            A=A,
+            k=k,
+            largest=largest,
+            method=method,
+            niter=niter,
+            tol=tol
+        )
+    
+        # Weak assertions (首轮使用weak断言)
+        # 1. Shape check
+        assert E_lobpcg.shape == (k,), f"Eigenvalues shape mismatch: {E_lobpcg.shape} != ({k},)"
+        assert X_lobpcg.shape == (shape[0], k), f"Eigenvectors shape mismatch: {X_lobpcg.shape} != ({shape[0]}, {k})"
+    
+        # 2. Dtype check
+        assert E_lobpcg.dtype == dtype, f"Eigenvalues dtype mismatch: {E_lobpcg.dtype} != {dtype}"
+        assert X_lobpcg.dtype == dtype, f"Eigenvectors dtype mismatch: {X_lobpcg.dtype} != {dtype}"
+    
+        # 3. Finite check
+        assert torch.all(torch.isfinite(E_lobpcg)), "Eigenvalues contain non-finite values"
+        assert torch.all(torch.isfinite(X_lobpcg)), "Eigenvectors contain non-finite values"
+    
+        # 4. Residual norm check - should be less than tolerance or reasonable value
+        residual_norm = compute_residual_norm(A, X_lobpcg, E_lobpcg)
+        # Use max of specified tolerance and dtype-based tolerance
+        test_tolerance = max(tol, get_tolerance(dtype))
+        assert residual_norm < test_tolerance * 100, f"Residual norm too large: {residual_norm}"
+    
+        # Check eigenvalue order (weak)
+        if largest:
+            # For largest eigenvalues, they should be in descending order
+            assert torch.all(E_lobpcg.diff() <= 0), "Largest eigenvalues not in descending order"
+        else:
+            # For smallest eigenvalues, they should be in ascending order
+            assert torch.all(E_lobpcg.diff() >= 0), "Smallest eigenvalues not in ascending order"
+    
+        # Compare with default parameters (weak consistency check)
+        E_default, X_default = lobpcg_module.lobpcg(
+            A=A,
+            k=k,
+            largest=largest,
+            method=method
+            # Use default niter and tol
+        )
+    
+        # Check that both solutions have similar eigenvalues
+        eigenvalue_diff = torch.abs(E_lobpcg - E_default).max()
+        assert eigenvalue_diff < test_tolerance * 200, f"Eigenvalue difference between custom and default parameters too large: {eigenvalue_diff}"
+    
+        # Test with different niter values (weak convergence check)
+        # Test with fewer iterations
+        E_few, X_few = lobpcg_module.lobpcg(
+            A=A,
+            k=k,
+            largest=largest,
+            method=method,
+            niter=max(2, niter // 2),  # Use fewer iterations
+            tol=tol
+        )
+    
+        # With fewer iterations, residual might be larger but should still be reasonable
+        residual_norm_few = compute_residual_norm(A, X_few, E_few)
+        # Allow larger residual for fewer iterations
+>       assert residual_norm_few < test_tolerance * 1000, f"Residual norm with fewer iterations too large: {residual_norm_few}"
+E       AssertionError: Residual norm with fewer iterations too large: 0.03853774256104154
+E       assert tensor(0.0385, dtype=torch.float64) < (1e-08 * 1000)
+
+tests/test_torch_lobpcg_advanced.py:247: AssertionError
+_____ test_dense_basic_eigenvalue_solution[dtype0-cpu-shape0-2-True-ortho] _____
+
+dtype = torch.float32, device = 'cpu', shape = (8, 8), k = 2, largest = True
+method = 'ortho'
+
+    @pytest.mark.parametrize("dtype,device,shape,k,largest,method", [
+        (torch.float32, 'cpu', (8, 8), 2, True, 'ortho'),  # 8 ≥ 3×2 = 6, 满足条件
+    ])
+    def test_dense_basic_eigenvalue_solution(dtype, device, shape, k, largest, method):
+        """CASE_01: 密集矩阵基本特征值求解"""
+        # Create symmetric positive definite matrix
+        A = make_symmetric_positive_definite(shape, dtype=dtype, device=device)
+    
+        # Compute eigenvalues using lobpcg
+        E_lobpcg, X_lobpcg = lobpcg_module.lobpcg(
+            A=A,
+            k=k,
+            largest=largest,
+            method=method
+        )
+    
+        # Weak assertions (首轮使用weak断言)
+        # 1. Shape check
+        assert E_lobpcg.shape == (k,), f"Eigenvalues shape mismatch: {E_lobpcg.shape} != ({k},)"
+        assert X_lobpcg.shape == (shape[0], k), f"Eigenvectors shape mismatch: {X_lobpcg.shape} != ({shape[0]}, {k})"
+    
+        # 2. Dtype check
+        assert E_lobpcg.dtype == dtype, f"Eigenvalues dtype mismatch: {E_lobpcg.dtype} != {dtype}"
+        assert X_lobpcg.dtype == dtype, f"Eigenvectors dtype mismatch: {X_lobpcg.dtype} != {dtype}"
+    
+        # 3. Finite check
+        assert torch.all(torch.isfinite(E_lobpcg)), "Eigenvalues contain non-finite values"
+        assert torch.all(torch.isfinite(X_lobpcg)), "Eigenvectors contain non-finite values"
+    
+        # 4. Residual norm check
+        residual_norm = compute_residual_norm(A, X_lobpcg, E_lobpcg)
+        tolerance = get_tolerance(dtype)
+>       assert residual_norm < tolerance * 10, f"Residual norm too large: {residual_norm}"
+E       AssertionError: Residual norm too large: 0.009689593687653542
+E       assert tensor(0.0097) < (0.0001 * 10)
+
+tests/test_torch_lobpcg_basic.py:131: AssertionError
+_____ test_with_initial_eigenvectors[dtype0-cpu-shape0-2-True-basic-True] ______
+
+dtype = torch.float32, device = 'cpu', shape = (6, 6), k = 2, largest = True
+method = 'basic', has_initial_X = True
+
+    @pytest.mark.parametrize("dtype,device,shape,k,largest,method,has_initial_X", [
+        (torch.float32, 'cpu', (6, 6), 2, True, 'basic', True),
+    ])
+    def test_with_initial_eigenvectors(dtype, device, shape, k, largest, method, has_initial_X):
+        """CASE_03: 指定初始特征向量X"""
+        # Create symmetric positive definite matrix
+        A = make_symmetric_positive_definite(shape, dtype=dtype, device=device)
+    
+        # Generate initial eigenvectors (random but orthogonal)
+        m = shape[0]
+        X_init = torch.randn(m, k, dtype=dtype, device=device)
+        # Orthogonalize using QR decomposition
+        Q, _ = torch.linalg.qr(X_init, mode='reduced')
+        X_init = Q[:, :k]
+    
+        # Compute eigenvalues using lobpcg with initial X
+>       E_lobpcg, X_lobpcg = lobpcg_module.lobpcg(
+            A=A,
+            X=X_init,
+            k=k,
+            largest=largest,
+            method=method
+        )
+
+tests/test_torch_lobpcg_basic.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:567: in lobpcg
+    return _lobpcg(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:687: in _lobpcg
+    worker.run()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:837: in run
+    self.update()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:769: in update
+    self._update_basic()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:881: in _update_basic
+    Ri = self._get_rayleigh_ritz_transform(S_)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch._lobpcg.LOBPCG object at 0x10d4bf850>
+S = tensor([[-0.0628, -0.2136,  0.1176,  0.3385, -0.0026, -0.0051],
+        [ 0.5420, -0.2018,  0.0112, -0.1249, -0.0021, ...-0.5250,  0.5538, -0.3817, -0.1223,  0.0028,  0.0056],
+        [-0.4214, -0.0449,  0.6538,  0.4371, -0.0113, -0.0223]])
+
+    def _get_rayleigh_ritz_transform(self, S):
+        """Return a transformation matrix that is used in Rayleigh-Ritz
+        procedure for reducing a general eigenvalue problem :math:`(S^TAS)
+        C = (S^TBS) C E` to a standard eigenvalue problem :math: `(Ri^T
+        S^TAS Ri) Z = Z E` where `C = Ri Z`.
+    
+        .. note:: In the original Rayleight-Ritz procedure in
+          [DuerschEtal2018], the problem is formulated as follows::
+    
+            SAS = S^T A S
+            SBS = S^T B S
+            D = (<diagonal matrix of SBS>) ** -1/2
+            R^T R = Cholesky(D SBS D)
+            Ri = D R^-1
+            solve symeig problem Ri^T SAS Ri Z = Theta Z
+            C = Ri Z
+    
+          To reduce the number of matrix products (denoted by empty
+          space between matrices), here we introduce element-wise
+          products (denoted by symbol `*`) so that the Rayleight-Ritz
+          procedure becomes::
+    
+            SAS = S^T A S
+            SBS = S^T B S
+            d = (<diagonal of SBS>) ** -1/2    # this is 1-d column vector
+            dd = d d^T                         # this is 2-d matrix
+            R^T R = Cholesky(dd * SBS)
+            Ri = R^-1 * d                      # broadcasting
+            solve symeig problem Ri^T SAS Ri Z = Theta Z
+            C = Ri Z
+    
+          where `dd` is 2-d matrix that replaces matrix products `D M
+          D` with one element-wise product `M * dd`; and `d` replaces
+          matrix product `D M` with element-wise product `M *
+          d`. Also, creating the diagonal matrix `D` is avoided.
+    
+        Args:
+        S (Tensor): the matrix basis for the search subspace, size is
+                    :math:`(m, n)`.
+    
+        Returns:
+        Ri (tensor): upper-triangular transformation matrix of size
+                     :math:`(n, n)`.
+    
+        """
+        B = self.B
+        mm = torch.matmul
+        SBS = _utils.qform(B, S)
+        d_row = SBS.diagonal(0, -2, -1) ** -0.5
+        d_col = d_row.reshape(d_row.shape[0], 1)
+        # TODO use torch.linalg.cholesky_solve once it is implemented
+>       R = torch.linalg.cholesky((SBS * d_row) * d_col, upper=True)
+E       torch._C._LinAlgError: linalg.cholesky: The factorization could not be completed because the input is not positive-definite (the leading minor of order 6 is not positive-definite).
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lobpcg.py:1000: _LinAlgError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+tests/test_torch_lobpcg_advanced.py     142     41     26     10    67%   34-45, 49->55, 52, 59, 66-67, 94, 143, 164, 218, 250-281, 310-313, 322-338, 343
+tests/test_torch_lobpcg_basic.py        214     51     46      5    73%   45, 71-86, 95, 135-158, 243-277, 328, 401-402, 484-489, 493, 498
+---------------------------------------------------------------------------------
+TOTAL                                   356     92     72     15    71%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_lobpcg_advanced.py::test_iteration_parameters_control[dtype0-cpu-shape0-2-True-ortho-10-1e-08]
+FAILED tests/test_torch_lobpcg_basic.py::test_dense_basic_eigenvalue_solution[dtype0-cpu-shape0-2-True-ortho]
+FAILED tests/test_torch_lobpcg_basic.py::test_with_initial_eigenvectors[dtype0-cpu-shape0-2-True-basic-True]
+3 failed, 6 passed, 1 skipped in 0.99s
+
+Error: exit 1

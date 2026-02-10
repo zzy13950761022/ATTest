@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_transformer_encoder_only[dtype0-cpu-False-2-8-1-1-32-0.0-relu-src_shape0-None]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "当tgt=None时，Transformer.forward中尝试访问tgt.size(1)导致AttributeError"
+    },
+    {
+      "test": "test_transformer_parameter_validation[dtype0-cpu-3-8-ValueError]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "测试期望ValueError但实际抛出AssertionError，需要调整异常断言"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

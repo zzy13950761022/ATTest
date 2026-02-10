@@ -1,0 +1,133 @@
+=== Run Tests ===
+EEEEEEEEE                                                                [100%]
+=================================== ERRORS ====================================
+_____________ ERROR at setup of test_make_tf_record_dataset_basic _____________
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 708
+  def test_make_tf_record_dataset_basic(self, temp_tfrecord_file, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:708
+______ ERROR at setup of test_make_tf_record_dataset_parameters[1-None] _______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 770
+  @pytest.mark.parametrize("batch_size,compression_type", [
+      (1, None),  # 最小batch_size
+      (32, None),  # 中等batch_size
+      (64, None),  # 较大batch_size
+      (16, "GZIP"),  # GZIP压缩
+      (16, "ZLIB"),  # ZLIB压缩
+  ])
+  def test_make_tf_record_dataset_parameters(self, batch_size, compression_type, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:770
+______ ERROR at setup of test_make_tf_record_dataset_parameters[32-None] ______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 770
+  @pytest.mark.parametrize("batch_size,compression_type", [
+      (1, None),  # 最小batch_size
+      (32, None),  # 中等batch_size
+      (64, None),  # 较大batch_size
+      (16, "GZIP"),  # GZIP压缩
+      (16, "ZLIB"),  # ZLIB压缩
+  ])
+  def test_make_tf_record_dataset_parameters(self, batch_size, compression_type, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:770
+______ ERROR at setup of test_make_tf_record_dataset_parameters[64-None] ______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 770
+  @pytest.mark.parametrize("batch_size,compression_type", [
+      (1, None),  # 最小batch_size
+      (32, None),  # 中等batch_size
+      (64, None),  # 较大batch_size
+      (16, "GZIP"),  # GZIP压缩
+      (16, "ZLIB"),  # ZLIB压缩
+  ])
+  def test_make_tf_record_dataset_parameters(self, batch_size, compression_type, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:770
+______ ERROR at setup of test_make_tf_record_dataset_parameters[16-GZIP] ______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 770
+  @pytest.mark.parametrize("batch_size,compression_type", [
+      (1, None),  # 最小batch_size
+      (32, None),  # 中等batch_size
+      (64, None),  # 较大batch_size
+      (16, "GZIP"),  # GZIP压缩
+      (16, "ZLIB"),  # ZLIB压缩
+  ])
+  def test_make_tf_record_dataset_parameters(self, batch_size, compression_type, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:770
+______ ERROR at setup of test_make_tf_record_dataset_parameters[16-ZLIB] ______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 770
+  @pytest.mark.parametrize("batch_size,compression_type", [
+      (1, None),  # 最小batch_size
+      (32, None),  # 中等batch_size
+      (64, None),  # 较大batch_size
+      (16, "GZIP"),  # GZIP压缩
+      (16, "ZLIB"),  # ZLIB压缩
+  ])
+  def test_make_tf_record_dataset_parameters(self, batch_size, compression_type, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:770
+_______ ERROR at setup of test_make_tf_record_dataset_file_pattern_list _______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 807
+  def test_make_tf_record_dataset_file_pattern_list(self, mock_file_glob, mock_tfrecord_reader):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:807
+_________ ERROR at setup of test_make_batched_features_dataset_basic __________
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 841
+  def test_make_batched_features_dataset_basic(self, mock_file_glob):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:841
+______ ERROR at setup of test_make_batched_features_dataset_placeholder _______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py, line 881
+  def test_make_batched_features_dataset_placeholder(self):
+E       fixture 'self' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.readers\tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py:881
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                     Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------------------
+test_import.py                                                              16     16      2      0     0%   1-22
+tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py     352    302     42      3    13%   25-29, 38-69, 74-75, 80-81, 88-145, 157-182, 186-208, 215-250, 258-266, 273-291, 295-304, 309-565, 572-590, 594-603, 608-629, 642-646, 655-686, 691-692, 697-698, 711-768, 780-805, 809-831, 844-879, 887-895, 906-924, 928-937, 942-963
+--------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                      368    318     44      3    13%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_basic
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[1-None]
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[32-None]
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[64-None]
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[16-GZIP]
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[16-ZLIB]
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_file_pattern_list
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_batched_features_dataset_basic
+ERROR tests\test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_batched_features_dataset_placeholder
+9 errors in 1.40s
+
+Error: exit 1

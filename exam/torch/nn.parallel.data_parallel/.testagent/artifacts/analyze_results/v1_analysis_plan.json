@@ -1,0 +1,39 @@
+{
+  "status": "成功",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_torch_nn_parallel_data_parallel_g1.py::test_single_gpu_execution",
+      "block_id": "CASE_01",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "测试被跳过（需要CUDA设备），添加CPU版本测试"
+    },
+    {
+      "test": "test_torch_nn_parallel_data_parallel_g1.py::test_multi_gpu_parallel_execution",
+      "block_id": "CASE_02",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "测试被跳过（需要CUDA设备），添加CPU模拟版本测试"
+    },
+    {
+      "test": "test_torch_nn_parallel_data_parallel_g1.py::test_with_module_kwargs",
+      "block_id": "CASE_04",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "测试被跳过（需要CUDA设备），添加CPU版本测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_torch_nn_parallel_data_parallel_g1.py::test_module_parameters_on_different_devices",
+      "reason": "已标记为deferred，按计划推迟"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

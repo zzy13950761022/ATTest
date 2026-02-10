@@ -1,0 +1,21 @@
+{
+  "status": "未完全通过",
+  "passed": 27,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_special_math_ops.py::test_expint_function",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_special_math_ops.py::test_spence_function",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败集合完全重复：expint和spence函数测试持续失败，可能是TensorFlow版本不支持这些函数或函数实现有问题"
+}

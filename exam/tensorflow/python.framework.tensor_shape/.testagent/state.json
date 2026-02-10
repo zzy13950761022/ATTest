@@ -1,0 +1,171 @@
+{
+  "workflow_id": "3129a197",
+  "created_at": "2026-01-20T16:51:43.153590",
+  "op": "tensorflow_python_framework_tensor_shape",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "D:\\Project\\TestAgent-CLI-main\\exam\\tensorflow\\python.framework.tensor_shape",
+  "target": "tensorflow.python.framework.tensor_shape",
+  "target_slug": "tensorflow_python_framework_tensor_shape",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "",
+  "last_error_signature": "",
+  "last_block_errors": {},
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# tensorflow.python.framework.tensor_shape - 函数说明\n\n## 1. 基本信息\n- **FQN**: tensorflow.python.framework.tensor_shape\n- **模块文件**: `D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\tensor_shape.py`\n- **签名**: 模块（包含多个类和函数）\n- **对象类型**: module\n\n## 2. 功能概述\nTensorFlow 张量形状推断的辅助模块。提供 Dimension 和 TensorShape 类，用于表示张量的维度信息。支持完全已知、部分已知和未知形状的表示与操作。\n\n## 3. 参数说明\n- **模块包含多个实体**：\n  - Dimension 类：表示单个维度值\n  - TensorShape 类：表示张量形状\n  - 辅助函数：dimension_value, dimension_at_index, as_dimension, as_shape, unknown_shape\n  - V1/V2 兼容性函数：enable_v2_tensorshape, disable_v2_tensorshape\n\n## 4. 返回值\n- 模块本身无返回值\n- 各函数返回相应类型（Dimension, TensorShape, int, None 等）\n\n## 5. 文档要点\n- Dimension 值必须 >= 0\n- 支持 None 表示未知维度\n- V1 和 V2 行为差异：V2 中 TensorShape 迭代返回整数值而非 Dimension 对象\n- 形状兼容性规则：未知维度与任何维度兼容\n\n## 6. 源码摘要\n- Dimension 类：存储整数值或 None，实现算术和比较运算\n- TensorShape 类：存储维度列表，支持形状操作（合并、连接、兼容性检查）\n- 关键依赖：tensor_shape_pb2, tf2, monitoring, tf_export\n- 副作用：全局状态控制 V2 行为（_TENSORSHAPE_V2_OVERRIDE）\n\n## 7. 示例与用法（如有）\n- Dimension(5) 表示已知维度 5\n- Dimension(None) 表示未知维度\n- TensorShape([16, 256]) 表示 2D 形状\n- TensorShape([None, 256]) 表示部分已知形状\n- TensorShape(None) 表示完全未知形状\n\n## 8. 风险与空白\n- **多实体模块**：需要测试 Dimension, TensorShape 及辅助函数\n- **V1/V2 兼容性**：需测试两种模式下的行为差异\n- **边界情况**：负维度值、None 处理、形状兼容性逻辑\n- **类型注解缺失**：源码中缺少现代类型提示\n- **复杂操作**：形状合并、连接、切片等高级操作需要详细测试",
+    "requirements.md": "# tensorflow.python.framework.tensor_shape 测试需求\n\n## 1. 目标与范围\n- 主要功能与期望行为：测试 Dimension 和 TensorShape 类的形状表示、操作、兼容性检查；验证 V1/V2 模式切换；确保形状推断正确性\n- 不在范围内的内容：实际张量运算、GPU/TPU 设备特定行为、分布式环境形状传播\n\n## 2. 输入与约束\n- 参数列表（名称、类型/shape、默认值）：\n  - Dimension(value): value 为 int 或 None\n  - TensorShape(dims): dims 为 int 列表、元组、None 或 TensorShape 对象\n  - dimension_value(dimension): dimension 为 Dimension 对象或 int\n  - as_dimension(value): value 为 int、None 或 Dimension 对象\n  - as_shape(shape): shape 为 TensorShape、列表、元组或 None\n  - unknown_shape(rank=None): rank 为 int 或 None\n- 有效取值范围/维度/设备要求：维度值必须 >= 0；支持 None 表示未知维度；无设备要求\n- 必需与可选组合：Dimension 构造函数必需 value 参数；TensorShape 构造函数 dims 可选（默认 None）\n- 随机性/全局状态要求：_TENSORSHAPE_V2_OVERRIDE 全局状态影响迭代行为\n\n## 3. 输出与判定\n- 期望返回结构及关键字段：\n  - Dimension 对象：value 属性为 int 或 None\n  - TensorShape 对象：rank 属性为 int 或 None；dims 属性为 Dimension 列表\n  - dimension_value：返回 int 或 None\n  - as_dimension：返回 Dimension 对象\n  - as_shape：返回 TensorShape 对象\n  - unknown_shape：返回 TensorShape 对象\n- 容差/误差界（如浮点）：无浮点容差要求；整数精确匹配\n- 状态变化或副作用检查点：enable_v2_tensorshape/disable_v2_tensorshape 修改全局状态\n\n## 4. 错误与异常场景\n- 非法输入/维度/类型触发的异常或警告：负维度值引发 ValueError；无效类型引发 TypeError\n- 边界值（空、None、0 长度、极端形状/数值）：\n  - Dimension(None)：未知维度\n  - TensorShape(None)：完全未知形状\n  - TensorShape([])：标量形状\n  - TensorShape([0])：零维度形状\n  - 大维度值（接近 int 上限）\n  - 形状列表包含混合已知/未知维度\n\n## 5. 依赖与环境\n- 外部资源/设备/网络/文件依赖：无外部依赖\n- 需要 mock/monkeypatch 的部分：\n  - _TENSORSHAPE_V2_OVERRIDE 全局状态\n  - tf2.enabled() 返回值\n  - monitoring.gauge 调用（如需要）\n\n## 6. 覆盖与优先级\n- 必测路径（高优先级，最多 5 条，短句）：\n  1. Dimension 基本操作（构造、比较、算术）\n  2. TensorShape 构造与属性访问\n  3. 形状兼容性检查（已知/未知维度）\n  4. V1/V2 模式下的迭代行为差异\n  5. 辅助函数正确性（dimension_value, as_shape 等）\n- 可选路径（中/低优先级合并为一组列表）：\n  - 形状合并与连接操作\n  - 切片和索引操作\n  - 序列化/反序列化（proto 转换）\n  - 与 numpy 形状的互操作\n  - 性能基准测试（大形状处理）\n- 已知风险/缺失信息（仅列条目，不展开）：\n  - V1/V2 兼容性逻辑复杂度\n  - 形状推断边缘情况覆盖\n  - 类型注解缺失增加测试难度\n  - 全局状态管理风险",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"tensorflow.python.framework.tensor_shape\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\n      \"include\": \"SMOKE_SET\",\n      \"assert_level\": \"weak\",\n      \"max_blocks\": 5\n    },\n    \"roundN\": {\n      \"only_fix_failed_blocks\": true,\n      \"block_limit\": 3,\n      \"promote_deferred\": true\n    },\n    \"final\": {\n      \"enable_strong_asserts\": true,\n      \"coverage_optional\": true\n    }\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_tensorflow_python_framework_tensor_shape.py\",\n    \"all_pattern\": \"tests/test_tensorflow_python_framework_tensor_shape_*.py\",\n    \"groups\": {\n      \"G1\": \"tests/test_tensorflow_python_framework_tensor_shape_dimension.py\",\n      \"G2\": \"tests/test_tensorflow_python_framework_tensor_shape_tensorshape.py\",\n      \"G3\": \"tests/test_tensorflow_python_framework_tensor_shape_helpers.py\"\n    }\n  },\n  \"active_group_order\": [\"G1\", \"G2\", \"G3\"],\n  \"groups\": [\n    {\n      \"group_id\": \"G1\",\n      \"title\": \"Dimension 类测试\",\n      \"entrypoints\": [\"Dimension\", \"__init__\", \"value\", \"__eq__\", \"__add__\", \"__mul__\"],\n      \"smoke_set\": [\"CASE_01\", \"CASE_02\"],\n      \"deferred_set\": [\"CASE_06\", \"CASE_07\"],\n      \"note\": \"测试 Dimension 类的基本构造、属性和运算\"\n    },\n    {\n      \"group_id\": \"G2\",\n      \"title\": \"TensorShape 类测试\",\n      \"entrypoints\": [\"TensorShape\", \"__init__\", \"rank\", \"dims\", \"is_compatible_with\", \"__iter__\"],\n      \"smoke_set\": [\"CASE_03\", \"CASE_04\"],\n      \"deferred_set\": [\"CASE_08\", \"CASE_09\"],\n      \"note\": \"测试 TensorShape 类的构造、属性和形状操作\"\n    },\n    {\n      \"group_id\": \"G3\",\n      \"title\": \"辅助函数与兼容性测试\",\n      \"entrypoints\": [\"dimension_value\", \"as_dimension\", \"as_shape\", \"unknown_shape\", \"enable_v2_tensorshape\", \"disable_v2_tensorshape\"],\n      \"smoke_set\": [\"CASE_05\"],\n      \"deferred_set\": [\"CASE_10\"],\n      \"note\": \"测试辅助函数和 V1/V2 兼容性切换\"\n    }\n  ],\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"group_id\": \"G1\",\n      \"name\": \"Dimension 基本构造与属性\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"value\": 5, \"expected_value\": 5},\n        {\"value\": 0, \"expected_value\": 0},\n        {\"value\": None, \"expected_value\": null}\n      ],\n      \"asserts\": {\n        \"weak\": [\"value\", \"is_known\", \"equality\"],\n        \"strong\": [\"hash\", \"repr\", \"str\"]\n      },\n      \"oracle\": \"Dimension 构造函数\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 60,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"group_id\": \"G1\",\n      \"name\": \"Dimension 算术运算\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"value1\": 3, \"value2\": 4, \"op\": \"add\", \"expected\": 7},\n        {\"value1\": 3, \"value2\": 4, \"op\": \"mul\", \"expected\": 12},\n        {\"value1\": None, \"value2\": 5, \"op\": \"add\", \"expected\": null}\n      ],\n      \"asserts\": {\n        \"weak\": [\"operation_result\", \"type_check\"],\n        \"strong\": [\"commutative\", \"associative\", \"distributive\"]\n      },\n      \"oracle\": \"Dimension 运算符重载\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 5,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"group_id\": \"G2\",\n      \"name\": \"TensorShape 基本构造\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"dims\": [2, 3], \"expected_rank\": 2, \"expected_dims\": [2, 3]},\n        {\"dims\": [], \"expected_rank\": 0, \"expected_dims\": []},\n        {\"dims\": null, \"expected_rank\": null, \"expected_dims\": null}\n      ],\n      \"asserts\": {\n        \"weak\": [\"rank\", \"dims\", \"is_fully_defined\"],\n        \"strong\": [\"repr\", \"str\", \"len\"]\n      },\n      \"oracle\": \"TensorShape 构造函数\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 65,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"group_id\": \"G2\",\n      \"name\": \"形状兼容性检查\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"shape1\": [2, 3], \"shape2\": [2, 3], \"expected\": true},\n        {\"shape1\": [2, null], \"shape2\": [2, 5], \"expected\": true},\n        {\"shape1\": [2, 3], \"shape2\": [3, 2], \"expected\": false}\n      ],\n      \"asserts\": {\n        \"weak\": [\"compatibility_result\", \"symmetry\"],\n        \"strong\": [\"transitive\", \"edge_cases\"]\n      },\n      \"oracle\": \"is_compatible_with 方法\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-05\",\n      \"block_id\": \"CASE_05\",\n      \"group_id\": \"G3\",\n      \"name\": \"辅助函数基本功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"func\": \"dimension_value\", \"input\": 5, \"expected\": 5},\n        {\"func\": \"as_dimension\", \"input\": 3, \"expected_type\": \"Dimension\"},\n        {\"func\": \"as_shape\", \"input\": [2, 3], \"expected_type\": \"TensorShape\"}\n      ],\n      \"asserts\": {\n        \"weak\": [\"return_value\", \"type_check\"],\n        \"strong\": [\"idempotent\", \"edge_handling\"]\n      },\n      \"oracle\": \"辅助函数文档\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\"value\": -1, \"expected_error\": \"ValueError\"},\n      \"note\": \"负维度值异常测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\"value1\": 10, \"value2\": 20, \"op\": \"sub\", \"expected_error\": \"TypeError\"},\n      \"note\": \"不支持的运算异常测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_03\",\n      \"priority\": \"Medium\",\n      \"params\": {\"dims\": [2, null, 3], \"expected_rank\": 3, \"expected_dims\": [2, null, 3]},\n      \"note\": \"混合已知/未知维度形状\"\n    },\n    {\n      \"base_block_id\": \"CASE_04\",\n      \"priority\": \"Medium\",\n      \"params\": {\"shape1\": [null, null], \"shape2\": [null, null], \"expected\": true},\n      \"note\": \"完全未知形状兼容性\"\n    },\n    {\n      \"base_block_id\": \"CASE_05\",\n      \"priority\": \"Medium\",\n      \"params\": {\"func\": \"unknown_shape\", \"input\": 3, \"expected_rank\": 3},\n      \"note\": \"unknown_shape 函数测试\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_02\", \"CASE_03\", \"CASE_04\", \"CASE_05\"],\n  \"deferred_set\": [\"CASE_06\", \"CASE_07\", \"CASE_08\", \"CASE_09\", \"CASE_10\"]\n}",
+    "test_plan.md": "# tensorflow.python.framework.tensor_shape 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：mock/monkeypatch 用于全局状态 _TENSORSHAPE_V2_OVERRIDE 和 tf2.enabled()\n- 随机性处理：固定随机种子用于可重复的形状生成测试\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- SMOKE_SET: CASE_01, CASE_02, CASE_03, CASE_04, CASE_05\n- DEFERRED_SET: CASE_06, CASE_07, CASE_08, CASE_09, CASE_10\n- group 列表与 active_group_order: G1(Dimension类), G2(TensorShape类), G3(辅助函数)\n- 断言分级策略：首轮使用 weak 断言（基本属性检查），最终轮启用 strong 断言（高级属性）\n- 预算策略：每个用例 size=S，max_lines=60-75，max_params=4-6\n\n## 3. 数据与边界\n- 正常数据集：已知维度值（0, 5, 10），未知维度（None），混合形状\n- 边界值：零维度形状 []，完全未知形状 None，大维度值（接近 int 上限）\n- 极端形状：嵌套形状，混合已知/未知维度，空输入\n- 负例与异常场景：\n  - 负维度值引发 ValueError\n  - 无效类型引发 TypeError\n  - 不支持的运算异常\n  - 形状不兼容场景\n\n## 4. 覆盖映射\n- TC-01: 覆盖 Dimension 构造与基本属性（需求 5.1）\n- TC-02: 覆盖 Dimension 算术运算（需求 5.1）\n- TC-03: 覆盖 TensorShape 构造与属性（需求 5.2）\n- TC-04: 覆盖形状兼容性检查（需求 5.3）\n- TC-05: 覆盖辅助函数正确性（需求 5.5）\n\n尚未覆盖的风险点：\n- V1/V2 模式迭代行为差异（需求 5.4）\n- 形状合并与连接操作\n- 切片和索引操作\n- 序列化/反序列化（proto 转换）\n- 全局状态管理风险",
+    "tests/test_tensorflow_python_framework_tensor_shape_dimension.py": "\"\"\"\n测试 tensorflow.python.framework.tensor_shape 模块中的 Dimension 类\n\"\"\"\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import tensor_shape\n\n# ==== BLOCK:HEADER START ====\n# 测试 Dimension 类的基本功能\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# Dimension 基本构造与属性测试\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# Dimension 算术运算测试\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# Dimension 高级功能测试（deferred）\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# Dimension 边缘情况测试（deferred）\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:FOOTER START ====\n# 测试结束\n# ==== BLOCK:FOOTER END ====",
+    "tests/test_tensorflow_python_framework_tensor_shape_tensorshape.py": "\"\"\"\n测试 tensorflow.python.framework.tensor_shape 模块中的 TensorShape 类\n\"\"\"\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import tensor_shape\n\n# ==== BLOCK:HEADER START ====\n# 测试 TensorShape 类的基本功能\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_03 START ====\n# TensorShape 基本构造测试\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# 形状兼容性检查测试\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_08 START ====\n# TensorShape 高级功能测试（deferred）\n# ==== BLOCK:CASE_08 END ====\n\n# ==== BLOCK:CASE_09 START ====\n# TensorShape 边缘情况测试（deferred）\n# ==== BLOCK:CASE_09 END ====\n\n# ==== BLOCK:FOOTER START ====\n# 测试结束\n# ==== BLOCK:FOOTER END ====",
+    "tests/test_tensorflow_python_framework_tensor_shape_helpers.py": "\"\"\"\n测试 tensorflow.python.framework.tensor_shape 模块中的辅助函数\n\"\"\"\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import tensor_shape\n\n# ==== BLOCK:HEADER START ====\n# 测试辅助函数和 V1/V2 兼容性切换\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_05 START ====\n# 辅助函数基本功能测试\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_10 START ====\n# 辅助函数高级功能测试（deferred）\n# ==== BLOCK:CASE_10 END ====\n\n# ==== BLOCK:FOOTER START ====\n# 测试结束\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\nFFF............                                                          [100%]\n================================== FAILURES ===================================\n____________ test_tensorshape_construction[dims0-2-expected_dims0] ____________\n\ndims = [2, 3], expected_rank = 2, expected_dims = [2, 3]\n\n    @pytest.mark.parametrize(\n        \"dims,expected_rank,expected_dims\",\n        [\n            ([2, 3], 2, [2, 3]),\n            ([], 0, []),\n            (None, None, None),\n        ]\n    )\n    def test_tensorshape_construction(dims, expected_rank, expected_dims):\n        \"\"\"测试 TensorShape 基本构造\"\"\"\n        # 创建 TensorShape 对象\n        shape = tensor_shape.TensorShape(dims)\n    \n        # 验证 rank 属性\n        assert shape.rank == expected_rank\n    \n        # 验证 dims 属性\n        if expected_dims is None:\n            assert shape.dims is None\n        else:\n            assert shape.dims is not None\n            assert len(shape.dims) == len(expected_dims)\n    \n            # 验证每个维度的值\n            for i, (dim, expected) in enumerate(zip(shape.dims, expected_dims)):\n                if expected is None:\n                    assert dim.value is None\n                else:\n                    assert dim.value == expected\n    \n        # 验证 is_fully_defined 属性\n        # 根据 TensorFlow 源代码：\n        # is_fully_defined = (self._dims is not None and\n        #                     all(dim.value is not None for dim in self._dims))\n        if expected_dims is None:\n            # 对于 None 输入，dims 为 None，is_fully_defined 应该为 False\n            assert not shape.is_fully_defined\n        else:\n            # 检查是否所有维度都已知\n            all_known = all(d is not None for d in expected_dims)\n>           assert shape.is_fully_defined == all_known\nE           assert is_fully_defined == True\nE            +  where is_fully_defined = TensorShape([2, 3]).is_fully_defined\n\ntests\\test_tensorflow_python_framework_tensor_shape.py:76: AssertionError\n____________ test_tensorshape_construction[dims1-0-expected_dims1] ____________\n\ndims = [], expected_rank = 0, expected_dims = []\n\n    @pytest.mark.parametrize(\n        \"dims,expected_rank,expected_dims\",\n        [\n            ([2, 3], 2, [2, 3]),\n            ([], 0, []),\n            (None, None, None),\n        ]\n    )\n    def test_tensorshape_construction(dims, expected_rank, expected_dims):\n        \"\"\"测试 TensorShape 基本构造\"\"\"\n        # 创建 TensorShape 对象\n        shape = tensor_shape.TensorShape(dims)\n    \n        # 验证 rank 属性\n        assert shape.rank == expected_rank\n    \n        # 验证 dims 属性\n        if expected_dims is None:\n            assert shape.dims is None\n        else:\n            assert shape.dims is not None\n            assert len(shape.dims) == len(expected_dims)\n    \n            # 验证每个维度的值\n            for i, (dim, expected) in enumerate(zip(shape.dims, expected_dims)):\n                if expected is None:\n                    assert dim.value is None\n                else:\n                    assert dim.value == expected\n    \n        # 验证 is_fully_defined 属性\n        # 根据 TensorFlow 源代码：\n        # is_fully_defined = (self._dims is not None and\n        #                     all(dim.value is not None for dim in self._dims))\n        if expected_dims is None:\n            # 对于 None 输入，dims 为 None，is_fully_defined 应该为 False\n            assert not shape.is_fully_defined\n        else:\n            # 检查是否所有维度都已知\n            all_known = all(d is not None for d in expected_dims)\n>           assert shape.is_fully_defined == all_known\nE           assert is_fully_defined == True\nE            +  where is_fully_defined = TensorShape([]).is_fully_defined\n\ntests\\test_tensorflow_python_framework_tensor_shape.py:76: AssertionError\n________________ test_tensorshape_construction[None-None-None] ________________\n\ndims = None, expected_rank = None, expected_dims = None\n\n    @pytest.mark.parametrize(\n        \"dims,expected_rank,expected_dims\",\n        [\n            ([2, 3], 2, [2, 3]),\n            ([], 0, []),\n            (None, None, None),\n        ]\n    )\n    def test_tensorshape_construction(dims, expected_rank, expected_dims):\n        \"\"\"测试 TensorShape 基本构造\"\"\"\n        # 创建 TensorShape 对象\n        shape = tensor_shape.TensorShape(dims)\n    \n        # 验证 rank 属性\n        assert shape.rank == expected_rank\n    \n        # 验证 dims 属性\n        if expected_dims is None:\n            assert shape.dims is None\n        else:\n            assert shape.dims is not None\n            assert len(shape.dims) == len(expected_dims)\n    \n            # 验证每个维度的值\n            for i, (dim, expected) in enumerate(zip(shape.dims, expected_dims)):\n                if expected is None:\n                    assert dim.value is None\n                else:\n                    assert dim.value == expected\n    \n        # 验证 is_fully_defined 属性\n        # 根据 TensorFlow 源代码：\n        # is_fully_defined = (self._dims is not None and\n        #                     all(dim.value is not None for dim in self._dims))\n        if expected_dims is None:\n            # 对于 None 输入，dims 为 None，is_fully_defined 应该为 False\n>           assert not shape.is_fully_defined\nE           assert not is_fully_defined\nE            +  where is_fully_defined = TensorShape(None).is_fully_defined\n\ntests\\test_tensorflow_python_framework_tensor_shape.py:72: AssertionError\n\n---------- coverage: platform win32, python 3.9.25-final-0 -----------\nName                                                     Stmts   Miss Branch BrPart  Cover   Missing\n----------------------------------------------------------------------------------------------------\ntests\\test_tensorflow_python_framework_tensor_shape.py     161     23     34      5    82%   62, 79-97, 137-143, 148-150, 202->exit, 310->318, 313-315\n----------------------------------------------------------------------------------------------------\nTOTAL                                                      161     23     34      5    82%\nCoverage XML written to file coverage.xml\n\n=========================== short test summary info ===========================\nFAILED tests\\test_tensorflow_python_framework_tensor_shape.py::test_tensorshape_construction[dims0-2-expected_dims0]\nFAILED tests\\test_tensorflow_python_framework_tensor_shape.py::test_tensorshape_construction[dims1-0-expected_dims1]\nFAILED tests\\test_tensorflow_python_framework_tensor_shape.py::test_tensorshape_construction[None-None-None]\n3 failed, 12 passed in 1.60s\n\nError: exit 1",
+    "exit_code.txt": "1",
+    "analysis_plan.json": "{\n  \"status\": \"未完全通过\",\n  \"passed\": 12,\n  \"failed\": 3,\n  \"errors\": 0,\n  \"collection_errors\": false,\n  \"block_limit\": 3,\n  \"failures\": [\n    {\n      \"test\": \"test_tensorshape_construction[dims0-2-expected_dims0]\",\n      \"block_id\": \"CASE_03\",\n      \"error_type\": \"AssertionError\",\n      \"action\": \"rewrite_block\",\n      \"note\": \"is_fully_defined属性实现错误：已知维度形状应返回True\"\n    },\n    {\n      \"test\": \"test_tensorshape_construction[dims1-0-expected_dims1]\",\n      \"block_id\": \"CASE_03\",\n      \"error_type\": \"AssertionError\",\n      \"action\": \"rewrite_block\",\n      \"note\": \"is_fully_defined属性实现错误：空形状应返回True\"\n    },\n    {\n      \"test\": \"test_tensorshape_construction[None-None-None]\",\n      \"block_id\": \"CASE_03\",\n      \"error_type\": \"AssertionError\",\n      \"action\": \"rewrite_block\",\n      \"note\": \"is_fully_defined属性实现错误：None形状应返回False\"\n    }\n  ],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "## 测试结果分析\n\n### 状态与统计\n- **状态**: 未完全通过\n- **通过**: 12 个测试\n- **失败**: 3 个测试\n- **错误**: 0 个\n- **集合错误**: 无\n\n### 待修复 BLOCK 列表 (1-3个)\n\n1. **BLOCK_ID**: CASE_03\n   - **Action**: rewrite_block\n   - **Error Type**: AssertionError\n   - **问题**: TensorShape构造测试中is_fully_defined属性实现错误\n   - **影响**: 3个测试用例失败\n\n### 停止建议\n- **stop_recommended**: false\n- **stop_reason**: 无",
+    "tests/test_tensorflow_python_framework_tensor_shape.py": "\"\"\"\n测试 tensorflow.python.framework.tensor_shape 模块\n\"\"\"\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import tensor_shape\n\n# ==== BLOCK:HEADER START ====\n\"\"\"\n测试 tensorflow.python.framework.tensor_shape 模块\n\"\"\"\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import tensor_shape\n\n# 设置随机种子以确保测试可重复性\nimport random\nimport numpy as np\nrandom.seed(42)\nnp.random.seed(42)\n\n# 测试 tensor_shape 模块的基本功能\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# Dimension 基本构造与属性测试（deferred - 已在分组文件中实现）\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# Dimension 算术运算测试（deferred - 已在分组文件中实现）\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# TensorShape 基本构造测试\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# 形状兼容性检查测试\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# 辅助函数基本功能测试\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# Dimension 高级功能测试（deferred）\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# Dimension 边缘情况测试（deferred）\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:CASE_08 START ====\n# TensorShape 高级功能测试（deferred）\n# ==== BLOCK:CASE_08 END ====\n\n# ==== BLOCK:CASE_09 START ====\n# TensorShape 边缘情况测试（deferred）\n# ==== BLOCK:CASE_09 END ====\n\n# ==== BLOCK:CASE_10 START ====\n# 辅助函数高级功能测试（deferred）\n# ==== BLOCK:CASE_10 END ====\n\n# ==== BLOCK:FOOTER START ====\n# 测试结束\n# ==== BLOCK:FOOTER END ====",
+    "final_report.md": "# tensorflow.python.framework.tensor_shape 测试报告\n\n## 1. 执行摘要\n测试未完全通过，主要阻塞项为 TensorShape 构造测试中 is_fully_defined 属性实现错误，导致 3 个测试用例失败；整体通过率 80%（12/15），核心功能基本正常。\n\n## 2. 测试范围\n- **目标 FQN**: tensorflow.python.framework.tensor_shape\n- **测试环境**: pytest + TensorFlow 环境（无外部依赖）\n- **覆盖场景**:\n  - Dimension 类构造与基本操作（通过）\n  - TensorShape 类构造与属性访问（部分失败）\n  - 形状兼容性检查（通过）\n  - 辅助函数正确性（通过）\n- **未覆盖项**:\n  - V1/V2 模式迭代行为差异（需求 5.4）\n  - 形状合并与连接操作\n  - 切片和索引操作\n  - 序列化/反序列化（proto 转换）\n  - 全局状态管理（enable_v2_tensorshape/disable_v2_tensorshape）\n\n## 3. 结果概览\n- **用例总数**: 15 个\n- **通过**: 12 个（80%）\n- **失败**: 3 个（20%）\n- **错误**: 0 个\n- **主要失败点**: CASE_03（TensorShape 构造测试）中 is_fully_defined 属性断言失败\n\n## 4. 详细发现\n\n### 高优先级问题\n1. **CASE_03 测试实现错误**\n   - **严重级别**: 高（阻塞测试执行）\n   - **根因**: TensorShape 构造测试中对 is_fully_defined 属性的预期值与实际实现不符\n   - **影响**: 3 个相关测试用例失败\n   - **建议修复**: 检查 TensorShape.is_fully_defined 属性的实际行为，修正测试断言逻辑\n\n### 中优先级问题\n1. **V1/V2 兼容性测试缺失**\n   - **严重级别**: 中（功能完整性风险）\n   - **根因**: 测试计划中未覆盖 V1/V2 模式切换场景\n   - **影响**: 无法验证全局状态 _TENSORSHAPE_V2_OVERRIDE 的正确性\n   - **建议修复**: 补充 enable_v2_tensorshape/disable_v2_tensorshape 相关测试\n\n### 低优先级问题\n1. **高级形状操作测试缺失**\n   - **严重级别**: 低（功能扩展性）\n   - **根因**: 形状合并、连接、切片等操作未测试\n   - **影响**: 高级形状操作功能验证不完整\n   - **建议修复**: 在后续迭代中补充相关测试用例\n\n## 5. 覆盖与风险\n\n### 需求覆盖情况\n- ✅ **需求 5.1**: Dimension 基本操作（构造、比较、算术） - 已覆盖\n- ⚠️ **需求 5.2**: TensorShape 构造与属性访问 - 部分覆盖（存在测试失败）\n- ✅ **需求 5.3**: 形状兼容性检查（已知/未知维度） - 已覆盖\n- ❌ **需求 5.4**: V1/V2 模式下的迭代行为差异 - 未覆盖\n- ✅ **需求 5.5**: 辅助函数正确性（dimension_value, as_shape 等） - 已覆盖\n\n### 尚未覆盖的边界/缺失信息\n1. **V1/V2 兼容性边界**: 全局状态切换对迭代行为的影响\n2. **形状操作边界**: 大维度值处理、嵌套形状操作\n3. **异常处理边界**: 负维度值、无效类型的异常传播路径\n4. **性能边界**: 大形状对象的构造和操作性能\n\n## 6. 后续动作\n\n### 优先级排序的 TODO\n\n#### P0（立即修复）\n1. **修复 CASE_03 测试实现**\n   - 分析 TensorShape.is_fully_defined 属性的实际行为\n   - 修正测试断言逻辑，确保与实现一致\n   - 重新运行相关测试验证修复效果\n\n#### P1（本周内完成）\n2. **补充 V1/V2 兼容性测试**\n   - 添加 enable_v2_tensorshape/disable_v2_tensorshape 测试\n   - 验证 _TENSORSHAPE_V2_OVERRIDE 全局状态管理\n   - 测试 V1 和 V2 模式下的迭代行为差异\n\n3. **完善 TensorShape 测试覆盖**\n   - 补充形状合并（merge_with）操作测试\n   - 添加形状连接（concatenate）操作测试\n   - 验证切片和索引操作的正确性\n\n#### P2（后续迭代）\n4. **扩展边界测试**\n   - 添加大维度值（接近 int 上限）测试\n   - 补充混合已知/未知维度的复杂形状测试\n   - 验证序列化/反序列化（proto 转换）功能\n\n5. **环境与工具优化**\n   - 考虑添加类型注解检查工具\n   - 建立性能基准测试框架\n   - 完善测试数据生成工具\n\n#### 风险缓解建议\n- 对于全局状态管理，建议使用 pytest 的 fixture 进行隔离\n- 对于复杂形状操作，建议采用参数化测试覆盖多种场景\n- 对于边界情况，建议建立专门的边界测试集合"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-20T16:53:06.694990",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-20T16:53:48.168823",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-20T16:55:44.907433",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T16:59:35.005123",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T16:59:35.248156",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:00:07.979014",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:04:30.641121",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:04:32.582871",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:05:30.034552",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:08:15.824643",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:08:17.770675",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:09:18.947838",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:11:42.779715",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:11:44.691121",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:12:39.130315",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:14:13.870527",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:14:15.790745",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:15:02.389450",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-20T17:16:02.779644",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

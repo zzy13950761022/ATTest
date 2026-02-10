@@ -1,0 +1,558 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+from torch.nn.modules.transformer import (
+    Transformer,
+    TransformerEncoder,
+    TransformerDecoder,
+    TransformerEncoderLayer,
+    TransformerDecoderLayer
+)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+@pytest.fixture(scope="module")
+def set_random_seed():
+    """Set random seed for reproducibility"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+@pytest.fixture
+def device():
+    """Get available device (CPU only for consistency)"""
+    return torch.device("cpu")
+
+def create_test_tensor(shape, dtype=torch.float32, device="cpu"):
+    """Create test tensor with fixed random values"""
+    torch.manual_seed(123)
+    return torch.randn(*shape, dtype=dtype, device=device)
+
+def assert_tensor_properties(tensor, expected_shape=None, expected_dtype=None, 
+                           expected_device=None, finite_check=True):
+    """Assert tensor properties match expectations"""
+    if expected_shape is not None:
+        assert tensor.shape == expected_shape, f"Expected shape {expected_shape}, got {tensor.shape}"
+    
+    if expected_dtype is not None:
+        assert tensor.dtype == expected_dtype, f"Expected dtype {expected_dtype}, got {tensor.dtype}"
+    
+    if expected_device is not None:
+        assert tensor.device == expected_device, f"Expected device {expected_device}, got {tensor.device}"
+    
+    if finite_check:
+        assert torch.isfinite(tensor).all(), "Tensor contains non-finite values"
+        assert not torch.isnan(tensor).any(), "Tensor contains NaN values"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize(
+    "dtype,device,batch_first,nhead,d_model,num_encoder_layers,num_decoder_layers,"
+    "dim_feedforward,dropout,activation,src_shape,tgt_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            False,
+            4,
+            16,
+            2,
+            2,
+            64,
+            0.0,
+            "relu",
+            (10, 32, 16),
+            (20, 32, 16),
+        ),
+        # Param extension: double precision, more heads, more layers, GELU activation
+        (
+            torch.float64,
+            "cpu",
+            False,
+            8,
+            32,
+            3,
+            3,
+            128,
+            0.1,
+            "gelu",
+            (15, 8, 32),
+            (25, 8, 32),
+        ),
+    ]
+)
+def test_transformer_standard_forward(
+    dtype,
+    device,
+    batch_first,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    num_decoder_layers,
+    dim_feedforward,
+    dropout,
+    activation,
+    src_shape,
+    tgt_shape,
+    set_random_seed,
+):
+    """TC-01: Transformer 标准前向传播"""
+    # Create model with matching dtype
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=num_decoder_layers,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout,
+        activation=activation,
+        batch_first=batch_first,
+    )
+    
+    # Convert model parameters to match input dtype
+    model = model.to(dtype=dtype, device=device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create input tensors
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+    # Forward pass
+    with torch.no_grad():
+        output = model(src, tgt)
+    
+    # Weak assertions
+    # 1. Output shape check
+    if batch_first:
+        expected_shape = (tgt_shape[0], tgt_shape[1], d_model)
+    else:
+        expected_shape = (tgt_shape[0], tgt_shape[1], d_model)
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+    
+    # 2. Output dtype check
+    assert output.dtype == dtype, (
+        f"Output dtype mismatch. Expected {dtype}, got {output.dtype}"
+    )
+    
+    # 3. Finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 4. Device match
+    assert output.device == torch.device(device), (
+        f"Output device mismatch. Expected {device}, got {output.device}"
+    )
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize(
+    "dtype,device,batch_first,nhead,d_model,num_encoder_layers,num_decoder_layers,"
+    "dim_feedforward,dropout,activation,src_shape,tgt",
+    [
+        (
+            torch.float32,
+            "cpu",
+            False,
+            2,
+            8,
+            1,
+            1,
+            32,
+            0.0,
+            "relu",
+            (5, 16, 8),
+            None,
+        ),
+        # Param extension: batch_first mode
+        (
+            torch.float32,
+            "cpu",
+            True,
+            4,
+            16,
+            2,
+            2,
+            64,
+            0.0,
+            "relu",
+            (8, 10, 16),  # batch_first shape: (batch, seq_len, d_model)
+            None,
+        ),
+    ]
+)
+def test_transformer_encoder_only(
+    dtype,
+    device,
+    batch_first,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    num_decoder_layers,
+    dim_feedforward,
+    dropout,
+    activation,
+    src_shape,
+    tgt,
+    set_random_seed,
+):
+    """TC-02: Transformer 仅编码器模式"""
+    # Create model
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=num_decoder_layers,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout,
+        activation=activation,
+        batch_first=batch_first,
+    )
+    
+    # Convert model parameters to match input dtype
+    model = model.to(dtype=dtype, device=device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create source tensor
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    
+    # Forward pass with tgt=None (encoder-only mode)
+    # Note: According to PyTorch documentation, tgt is required for Transformer.forward
+    # However, we can test encoder-only mode by using the encoder directly
+    with torch.no_grad():
+        # Use encoder directly for encoder-only mode
+        memory = model.encoder(src)
+        # For encoder-only mode, output should be the memory (encoder output)
+        output = memory
+    
+    # Weak assertions
+    # 1. Output shape check
+    expected_shape = src_shape  # Encoder output should have same shape as input
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+    
+    # 2. Output dtype check
+    assert output.dtype == dtype, (
+        f"Output dtype mismatch. Expected {dtype}, got {output.dtype}"
+    )
+    
+    # 3. Finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 4. No NaN check (redundant with finite check but specified in plan)
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize(
+    "dtype,device,batch_first,nhead,d_model,num_encoder_layers,num_decoder_layers,"
+    "dim_feedforward,dropout,activation,src_shape,tgt_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            True,  # batch_first=True
+            2,
+            8,
+            1,
+            1,
+            32,
+            0.0,
+            "relu",
+            (16, 5, 8),  # batch_first shape: (batch, seq_len, d_model)
+            (16, 10, 8),  # batch_first shape: (batch, seq_len, d_model)
+        ),
+    ]
+)
+def test_transformer_batch_first_dimension(
+    dtype,
+    device,
+    batch_first,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    num_decoder_layers,
+    dim_feedforward,
+    dropout,
+    activation,
+    src_shape,
+    tgt_shape,
+    set_random_seed,
+):
+    """TC-03: Transformer batch_first 维度"""
+    # Create model with batch_first=True
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=num_decoder_layers,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout,
+        activation=activation,
+        batch_first=batch_first,
+    )
+    
+    # Convert model parameters to match input dtype
+    model = model.to(dtype=dtype, device=device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create input tensors with batch_first=True format
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+    # Forward pass
+    with torch.no_grad():
+        output = model(src, tgt)
+    
+    # Weak assertions
+    # 1. Output shape check for batch_first=True
+    # With batch_first=True, output should be (batch, seq_len, d_model)
+    expected_shape = (tgt_shape[0], tgt_shape[1], d_model)
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+    
+    # 2. Dimension order check
+    # Verify that batch dimension is first
+    assert output.shape[0] == tgt_shape[0], (
+        f"Batch dimension should be first. Expected batch size {tgt_shape[0]}, got {output.shape[0]}"
+    )
+    
+    # 3. Finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize(
+    "dtype,device,nhead,d_model,expected_error",
+    [
+        (
+            torch.float32,
+            "cpu",
+            3,  # nhead=3
+            8,  # d_model=8 (not divisible by 3)
+            AssertionError,  # Changed from ValueError to AssertionError
+        ),
+    ]
+)
+def test_transformer_parameter_validation(
+    dtype,
+    device,
+    nhead,
+    d_model,
+    expected_error,
+):
+    """TC-04: Transformer 参数验证异常"""
+    # Test that AssertionError is raised when d_model is not divisible by nhead
+    # Note: MultiheadAttention uses assert statement, not ValueError
+    with pytest.raises(expected_error) as exc_info:
+        Transformer(
+            d_model=d_model,
+            nhead=nhead,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
+            dim_feedforward=32,
+            dropout=0.0,
+            activation="relu",
+        )
+    
+    # Weak assertions
+    # 1. Exception raised check
+    assert exc_info.type == expected_error, (
+        f"Expected {expected_error}, got {exc_info.type}"
+    )
+    
+    # 2. Exception type check
+    assert issubclass(exc_info.type, expected_error), (
+        f"Exception type {exc_info.type} is not a subclass of {expected_error}"
+    )
+    
+    # 3. Error message contains check
+    error_msg = str(exc_info.value).lower()
+    # Check for keywords related to divisibility error
+    divisible_keywords = ["divisible", "divide", "nhead", "num_heads", "embed_dim"]
+    has_relevant_keyword = any(keyword in error_msg for keyword in divisible_keywords)
+    assert has_relevant_keyword, (
+        f"Error message should contain divisibility-related keywords. Got: {error_msg}"
+    )
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize(
+    "dtype,device,nhead,d_model,num_layers,dim_feedforward,dropout,activation,src_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            2,
+            32,
+            0.0,
+            "relu",
+            (10, 16, 8),
+        ),
+    ]
+)
+def test_transformer_encoder_basic(
+    dtype,
+    device,
+    nhead,
+    d_model,
+    num_layers,
+    dim_feedforward,
+    dropout,
+    activation,
+    src_shape,
+    set_random_seed,
+):
+    """TC-05: TransformerEncoder 基础功能"""
+    # Create encoder layer
+    encoder_layer = TransformerEncoderLayer(
+        d_model=d_model,
+        nhead=nhead,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout,
+        activation=activation,
+    )
+    
+    # Create encoder with multiple layers
+    encoder = TransformerEncoder(encoder_layer, num_layers=num_layers)
+    encoder.to(device)
+    encoder.eval()  # Disable dropout for deterministic output
+    
+    # Create source tensor
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    
+    # Forward pass
+    with torch.no_grad():
+        output = encoder(src)
+    
+    # Weak assertions
+    # 1. Output shape check
+    expected_shape = src_shape  # Encoder should preserve input shape
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+    
+    # 2. Output dtype check
+    assert output.dtype == dtype, (
+        f"Output dtype mismatch. Expected {dtype}, got {output.dtype}"
+    )
+    
+    # 3. Finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 4. Layer count check (verify encoder has correct number of layers)
+    assert len(encoder.layers) == num_layers, (
+        f"Encoder should have {num_layers} layers, got {len(encoder.layers)}"
+    )
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Note: CASE_06 (TransformerDecoder 基础功能) is implemented in G2 group file
+# See tests/test_torch_nn_modules_transformer_g2.py
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Note: CASE_07 (TransformerEncoderLayer 单层) is implemented in G2 group file
+# See tests/test_torch_nn_modules_transformer_g2.py
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Note: CASE_08 (TransformerDecoderLayer 单层) is implemented in G2 group file
+# See tests/test_torch_nn_modules_transformer_g2.py
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Note: CASE_09 (编码器解码器组合验证) is implemented in G2 group file
+# See tests/test_torch_nn_modules_transformer_g2.py
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+@pytest.mark.parametrize(
+    "dtype,device,nhead,d_model,num_encoder_layers,mask_type,src_shape,mask_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            1,
+            "bool",
+            (5, 16, 8),
+            (5, 5),
+        ),
+    ]
+)
+def test_transformer_mask_handling_basic(
+    dtype,
+    device,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    mask_type,
+    src_shape,
+    mask_shape,
+    set_random_seed,
+):
+    """TC-10: 掩码处理基础"""
+    # Create model
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=1,  # Need at least 1 decoder layer for mask test
+        dim_feedforward=32,
+        dropout=0.0,
+        activation="relu",
+        batch_first=False,
+    )
+    model.to(device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create source tensor
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    
+    # Create target tensor (same batch size as src)
+    tgt_shape = (src_shape[0] + 2, src_shape[1], src_shape[2])  # Different seq length
+    tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+    # Create mask based on mask_type
+    if mask_type == "bool":
+        # Create boolean mask (True means masked position)
+        mask = torch.randint(0, 2, mask_shape, dtype=torch.bool, device=device)
+    elif mask_type == "byte":
+        # Create byte mask (1 means masked position)
+        mask = torch.randint(0, 2, mask_shape, dtype=torch.uint8, device=device)
+    else:
+        raise ValueError(f"Unsupported mask_type: {mask_type}")
+    
+    # Forward pass with mask
+    with torch.no_grad():
+        output = model(src, tgt, src_mask=mask)
+    
+    # Weak assertions
+    # 1. Mask applied check (output should be finite even with mask)
+    assert torch.isfinite(output).all(), "Output contains non-finite values after mask application"
+    
+    # 2. Output finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 3. Shape preserved check
+    expected_shape = tgt_shape  # Output should have same shape as target
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and utilities
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,67 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 11,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_file_exists_basic[/tmp/test_file.txt-True]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "字符串编码问题：底层接口期望字节串而非字符串"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/test_text.txt-Hello TensorFlow-w]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "WriteStringToFile未被调用，需要检查函数调用路径"
+    },
+    {
+      "test": "test_fileio_basic_read_write[/tmp/test_io.bin-binary_data-wb]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "导入路径错误：tensorflow没有python属性"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_file_exists_basic[/tmp/nonexistent.txt-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_exists_basic[-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/empty.txt--w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/unicode.txt-\\u4e2d\\u6587\\u6d4b\\u8bd5 \\U0001f680-w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_list_directory_basic[/tmp/test_dir-expected_files0]",
+      "reason": "错误类型重复（字符串编码），跳过该块"
+    },
+    {
+      "test": "test_list_directory_basic[/tmp/empty_dir-expected_files1]",
+      "reason": "NotFoundError需要单独处理，但先修复基础编码问题"
+    },
+    {
+      "test": "test_copy_basic[/tmp/source.txt-/tmp/destination.txt-False]",
+      "reason": "错误类型重复（字符串编码），跳过该块"
+    },
+    {
+      "test": "test_copy_basic[/tmp/source.txt-/tmp/destination.txt-True]",
+      "reason": "错误类型重复（字符串编码），跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

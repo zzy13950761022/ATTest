@@ -1,0 +1,12 @@
+=== Run Tests ===
+..............                                                           [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                   Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_confusion_matrix.py     163     10     32     10    90%   78, 103->exit, 147, 179->exit, 257, 303, 347->exit, 393, 441-442, 512, 633-634
+--------------------------------------------------------------------------------------------------
+TOTAL                                                    163     10     32     10    90%
+Coverage XML written to file coverage.xml
+
+14 passed in 1.37s

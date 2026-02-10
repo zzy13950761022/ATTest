@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLinalgImpl.test_pinv_singular_matrix",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "矩形矩阵的伪逆形状不正确：A @ A_pinv应为3x3但得到3x5"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLinalgImpl.test_tridiagonal_solve_formats_compatibility",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

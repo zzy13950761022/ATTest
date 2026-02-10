@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_linalg_utils_g3.py::test_conjugate_invalid_inputs",
+      "block_id": "FOOTER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "conjugate函数对非tensor输入抛出AttributeError而非TypeError，需要调整错误处理逻辑"
+    },
+    {
+      "test": "tests/test_torch_linalg_utils_g3.py::test_get_floating_dtype_basic",
+      "block_id": "CASE_10",
+      "error_type": "AssertionError",
+      "action": "add_case",
+      "note": "get_floating_dtype对complex64返回float32而非complex64，需要添加测试用例验证类型映射"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

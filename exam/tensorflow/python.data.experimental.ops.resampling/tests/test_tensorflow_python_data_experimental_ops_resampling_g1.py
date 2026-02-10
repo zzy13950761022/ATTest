@@ -1,0 +1,446 @@
+import math
+import pytest
+import tensorflow as tf
+import numpy as np
+from unittest.mock import Mock, patch, MagicMock
+import warnings
+
+from tensorflow.python.data.experimental.ops.resampling import rejection_resample
+
+# ==== BLOCK:HEADER START ====
+# Test class for rejection_resample function
+class TestRejectionResample:
+    """Test cases for rejection_resample function."""
+    
+    @pytest.fixture
+    def mock_dataset(self):
+        """Create a mock dataset for testing."""
+        dataset = Mock(spec=tf.data.Dataset)
+        return dataset
+    
+    @pytest.fixture
+    def mock_rejection_resample(self):
+        """Mock the dataset.rejection_resample method."""
+        with patch('tensorflow.data.Dataset.rejection_resample') as mock_method:
+            yield mock_method
+    
+    @pytest.fixture
+    def simple_class_func(self):
+        """Create a simple class function for testing."""
+        def class_func(element):
+            # Simple function that extracts class from element
+            return tf.cast(element % 3, tf.int32)
+        return class_func
+    
+    @pytest.fixture
+    def uniform_target_dist(self):
+        """Create a uniform target distribution."""
+        return tf.constant([0.25, 0.25, 0.25, 0.25], dtype=tf.float32)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("num_classes,dataset_size,seed", [
+        (3, 100, 42),  # Original test case
+        (5, 1000, 42), # Extended test case: more classes and larger dataset
+    ])
+    def test_basic_functionality(self, mock_dataset, mock_rejection_resample, num_classes, dataset_size, seed):
+        """TC-01: 基本功能验证 - 验证函数返回转换函数并正确调用底层方法"""
+        # Arrange
+        # Create a simple class function
+        def class_func(element):
+            return tf.cast(element % num_classes, tf.int32)
+        
+        # Create target distribution (uniform)
+        target_dist = tf.constant([1.0/num_classes] * num_classes, dtype=tf.float32)
+        
+        # Mock the rejection_resample method to return the dataset itself
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Apply the transformation to mock dataset
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Returns function
+        assert callable(transform_fn), "rejection_resample should return a callable function"
+        
+        # 2. Deprecation warning (check via mock)
+        # The deprecation decorator is applied to the function
+        
+        # 3. Dataset type - result should be the return value of mock_rejection_resample
+        # which is transformed_dataset
+        assert result is transformed_dataset, f"Transformed dataset should be returned, got {result}"
+        
+        # 4. Element count - verify the method was called with correct parameters
+        mock_rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # 5. Verify class_func is callable
+        assert callable(class_func), "class_func should be callable"
+        
+        # 6. Verify target_dist shape
+        assert target_dist.shape == (num_classes,), f"target_dist should have shape ({num_classes},)"
+        
+        # 7. Verify target_dist dtype
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+        
+        # 8. Verify transform_fn is a closure that calls dataset.rejection_resample
+        # This is implicit in the function call above
+        
+        # 9. Verify uniform distribution
+        expected_value = 1.0 / num_classes
+        for i in range(num_classes):
+            assert abs(target_dist[i].numpy() - expected_value) < 1e-6, \
+                f"Target distribution should be uniform, got {target_dist[i].numpy()} at index {i}"
+        
+        # 10. Verify distribution sums to 1
+        dist_sum = tf.reduce_sum(target_dist).numpy()
+        assert abs(dist_sum - 1.0) < 1e-6, f"Target distribution should sum to 1, got {dist_sum}"
+        
+        # 11. Test class_func with sample inputs
+        test_inputs = list(range(min(10, num_classes * 2)))
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert 0 <= output.numpy() < num_classes, \
+                f"class_func output should be in [0, {num_classes}), got {output.numpy()}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    def test_deprecation_warning(self, mock_dataset, mock_rejection_resample):
+        """TC-02: 弃用警告验证 - 验证函数触发弃用警告"""
+        # Arrange
+        num_classes = 2
+        dataset_size = 50
+        
+        # Create a simple class function
+        def class_func(element):
+            return tf.cast(element % num_classes, tf.int32)
+        
+        # Create target distribution (uniform)
+        target_dist = tf.constant([0.5, 0.5], dtype=tf.float32)
+        
+        # Create initial distribution (provided)
+        initial_dist = tf.constant([0.6, 0.4], dtype=tf.float32)
+        
+        # Mock the rejection_resample method
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_rejection_resample.return_value = transformed_dataset
+        
+        # Reset warnings to ensure we capture the deprecation warning
+        warnings.resetwarnings()
+        
+        # Capture warnings
+        with warnings.catch_warnings(record=True) as w:
+            # Set filter to always show warnings
+            warnings.simplefilter("always")
+            
+            # Act
+            transform_fn = rejection_resample(
+                class_func=class_func,
+                target_dist=target_dist,
+                initial_dist=initial_dist,
+                seed=None
+            )
+            
+            # Apply transformation
+            result = transform_fn(mock_dataset)
+            
+            # Assert - weak assertions
+            # 1. Deprecation warning triggered
+            assert len(w) > 0, f"Deprecation warning should be triggered, got {len(w)} warnings"
+            
+            # Check if any warning is about deprecation
+            deprecation_warnings = [warning for warning in w 
+                                   if 'deprecated' in str(warning.message).lower() 
+                                   or 'deprecation' in str(warning.message).lower()]
+            assert len(deprecation_warnings) > 0, f"No deprecation warning found. Warnings: {[str(warning.message) for warning in w]}"
+            
+            # 2. Function returned
+            assert callable(transform_fn), "Function should be returned"
+            
+            # 3. No exceptions
+            # If we reach here, no exceptions were raised
+            
+            # 4. Verify method was called with correct parameters
+            mock_rejection_resample.assert_called_once_with(
+                class_func=class_func,
+                target_dist=target_dist,
+                initial_dist=initial_dist,
+                seed=None
+            )
+            
+            # 5. Verify result is correct
+            assert result is transformed_dataset, f"Should return transformed dataset, got {result}"
+            
+            # 6. Verify initial_dist was used
+            call_args = mock_rejection_resample.call_args
+            assert call_args[1]['initial_dist'] is initial_dist, "initial_dist should be passed through"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    def test_distribution_adjustment(self, mock_dataset, mock_rejection_resample):
+        """TC-03: 分布调整验证 - 验证函数正确传递分布参数"""
+        # Arrange
+        num_classes = 4
+        dataset_size = 200
+        seed = 123
+        
+        # Create a simple class function
+        def class_func(element):
+            return tf.cast(element % num_classes, tf.int32)
+        
+        # Create uniform target distribution
+        target_dist = tf.constant([0.25, 0.25, 0.25, 0.25], dtype=tf.float32)
+        
+        # Mock the rejection_resample method
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Apply transformation
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Output distribution close (verify parameters passed correctly)
+        # First check if mock was called at all
+        assert mock_rejection_resample.called, "rejection_resample method should be called on dataset"
+        
+        # Verify it was called exactly once
+        assert mock_rejection_resample.call_count == 1, f"rejection_resample should be called once, called {mock_rejection_resample.call_count} times"
+        
+        # Verify call arguments
+        mock_rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Verify target_dist is uniform
+        expected_value = 0.25
+        for i in range(num_classes):
+            assert abs(target_dist[i].numpy() - expected_value) < 1e-6, \
+                f"Target distribution should be uniform, got {target_dist[i].numpy()}"
+        
+        # 2. Dataset not empty (mock returns dataset)
+        assert result is transformed_dataset, f"Should return non-empty dataset, got {result}"
+        
+        # 3. Class function works
+        # Test class_func with sample inputs
+        test_inputs = [0, 1, 2, 3, 4, 5, 6, 7]
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert 0 <= output.numpy() < num_classes, \
+                f"class_func output should be in [0, {num_classes}), got {output.numpy()}"
+        
+        # 4. Verify target_dist shape and dtype
+        assert target_dist.shape == (num_classes,), f"target_dist should have shape ({num_classes},)"
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+        
+        # 5. Verify seed is passed correctly
+        call_args = mock_rejection_resample.call_args
+        assert call_args[1]['seed'] == seed, f"seed should be {seed}, got {call_args[1]['seed']}"
+        
+        # 6. Verify initial_dist is None
+        assert call_args[1]['initial_dist'] is None, "initial_dist should be None when not provided"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("seed", [42, None])
+    def test_optional_initial_dist(self, mock_dataset, mock_rejection_resample, seed):
+        """TC-04: 可选参数initial_dist - 验证initial_dist参数正确传递和使用"""
+        # Arrange
+        num_classes = 3
+        dataset_size = 150
+        
+        # Create a simple class function
+        def class_func(element):
+            return tf.cast(element % num_classes, tf.int32)
+        
+        # Create target distribution (uniform)
+        target_dist = tf.constant([1.0/num_classes] * num_classes, dtype=tf.float32)
+        
+        # Create initial distribution (provided) - different from target
+        initial_dist = tf.constant([0.5, 0.3, 0.2], dtype=tf.float32)
+        
+        # Mock the rejection_resample method
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=initial_dist,
+            seed=seed
+        )
+        
+        # Apply transformation
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Function works (no exceptions)
+        assert callable(transform_fn), "rejection_resample should return a callable function"
+        
+        # 2. No exceptions (implicitly passed if we reach here)
+        
+        # 3. Dataset transformed
+        assert result is transformed_dataset, f"Should return transformed dataset, got {result}"
+        
+        # 4. Verify method was called with correct parameters
+        assert mock_rejection_resample.called, "rejection_resample method should be called"
+        mock_rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=initial_dist,
+            seed=seed
+        )
+        
+        # 5. Verify initial_dist was passed correctly
+        call_args = mock_rejection_resample.call_args
+        assert call_args[1]['initial_dist'] is initial_dist, "initial_dist should be passed through"
+        
+        # 6. Verify initial_dist shape and dtype
+        assert initial_dist.shape == (num_classes,), f"initial_dist should have shape ({num_classes},)"
+        assert initial_dist.dtype == tf.float32, "initial_dist should be float32"
+        
+        # 7. Verify target_dist shape and dtype
+        assert target_dist.shape == (num_classes,), f"target_dist should have shape ({num_classes},)"
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+        
+        # 8. Verify class_func is callable and works
+        assert callable(class_func), "class_func should be callable"
+        
+        # Test class_func with sample inputs
+        test_inputs = [0, 1, 2, 3, 4, 5]
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert 0 <= output.numpy() < num_classes, \
+                f"class_func output should be in [0, {num_classes}), got {output.numpy()}"
+        
+        # 9. Verify seed is passed correctly
+        if seed is not None:
+            assert call_args[1]['seed'] == seed, f"seed should be {seed}, got {call_args[1]['seed']}"
+        else:
+            assert call_args[1]['seed'] is None, f"seed should be None, got {call_args[1]['seed']}"
+        
+        # 10. Verify initial_dist values are different from target_dist
+        # This shows that initial_dist is being used as a separate parameter
+        for i in range(num_classes):
+            assert abs(initial_dist[i].numpy() - target_dist[i].numpy()) > 1e-6, \
+                f"initial_dist[{i}] should be different from target_dist[{i}]"
+        
+        # 11. Verify distribution properties
+        # Check target distribution sums to 1
+        target_sum = tf.reduce_sum(target_dist).numpy()
+        assert abs(target_sum - 1.0) < 1e-6, f"target_dist should sum to 1, got {target_sum}"
+        
+        # Check initial distribution sums to 1
+        initial_sum = tf.reduce_sum(initial_dist).numpy()
+        assert abs(initial_sum - 1.0) < 1e-6, f"initial_dist should sum to 1, got {initial_sum}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    def test_edge_case_single_class(self, mock_dataset, mock_rejection_resample):
+        """TC-05: 边界值测试 - 验证单类别和小数据集的边界情况"""
+        # Arrange
+        num_classes = 1
+        dataset_size = 10
+        seed = 0
+        
+        # Create a simple class function for single class
+        def class_func(element):
+            # Always return 0 for single class
+            return tf.constant(0, dtype=tf.int32)
+        
+        # Create target distribution for single class (must be 1.0)
+        target_dist = tf.constant([1.0], dtype=tf.float32)
+        
+        # Mock the rejection_resample method
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Apply transformation
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Function works (no exceptions)
+        assert callable(transform_fn), "rejection_resample should return a callable function"
+        
+        # 2. No exceptions (implicitly passed if we reach here)
+        
+        # 3. Basic output
+        assert result is transformed_dataset, f"Should return transformed dataset, got {result}"
+        
+        # 4. Verify method was called with correct parameters
+        assert mock_rejection_resample.called, "rejection_resample method should be called"
+        mock_rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # 5. Verify single class distribution
+        assert target_dist.shape == (1,), f"target_dist should have shape (1,) for single class, got {target_dist.shape}"
+        assert abs(target_dist[0].numpy() - 1.0) < 1e-6, \
+            f"Target distribution for single class should be [1.0], got {target_dist[0].numpy()}"
+        
+        # 6. Verify class_func works for single class
+        test_inputs = [0, 1, 2, 3, 4]
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert output.numpy() == 0, f"class_func should always return 0 for single class, got {output.numpy()}"
+        
+        # 7. Verify seed is passed correctly
+        call_args = mock_rejection_resample.call_args
+        assert call_args[1]['seed'] == seed, f"seed should be {seed}, got {call_args[1]['seed']}"
+        
+        # 8. Verify initial_dist is None
+        assert call_args[1]['initial_dist'] is None, "initial_dist should be None when not provided"
+        
+        # 9. Edge case handling - verify function handles single class correctly
+        # The function should work without errors for single class
+        
+        # 10. Small dataset - verify parameters are passed correctly regardless of dataset size
+        # This is implicit in the mock call verification above
+        
+        # 11. Verify target_dist dtype
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

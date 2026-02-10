@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedMathOps.test_reduce_sum_single_axis[input_shape0-1-float32]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "reduce_sum在axis=1时返回普通Tensor而非RaggedTensor，需要调整断言逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedMathOps.test_reduce_sum_single_axis[input_shape1-0-float64]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

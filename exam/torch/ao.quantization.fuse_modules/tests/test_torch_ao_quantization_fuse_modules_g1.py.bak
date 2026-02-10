@@ -1,0 +1,577 @@
+import torch
+import torch.nn as nn
+import pytest
+import copy
+from torch.ao.quantization import fuse_modules
+
+
+# ==== BLOCK:HEADER START ====
+# Test helper functions and fixtures for G1 group
+
+import torch
+import torch.nn as nn
+import pytest
+import copy
+from torch.ao.quantization import fuse_modules
+
+
+def set_random_seed(seed=42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+class SimpleConvBNReLU(nn.Module):
+    """Simple model with conv-bn-relu sequence."""
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.bn = nn.BatchNorm2d(16)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.relu(x)
+        return x
+
+
+class SimpleConvBN(nn.Module):
+    """Simple model with conv-bn sequence."""
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.bn = nn.BatchNorm2d(16)
+    
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
+
+
+class MultiLayerModel(nn.Module):
+    """Model with multiple layers for multi-group fusion."""
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.relu1 = nn.ReLU()
+        self.linear = nn.Linear(16 * 32 * 32, 10)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        x = x.view(x.size(0), -1)
+        x = self.linear(x)
+        x = self.relu(x)
+        return x
+
+
+class ExtendedMultiLayerModel(nn.Module):
+    """Extended model with three groups for fusion extension tests."""
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+        self.relu2 = nn.ReLU()
+        self.linear = nn.Linear(32 * 32 * 32, 10)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x = self.relu2(x)
+        x = x.view(x.size(0), -1)
+        x = self.linear(x)
+        x = self.relu(x)
+        return x
+
+
+class NestedModel(nn.Module):
+    """Model with nested submodule for nested fusion tests."""
+    def __init__(self):
+        super().__init__()
+        self.submodule = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU()
+        )
+    
+    def forward(self, x):
+        return self.submodule(x)
+
+
+class UnsupportedSequence(nn.Module):
+    """Model with unsupported fusion sequence (conv-relu-conv)."""
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+    
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        return x
+
+
+@pytest.fixture
+def random_input():
+    """Fixture providing random input tensor."""
+    set_random_seed(42)
+    return torch.randn(2, 3, 32, 32)
+
+
+def check_finite_output(output):
+    """Check that output contains finite values."""
+    assert torch.isfinite(output).all(), "Output contains NaN or infinite values"
+
+
+def check_output_shape(original_output, fused_output):
+    """Check that fused model output shape matches original."""
+    assert fused_output.shape == original_output.shape, \
+        f"Output shape mismatch: {fused_output.shape} != {original_output.shape}"
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_01 START ====
+# Test case: 单组conv-bn-relu融合
+
+@pytest.mark.parametrize("inplace,fuse_custom_config_dict", [
+    (False, None),  # Base case from param_matrix
+    (True, None),   # Extension: inplace=True
+    (False, {"preserve_attributes": ["training"]}),  # Extension: custom config
+])
+def test_single_group_conv_bn_relu_fusion(random_input, inplace, fuse_custom_config_dict):
+    """Test fusion of single conv-bn-relu sequence."""
+    # Setup
+    model = SimpleConvBNReLU()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Fuse modules
+    modules_to_fuse = ["conv", "bn", "relu"]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,  # Use default
+        fuse_custom_config_dict=fuse_custom_config_dict
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    # 1. Model type check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    
+    # 2. Module structure check
+    # After fusion, we should have fused module and identity modules
+    assert hasattr(fused_model, 'conv'), "Fused model should have 'conv' attribute"
+    assert hasattr(fused_model, 'bn'), "Fused model should have 'bn' attribute"
+    assert hasattr(fused_model, 'relu'), "Fused model should have 'relu' attribute"
+    
+    # Check that conv is now a fused module (ConvBnReLU2d or similar)
+    conv_module = fused_model.conv
+    assert isinstance(conv_module, nn.Module), "conv should be a Module"
+    
+    # 3. Output shape check
+    check_output_shape(original_output, fused_output)
+    
+    # 4. Finite output check
+    check_finite_output(fused_output)
+    
+    # 5. Model ID check for inplace behavior
+    if inplace:
+        # Inplace fusion should return the same model object
+        assert fused_model is model, "Inplace fusion should return same model"
+    else:
+        # Non-inplace fusion should return a different model object
+        assert fused_model is not model, "Non-inplace fusion should return new model"
+    
+    # 6. Additional check for custom config
+    if fuse_custom_config_dict is not None:
+        # With custom config, fusion should still succeed
+        # We just verify that no exception was raised
+        pass
+# ==== BLOCK:CASE_01 END ====
+
+
+# ==== BLOCK:CASE_02 START ====
+# Test case: 多组模块融合
+
+@pytest.mark.parametrize("modules_to_fuse,inplace", [
+    ([["conv1", "bn1", "relu1"], ["linear", "relu"]], False),  # Base case from param_matrix
+])
+def test_multi_group_module_fusion(random_input, modules_to_fuse, inplace):
+    """Test fusion of multiple groups of modules."""
+    # Setup
+    model = MultiLayerModel()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Fuse multiple groups
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,  # Use default
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    # 1. Model type check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    
+    # 2. Module count check - check relevant modules exist
+    for group in modules_to_fuse:
+        for module_name in group:
+            assert hasattr(fused_model, module_name), \
+                f"Fused model should have '{module_name}'"
+    
+    # 3. Check that modules were fused
+    # For each group, the first module should be a fused module
+    for group in modules_to_fuse:
+        if group:  # Check group is not empty
+            first_module_name = group[0]
+            first_module = getattr(fused_model, first_module_name)
+            assert isinstance(first_module, nn.Module), \
+                f"{first_module_name} should be a Module"
+    
+    # 4. Output shape check
+    check_output_shape(original_output, fused_output)
+    
+    # 5. Finite output check
+    check_finite_output(fused_output)
+    
+    # 6. Model ID check for inplace behavior
+    if inplace:
+        assert fused_model is model, "Inplace fusion should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace fusion should return new model"
+
+
+# 三组融合扩展测试 - 只测试支持的组合
+@pytest.mark.parametrize("inplace", [False])
+def test_three_group_supported_fusion(random_input, inplace):
+    """Test fusion of three groups with supported sequences only."""
+    # Setup - model with only supported fusion sequences
+    class ThreeGroupSupportedModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+            self.bn1 = nn.BatchNorm2d(16)
+            self.relu1 = nn.ReLU()
+            self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+            self.bn2 = nn.BatchNorm2d(32)
+            self.linear = nn.Linear(32 * 32 * 32, 10)
+            self.relu = nn.ReLU()
+        
+        def forward(self, x):
+            x = self.conv1(x)
+            x = self.bn1(x)
+            x = self.relu1(x)
+            x = self.conv2(x)
+            x = self.bn2(x)
+            x = x.view(x.size(0), -1)
+            x = self.linear(x)
+            x = self.relu(x)
+            return x
+    
+    model = ThreeGroupSupportedModel()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Fuse three groups with supported sequences: conv-bn-relu, conv-bn, linear-relu
+    modules_to_fuse = [["conv1", "bn1", "relu1"], ["conv2", "bn2"], ["linear", "relu"]]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    check_output_shape(original_output, fused_output)
+    check_finite_output(fused_output)
+    
+    if inplace:
+        assert fused_model is model, "Inplace fusion should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace fusion should return new model"
+# ==== BLOCK:CASE_02 END ====
+
+
+# ==== BLOCK:CASE_03 START ====
+# Test case: inplace参数行为
+
+@pytest.mark.parametrize("inplace,expected_same_model", [
+    (True, True),   # inplace=True should return same model
+    (False, False), # inplace=False should return new model
+])
+def test_inplace_parameter_behavior(random_input, inplace, expected_same_model):
+    """Test inplace parameter behavior for conv-bn fusion."""
+    # Setup
+    model = SimpleConvBN()
+    model.eval()
+    
+    # Get original output and model id
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    original_model_id = id(model)
+    
+    # Fuse modules
+    modules_to_fuse = ["conv", "bn"]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,  # Use default
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    # 1. Model ID different check
+    fused_model_id = id(fused_model)
+    if expected_same_model:
+        assert fused_model_id == original_model_id, \
+            f"Inplace=True: model IDs should be same ({fused_model_id} != {original_model_id})"
+    else:
+        assert fused_model_id != original_model_id, \
+            f"Inplace=False: model IDs should be different ({fused_model_id} == {original_model_id})"
+    
+    # 2. Module structure check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    assert hasattr(fused_model, 'conv'), "Fused model should have 'conv' attribute"
+    assert hasattr(fused_model, 'bn'), "Fused model should have 'bn' attribute"
+    
+    # Check that conv is now a fused module
+    conv_module = fused_model.conv
+    assert isinstance(conv_module, nn.Module), "conv should be a Module"
+    
+    # 3. Output shape check
+    check_output_shape(original_output, fused_output)
+    
+    # 4. Check original model preservation for non-inplace case
+    if not inplace:
+        # Original model should still be accessible and unchanged
+        assert hasattr(model, 'conv'), "Original model should still have 'conv'"
+        assert hasattr(model, 'bn'), "Original model should still have 'bn'"
+        
+        # Original model's conv should still be a regular Conv2d
+        original_conv = model.conv
+        assert isinstance(original_conv, nn.Conv2d), \
+            "Original model's conv should remain Conv2d"
+# ==== BLOCK:CASE_03 END ====
+
+
+# ==== BLOCK:CASE_04 START ====
+# Test case: 嵌套子模块融合
+
+@pytest.mark.parametrize("inplace", [False])
+def test_nested_submodule_fusion(random_input, inplace):
+    """Test fusion of modules within nested submodules."""
+    # Setup
+    model = NestedModel()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Fuse modules within nested submodule
+    # Note: modules_to_fuse uses dot notation for nested access
+    modules_to_fuse = ["submodule.0", "submodule.1", "submodule.2"]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,  # Use default
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    # 1. Model type check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    
+    # 2. Nested structure check
+    # Parent structure should be preserved
+    assert hasattr(fused_model, 'submodule'), "Fused model should have 'submodule'"
+    
+    # submodule should still be a Sequential or similar container
+    submodule = fused_model.submodule
+    assert isinstance(submodule, nn.Module), "submodule should be a Module"
+    
+    # 3. Check that submodule still has the expected number of children
+    # After fusion, the first module in the sequence should be fused
+    # and the others should be identity modules
+    assert len(list(submodule.children())) == 3, \
+        "submodule should still have 3 children after fusion"
+    
+    # 4. Output shape check
+    check_output_shape(original_output, fused_output)
+    
+    # 5. Finite output check
+    check_finite_output(fused_output)
+    
+    # 6. Model ID check for inplace behavior
+    if inplace:
+        assert fused_model is model, "Inplace fusion should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace fusion should return new model"
+    
+    # 7. Check parent structure preservation
+    # The overall model structure should be unchanged
+    assert isinstance(fused_model, NestedModel) or \
+           type(fused_model).__name__ == 'NestedModel', \
+           "Model type should be preserved"
+# ==== BLOCK:CASE_04 END ====
+
+
+# ==== BLOCK:CASE_05 START ====
+# Test case: 不支持序列保持不变
+
+@pytest.mark.parametrize("inplace", [False])
+def test_unsupported_sequence_unchanged(random_input, inplace):
+    """Test that unsupported fusion sequences raise NotImplementedError."""
+    # Setup
+    model = UnsupportedSequence()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Try to fuse unsupported sequence (conv-relu-conv)
+    # This should raise NotImplementedError according to fuse_known_modules
+    modules_to_fuse = ["conv", "relu", "conv2"]
+    
+    # Weak assertions: should raise NotImplementedError
+    with pytest.raises(NotImplementedError) as exc_info:
+        fused_model = fuse_modules(
+            model,
+            modules_to_fuse,
+            inplace=inplace,
+            fuser_func=None,  # Use default
+            fuse_custom_config_dict=None
+        )
+    
+    # Check exception message contains information about the unsupported types
+    error_msg = str(exc_info.value)
+    assert "Cannot fuse modules" in error_msg or "did not find fuser method" in error_msg, \
+        f"Error message should indicate fusion failure, got: {error_msg}"
+    
+    # Verify that the model is unchanged after the failed fusion attempt
+    # (when inplace=False, the original model should remain unchanged)
+    if not inplace:
+        # Original model should still work
+        with torch.no_grad():
+            current_output = model(random_input)
+        
+        # Output should still match original
+        assert torch.allclose(current_output, original_output, rtol=1e-5, atol=1e-8), \
+            "Original model output should remain unchanged after failed fusion"
+        
+        # Module types should remain unchanged
+        assert isinstance(model.conv, nn.Conv2d), "conv should remain Conv2d"
+        assert isinstance(model.relu, nn.ReLU), "relu should remain ReLU"
+        assert isinstance(model.conv2, nn.Conv2d), "conv2 should remain Conv2d"
+
+
+# Test for unsupported sequence that should work (conv-relu)
+@pytest.mark.parametrize("inplace", [False])
+def test_conv_relu_supported_fusion(random_input, inplace):
+    """Test that conv-relu sequence is supported for fusion."""
+    # Setup model with conv-relu sequence
+    class ConvReluModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+            self.relu = nn.ReLU()
+        
+        def forward(self, x):
+            x = self.conv(x)
+            x = self.relu(x)
+            return x
+    
+    model = ConvReluModel()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Fuse conv-relu sequence (this should work)
+    modules_to_fuse = ["conv", "relu"]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    assert hasattr(fused_model, 'conv'), "Fused model should have 'conv'"
+    assert hasattr(fused_model, 'relu'), "Fused model should have 'relu'"
+    check_output_shape(original_output, fused_output)
+    check_finite_output(fused_output)
+    
+    if inplace:
+        assert fused_model is model, "Inplace fusion should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace fusion should return new model"
+# ==== BLOCK:CASE_05 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup for G1 group
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

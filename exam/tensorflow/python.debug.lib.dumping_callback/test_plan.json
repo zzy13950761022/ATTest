@@ -1,0 +1,415 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.debug.lib.dumping_callback",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_debug_lib_dumping_callback.py",
+    "all_pattern": "tests/test_tensorflow_python_debug_lib_dumping_callback_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_debug_lib_dumping_callback_g1.py",
+      "G2": "tests/test_tensorflow_python_debug_lib_dumping_callback_g2.py",
+      "G3": "tests/test_tensorflow_python_debug_lib_dumping_callback_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心启用/禁用功能",
+      "entrypoints": ["enable_dump_debug_info", "disable_dump_debug_info"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试基本启用/禁用流程和参数验证"
+    },
+    {
+      "group_id": "G2",
+      "title": "张量调试模式功能",
+      "entrypoints": ["enable_dump_debug_info"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07", "CASE_08"],
+      "note": "测试不同tensor_debug_mode的张量信息提取"
+    },
+    {
+      "group_id": "G3",
+      "title": "过滤与缓冲区功能",
+      "entrypoints": ["enable_dump_debug_info"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11"],
+      "note": "测试op_regex、tensor_dtypes过滤和环形缓冲区"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本启用禁用流程",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_1",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["enable_returns_writer", "disable_no_error", "directory_created", "callback_registered"],
+        "strong": ["writer_flush_works", "callback_unregistered", "no_file_leaks", "thread_state_cleaned"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "无效参数异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dump_root": "",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        },
+        {
+          "dump_root": "/tmp/test_dump_2",
+          "tensor_debug_mode": "INVALID_MODE",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["empty_dump_root_error", "invalid_mode_error"],
+        "strong": ["error_type_correct", "error_message_contains", "no_side_effects"]
+      },
+      "oracle": "exception_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "幂等性验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_3",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["multiple_enable_no_error", "same_writer_instance"],
+        "strong": ["no_duplicate_files", "state_consistent", "callback_not_duplicated"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "不同参数组合冲突",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_4",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["different_mode_error", "different_buffer_error"],
+        "strong": ["error_type_valueerror", "error_message_clear", "original_state_preserved"]
+      },
+      "oracle": "exception_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 55,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "基本张量调试模式",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_5",
+          "tensor_debug_mode": "SHAPE",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_mode_enabled", "tensor_processed", "file_written"],
+        "strong": ["shape_info_correct", "dtype_correct", "element_count_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "健康检查模式",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_6",
+          "tensor_debug_mode": "CURT_HEALTH",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["health_mode_enabled", "float_tensor_processed"],
+        "strong": ["inf_nan_detected", "health_flags_correct", "only_float_types"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "详细健康统计",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_7",
+          "tensor_debug_mode": "CONCISE_HEALTH",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["concise_mode_enabled", "statistics_collected"],
+        "strong": ["inf_count_correct", "nan_count_correct", "total_count_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "完整健康统计",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_8",
+          "tensor_debug_mode": "FULL_HEALTH",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["full_mode_enabled", "complete_stats_collected"],
+        "strong": ["all_stats_present", "values_accurate", "format_consistent"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "操作正则过滤",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_9",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": "MatMul|Add",
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["regex_filter_applied", "matching_ops_captured"],
+        "strong": ["non_matching_ops_excluded", "filter_logic_correct", "regex_parsed"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "张量类型过滤",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_10",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 1000,
+          "op_regex": null,
+          "tensor_dtypes": ["float32", "float64"]
+        }
+      ],
+      "asserts": {
+        "weak": ["dtype_filter_applied", "matching_dtypes_captured"],
+        "strong": ["non_matching_excluded", "list_format_accepted", "callable_format_accepted"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "环形缓冲区功能",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dump_root": "/tmp/test_dump_11",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 10,
+          "op_regex": null,
+          "tensor_dtypes": null
+        },
+        {
+          "dump_root": "/tmp/test_dump_12",
+          "tensor_debug_mode": "NO_TENSOR",
+          "circular_buffer_size": 0,
+          "op_regex": null,
+          "tensor_dtypes": null
+        }
+      ],
+      "asserts": {
+        "weak": ["small_buffer_works", "zero_buffer_works", "no_buffer_overflow"],
+        "strong": ["buffer_limits_respected", "circular_behavior", "negative_buffer_disabled"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dump_root": "/tmp/test_dump_ext",
+        "tensor_debug_mode": "SHAPE",
+        "circular_buffer_size": 500,
+        "op_regex": ".*",
+        "tensor_dtypes": ["float32"]
+      },
+      "note": "作为CASE_01的参数扩展，测试完整参数组合"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "dump_root": "/tmp/test_dump_shape_ext",
+        "tensor_debug_mode": "SHAPE",
+        "circular_buffer_size": 1000,
+        "op_regex": null,
+        "tensor_dtypes": null
+      },
+      "note": "作为CASE_05的参数扩展，测试不同张量形状"
+    },
+    {
+      "base_block_id": "CASE_09",
+      "priority": "Low",
+      "params": {
+        "dump_root": "/tmp/test_dump_regex_ext",
+        "tensor_debug_mode": "NO_TENSOR",
+        "circular_buffer_size": 1000,
+        "op_regex": "^Conv.*",
+        "tensor_dtypes": null
+      },
+      "note": "作为CASE_09的参数扩展，测试不同正则表达式"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_09"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_08", "CASE_10", "CASE_11"]
+}

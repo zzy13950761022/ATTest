@@ -1,0 +1,129 @@
+=== Run Tests ===
+...............F.....                                                    [100%]
+================================== FAILURES ===================================
+__________________________ test_enable_disable_cycle __________________________
+
+clear_state = None
+
+    def test_enable_disable_cycle(clear_state):
+        """Test enable/disable check numerics cycles (TC-07)."""
+        from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+        # Clear any existing state
+        if hasattr(_state, 'check_numerics_callback'):
+            delattr(_state, 'check_numerics_callback')
+    
+        # Test multiple enable/disable cycles
+        cycles = 2
+    
+        for cycle in range(cycles):
+            # Enable check numerics
+            tf.debugging.enable_check_numerics()
+    
+            # Verify state was updated
+            assert hasattr(_state, 'check_numerics_callback')
+            assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+            # Test that callback is working
+            nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+            with pytest.raises(tf.errors.InvalidArgumentError):
+                result = tf.math.sqrt(nan_tensor)
+                _ = result.numpy()
+    
+            # Disable check numerics
+            tf.debugging.disable_check_numerics()
+    
+            # Verify state was cleared
+            assert not hasattr(_state, 'check_numerics_callback')
+    
+            # Test that callback is no longer working
+            # This should NOT raise an exception since check numerics is disabled
+            try:
+>               result = tf.math.sqrt(nan_tensor)
+
+tests\test_tensorflow_python_debug_lib_check_numerics_callback.py:496: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.InvalidArgumentError: 
+E     
+E     !!! Detected Infinity or NaN in output 0 of eagerly-executing op "Sqrt" (# of outputs: 1) !!!
+E       dtype: <dtype: 'float32'>
+E       shape: (1,)
+E       # of +NaN elements: 1
+E     
+E       Input tensor: tf.Tensor([nan], shape=(1,), dtype=float32)
+E     
+E      : Tensor had NaN values [Op:CheckNumericsV2]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\ops.py:7186: InvalidArgumentError
+
+During handling of the above exception, another exception occurred:
+
+clear_state = None
+
+    def test_enable_disable_cycle(clear_state):
+        """Test enable/disable check numerics cycles (TC-07)."""
+        from tensorflow.python.debug.lib.check_numerics_callback import _state
+    
+        # Clear any existing state
+        if hasattr(_state, 'check_numerics_callback'):
+            delattr(_state, 'check_numerics_callback')
+    
+        # Test multiple enable/disable cycles
+        cycles = 2
+    
+        for cycle in range(cycles):
+            # Enable check numerics
+            tf.debugging.enable_check_numerics()
+    
+            # Verify state was updated
+            assert hasattr(_state, 'check_numerics_callback')
+            assert isinstance(_state.check_numerics_callback, CheckNumericsCallback)
+    
+            # Test that callback is working
+            nan_tensor = tf.constant([np.nan], dtype=tf.float32)
+            with pytest.raises(tf.errors.InvalidArgumentError):
+                result = tf.math.sqrt(nan_tensor)
+                _ = result.numpy()
+    
+            # Disable check numerics
+            tf.debugging.disable_check_numerics()
+    
+            # Verify state was cleared
+            assert not hasattr(_state, 'check_numerics_callback')
+    
+            # Test that callback is no longer working
+            # This should NOT raise an exception since check numerics is disabled
+            try:
+                result = tf.math.sqrt(nan_tensor)
+                _ = result.numpy()
+                # If we get here, no exception was raised (expected)
+                assert True
+            except tf.errors.InvalidArgumentError:
+                # This would be unexpected since check numerics should be disabled
+>               pytest.fail(f"InvalidArgumentError raised in cycle {cycle} when check numerics should be disabled")
+E               Failed: InvalidArgumentError raised in cycle 0 when check numerics should be disabled
+
+tests\test_tensorflow_python_debug_lib_check_numerics_callback.py:502: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_debug_lib_check_numerics_callback.py     363     59     62     17    78%   29-32, 37-39, 44-46, 53, 56, 73->76, 105, 106->113, 110, 204, 235, 277, 327->336, 333, 447, 454-455, 468, 497-499, 505, 513, 565, 573, 725-744, 749-752, 759-776
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 363     59     62     17    78%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_debug_lib_check_numerics_callback.py::test_enable_disable_cycle
+1 failed, 20 passed in 1.69s
+
+Error: exit 1

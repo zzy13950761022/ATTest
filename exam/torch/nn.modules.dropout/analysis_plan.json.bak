@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 16,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_dropout_g2.py::test_alphadropout_selu_compatibility[AlphaDropout-0.2-False-shape0-dtype0-cpu]",
+      "block_id": "CASE_08",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "方差断言过于严格，特别是对于scale=2.0的输入，需要放宽方差容忍度"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_dropout_g2.py::test_alphadropout_selu_compatibility[AlphaDropout-0.5-False-shape1-dtype1-cpu]",
+      "block_id": "CASE_08",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "AlphaDropout+SELU组合的方差特性需要更宽松的断言条件"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

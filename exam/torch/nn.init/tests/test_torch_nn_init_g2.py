@@ -1,0 +1,350 @@
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+def set_random_seed(seed: int = 42) -> None:
+    """设置随机种子以确保测试可重复性"""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def assert_tensor_properties(tensor: torch.Tensor, 
+                            expected_shape: Tuple[int, ...],
+                            expected_dtype: torch.dtype,
+                            test_name: str = "") -> None:
+    """验证张量的基本属性"""
+    assert tensor.shape == expected_shape, \
+        f"{test_name}: 形状不匹配，期望 {expected_shape}，实际 {tensor.shape}"
+    assert tensor.dtype == expected_dtype, \
+        f"{test_name}: 数据类型不匹配，期望 {expected_dtype}，实际 {tensor.dtype}"
+    assert torch.isfinite(tensor).all(), \
+        f"{test_name}: 张量包含非有限值"
+
+
+def assert_in_range(tensor: torch.Tensor, 
+                   min_val: float, 
+                   max_val: float,
+                   test_name: str = "") -> None:
+    """验证张量值在指定范围内"""
+    assert (tensor >= min_val).all(), \
+        f"{test_name}: 有值小于 {min_val}"
+    assert (tensor <= max_val).all(), \
+        f"{test_name}: 有值大于 {max_val}"
+
+
+def assert_not_all_zero(tensor: torch.Tensor, test_name: str = "") -> None:
+    """验证张量不全为零"""
+    assert not torch.all(tensor == 0), \
+        f"{test_name}: 张量全为零"
+
+
+def assert_all_equal(tensor: torch.Tensor, 
+                    expected_value: float,
+                    test_name: str = "",
+                    rtol: float = 1e-6) -> None:
+    """验证张量所有元素等于指定值"""
+    assert torch.allclose(tensor, 
+                         torch.full_like(tensor, expected_value),
+                         rtol=rtol), \
+        f"{test_name}: 张量元素不全等于 {expected_value}"
+
+
+def calculate_xavier_bound(shape: Tuple[int, ...], gain: float = 1.0) -> float:
+    """计算Xavier均匀分布的边界"""
+    if len(shape) < 2:
+        fan_in = fan_out = shape[0]
+    else:
+        fan_in = shape[1]
+        fan_out = shape[0]
+    return gain * math.sqrt(6.0 / (fan_in + fan_out))
+
+
+def calculate_kaiming_bound(shape: Tuple[int, ...], 
+                          mode: str = "fan_in",
+                          nonlinearity: str = "relu") -> float:
+    """计算Kaiming均匀分布的边界"""
+    # 计算fan值
+    if mode == "fan_in":
+        fan = shape[1] if len(shape) >= 2 else shape[0]
+    else:  # fan_out
+        fan = shape[0] if len(shape) >= 2 else 1
+    
+    # 计算增益
+    gain = init.calculate_gain(nonlinearity, 0)  # a=0 for relu
+    
+    # 计算边界
+    return gain * math.sqrt(3.0 / fan)
+
+
+# 设置全局随机种子
+set_random_seed(42)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("dtype,device,shape,gain,flags", [
+    (torch.float32, "cpu", (4, 6), 1.0, []),
+    (torch.float64, "cpu", (6, 4), 2.0, ["different_gain"]),  # 参数扩展
+])
+def test_xavier_uniform_basic(dtype: torch.dtype, 
+                             device: str, 
+                             shape: Tuple[int, ...], 
+                             gain: float,
+                             flags: List[str]) -> None:
+    """测试 xavier_uniform_ 函数的基础功能
+    
+    验证Xavier均匀分布初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. 值在计算出的范围内
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 创建输入张量
+    tensor = torch.empty(shape, dtype=dtype, device=device)
+    
+    # 保存原始张量引用（用于验证原地修改）
+    original_tensor_id = id(tensor)
+    
+    # 调用初始化函数
+    result = init.xavier_uniform_(tensor, gain=gain)
+    
+    # 验证原地修改
+    assert id(result) == original_tensor_id, "xavier_uniform_ 应该原地修改张量"
+    
+    # weak 断言：基本属性验证
+    assert_tensor_properties(result, shape, dtype, "xavier_uniform_基础测试")
+    
+    # 计算Xavier均匀分布的边界
+    bound = calculate_xavier_bound(shape, gain)
+    
+    # weak 断言：值在范围内 [-bound, bound]
+    assert_in_range(result, -bound, bound, "xavier_uniform_基础测试")
+    
+    # weak 断言：不全为零
+    assert_not_all_zero(result, "xavier_uniform_基础测试")
+    
+    # 验证张量确实被修改了
+    assert torch.isfinite(result).any(), "张量应该包含有限值"
+    
+    # 验证边界计算正确（值应该接近边界但不是全部在边界）
+    # 对于均匀分布，应该有值接近边界
+    max_abs_value = torch.abs(result).max().item()
+    assert max_abs_value > 0.1 * bound, \
+        f"值应该更接近边界，最大绝对值: {max_abs_value}, bound: {bound}"
+    
+    # 验证不同增益参数的效果
+    if "different_gain" in flags:
+        # 验证增益参数确实影响了边界
+        bound_with_gain1 = calculate_xavier_bound(shape, gain=1.0)
+        bound_with_gain2 = calculate_xavier_bound(shape, gain=gain)
+        assert bound_with_gain2 == bound, f"边界计算错误: {bound_with_gain2} != {bound}"
+        if gain > 1.0:
+            assert bound > bound_with_gain1, f"增益{gain}应该增加边界"
+        elif gain < 1.0:
+            assert bound < bound_with_gain1, f"增益{gain}应该减小边界"
+# ==== BLOCK:CASE_05 END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+@pytest.mark.parametrize("dtype,device,shape,mode,nonlinearity,flags", [
+    (torch.float32, "cpu", (5, 3), "fan_in", "relu", []),
+    (torch.float64, "cpu", (4, 8), "fan_out", "tanh", ["different_mode"]),  # 参数扩展
+])
+def test_kaiming_uniform_basic(dtype: torch.dtype, 
+                              device: str, 
+                              shape: Tuple[int, ...], 
+                              mode: str,
+                              nonlinearity: str,
+                              flags: List[str]) -> None:
+    """测试 kaiming_uniform_ 函数的基础功能
+    
+    验证Kaiming均匀分布初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. 值在计算出的范围内
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 创建输入张量
+    tensor = torch.empty(shape, dtype=dtype, device=device)
+    
+    # 保存原始张量引用（用于验证原地修改）
+    original_tensor_id = id(tensor)
+    
+    # 调用初始化函数
+    result = init.kaiming_uniform_(tensor, mode=mode, nonlinearity=nonlinearity)
+    
+    # 验证原地修改
+    assert id(result) == original_tensor_id, "kaiming_uniform_ 应该原地修改张量"
+    
+    # weak 断言：基本属性验证
+    assert_tensor_properties(result, shape, dtype, "kaiming_uniform_基础测试")
+    
+    # 计算Kaiming均匀分布的边界
+    bound = calculate_kaiming_bound(shape, mode, nonlinearity)
+    
+    # weak 断言：值在范围内 [-bound, bound]
+    assert_in_range(result, -bound, bound, "kaiming_uniform_基础测试")
+    
+    # weak 断言：不全为零
+    assert_not_all_zero(result, "kaiming_uniform_基础测试")
+    
+    # 验证张量确实被修改了
+    assert torch.isfinite(result).any(), "张量应该包含有限值"
+    
+    # 验证边界计算正确
+    max_abs_value = torch.abs(result).max().item()
+    assert max_abs_value > 0.1 * bound, \
+        f"值应该更接近边界，最大绝对值: {max_abs_value}, bound: {bound}"
+    
+    # 验证模式参数正确应用
+    if mode == "fan_in" and len(shape) >= 2:
+        expected_fan = shape[1]
+        # 重新计算fan值进行验证
+        fan = shape[1] if len(shape) >= 2 else shape[0]
+        assert fan == expected_fan, f"fan_in计算错误: {fan} != {expected_fan}"
+    elif mode == "fan_out" and len(shape) >= 2:
+        expected_fan = shape[0]
+        fan = shape[0] if len(shape) >= 2 else 1
+        assert fan == expected_fan, f"fan_out计算错误: {fan} != {expected_fan}"
+    
+    # 验证不同模式参数的效果
+    if "different_mode" in flags:
+        # 验证模式参数确实影响了边界
+        bound_fan_in = calculate_kaiming_bound(shape, "fan_in", nonlinearity)
+        bound_fan_out = calculate_kaiming_bound(shape, "fan_out", nonlinearity)
+        
+        # 对于不同的形状，fan_in和fan_out的边界可能不同
+        if shape[0] != shape[1] and len(shape) >= 2:
+            assert bound_fan_in != bound_fan_out, \
+                f"对于非方阵，fan_in和fan_out的边界应该不同"
+        
+        # 验证当前模式计算的边界正确
+        if mode == "fan_in":
+            assert bound == bound_fan_in, f"fan_in边界计算错误: {bound} != {bound_fan_in}"
+        else:
+            assert bound == bound_fan_out, f"fan_out边界计算错误: {bound} != {bound_fan_out}"
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# 自适应初始化参数组合（占位）
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:CASE_08 START ====
+# 自适应初始化边界测试（占位）
+# ==== BLOCK:CASE_08 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+def test_invalid_inputs() -> None:
+    """测试非法输入场景"""
+    
+    # 测试 xavier_uniform_ 的非法输入
+    # 注意：传入None会抛出AttributeError而不是RuntimeError
+    # 因为None没有dim属性
+    with pytest.raises(AttributeError):
+        # 非张量输入
+        init.xavier_uniform_(None)
+    
+    # 测试 kaiming_uniform_ 的非法模式
+    tensor = torch.empty(2, 3)
+    with pytest.raises(ValueError, match="Mode .* not supported, please use one of"):
+        init.kaiming_uniform_(tensor, mode="invalid_mode")
+    
+    # 测试非法非线性函数
+    with pytest.raises(ValueError, match="nonlinearity not found"):
+        init.kaiming_uniform_(tensor, nonlinearity="invalid_nonlinearity")
+
+
+def test_no_grad_context() -> None:
+    """验证初始化函数在无梯度上下文中工作"""
+    tensor = torch.empty(3, 4, requires_grad=True)
+    
+    # 保存原始梯度状态
+    original_requires_grad = tensor.requires_grad
+    
+    # 调用初始化函数
+    result = init.xavier_uniform_(tensor)
+    
+    # 验证梯度状态保持不变
+    assert result.requires_grad == original_requires_grad, \
+        "初始化不应该改变张量的梯度状态"
+    
+    # 验证张量被修改了
+    assert not torch.allclose(result, torch.zeros_like(result)), \
+        "张量应该被修改"
+
+
+def test_random_seed_consistency() -> None:
+    """验证随机种子的一致性"""
+    shape = (4, 6)
+    
+    # 第一次运行
+    set_random_seed(42)
+    tensor1 = torch.empty(shape)
+    result1 = init.xavier_uniform_(tensor1)
+    
+    # 第二次运行（相同种子）
+    set_random_seed(42)
+    tensor2 = torch.empty(shape)
+    result2 = init.xavier_uniform_(tensor2)
+    
+    # 验证结果相同
+    assert torch.allclose(result1, result2), \
+        "相同随机种子应该产生相同结果"
+    
+    # 第三次运行（不同种子）
+    set_random_seed(43)
+    tensor3 = torch.empty(shape)
+    result3 = init.xavier_uniform_(tensor3)
+    
+    # 验证结果不同（大概率）
+    assert not torch.allclose(result1, result3), \
+        "不同随机种子应该产生不同结果"
+
+
+if __name__ == "__main__":
+    # 简单的手动测试
+    print("运行G2组手动测试...")
+    
+    # 测试 xavier_uniform_
+    tensor = torch.empty(4, 6)
+    result = init.xavier_uniform_(tensor)
+    print(f"xavier_uniform_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 xavier_normal_
+    tensor = torch.empty(4, 6)
+    result = init.xavier_normal_(tensor)
+    print(f"xavier_normal_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 kaiming_uniform_
+    tensor = torch.empty(5, 3)
+    result = init.kaiming_uniform_(tensor, mode='fan_in', nonlinearity='relu')
+    print(f"kaiming_uniform_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 kaiming_normal_
+    tensor = torch.empty(5, 3)
+    result = init.kaiming_normal_(tensor, mode='fan_in', nonlinearity='relu')
+    print(f"kaiming_normal_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    print("G2组所有手动测试完成！")
+# ==== BLOCK:FOOTER END ====

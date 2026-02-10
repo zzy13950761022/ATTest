@@ -1,0 +1,140 @@
+"""
+Test cases for torch.serialization edge cases and error handling (Group G3).
+"""
+import io
+import os
+import pickle
+import tempfile
+import pytest
+import torch
+import torch.serialization
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for torch.serialization edge cases and error handling (Group G3).
+"""
+import io
+import os
+import pickle
+import tempfile
+import pytest
+import torch
+import torch.serialization
+
+
+@pytest.fixture
+def tmp_file_path():
+    """Create a temporary file path for testing."""
+    with tempfile.NamedTemporaryFile(suffix='.pt', delete=False) as f:
+        path = f.name
+    yield path
+    # Cleanup
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+@pytest.fixture
+def random_seed():
+    """Set random seed for reproducible tests."""
+    torch.manual_seed(42)
+    return 42
+
+
+def assert_tensors_equal(t1, t2, rtol=1e-7, atol=1e-7):
+    """Helper to assert two tensors are equal with tolerance."""
+    assert t1.shape == t2.shape, f"Shape mismatch: {t1.shape} != {t2.shape}"
+    assert t1.dtype == t2.dtype, f"Dtype mismatch: {t1.dtype} != {t2.dtype}"
+    assert torch.allclose(t1, t2, rtol=rtol, atol=atol), "Tensor values differ"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("obj_type,weights_only,should_succeed,shape", [
+    ("tensor", True, True, (2, 2)),
+    ("unsafe_object", True, False, None),
+])
+def test_weights_only_safety_mode(
+    obj_type, weights_only, should_succeed, shape, tmp_file_path, random_seed
+):
+    """
+    TC-04: weights_only安全模式
+    
+    Tests that weights_only parameter correctly restricts loading to safe objects.
+    """
+    # Create test object based on type
+    if obj_type == "tensor":
+        # Safe object: tensor
+        obj = torch.randn(*shape, dtype=torch.float32)
+    elif obj_type == "unsafe_object":
+        # Unsafe object: a custom class that can be pickled but is not allowed in weights_only mode
+        # We'll create a simple class with a __reduce__ method to ensure it can be pickled
+        class UnsafeClass:
+            def __init__(self, value):
+                self.value = value
+            def __reduce__(self):
+                return (UnsafeClass, (self.value,))
+        
+        obj = UnsafeClass(42)
+    else:
+        pytest.skip(f"obj_type {obj_type} not implemented")
+    
+    # Save the object
+    torch.save(obj, tmp_file_path)
+    
+    # Try to load with weights_only setting
+    if should_succeed:
+        # Should succeed
+        loaded = torch.load(tmp_file_path, weights_only=weights_only)
+        
+        # Weak assertions for successful case
+        # 1. Loading succeeded
+        assert loaded is not None, "Loaded object should not be None"
+        
+        # 2. Tensor type (if tensor)
+        if obj_type == "tensor":
+            assert isinstance(loaded, torch.Tensor), \
+                f"Loaded object should be torch.Tensor, got {type(loaded)}"
+            
+            # 3. Shape correct
+            assert loaded.shape == obj.shape, \
+                f"Loaded tensor shape {loaded.shape} != original {obj.shape}"
+            
+            # 4. Numerical approximation
+            assert torch.allclose(loaded, obj, rtol=1e-7, atol=1e-7), \
+                "Tensor values differ beyond tolerance"
+            
+            # 5. Dtype preservation
+            assert loaded.dtype == obj.dtype, \
+                f"Loaded tensor dtype {loaded.dtype} != original {obj.dtype}"
+    else:
+        # Should fail with RuntimeError
+        with pytest.raises(RuntimeError) as exc_info:
+            torch.load(tmp_file_path, weights_only=weights_only)
+        
+        # Verify error message indicates safety restriction
+        error_msg = str(exc_info.value).lower()
+        # Check for common error messages related to weights_only restrictions
+        # PyTorch may raise different errors for unsafe objects
+        # We'll check for any error that indicates the object cannot be loaded
+        assert any(keyword in error_msg for keyword in 
+                  ['unsafe', 'restricted', 'weights_only', 'not allowed', 'security', 
+                   'cannot unpickle', 'unpickling', 'pickle', 'forbidden']), \
+            f"Error message should indicate safety restriction: {error_msg}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Deferred test case placeholder
+# Will be implemented in later rounds
+pass
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Deferred test case placeholder
+# Will be implemented in later rounds
+pass
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test functions for edge cases and error handling
+# Will be added in later rounds
+pass
+# ==== BLOCK:FOOTER END ====

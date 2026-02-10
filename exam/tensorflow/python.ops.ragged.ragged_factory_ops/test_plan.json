@@ -1,0 +1,238 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.ragged.ragged_factory_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_ragged_ragged_factory_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_ragged_ragged_factory_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "constant基本功能测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "constant",
+          "pylist": [[1, 2], [3], [4, 5, 6]],
+          "dtype": null,
+          "ragged_rank": null,
+          "inner_shape": null,
+          "name": null,
+          "row_splits_dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_inferred", "values_correct", "basic_property"],
+        "strong": ["exact_values", "row_splits_correct", "ragged_rank_correct", "inner_shape_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "constant_value基本功能测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "constant_value",
+          "pylist": [[1.0, 2.0], [3.0], [4.0, 5.0, 6.0]],
+          "dtype": "float32",
+          "ragged_rank": null,
+          "inner_shape": null,
+          "row_splits_dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_specified", "values_correct", "basic_property"],
+        "strong": ["exact_values", "row_splits_correct", "numpy_array_type", "value_equality"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "dtype自动推断测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "constant",
+          "pylist": [[1, 2], [3, 4]],
+          "dtype": null,
+          "ragged_rank": null,
+          "inner_shape": null,
+          "name": null,
+          "row_splits_dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["dtype_inferred_correctly", "shape_match", "basic_property"],
+        "strong": ["exact_dtype_match", "type_conversion_correct", "inference_consistency"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "ragged_rank参数验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "constant",
+          "pylist": [[[1, 2], [3]], [[4, 5, 6]]],
+          "dtype": null,
+          "ragged_rank": 1,
+          "inner_shape": null,
+          "name": null,
+          "row_splits_dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["ragged_rank_applied", "shape_match", "basic_property"],
+        "strong": ["exact_ragged_rank", "inner_shape_correct", "row_splits_structure"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "错误处理-不一致嵌套深度",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "constant",
+          "pylist": [[1, 2], [3, [4]]],
+          "dtype": null,
+          "ragged_rank": null,
+          "inner_shape": null,
+          "name": null,
+          "row_splits_dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct"],
+        "strong": ["exception_message_contains", "specific_error_code"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "constant",
+        "pylist": [[1.5, 2.5], [3.5], [4.5, 5.5, 6.5]],
+        "dtype": "float64",
+        "ragged_rank": null,
+        "inner_shape": null,
+        "name": "test_constant",
+        "row_splits_dtype": "int64"
+      },
+      "note": "作为参数扩展：float64类型和自定义name"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "constant",
+        "pylist": [[1, 2, 3], [4, 5]],
+        "dtype": "int32",
+        "ragged_rank": null,
+        "inner_shape": null,
+        "name": null,
+        "row_splits_dtype": "int32"
+      },
+      "note": "作为参数扩展：int32类型和int32 row_splits_dtype"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "constant_value",
+        "pylist": [[1, 2], [3, 4, 5]],
+        "dtype": "int64",
+        "ragged_rank": null,
+        "inner_shape": null,
+        "row_splits_dtype": "int32"
+      },
+      "note": "作为参数扩展：int64类型和int32 row_splits_dtype"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "constant",
+        "pylist": [[1.0, 2.0], [3.0, 4.0]],
+        "dtype": null,
+        "ragged_rank": null,
+        "inner_shape": null,
+        "name": null,
+        "row_splits_dtype": "int64"
+      },
+      "note": "作为参数扩展：浮点数自动推断为float32"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "constant",
+        "pylist": [[[1, 2], [3, 4]], [[5, 6, 7]]],
+        "dtype": null,
+        "ragged_rank": 2,
+        "inner_shape": null,
+        "name": null,
+        "row_splits_dtype": "int64"
+      },
+      "note": "作为参数扩展：更高ragged_rank值"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

@@ -1,0 +1,309 @@
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.parallel.comm as comm
+from unittest.mock import patch, MagicMock
+
+
+def setup_module():
+    """设置测试模块，固定随机种子"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+
+def teardown_module():
+    """清理测试模块"""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+@pytest.fixture
+def cuda_devices():
+    """获取可用的CUDA设备，支持CPU回退"""
+    if not torch.cuda.is_available():
+        # CPU回退：返回CPU设备列表
+        return [torch.device("cpu") for _ in range(3)]
+    
+    device_count = torch.cuda.device_count()
+    if device_count < 2:
+        # 如果CUDA设备不足，也使用CPU回退
+        return [torch.device("cpu") for _ in range(3)]
+    
+    return [torch.device(f"cuda:{i}") for i in range(min(device_count, 3))]
+
+
+@pytest.fixture
+def random_tensor():
+    """生成随机张量的工厂函数"""
+    def _create(shape, dtype=torch.float32, device="cpu"):
+        tensor = torch.randn(*shape, dtype=dtype, device=device)
+        return tensor
+    
+    return _create
+
+
+class TestBroadcastFunctions:
+    """广播函数族测试类 (G1)"""
+    pass
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("dtype,device,shape,target_devices", [
+        (torch.float32, "cuda:0", (4, 8), ["cuda:0", "cuda:1"]),
+    ])
+    def test_broadcast_basic(self, cuda_devices, random_tensor, dtype, device, shape, target_devices):
+        """TC-01: broadcast基本功能
+        
+        测试单GPU到多GPU的广播功能正确性
+        """
+        # 跳过如果设备不足
+        if len(cuda_devices) < len(target_devices):
+            pytest.skip(f"Need {len(target_devices)} CUDA devices, got {len(cuda_devices)}")
+        
+        # 创建源张量
+        src_tensor = random_tensor(shape, dtype=dtype, device=device)
+        src_data = src_tensor.clone()
+        
+        # 执行广播
+        result = comm.broadcast(src_tensor, devices=target_devices)
+        
+        # weak断言验证
+        # 1. 返回类型和长度
+        assert isinstance(result, tuple), "broadcast should return a tuple"
+        assert len(result) == len(target_devices), \
+            f"Expected {len(target_devices)} tensors, got {len(result)}"
+        
+        # 2. 每个输出张量的属性
+        for i, (out_tensor, target_device) in enumerate(zip(result, target_devices)):
+            # 形状匹配
+            assert out_tensor.shape == shape, \
+                f"Tensor {i}: shape mismatch, expected {shape}, got {out_tensor.shape}"
+            
+            # 数据类型匹配
+            assert out_tensor.dtype == dtype, \
+                f"Tensor {i}: dtype mismatch, expected {dtype}, got {out_tensor.dtype}"
+            
+            # 设备匹配（转换为设备对象比较）
+            expected_device = torch.device(target_device)
+            assert out_tensor.device == expected_device, \
+                f"Tensor {i}: device mismatch, expected {expected_device}, got {out_tensor.device}"
+            
+            # 数据一致性（与源张量比较）
+            # 注意：需要将源张量移动到相同设备进行比较
+            src_on_target = src_data.to(out_tensor.device)
+            assert torch.allclose(out_tensor, src_on_target, rtol=1e-6, atol=1e-6), \
+                f"Tensor {i}: data mismatch with source tensor"
+        
+        # 3. 源张量不应被修改
+        assert torch.allclose(src_tensor, src_data, rtol=1e-6, atol=1e-6), \
+            "Source tensor should not be modified"
+    
+    @pytest.mark.parametrize("dtype,shape,target_devices", [
+        # CPU回退测试用例
+        (torch.float32, (4, 8), ["cpu", "cpu"]),
+        (torch.float64, (10, 10), ["cpu", "cpu", "cpu"]),
+        (torch.complex64, (2, 2), ["cpu", "cpu"]),
+    ])
+    def test_broadcast_basic_cpu_fallback(self, random_tensor, dtype, shape, target_devices):
+        """TC-01 CPU回退版本: broadcast基本功能（CPU设备）
+        
+        在没有CUDA设备时测试广播功能正确性
+        """
+        # 创建源张量（在CPU上）
+        src_tensor = random_tensor(shape, dtype=dtype, device="cpu")
+        src_data = src_tensor.clone()
+        
+        # 使用mock来模拟CUDA不可用的情况
+        # 由于broadcast函数内部调用_get_device_index时没有设置allow_cpu=True
+        # 我们需要mock这个函数来支持CPU设备
+        with patch('torch.nn.parallel.comm._get_device_index') as mock_get_device_index:
+            # 模拟_get_device_index函数，对于CPU设备返回-1
+            def mock_get_device_index_func(device, optional=False, allow_cpu=False):
+                if isinstance(device, str):
+                    device = torch.device(device)
+                if isinstance(device, torch.device):
+                    if device.type == "cpu":
+                        return -1
+                    else:
+                        # 对于CUDA设备，返回设备索引
+                        return device.index if device.index is not None else 0
+                elif isinstance(device, int):
+                    return device
+                else:
+                    raise ValueError(f"Unexpected device type: {type(device)}")
+            
+            mock_get_device_index.side_effect = mock_get_device_index_func
+            
+            # 执行广播
+            result = comm.broadcast(src_tensor, devices=target_devices)
+        
+        # weak断言验证
+        # 1. 返回类型和长度
+        assert isinstance(result, tuple), "broadcast should return a tuple"
+        assert len(result) == len(target_devices), \
+            f"Expected {len(target_devices)} tensors, got {len(result)}"
+        
+        # 2. 每个输出张量的属性
+        for i, (out_tensor, target_device) in enumerate(zip(result, target_devices)):
+            # 形状匹配
+            assert out_tensor.shape == shape, \
+                f"Tensor {i}: shape mismatch, expected {shape}, got {out_tensor.shape}"
+            
+            # 数据类型匹配
+            assert out_tensor.dtype == dtype, \
+                f"Tensor {i}: dtype mismatch, expected {dtype}, got {out_tensor.dtype}"
+            
+            # 设备匹配（应该是CPU）
+            expected_device = torch.device(target_device)
+            assert out_tensor.device == expected_device, \
+                f"Tensor {i}: device mismatch, expected {expected_device}, got {out_tensor.device}"
+            
+            # 数据一致性（与源张量比较）
+            assert torch.allclose(out_tensor, src_data, rtol=1e-6, atol=1e-6), \
+                f"Tensor {i}: data mismatch with source tensor"
+        
+        # 3. 源张量不应被修改
+        assert torch.allclose(src_tensor, src_data, rtol=1e-6, atol=1e-6), \
+            "Source tensor should not be modified"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    def test_broadcast_parameter_conflict(self, cuda_devices, random_tensor):
+        """TC-02: broadcast参数冲突异常
+        
+        测试devices和out参数同时提供时的异常
+        """
+        if len(cuda_devices) < 2:
+            pytest.skip("Need at least 2 CUDA devices")
+        
+        # 创建源张量
+        shape = (2, 3)
+        dtype = torch.float32
+        src_tensor = random_tensor(shape, dtype=dtype, device="cuda:0")
+        
+        # 创建输出张量列表
+        out_tensors = [
+            torch.empty_like(src_tensor, device="cuda:0"),
+            torch.empty_like(src_tensor, device="cuda:1")
+        ]
+        
+        # 同时提供devices和out参数应该引发异常
+        with pytest.raises(RuntimeError) as exc_info:
+            comm.broadcast(
+                src_tensor,
+                devices=["cuda:0", "cuda:1"],
+                out=out_tensors
+            )
+        
+        # weak断言验证
+        # 1. 异常类型
+        assert isinstance(exc_info.value, RuntimeError), \
+            f"Expected RuntimeError, got {type(exc_info.value)}"
+        
+        # 2. 异常消息包含关键信息
+        error_msg = str(exc_info.value).lower()
+        expected_keywords = ["exactly one", "devices", "out", "specified"]
+        for keyword in expected_keywords:
+            assert keyword in error_msg, \
+                f"Error message should contain '{keyword}', got: {error_msg}"
+        
+        # 3. 验证参数值在错误消息中
+        assert "devices" in error_msg and "out" in error_msg, \
+            "Error message should mention both parameters"
+    
+    def test_broadcast_parameter_conflict_cpu_fallback(self, random_tensor):
+        """TC-02 CPU回退版本: broadcast参数冲突异常（CPU设备）
+        
+        在没有CUDA设备时测试devices和out参数同时提供时的异常
+        """
+        # 创建源张量
+        shape = (2, 3)
+        dtype = torch.float32
+        src_tensor = random_tensor(shape, dtype=dtype, device="cpu")
+        
+        # 创建输出张量列表
+        out_tensors = [
+            torch.empty_like(src_tensor, device="cpu"),
+            torch.empty_like(src_tensor, device="cpu")
+        ]
+        
+        # 使用mock来模拟CUDA不可用的情况
+        with patch('torch.nn.parallel.comm._get_device_index') as mock_get_device_index:
+            # 模拟_get_device_index函数，对于CPU设备返回-1
+            def mock_get_device_index_func(device, optional=False, allow_cpu=False):
+                if isinstance(device, str):
+                    device = torch.device(device)
+                if isinstance(device, torch.device):
+                    if device.type == "cpu":
+                        return -1
+                    else:
+                        # 对于CUDA设备，返回设备索引
+                        return device.index if device.index is not None else 0
+                elif isinstance(device, int):
+                    return device
+                else:
+                    raise ValueError(f"Unexpected device type: {type(device)}")
+            
+            mock_get_device_index.side_effect = mock_get_device_index_func
+            
+            # 同时提供devices和out参数应该引发异常
+            with pytest.raises(RuntimeError) as exc_info:
+                comm.broadcast(
+                    src_tensor,
+                    devices=["cpu", "cpu"],
+                    out=out_tensors
+                )
+        
+        # weak断言验证
+        # 1. 异常类型
+        assert isinstance(exc_info.value, RuntimeError), \
+            f"Expected RuntimeError, got {type(exc_info.value)}"
+        
+        # 2. 异常消息包含关键信息
+        error_msg = str(exc_info.value).lower()
+        expected_keywords = ["exactly one", "devices", "out", "specified"]
+        for keyword in expected_keywords:
+            assert keyword in error_msg, \
+                f"Error message should contain '{keyword}', got: {error_msg}"
+        
+        # 3. 验证参数值在错误消息中
+        assert "devices" in error_msg and "out" in error_msg, \
+            "Error message should mention both parameters"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    # ==== DEFERRED: broadcast_coalesced合并广播 (TC-03) ====
+    # 将在后续轮次中实现
+    pass
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    # ==== DEFERRED: broadcast_coalesced设备一致性检查 (TC-04) ====
+    # 将在后续轮次中实现
+    pass
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

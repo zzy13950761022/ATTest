@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[False-False]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "修复_mock_graph_execution_mode方法中的patch路径错误"
+    },
+    {
+      "test": "TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[True-True]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "修复patch('tensorflow.python.eager.context.executing_eagerly')路径错误"
+    },
+    {
+      "test": "TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-总是返回True的可调用函数]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "修复patch('tensorflow.python.eager.context.executing_eagerly')路径错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-条件性返回的可调用函数]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

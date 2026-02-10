@@ -1,0 +1,55 @@
+{
+  "status": "失败",
+  "passed": 4,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_reshape_basic_shape_transform[input_shape0-target_shape0-float32]",
+      "block_id": "CASE_01",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "mock系统失效，实际调用TensorFlow操作导致InvalidArgumentError"
+    },
+    {
+      "test": "test_expand_dims_dimension_insertion[input_shape0-0-float32]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock未被调用，expand_dims操作未执行"
+    },
+    {
+      "test": "test_concat_tensor_concatenation[input_shapes0-0-float32]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock未被调用，concat_v2操作未执行"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_reshape_basic_shape_transform[input_shape1-target_shape1-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_expand_dims_dimension_insertion[input_shape1--1-int32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_concat_tensor_concatenation[input_shapes1-1-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_stack_tensor_stacking[input_shapes0-0-float32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestArrayOps.test_stack_incompatible_shapes",
+      "reason": "属于FOOTER块，优先级较低"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

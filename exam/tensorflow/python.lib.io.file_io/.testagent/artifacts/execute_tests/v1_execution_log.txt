@@ -1,0 +1,216 @@
+=== Run Tests ===
+EEEFEEEEEEEEssssss                                                       [100%]
+=================================== ERRORS ====================================
+______ ERROR at setup of test_file_exists_basic[/tmp/test_file.txt-True] ______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 25
+  @pytest.mark.parametrize("path,expected_result", [
+      ("/tmp/test_file.txt", True),
+      ("/tmp/nonexistent.txt", False),
+      ("", False),
+  ])
+  def test_file_exists_basic(mock_pywrap_file_io, mock_os_path, path, expected_result):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:25
+____ ERROR at setup of test_file_exists_basic[/tmp/nonexistent.txt-False] _____
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 25
+  @pytest.mark.parametrize("path,expected_result", [
+      ("/tmp/test_file.txt", True),
+      ("/tmp/nonexistent.txt", False),
+      ("", False),
+  ])
+  def test_file_exists_basic(mock_pywrap_file_io, mock_os_path, path, expected_result):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:25
+______________ ERROR at setup of test_file_exists_basic[-False] _______________
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 25
+  @pytest.mark.parametrize("path,expected_result", [
+      ("/tmp/test_file.txt", True),
+      ("/tmp/nonexistent.txt", False),
+      ("", False),
+  ])
+  def test_file_exists_basic(mock_pywrap_file_io, mock_os_path, path, expected_result):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:25
+_ ERROR at setup of test_file_read_write_string[/tmp/test_text.txt-Hello TensorFlow-w] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 108
+  @pytest.mark.parametrize("path,content,mode", [
+      ("/tmp/test_text.txt", "Hello TensorFlow", "w"),
+      ("/tmp/empty.txt", "", "w"),
+      ("/tmp/unicode.txt", "\u4e2d\u6587\u6d4b\u8bd5 \U0001f680", "w"),
+  ])
+  def test_file_read_write_string(mock_pywrap_file_io, mock_os_path, path, content, mode):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:108
+______ ERROR at setup of test_file_read_write_string[/tmp/empty.txt--w] _______
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 108
+  @pytest.mark.parametrize("path,content,mode", [
+      ("/tmp/test_text.txt", "Hello TensorFlow", "w"),
+      ("/tmp/empty.txt", "", "w"),
+      ("/tmp/unicode.txt", "\u4e2d\u6587\u6d4b\u8bd5 \U0001f680", "w"),
+  ])
+  def test_file_read_write_string(mock_pywrap_file_io, mock_os_path, path, content, mode):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:108
+_ ERROR at setup of test_file_read_write_string[/tmp/unicode.txt-\u4e2d\u6587\u6d4b\u8bd5 \U0001f680-w] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 108
+  @pytest.mark.parametrize("path,content,mode", [
+      ("/tmp/test_text.txt", "Hello TensorFlow", "w"),
+      ("/tmp/empty.txt", "", "w"),
+      ("/tmp/unicode.txt", "\u4e2d\u6587\u6d4b\u8bd5 \U0001f680", "w"),
+  ])
+  def test_file_read_write_string(mock_pywrap_file_io, mock_os_path, path, content, mode):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:108
+_ ERROR at setup of test_fileio_basic_read_write[/tmp/test_io.bin-binary_data-wb] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 145
+  @pytest.mark.parametrize("path,content,mode", [
+      ("/tmp/test_io.bin", b"binary_data", "wb"),
+  ])
+  def test_fileio_basic_read_write(mock_pywrap_file_io, mock_os_path, path, content, mode):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:145
+_ ERROR at setup of test_list_directory_basic[/tmp/test_dir-expected_files0] __
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 193
+  @pytest.mark.parametrize("path,expected_files", [
+      ("/tmp/test_dir", ["file1.txt", "file2.txt", "subdir"]),
+      ("/tmp/empty_dir", []),
+  ])
+  def test_list_directory_basic(mock_pywrap_file_io, mock_os_path, path, expected_files):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:193
+_ ERROR at setup of test_list_directory_basic[/tmp/empty_dir-expected_files1] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 193
+  @pytest.mark.parametrize("path,expected_files", [
+      ("/tmp/test_dir", ["file1.txt", "file2.txt", "subdir"]),
+      ("/tmp/empty_dir", []),
+  ])
+  def test_list_directory_basic(mock_pywrap_file_io, mock_os_path, path, expected_files):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:193
+_ ERROR at setup of test_copy_basic[/tmp/source.txt-/tmp/destination.txt-False] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 233
+  @pytest.mark.parametrize("src,dst,overwrite", [
+      ("/tmp/source.txt", "/tmp/destination.txt", False),
+      ("/tmp/source.txt", "/tmp/destination.txt", True),
+  ])
+  def test_copy_basic(mock_pywrap_file_io, mock_os_path, src, dst, overwrite):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:233
+_ ERROR at setup of test_copy_basic[/tmp/source.txt-/tmp/destination.txt-True] _
+file D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py, line 233
+  @pytest.mark.parametrize("src,dst,overwrite", [
+      ("/tmp/source.txt", "/tmp/destination.txt", False),
+      ("/tmp/source.txt", "/tmp/destination.txt", True),
+  ])
+  def test_copy_basic(mock_pywrap_file_io, mock_os_path, src, dst, overwrite):
+E       fixture 'mock_pywrap_file_io' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+D:\Project\TestAgent-CLI-main\exam\tensorflow\python.lib.io.file_io\tests\test_tensorflow_python_lib_io_file_io.py:233
+================================== FAILURES ===================================
+_______________________________ test_stat_basic _______________________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+args = (), keywargs = {}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+>       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1333: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:119: in __enter__
+    return next(self.gen)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1315: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:448: in enter_context
+    result = _cm_type.__enter__(cm)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                             Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_lib_io_file_io.py     101     66     12      1    32%   18-19, 36-62, 74-104, 119-141, 154-189, 203-229, 243-262, 310
+--------------------------------------------------------------------------------------------
+TOTAL                                              101     66     12      1    32%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_lib_io_file_io.py::test_stat_basic - Attr...
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[/tmp/test_file.txt-True]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[/tmp/nonexistent.txt-False]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[-False]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/test_text.txt-Hello TensorFlow-w]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/empty.txt--w]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/unicode.txt-\u4e2d\u6587\u6d4b\u8bd5 \U0001f680-w]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_fileio_basic_read_write[/tmp/test_io.bin-binary_data-wb]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_list_directory_basic[/tmp/test_dir-expected_files0]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_list_directory_basic[/tmp/empty_dir-expected_files1]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_copy_basic[/tmp/source.txt-/tmp/destination.txt-False]
+ERROR tests\test_tensorflow_python_lib_io_file_io.py::test_copy_basic[/tmp/source.txt-/tmp/destination.txt-True]
+1 failed, 6 skipped, 11 errors in 1.73s
+
+Error: exit 1

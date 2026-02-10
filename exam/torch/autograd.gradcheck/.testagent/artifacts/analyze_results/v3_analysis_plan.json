@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGradcheckAdvanced.test_sparse_tensor_gradient_check[dtype0-shape0-True-1e-06-1e-05-0.001]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "稀疏张量输出不被gradcheck支持，需要将输出转换为密集张量"
+    },
+    {
+      "test": "TestGradcheckBasic.test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001]",
+      "block_id": "CASE_02",
+      "error_type": "GradcheckError",
+      "action": "adjust_assertion",
+      "note": "复数函数梯度检查失败，需要调整函数或测试参数"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestGradcheckAdvanced.test_sparse_tensor_gradient_check[dtype1-shape1-True-1e-06-1e-05-0.001]",
+      "reason": "错误类型重复，与第一个CASE_03失败相同，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

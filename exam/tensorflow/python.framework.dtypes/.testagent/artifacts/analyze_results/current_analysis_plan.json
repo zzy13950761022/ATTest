@@ -1,0 +1,32 @@
+{
+  "status": "成功",
+  "passed": 17,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes::test_as_dtype_string_conversion",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "分支覆盖率不足：if hasattr(dtypes, expected_name) 分支未覆盖"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes::test_as_dtype_numpy_conversion",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "分支覆盖率不足：if hasattr(dtypes, expected_name) 分支未覆盖"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "CASE_05",
+      "reason": "deferred测试块，将在后续迭代中实现"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,168 @@
+{
+  "workflow_id": "e5a85e2d",
+  "created_at": "2026-01-19T22:37:34.621851",
+  "op": "tensorflow_python_framework_constant_op",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "D:\\Project\\TestAgent-CLI-main\\exam\\tensorflow\\python.framework.constant_op",
+  "target": "tensorflow.python.framework.constant_op",
+  "target_slug": "tensorflow_python_framework_constant_op",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "",
+  "last_error_signature": "",
+  "last_block_errors": {},
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# tensorflow.python.framework.constant_op - 函数说明\n\n## 1. 基本信息\n- **FQN**: tensorflow.python.framework.constant_op\n- **模块文件**: `D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py`\n- **签名**: 模块包含多个函数，核心函数：\n  - `constant(value, dtype=None, shape=None, name=\"Const\")`\n  - `constant_v1(value, dtype=None, shape=None, name=\"Const\", verify_shape=False)`\n- **对象类型**: Python 模块\n\n## 2. 功能概述\n- 提供创建常量张量的操作\n- `constant()` 从张量类对象创建常量张量，支持广播\n- `constant_v1()` 是旧版本 API，支持 `verify_shape` 参数\n- 两个函数都调用内部实现 `_constant_impl()`\n\n## 3. 参数说明\n- `value` (任意类型/无默认值): 要转换为张量的常量值或列表\n- `dtype` (tf.DType/None): 输出张量的元素类型，可选\n- `shape` (列表/元组/None): 输出张量的形状，可选\n- `name` (字符串/\"Const\"): 张量的名称，可选\n- `verify_shape` (布尔值/False): 仅 `constant_v1` 支持，验证形状是否匹配\n\n## 4. 返回值\n- 返回 `tf.Tensor` 类型的常量张量\n- 在 eager 模式下返回 `EagerTensor`\n- 在 graph 模式下返回 `Tensor`\n- 可能抛出 `TypeError` 或 `ValueError`\n\n## 5. 文档要点\n- 如果未指定 `dtype`，则从 `value` 推断类型\n- 如果未指定 `shape`，则使用 `value` 的形状\n- `constant()` 不支持符号张量（symbolic tensors）\n- `constant()` 在当前设备上创建张量\n- 与 `tf.fill` 的区别：支持任意常量，而不仅仅是均匀标量\n\n## 6. 源码摘要\n- 核心实现：`_constant_impl()` 处理通用逻辑\n- eager 模式：调用 `_constant_eager_impl()`，使用 `convert_to_eager_tensor()`\n- graph 模式：使用 `tensor_util.make_tensor_proto()` 创建张量原型\n- 形状处理：支持重塑和广播\n- 依赖：`tensor_util`、`ops`、`dtypes`、`tensor_shape` 等模块\n\n## 7. 示例与用法\n- 从 Python 列表创建：`tf.constant([1, 2, 3, 4, 5, 6])`\n- 指定形状：`tf.constant(0, shape=(2, 3))`\n- 指定数据类型：`tf.constant([1, 2, 3], dtype=tf.float64)`\n- 从 numpy 数组创建：`tf.constant(np.array([[1, 2, 3], [4, 5, 6]]))`\n\n## 8. 风险与空白\n- 模块包含多个函数实体：`constant`、`constant_v1`、`convert_to_eager_tensor`、`is_constant` 等\n- 需要测试多个函数，特别是核心的 `constant()` 和 `constant_v1()`\n- 边界情况：空值、无效形状、类型转换错误\n- 设备相关行为：CPU/GPU 上的张量创建\n- 广播行为的详细约束未明确说明\n- 性能缓存机制：`convert_to_eager_tensor()` 可能返回缓存副本\n- 缺少对符号张量处理的详细文档",
+    "requirements.md": "# tensorflow.python.framework.constant_op 测试需求\n\n## 1. 目标与范围\n- 主要功能与期望行为\n  - 验证 `constant()` 和 `constant_v1()` 正确创建常量张量\n  - 测试从 Python 标量、列表、numpy 数组到张量的转换\n  - 验证形状重塑和广播功能\n  - 确保数据类型推断和显式指定正常工作\n- 不在范围内的内容\n  - 符号张量（symbolic tensors）处理\n  - 分布式环境下的设备放置策略\n  - 性能基准测试和内存优化\n\n## 2. 输入与约束\n- 参数列表（名称、类型/shape、默认值）\n  - `value`: 任意类型，无默认值，支持标量/列表/数组\n  - `dtype`: tf.DType/None，默认 None，从 value 推断\n  - `shape`: 列表/元组/None，默认 None，使用 value 形状\n  - `name`: 字符串，默认 \"Const\"\n  - `verify_shape`: 布尔值，仅 constant_v1，默认 False\n- 有效取值范围/维度/设备要求\n  - value 支持 Python 原生类型和 numpy 数组\n  - shape 必须与 value 兼容（广播或重塑）\n  - 在当前设备（CPU/GPU）上创建张量\n- 必需与可选组合\n  - value 必需，其他参数可选\n  - dtype 和 shape 可同时指定或单独指定\n- 随机性/全局状态要求\n  - 无随机性要求\n  - eager 模式下可能使用缓存机制\n\n## 3. 输出与判定\n- 期望返回结构及关键字段\n  - 返回 tf.Tensor 类型（eager 模式为 EagerTensor）\n  - 张量值必须与输入 value 一致\n  - 数据类型必须匹配指定或推断的 dtype\n  - 形状必须匹配指定或推断的 shape\n- 容差/误差界（如浮点）\n  - 浮点数比较使用相对容差 1e-6\n  - 整数类型必须精确匹配\n- 状态变化或副作用检查点\n  - 验证张量创建不修改输入数据\n  - 检查 eager 模式下的缓存行为\n\n## 4. 错误与异常场景\n- 非法输入/维度/类型触发的异常或警告\n  - 无效 shape 参数（负值、非整数）触发 ValueError\n  - 不兼容的 shape 和 value 触发 ValueError\n  - 无效 dtype 触发 TypeError\n  - 符号张量输入触发 TypeError\n- 边界值（空、None、0 长度、极端形状/数值）\n  - 空列表 [] 创建形状为 (0,) 的张量\n  - 标量 0 创建形状为 () 的张量\n  - 极端形状（大维度）测试内存限制\n  - 数值边界（inf, nan, 极大/极小值）\n\n## 5. 依赖与环境\n- 外部资源/设备/网络/文件依赖\n  - TensorFlow 运行时环境\n  - numpy 库（用于数组输入）\n  - CPU/GPU 设备可用性\n- 需要 mock/monkeypatch 的部分\n  - eager/graph 模式切换\n  - 设备放置策略\n  - 缓存机制验证\n\n## 6. 覆盖与优先级\n- 必测路径（高优先级，最多 5 条，短句）\n  1. 基本标量和列表创建常量张量\n  2. dtype 显式指定和自动推断\n  3. shape 重塑和广播功能\n  4. constant_v1 的 verify_shape 参数验证\n  5. numpy 数组输入转换\n- 可选路径（中/低优先级合并为一组列表）\n  - 嵌套列表和复杂数据结构\n  - 大尺寸张量创建性能\n  - 特殊数据类型（复数、字符串）\n  - 设备间张量复制行为\n  - 缓存机制详细验证\n- 已知风险/缺失信息（仅列条目，不展开）\n  - 符号张量处理未明确\n  - 广播规则的详细约束\n  - 缓存机制的具体实现\n  - 设备放置的默认策略",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"tensorflow.python.framework.constant_op\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\n      \"include\": \"SMOKE_SET\",\n      \"assert_level\": \"weak\",\n      \"max_blocks\": 5\n    },\n    \"roundN\": {\n      \"only_fix_failed_blocks\": true,\n      \"block_limit\": 3,\n      \"promote_deferred\": true\n    },\n    \"final\": {\n      \"enable_strong_asserts\": true,\n      \"coverage_optional\": true\n    }\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_tensorflow_python_framework_constant_op.py\",\n    \"all_pattern\": \"tests/test_tensorflow_python_framework_constant_op_*.py\",\n    \"groups\": {\n      \"G1\": \"tests/test_tensorflow_python_framework_constant_op_g1.py\",\n      \"G2\": \"tests/test_tensorflow_python_framework_constant_op_g2.py\"\n    }\n  },\n  \"active_group_order\": [\"G1\", \"G2\"],\n  \"groups\": [\n    {\n      \"group_id\": \"G1\",\n      \"title\": \"核心函数 constant() 测试\",\n      \"entrypoints\": [\"constant\"],\n      \"smoke_set\": [\"CASE_01\", \"CASE_02\"],\n      \"deferred_set\": [\"CASE_05\", \"CASE_06\"],\n      \"note\": \"测试 constant() 函数的基本功能和参数处理\"\n    },\n    {\n      \"group_id\": \"G2\",\n      \"title\": \"兼容函数 constant_v1() 测试\",\n      \"entrypoints\": [\"constant_v1\"],\n      \"smoke_set\": [\"CASE_03\", \"CASE_04\"],\n      \"deferred_set\": [\"CASE_07\", \"CASE_08\"],\n      \"note\": \"测试 constant_v1() 函数及其特有参数 verify_shape\"\n    }\n  ],\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"group_id\": \"G1\",\n      \"name\": \"基本标量和列表创建\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"value\": 42,\n          \"dtype\": null,\n          \"shape\": null,\n          \"name\": \"Const\"\n        },\n        {\n          \"value\": [1, 2, 3, 4],\n          \"dtype\": null,\n          \"shape\": null,\n          \"name\": \"Const\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"value_match\", \"tensor_type\"],\n        \"strong\": [\"exact_value\", \"device_placement\", \"memory_layout\"]\n      },\n      \"oracle\": \"手动验证\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 60,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"group_id\": \"G1\",\n      \"name\": \"dtype 显式指定和推断\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"value\": 3.14,\n          \"dtype\": \"float32\",\n          \"shape\": null,\n          \"name\": \"Const\"\n        },\n        {\n          \"value\": [1, 2, 3],\n          \"dtype\": \"int64\",\n          \"shape\": null,\n          \"name\": \"Const\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"dtype\", \"shape\", \"value_approx\", \"tensor_type\"],\n        \"strong\": [\"exact_dtype\", \"precision\", \"type_promotion\"]\n      },\n      \"oracle\": \"手动验证\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"group_id\": \"G2\",\n      \"name\": \"constant_v1 基本功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"value\": 100,\n          \"dtype\": null,\n          \"shape\": null,\n          \"name\": \"Const\",\n          \"verify_shape\": false\n        },\n        {\n          \"value\": [[1, 2], [3, 4]],\n          \"dtype\": null,\n          \"shape\": null,\n          \"name\": \"Const\",\n          \"verify_shape\": false\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"value_match\", \"tensor_type\"],\n        \"strong\": [\"exact_value\", \"api_compatibility\", \"backward_compat\"]\n      },\n      \"oracle\": \"手动验证\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 65,\n      \"max_params\": 5,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"group_id\": \"G2\",\n      \"name\": \"verify_shape 参数验证\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"value\": [1, 2, 3],\n          \"dtype\": null,\n          \"shape\": [3],\n          \"name\": \"Const\",\n          \"verify_shape\": true\n        },\n        {\n          \"value\": [[1, 2], [3, 4]],\n          \"dtype\": null,\n          \"shape\": [2, 2],\n          \"name\": \"Const\",\n          \"verify_shape\": false\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"dtype\", \"no_exception\", \"tensor_type\"],\n        \"strong\": [\"shape_validation\", \"error_handling\", \"api_specific\"]\n      },\n      \"oracle\": \"手动验证\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 5,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-05\",\n      \"block_id\": \"CASE_05\",\n      \"group_id\": \"G1\",\n      \"name\": \"shape 重塑和广播\",\n      \"priority\": \"Medium\",\n      \"param_matrix\": [\n        {\n          \"value\": 5,\n          \"dtype\": null,\n          \"shape\": [2, 3],\n          \"name\": \"Const\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"broadcast_value\", \"tensor_type\"],\n        \"strong\": [\"broadcast_rules\", \"reshape_behavior\", \"memory_efficiency\"]\n      },\n      \"oracle\": \"手动验证\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 80,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"value\": 0,\n        \"dtype\": \"float64\",\n        \"shape\": [2, 2],\n        \"name\": \"TestConst\"\n      },\n      \"note\": \"扩展测试：指定 dtype 和 shape\"\n    },\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"value\": [1.5, 2.5, 3.5],\n        \"dtype\": \"float16\",\n        \"shape\": null,\n        \"name\": \"Const\"\n      },\n      \"note\": \"扩展测试：浮点数类型推断和转换\"\n    },\n    {\n      \"base_block_id\": \"CASE_03\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"value\": -10,\n        \"dtype\": \"int32\",\n        \"shape\": null,\n        \"name\": \"NegativeConst\",\n        \"verify_shape\": true\n      },\n      \"note\": \"扩展测试：负数和显式 dtype\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_02\", \"CASE_03\", \"CASE_04\"],\n  \"deferred_set\": [\"CASE_05\", \"CASE_06\", \"CASE_07\", \"CASE_08\"]\n}",
+    "test_plan.md": "# tensorflow.python.framework.constant_op 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：使用 fixtures 管理 TensorFlow 会话和 eager 模式切换\n- 随机性处理：无随机性要求，使用固定测试数据\n- 设备隔离：测试在当前设备（CPU）上运行，不涉及 GPU 特定逻辑\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- **SMOKE_SET**: CASE_01, CASE_02, CASE_03, CASE_04（共4个核心用例）\n- **DEFERRED_SET**: CASE_05, CASE_06, CASE_07, CASE_08（共4个延期用例）\n- **group 列表**:\n  - G1: 核心函数 constant() 测试（包含 CASE_01, CASE_02, CASE_05, CASE_06）\n  - G2: 兼容函数 constant_v1() 测试（包含 CASE_03, CASE_04, CASE_07, CASE_08）\n- **active_group_order**: G1, G2（按优先级顺序执行）\n- **断言分级策略**: 首轮使用 weak 断言（shape, dtype, value_match, tensor_type），后续启用 strong 断言\n- **预算策略**: \n  - size: S（小型测试，60-80行）\n  - max_lines: 60-80行\n  - max_params: 4-5个参数\n  - is_parametrized: true（使用参数化测试）\n  - requires_mock: false（首轮不需要mock）\n\n## 3. 数据与边界\n- **正常数据集**: Python 标量、列表、嵌套列表、numpy 数组\n- **随机生成策略**: 不使用随机数据，使用固定测试用例\n- **边界值**:\n  - 空列表 [] → 形状 (0,) 的张量\n  - 标量 0 → 形状 () 的张量\n  - 单元素列表 [42] → 形状 (1,) 的张量\n- **极端形状**: 大维度数组（延期测试）\n- **空输入**: 空列表和零值标量\n- **负例与异常场景**:\n  - 无效 shape 参数（负值、非整数）\n  - 不兼容的 shape 和 value\n  - 无效 dtype 类型\n  - verify_shape=True 时形状不匹配\n\n## 4. 覆盖映射\n- **TC-01 (CASE_01)**: 覆盖基本标量和列表创建功能\n- **TC-02 (CASE_02)**: 覆盖 dtype 显式指定和自动推断\n- **TC-03 (CASE_03)**: 覆盖 constant_v1() 基本功能\n- **TC-04 (CASE_04)**: 覆盖 verify_shape 参数验证\n- **TC-05 (CASE_05)**: 覆盖 shape 重塑和广播功能\n\n- **尚未覆盖的风险点**:\n  - 符号张量处理（明确排除在范围外）\n  - 广播规则的详细约束\n  - 缓存机制的具体实现\n  - 设备放置的默认策略\n  - 大尺寸张量创建性能\n  - 特殊数据类型（复数、字符串）",
+    "tests/test_tensorflow_python_framework_constant_op.py": "\"\"\"\nTest cases for tensorflow.python.framework.constant_op module.\nGenerated according to test plan specification.\n\"\"\"\n\nimport math\nimport numpy as np\nimport pytest\nimport tensorflow as tf\nfrom tensorflow.python.framework import constant_op\n\n# ==== BLOCK:HEADER START ====\n# Header block - imports and fixtures\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# Test case: 基本标量和列表创建\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# Test case: dtype 显式指定和推断\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# Test case: constant_v1 基本功能\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# Test case: verify_shape 参数验证\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# Test case: shape 重塑和广播 (deferred placeholder)\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# Test case: deferred placeholder\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# Test case: deferred placeholder\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:CASE_08 START ====\n# Test case: deferred placeholder\n# ==== BLOCK:CASE_08 END ====\n\n# ==== BLOCK:FOOTER START ====\n# Footer block - cleanup and additional helpers\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\n....................F..sss.....F                                         [100%]\n================================== FAILURES ===================================\n_ test_constant_shape_reshape_and_broadcast[value2-shape2-None-expected_shape2-expected_value2] _\n\nvalue = [1, 2, 3], shape = [2, 3], dtype_str = None, expected_shape = (2, 3)\nexpected_value = [[1, 2, 3], [1, 2, 3]]\n\n    @pytest.mark.parametrize(\"value, shape, dtype_str, expected_shape, expected_value\", [\n        # Test 1: Scalar broadcast to 2x3 matrix (from spec)\n        (5, [2, 3], None, (2, 3), [[5, 5, 5], [5, 5, 5]]),\n    \n        # Test 2: Scalar broadcast to 3D tensor\n        (3.14, [2, 2, 2], \"float32\", (2, 2, 2),\n         [[[3.14, 3.14], [3.14, 3.14]], [[3.14, 3.14], [3.14, 3.14]]]),\n    \n        # Test 3: 1D array broadcast to 2D matrix\n        ([1, 2, 3], [2, 3], None, (2, 3), [[1, 2, 3], [1, 2, 3]]),\n    \n        # Test 4: Reshape 1D to 2D with explicit shape\n        ([1, 2, 3, 4, 5, 6], [2, 3], None, (2, 3), [[1, 2, 3], [4, 5, 6]]),\n    \n        # Test 5: Reshape 2D to 3D\n        ([[1, 2], [3, 4], [5, 6], [7, 8]], [2, 2, 2], None, (2, 2, 2),\n         [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),\n    ])\n    def test_constant_shape_reshape_and_broadcast(value, shape, dtype_str, expected_shape, expected_value):\n        \"\"\"Test shape reshaping and broadcasting (CASE_05).\"\"\"\n    \n        # Convert dtype string to tf.DType if provided\n        dtype = tf.dtypes.as_dtype(dtype_str) if dtype_str else None\n    \n        # Create constant tensor with shape parameter\n>       tensor = constant_op.constant(value, dtype=dtype, shape=shape)\n\ntests\\test_tensorflow_python_framework_constant_op.py:431: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:267: in constant\n    return _constant_impl(value, dtype, shape, name, verify_shape=False,\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:279: in _constant_impl\n    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nctx = <tensorflow.python.eager.context.Context object at 0x00000184444D5100>\nvalue = [1, 2, 3], dtype = None, shape = TensorShape([2, 3])\nverify_shape = False\n\n    def _constant_eager_impl(ctx, value, dtype, shape, verify_shape):\n      \"\"\"Creates a constant on the current device.\"\"\"\n      t = convert_to_eager_tensor(value, ctx, dtype)\n      if shape is None:\n        return t\n      shape = tensor_shape.as_shape(shape)\n      if shape == t.shape:\n        return t\n      if verify_shape:\n        raise TypeError(f\"Expected Tensor {t} (converted from {value}) with shape \"\n                        f\"{tuple(shape)}, but got shape {tuple(t.shape)}.\")\n      num_t = t.shape.num_elements()\n      # TODO(josh11b): Implement shape -> eager tensor conversion.\n      if num_t == shape.num_elements():\n        return _eager_reshape(t, shape.as_list(), ctx)\n      if num_t == 1:\n        if t.dtype == dtypes.bool:\n          # We don't have a Fill kernel for bool dtype on GPU. So we first run\n          # Fill on CPU and then copy to GPU if needed.\n          with ops.device(\"/device:CPU:0\"):\n            x = _eager_fill(shape.as_list(), _eager_identity(t, ctx), ctx)\n          return _eager_identity(x, ctx)\n        else:\n          return _eager_fill(shape.as_list(), t, ctx)\n>     raise TypeError(\"Eager execution of tf.constant with unsupported shape. \"\n                      f\"Tensor {t} (converted from {value}) has {num_t:d} \"\n                      f\"elements, but got `shape` {shape} with \"\n                      f\"{shape.num_elements()} elements).\")\nE     TypeError: Eager execution of tf.constant with unsupported shape. Tensor [1 2 3] (converted from [1, 2, 3]) has 3 elements, but got `shape` (2, 3) with 6 elements).\n\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:326: TypeError\n___________________ test_constant_with_special_numpy_dtypes ___________________\n\n    def test_constant_with_special_numpy_dtypes():\n        \"\"\"Test constant with special numpy dtypes (coverage gap).\"\"\"\n        # Test with numpy datetime64\n        arr_datetime = np.array(['2023-01-01', '2023-01-02'], dtype='datetime64[s]')\n>       tensor1 = constant_op.constant(arr_datetime)\n\ntests\\test_tensorflow_python_framework_constant_op.py:711: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:267: in constant\n    return _constant_impl(value, dtype, shape, name, verify_shape=False,\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:279: in _constant_impl\n    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:304: in _constant_eager_impl\n    t = convert_to_eager_tensor(value, ctx, dtype)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nvalue = array(['2023-01-01T00:00:00', '2023-01-02T00:00:00'],\n      dtype='datetime64[s]')\nctx = <tensorflow.python.eager.context.Context object at 0x00000184444D5100>\ndtype = None\n\n    def convert_to_eager_tensor(value, ctx, dtype=None):\n      \"\"\"Converts the given `value` to an `EagerTensor`.\n    \n      Note that this function could return cached copies of created constants for\n      performance reasons.\n    \n      Args:\n        value: value to convert to EagerTensor.\n        ctx: value of context.context().\n        dtype: optional desired dtype of the converted EagerTensor.\n    \n      Returns:\n        EagerTensor created from value.\n    \n      Raises:\n        TypeError: if `dtype` is not compatible with the type of t.\n      \"\"\"\n      if isinstance(value, ops.EagerTensor):\n        if dtype is not None and value.dtype != dtype:\n          raise TypeError(f\"Expected tensor {value} with dtype {dtype!r}, but got \"\n                          f\"dtype {value.dtype!r}.\")\n        return value\n      if dtype is not None:\n        try:\n          dtype = dtype.as_datatype_enum\n        except AttributeError:\n          dtype = dtypes.as_dtype(dtype).as_datatype_enum\n      ctx.ensure_initialized()\n>     return ops.EagerTensor(value, ctx.device_name, dtype)\nE     ValueError: Failed to convert a NumPy array to a Tensor (Unsupported numpy type: NPY_DATETIME).\n\nD:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py:102: ValueError\n\n---------- coverage: platform win32, python 3.9.25-final-0 -----------\nName                                                    Stmts   Miss Branch BrPart  Cover   Missing\n---------------------------------------------------------------------------------------------------\ntests\\test_tensorflow_python_framework_constant_op.py     221     26     56      9    84%   41->57, 62, 76, 83-92, 223-227, 281->exit, 455->461, 465->exit, 470, 479, 486, 493, 713-726\n---------------------------------------------------------------------------------------------------\nTOTAL                                                     221     26     56      9    84%\nCoverage XML written to file coverage.xml\n\n=========================== short test summary info ===========================\nFAILED tests\\test_tensorflow_python_framework_constant_op.py::test_constant_shape_reshape_and_broadcast[value2-shape2-None-expected_shape2-expected_value2]\nFAILED tests\\test_tensorflow_python_framework_constant_op.py::test_constant_with_special_numpy_dtypes\n2 failed, 27 passed, 3 skipped in 1.71s\n\nError: exit 1",
+    "exit_code.txt": "1",
+    "analysis_plan.json": "{\n  \"status\": \"未完全通过\",\n  \"passed\": 27,\n  \"failed\": 2,\n  \"errors\": 0,\n  \"collection_errors\": false,\n  \"block_limit\": 3,\n  \"failures\": [\n    {\n      \"test\": \"test_constant_shape_reshape_and_broadcast[value2-shape2-None-expected_shape2-expected_value2]\",\n      \"block_id\": \"CASE_05\",\n      \"error_type\": \"TypeError\",\n      \"action\": \"rewrite_block\",\n      \"note\": \"1D数组广播到2D矩阵失败：TensorFlow不支持此广播模式\"\n    },\n    {\n      \"test\": \"test_constant_with_special_numpy_dtypes\",\n      \"block_id\": \"FOOTER\",\n      \"error_type\": \"ValueError\",\n      \"action\": \"adjust_assertion\",\n      \"note\": \"numpy datetime64类型转换失败，需要调整测试预期\"\n    }\n  ],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "## 测试结果分析\n\n### 状态与统计\n- **状态**: 未完全通过\n- **通过**: 27 个测试\n- **失败**: 2 个测试\n- **错误**: 0 个\n- **跳过**: 3 个\n\n### 待修复 BLOCK 列表 (2个)\n\n1. **BLOCK_ID**: CASE_05\n   - **测试**: test_constant_shape_reshape_and_broadcast[value2-shape2-None-expected_shape2-expected_value2]\n   - **错误类型**: TypeError\n   - **Action**: rewrite_block\n   - **原因**: 1D数组广播到2D矩阵失败 - TensorFlow不支持将[1,2,3]广播到(2,3)形状\n\n2. **BLOCK_ID**: FOOTER  \n   - **测试**: test_constant_with_special_numpy_dtypes\n   - **错误类型**: ValueError\n   - **Action**: adjust_assertion\n   - **原因**: numpy datetime64类型转换失败 - TensorFlow不支持NPY_DATETIME类型\n\n### 停止建议\n- **stop_recommended**: false\n- **stop_reason**: 无",
+    "final_report.md": "# tensorflow.python.framework.constant_op 测试报告\n\n## 1. 执行摘要\n测试基本通过，核心功能验证成功，但发现2个关键问题：TensorFlow广播规则限制导致1D到2D广播失败，以及numpy datetime64类型不支持。\n\n**关键发现**：\n- 27个测试通过，2个失败，0个错误，3个跳过\n- 核心功能（标量/列表创建、dtype推断、constant_v1验证）全部正常\n- 广播功能存在预期外的限制：不支持1D数组广播到2D矩阵\n- numpy特殊类型（datetime64）转换失败\n\n## 2. 测试范围\n**目标FQN**: tensorflow.python.framework.constant_op\n\n**测试环境**：\n- 框架：pytest\n- 依赖：TensorFlow运行时、numpy库\n- 设备：CPU环境\n- 模式：eager模式为主\n\n**覆盖场景**：\n- ✓ 基本标量和列表创建常量张量\n- ✓ dtype显式指定和自动推断\n- ✓ constant_v1()基本功能和verify_shape参数验证\n- ✓ numpy数组输入转换\n- ✓ 形状重塑功能\n- ✓ 错误场景（无效shape、不兼容形状、无效dtype）\n\n**未覆盖项**：\n- 符号张量处理（明确排除）\n- 广播规则的详细约束（部分失败）\n- 缓存机制的具体实现\n- 设备放置的默认策略\n- 大尺寸张量创建性能\n- 特殊数据类型（复数、字符串）\n\n## 3. 结果概览\n- **用例总数**: 32个（27通过 + 2失败 + 3跳过）\n- **通过率**: 84.4%（27/32）\n- **主要失败点**：\n  1. 广播功能测试：1D数组[1,2,3]无法广播到形状(2,3)\n  2. numpy特殊类型：datetime64类型转换失败\n\n## 4. 详细发现\n\n### 高优先级问题\n**P1: 广播功能限制**\n- **问题**: `test_constant_shape_reshape_and_broadcast`测试失败\n- **根因**: TensorFlow不支持将1D数组[1,2,3]广播到2D形状(2,3)，广播规则比预期更严格\n- **影响**: 形状重塑和广播功能的测试覆盖不完整\n- **建议**: 调整测试用例，使用TensorFlow支持的广播模式（如标量广播到矩阵）\n\n**P2: numpy特殊类型不支持**\n- **问题**: `test_constant_with_special_numpy_dtypes`测试失败\n- **根因**: TensorFlow不支持numpy的datetime64类型（NPY_DATETIME）\n- **影响**: 特殊数据类型转换测试失败\n- **建议**: 从测试中排除不支持的numpy类型，或添加类型检查跳过\n\n### 中优先级问题\n**P3: 测试覆盖缺口**\n- **问题**: 3个测试被跳过\n- **根因**: 可能涉及延期测试或环境限制\n- **影响**: 部分边界场景未验证\n- **建议**: 审查跳过原因，补充必要测试\n\n## 5. 覆盖与风险\n\n**需求覆盖评估**：\n- ✓ 基本功能：完全覆盖（5/5必测路径）\n- ✓ 输入验证：覆盖主要异常场景\n- ✓ 边界值：覆盖空列表、标量等边界\n- ⚠️ 广播功能：部分覆盖，发现实际限制\n\n**尚未覆盖的风险**：\n1. **广播规则约束**：实际广播行为比文档描述更严格，需要详细验证\n2. **类型兼容性**：numpy与TensorFlow类型映射存在缺口\n3. **性能边界**：大尺寸张量创建未测试\n4. **设备差异**：CPU/GPU行为一致性未验证\n\n**缺失信息**：\n- 广播规则的详细约束条件\n- 支持的numpy类型完整列表\n- 缓存机制的具体实现细节\n\n## 6. 后续动作\n\n### 立即修复（P0）\n1. **调整广播测试用例**（P1）\n   - 修改`test_constant_shape_reshape_and_broadcast`测试\n   - 使用TensorFlow实际支持的广播模式\n   - 验证文档中的广播描述准确性\n\n2. **修复numpy类型测试**（P2）\n   - 排除不支持的datetime64类型\n   - 添加类型支持检查逻辑\n   - 更新测试文档说明限制\n\n### 短期补充（P1）\n3. **补充广播规则测试**\n   - 系统验证TensorFlow广播支持矩阵\n   - 测试标量到多维、向量到矩阵等场景\n   - 明确文档与实际行为的差异\n\n4. **完善类型兼容性测试**\n   - 测试所有常见numpy类型转换\n   - 验证类型推断边界条件\n   - 添加不兼容类型的错误处理\n\n### 中期规划（P2）\n5. **扩展测试覆盖**\n   - 补充跳过的3个测试用例\n   - 添加大尺寸张量性能测试\n   - 验证设备间行为一致性\n\n6. **文档更新**\n   - 更新广播规则的实际约束\n   - 补充支持的数据类型列表\n   - 添加常见问题解决指南\n\n### 环境调整建议\n- 考虑添加GPU环境测试（如可用）\n- 配置不同TensorFlow版本兼容性测试\n- 建立持续集成测试流水线\n\n---\n**报告生成时间**: 基于测试执行结果分析  \n**测试状态**: 基本可用，需修复2个关键问题  \n**风险评估**: 中低风险，核心功能稳定"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:38:36.777381",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:39:24.189659",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:41:25.741490",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:46:20.673853",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:46:22.666987",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:47:05.342159",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:49:32.994613",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:49:34.981125",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:50:29.703545",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:52:06.166732",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:52:08.133592",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:52:51.633152",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:54:46.530418",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:54:48.284765",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T22:55:58.861147",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T23:00:01.928368",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T23:00:03.980508",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T23:00:49.108839",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-19T23:01:58.975069",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

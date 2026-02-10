@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGenAudioOps.test_data_type_and_shape_error_handling[input_shape0-512-256-False-float64-wrong_dtype]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息检查过于严格：实际错误消息提到'float tensor'和'double tensor'，但没有包含预设的关键词。需要放宽断言条件或更新关键词列表。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

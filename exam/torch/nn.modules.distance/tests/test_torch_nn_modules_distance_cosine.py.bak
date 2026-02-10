@@ -1,0 +1,302 @@
+"""
+Test cases for torch.nn.modules.distance.CosineSimilarity
+"""
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# ==== BLOCK:HEADER START ====
+# Test class for CosineSimilarity
+class TestCosineSimilarity:
+    """Test cases for CosineSimilarity module"""
+    
+    def setup_method(self):
+        """Setup method for each test"""
+        torch.manual_seed(42)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("test_params", [
+        # Original test case from test_plan.json (High priority)
+        {
+            "dtype": torch.float32,
+            "device": "cpu",
+            "shape": (3, 4),
+            "dim": 1,
+            "eps": 1e-8,
+            "name": "default_params"
+        },
+        # Parameter extension 1: float64 with larger shape (Medium priority)
+        {
+            "dtype": torch.float64,
+            "device": "cpu",
+            "shape": (4, 5),
+            "dim": 1,
+            "eps": 1e-8,
+            "name": "float64_large_shape"
+        },
+        # Parameter extension 2: CUDA device (Low priority) - only if available
+        {
+            "dtype": torch.float32,
+            "device": "cuda",
+            "shape": (3, 4),
+            "dim": 1,
+            "eps": 1e-8,
+            "name": "cuda_device",
+            "skip_if_no_cuda": True
+        }
+    ])
+    def test_cosine_similarity_default_params(self, test_params):
+        """CASE_03: CosineSimilarity默认参数计算（包含参数扩展）"""
+        # Skip CUDA test if CUDA is not available
+        if test_params.get("skip_if_no_cuda", False) and not torch.cuda.is_available():
+            pytest.skip("CUDA not available")
+        
+        # Extract parameters
+        dtype = test_params["dtype"]
+        device = test_params["device"]
+        shape = test_params["shape"]
+        dim = test_params["dim"]
+        eps = test_params["eps"]
+        
+        # Create test inputs
+        x1 = torch.randn(shape, dtype=dtype, device=device)
+        x2 = torch.randn(shape, dtype=dtype, device=device)
+        
+        # Create CosineSimilarity module with default parameters
+        cosine_sim = nn.CosineSimilarity(dim=dim, eps=eps)
+        
+        # Forward pass
+        result = cosine_sim(x1, x2)
+        
+        # Oracle: torch.nn.functional.cosine_similarity
+        expected = F.cosine_similarity(x1, x2, dim=dim, eps=eps)
+        
+        # Weak assertions
+        # 1. Shape assertion
+        assert result.shape == expected.shape, \
+            f"Shape mismatch: got {result.shape}, expected {expected.shape}"
+        
+        # 2. Dtype assertion
+        assert result.dtype == expected.dtype, \
+            f"Dtype mismatch: got {result.dtype}, expected {expected.dtype}"
+        
+        # 3. Finite values assertion
+        assert torch.all(torch.isfinite(result)), \
+            "Result contains non-finite values"
+        
+        # 4. Range check: cosine similarity should be in [-1, 1]
+        assert torch.all(result >= -1.0 - eps), \
+            f"Cosine similarity should be >= -1, got min={result.min().item()}"
+        assert torch.all(result <= 1.0 + eps), \
+            f"Cosine similarity should be <= 1, got max={result.max().item()}"
+        
+        # 5. Approximate equality with oracle (weak assertion)
+        # Use appropriate tolerance based on dtype
+        if dtype == torch.float64:
+            rtol = 1e-10
+            atol = 1e-12
+        else:
+            rtol = 1e-5
+            atol = 1e-6
+            
+        assert torch.allclose(result, expected, rtol=rtol, atol=atol), \
+            f"Result doesn't match oracle. Max diff: {(result - expected).abs().max().item()}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("test_params", [
+        {
+            "dtype": torch.float32,
+            "device": "cpu",
+            "shape": (2, 3, 4),
+            "dim": 0,
+            "eps": 1e-8
+        },
+        {
+            "dtype": torch.float32,
+            "device": "cpu",
+            "shape": (2, 3, 4),
+            "dim": 2,
+            "eps": 1e-8
+        }
+    ])
+    def test_cosine_similarity_different_dims(self, test_params):
+        """CASE_04: CosineSimilarity不同维度计算"""
+        # Extract parameters
+        dtype = test_params["dtype"]
+        device = test_params["device"]
+        shape = test_params["shape"]
+        dim = test_params["dim"]
+        eps = test_params["eps"]
+        
+        # Create test inputs
+        x1 = torch.randn(shape, dtype=dtype, device=device)
+        x2 = torch.randn(shape, dtype=dtype, device=device)
+        
+        # Create CosineSimilarity module with specified parameters
+        cosine_sim = nn.CosineSimilarity(dim=dim, eps=eps)
+        
+        # Forward pass
+        result = cosine_sim(x1, x2)
+        
+        # Oracle: torch.nn.functional.cosine_similarity
+        expected = F.cosine_similarity(x1, x2, dim=dim, eps=eps)
+        
+        # Weak assertions
+        # 1. Shape assertion
+        assert result.shape == expected.shape, \
+            f"Shape mismatch: got {result.shape}, expected {expected.shape}"
+        
+        # 2. Dtype assertion
+        assert result.dtype == expected.dtype, \
+            f"Dtype mismatch: got {result.dtype}, expected {expected.dtype}"
+        
+        # 3. Finite values assertion
+        assert torch.all(torch.isfinite(result)), \
+            "Result contains non-finite values"
+        
+        # 4. Range check: cosine similarity should be in [-1, 1]
+        assert torch.all(result >= -1.0 - eps), \
+            f"Cosine similarity should be >= -1, got min={result.min().item()}"
+        assert torch.all(result <= 1.0 + eps), \
+            f"Cosine similarity should be <= 1, got max={result.max().item()}"
+        
+        # 5. Approximate equality with oracle (weak assertion)
+        rtol = 1e-5
+        atol = 1e-6
+        assert torch.allclose(result, expected, rtol=rtol, atol=atol), \
+            f"Result doesn't match oracle. Max diff: {(result - expected).abs().max().item()}"
+        
+        # 6. Dim effect check (basic)
+        # When computing cosine similarity along dim, that dimension should be reduced
+        expected_reduced_shape = list(shape)
+        expected_reduced_shape[dim] = 1
+        expected_reduced_shape = tuple(s for i, s in enumerate(expected_reduced_shape) if i != dim)
+        
+        assert result.shape == expected_reduced_shape, \
+            f"With dim={dim}, expected shape {expected_reduced_shape}, got {result.shape}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_07 START ====
+    def test_cosine_similarity_zero_vector_handling(self):
+        """CASE_07: CosineSimilarity零向量处理"""
+        # Test parameters from test_plan.json
+        dtype = torch.float32
+        device = "cpu"
+        shape = (3, 4)
+        dim = 1
+        eps = 1e-8
+        
+        # Create test inputs
+        x1 = torch.randn(shape, dtype=dtype, device=device)
+        
+        # Create zero vector for x2
+        x2 = torch.zeros(shape, dtype=dtype, device=device)
+        
+        # Create CosineSimilarity module
+        cosine_sim = nn.CosineSimilarity(dim=dim, eps=eps)
+        
+        # Forward pass
+        result = cosine_sim(x1, x2)
+        
+        # Oracle: torch.nn.functional.cosine_similarity
+        expected = F.cosine_similarity(x1, x2, dim=dim, eps=eps)
+        
+        # Weak assertions
+        # 1. Shape assertion
+        assert result.shape == expected.shape, \
+            f"Shape mismatch: got {result.shape}, expected {expected.shape}"
+        
+        # 2. Dtype assertion
+        assert result.dtype == expected.dtype, \
+            f"Dtype mismatch: got {result.dtype}, expected {expected.dtype}"
+        
+        # 3. Finite values assertion
+        assert torch.all(torch.isfinite(result)), \
+            "Result contains non-finite values"
+        
+        # 4. Range check: cosine similarity should be in [-1, 1]
+        assert torch.all(result >= -1.0 - eps), \
+            f"Cosine similarity should be >= -1, got min={result.min().item()}"
+        assert torch.all(result <= 1.0 + eps), \
+            f"Cosine similarity should be <= 1, got max={result.max().item()}"
+        
+        # 5. Approximate equality with oracle (weak assertion)
+        rtol = 1e-5
+        atol = 1e-6
+        assert torch.allclose(result, expected, rtol=rtol, atol=atol), \
+            f"Result doesn't match oracle. Max diff: {(result - expected).abs().max().item()}"
+        
+        # 6. Zero vector handling check
+        # When one vector is zero, cosine similarity should be 0 (or close to 0)
+        # This is because dot product with zero vector is 0
+        # Note: With eps, the result might not be exactly 0
+        assert torch.all(result.abs() <= eps * 10), \
+            f"Cosine similarity with zero vector should be close to 0, got values: {result}"
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+    def test_cosine_similarity_dimension_exception(self):
+        """CASE_08: CosineSimilarity维度异常测试"""
+        # Test parameters from test_plan.json
+        dtype = torch.float32
+        device = "cpu"
+        shape = (3, 4)
+        dim = 3  # Invalid dimension for shape (3, 4)
+        eps = 1e-8
+        
+        # Create test inputs
+        x1 = torch.randn(shape, dtype=dtype, device=device)
+        x2 = torch.randn(shape, dtype=dtype, device=device)
+        
+        # Create CosineSimilarity module with invalid dimension
+        # This should raise an error when used
+        cosine_sim = nn.CosineSimilarity(dim=dim, eps=eps)
+        
+        # Weak assertions: exception should be raised
+        # When dim is out of range, torch.nn.functional.cosine_similarity should raise an error
+        # Note: PyTorch may raise RuntimeError instead of IndexError
+        with pytest.raises((IndexError, RuntimeError)) as exc_info:
+            # This should fail because dim=3 is invalid for 2D tensor
+            result = cosine_sim(x1, x2)
+        
+        # Check exception type is either IndexError or RuntimeError
+        assert exc_info.type in (IndexError, RuntimeError), \
+            f"Expected IndexError or RuntimeError, got {exc_info.type}"
+        
+        # Check exception message contains relevant information
+        # The exact message may vary, but should indicate dimension issue
+        error_msg = str(exc_info.value).lower()
+        # Check for various possible error messages
+        error_keywords = ["dim", "dimension", "index", "out of range", "out of bounds", "size"]
+        assert any(keyword in error_msg for keyword in error_keywords), \
+            f"Error message should mention dimension/index/size issue. Got: {error_msg}"
+        
+        # Now test negative dimension (should work) - this ensures line 288 is covered
+        # Negative dimensions wrap around in PyTorch
+        cosine_sim_neg = nn.CosineSimilarity(dim=-1, eps=eps)
+        result_neg = cosine_sim_neg(x1, x2)
+        expected_neg = F.cosine_similarity(x1, x2, dim=-1, eps=eps)
+        
+        # Verify negative dimension works
+        assert torch.allclose(result_neg, expected_neg, rtol=1e-5, atol=1e-6), \
+            "Negative dimension should work (wraps around)"
+        
+        # Additional test: also test with dim=2 (should work for 2D tensor)
+        # This is another valid dimension for 2D tensor
+        cosine_sim_dim2 = nn.CosineSimilarity(dim=2, eps=eps)
+        result_dim2 = cosine_sim_dim2(x1, x2)
+        expected_dim2 = F.cosine_similarity(x1, x2, dim=2, eps=eps)
+        
+        # Verify dim=2 works
+        assert torch.allclose(result_dim2, expected_dim2, rtol=1e-5, atol=1e-6), \
+            "dim=2 should work for 2D tensor"
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

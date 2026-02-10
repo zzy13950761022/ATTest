@@ -1,0 +1,244 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_spectral_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_spectral_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_spectral_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "基本FFT变换正确性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "fft",
+          "dtype": "complex64",
+          "shape": [8],
+          "device": "cpu",
+          "fft_length": null,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "inverse_transform", "phase_preservation"]
+      },
+      "oracle": "numpy.fft.fft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "RFFT实数变换与长度控制",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "rfft",
+          "dtype": "float32",
+          "shape": [16],
+          "device": "cpu",
+          "fft_length": 8,
+          "flags": ["length_control"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "length_control"],
+        "strong": ["approx_equal", "hermitian_symmetry", "inverse_transform"]
+      },
+      "oracle": "numpy.fft.rfft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "批处理FFT维度保持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "batch_fft",
+          "dtype": "complex64",
+          "shape": [4, 8],
+          "device": "cpu",
+          "fft_length": null,
+          "flags": ["batch_dimension"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "batch_dimension"],
+        "strong": ["approx_equal", "batch_consistency", "inverse_transform"]
+      },
+      "oracle": "numpy.fft.fft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_spectral_ops._execute",
+        "tensorflow.python.ops.gen_spectral_ops._op_def_library"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "数据类型边界验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "fft",
+          "dtype": "float64",
+          "shape": [8],
+          "device": "cpu",
+          "fft_length": null,
+          "flags": ["precision_test"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "precision_bound"],
+        "strong": ["approx_equal", "inverse_transform", "error_bound"]
+      },
+      "oracle": "numpy.fft.fft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "fft_length裁剪填充行为",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "rfft",
+          "dtype": "float32",
+          "shape": [10],
+          "device": "cpu",
+          "fft_length": 16,
+          "flags": ["padding_test"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "length_control"],
+        "strong": ["approx_equal", "padding_behavior", "inverse_transform"]
+      },
+      "oracle": "numpy.fft.rfft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "fft",
+        "dtype": "complex128",
+        "shape": [16],
+        "device": "cpu",
+        "fft_length": null,
+        "flags": ["extended_precision"]
+      },
+      "note": "作为参数扩展：更高精度复数类型"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "ifft",
+        "dtype": "complex64",
+        "shape": [8],
+        "device": "cpu",
+        "fft_length": null,
+        "flags": ["inverse_transform"]
+      },
+      "note": "作为参数扩展：逆变换函数"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "irfft",
+        "dtype": "complex64",
+        "shape": [9],
+        "device": "cpu",
+        "fft_length": 16,
+        "flags": ["odd_length", "inverse_real"]
+      },
+      "note": "作为参数扩展：奇数长度IRFFT"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "batch_fft2d",
+        "dtype": "complex64",
+        "shape": [3, 8, 8],
+        "device": "cpu",
+        "fft_length": null,
+        "flags": ["2d_transform", "batch_dimension"]
+      },
+      "note": "作为参数扩展：2D批处理变换"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "fft",
+        "dtype": "float32",
+        "shape": [8],
+        "device": "gpu",
+        "fft_length": null,
+        "flags": ["gpu_device", "device_consistency"]
+      },
+      "note": "作为参数扩展：GPU设备验证"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

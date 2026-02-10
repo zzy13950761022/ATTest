@@ -1,0 +1,286 @@
+{
+  "plan_version": 2,
+  "target": "torch.ao.quantization.quantize",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_ao_quantization_quantize.py",
+    "all_pattern": "tests/test_torch_ao_quantization_quantize_*.py",
+    "groups": {
+      "G1": "tests/test_torch_ao_quantization_quantize_g1.py",
+      "G2": "tests/test_torch_ao_quantization_quantize_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心量化流程",
+      "entrypoints": ["quantize"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "验证基本量化流程和参数组合"
+    },
+    {
+      "group_id": "G2",
+      "title": "边界与异常处理",
+      "entrypoints": ["quantize"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "验证边界情况和错误处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本浮点模型量化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "model_type": "simple_linear",
+          "inplace": false,
+          "mapping": "default",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "model_structure_preserved", "model_in_eval_mode", "no_side_effects_when_inplace_false"],
+        "strong": ["quantization_applied", "output_within_tolerance", "performance_improvement"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "原地量化验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "model_type": "simple_linear",
+          "inplace": true,
+          "mapping": "default",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "model_structure_preserved", "model_in_eval_mode", "original_model_modified_when_inplace_true"],
+        "strong": ["quantization_applied", "output_within_tolerance", "original_model_equals_returned_model"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "自定义映射参数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "model_type": "simple_linear",
+          "inplace": false,
+          "mapping": "custom",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "model_structure_preserved", "custom_mapping_applied", "no_exception"],
+        "strong": ["custom_quantization_applied", "output_within_tolerance"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "校准函数参数传递",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "model_type": "simple_linear",
+          "inplace": false,
+          "mapping": "default",
+          "run_fn_type": "complex_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "run_fn_called_correctly", "run_args_passed_correctly", "no_exception"],
+        "strong": ["calibration_executed", "quantization_applied"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "不同模型架构兼容性",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "model_type": "convolutional",
+          "inplace": false,
+          "mapping": "default",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "model_structure_preserved", "no_exception"],
+        "strong": ["quantization_applied", "output_within_tolerance", "all_layers_quantized"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "无效输入异常处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "model_type": "invalid",
+          "inplace": false,
+          "mapping": "default",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type_correct"],
+        "strong": ["error_message_meaningful", "no_side_effects"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "边界情况处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "model_type": "minimal",
+          "inplace": false,
+          "mapping": "default",
+          "run_fn_type": "simple_calibration"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_model", "no_exception", "model_structure_preserved"],
+        "strong": ["quantization_applied", "output_within_tolerance"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "model_type": "simple_linear",
+        "inplace": false,
+        "mapping": "default",
+        "run_fn_type": "no_op_calibration"
+      },
+      "note": "空校准函数扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "model_type": "simple_linear",
+        "inplace": false,
+        "mapping": "default",
+        "run_fn_type": "simple_calibration",
+        "run_args_complexity": "multiple_args"
+      },
+      "note": "复杂run_args参数扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "model_type": "simple_linear",
+        "inplace": true,
+        "mapping": "partial_custom",
+        "run_fn_type": "simple_calibration"
+      },
+      "note": "原地+部分自定义映射组合"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Low",
+      "params": {
+        "model_type": "simple_linear",
+        "inplace": false,
+        "mapping": "empty_dict",
+        "run_fn_type": "simple_calibration"
+      },
+      "note": "空映射字典边界情况"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07"]
+}

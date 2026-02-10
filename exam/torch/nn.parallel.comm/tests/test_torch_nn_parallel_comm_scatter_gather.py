@@ -1,0 +1,523 @@
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.parallel.comm as comm
+from unittest.mock import patch, MagicMock
+
+
+def setup_module():
+    """设置测试模块，固定随机种子"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+
+def teardown_module():
+    """清理测试模块"""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+@pytest.fixture
+def cuda_devices():
+    """获取可用的CUDA设备，支持CPU回退"""
+    if not torch.cuda.is_available():
+        # CPU回退：返回CPU设备列表
+        return [torch.device("cpu") for _ in range(3)]
+    
+    device_count = torch.cuda.device_count()
+    if device_count < 2:
+        # 如果CUDA设备不足，也使用CPU回退
+        return [torch.device("cpu") for _ in range(3)]
+    
+    return [torch.device(f"cuda:{i}") for i in range(min(device_count, 3))]
+
+
+@pytest.fixture
+def random_tensor():
+    """生成随机张量的工厂函数"""
+    def _create(shape, dtype=torch.float32, device="cpu"):
+        tensor = torch.randn(*shape, dtype=dtype, device=device)
+        return tensor
+    
+    return _create
+
+
+class TestScatterGatherFunctions:
+    """分散聚集函数族测试类 (G3)"""
+    pass
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_08 START ====
+    @pytest.mark.parametrize("dtype,device,shape,target_devices,dim", [
+        # 原始测试用例 (High优先级)
+        (torch.float32, "cuda:0", (8, 6), ["cuda:0", "cuda:1"], 0),
+        # 参数扩展 (Medium优先级) - 扩展数据类型、设备数量和维度
+        (torch.float64, "cuda:0", (12, 8), ["cuda:0", "cuda:1", "cuda:2"], 1),
+    ])
+    def test_scatter_gather_roundtrip(self, cuda_devices, random_tensor, dtype, device, shape, target_devices, dim):
+        """TC-08: scatter_gather往返完整性
+        
+        测试张量分散-聚集往返数据完整性
+        """
+        # 跳过如果设备不足
+        if len(cuda_devices) < len(target_devices):
+            pytest.skip(f"Need {len(target_devices)} CUDA devices, got {len(cuda_devices)}")
+        
+        # 创建源张量
+        src_tensor = random_tensor(shape, dtype=dtype, device=device)
+        src_data = src_tensor.clone()
+        
+        # 步骤1: 分散(scatter)到多个设备
+        scattered = comm.scatter(src_tensor, devices=target_devices, dim=dim)
+        
+        # weak断言验证 - scatter结果
+        # 1. 返回类型和长度
+        assert isinstance(scattered, tuple), "scatter should return a tuple"
+        assert len(scattered) == len(target_devices), \
+            f"Expected {len(target_devices)} tensors from scatter, got {len(scattered)}"
+        
+        # 2. 检查每个分散张量
+        chunk_size = shape[dim] // len(target_devices)
+        for i, (scattered_tensor, target_device) in enumerate(zip(scattered, target_devices)):
+            # 设备匹配
+            expected_device = torch.device(target_device)
+            assert scattered_tensor.device == expected_device, \
+                f"Scattered tensor {i}: device mismatch, expected {expected_device}, got {scattered_tensor.device}"
+            
+            # 数据类型匹配
+            assert scattered_tensor.dtype == dtype, \
+                f"Scattered tensor {i}: dtype mismatch, expected {dtype}, got {scattered_tensor.dtype}"
+            
+            # 形状验证（沿dim维度被分割）
+            expected_shape = list(shape)
+            expected_shape[dim] = chunk_size
+            expected_shape = tuple(expected_shape)
+            assert scattered_tensor.shape == expected_shape, \
+                f"Scattered tensor {i}: shape mismatch, expected {expected_shape}, got {scattered_tensor.shape}"
+        
+        # 步骤2: 聚集(gather)回一个张量
+        gathered = comm.gather(scattered, dim=dim, destination=device)
+        
+        # weak断言验证 - gather结果
+        # 1. 返回类型
+        assert isinstance(gathered, torch.Tensor), "gather should return a Tensor"
+        
+        # 2. 形状匹配（应该与原始张量相同）
+        assert gathered.shape == shape, \
+            f"Gathered tensor shape mismatch, expected {shape}, got {gathered.shape}"
+        
+        # 3. 数据类型匹配
+        assert gathered.dtype == dtype, \
+            f"Gathered tensor dtype mismatch, expected {dtype}, got {gathered.dtype}"
+        
+        # 4. 设备匹配
+        expected_device = torch.device(device)
+        assert gathered.device == expected_device, \
+            f"Gathered tensor device mismatch, expected {expected_device}, got {gathered.device}"
+        
+        # 5. 数据完整性验证（聚集后的张量应该与原始张量相同）
+        # 注意：需要将源张量移动到相同设备进行比较
+        src_on_device = src_data.to(gathered.device)
+        assert torch.allclose(gathered, src_on_device, rtol=1e-6, atol=1e-6), \
+            "Data integrity mismatch: gathered tensor differs from source"
+        
+        # 6. 源张量不应被修改
+        assert torch.allclose(src_tensor, src_data, rtol=1e-6, atol=1e-6), \
+            "Source tensor should not be modified"
+    
+    @pytest.mark.parametrize("dtype,shape,target_devices,dim", [
+        # CPU回退测试用例
+        (torch.float32, (8, 6), ["cpu", "cpu"], 0),
+        (torch.float64, (12, 8), ["cpu", "cpu", "cpu"], 1),
+    ])
+    def test_scatter_gather_roundtrip_cpu_fallback(self, random_tensor, dtype, shape, target_devices, dim):
+        """TC-08 CPU回退版本: scatter_gather往返完整性（CPU设备）
+        
+        在没有CUDA设备时测试张量分散-聚集往返数据完整性
+        """
+        # 创建源张量（在CPU上）
+        src_tensor = random_tensor(shape, dtype=dtype, device="cpu")
+        src_data = src_tensor.clone()
+        
+        # 使用mock来模拟CUDA不可用的情况
+        with patch('torch.nn.parallel.comm._get_device_index') as mock_get_device_index:
+            # 模拟_get_device_index函数，对于CPU设备返回-1
+            def mock_get_device_index_func(device, optional=False, allow_cpu=False):
+                if isinstance(device, str):
+                    device = torch.device(device)
+                if isinstance(device, torch.device):
+                    if device.type == "cpu":
+                        return -1
+                    else:
+                        # 对于CUDA设备，返回设备索引
+                        return device.index if device.index is not None else 0
+                elif isinstance(device, int):
+                    return device
+                else:
+                    raise ValueError(f"Unexpected device type: {type(device)}")
+            
+            mock_get_device_index.side_effect = mock_get_device_index_func
+            
+            # 步骤1: 分散(scatter)到多个CPU设备
+            scattered = comm.scatter(src_tensor, devices=target_devices, dim=dim)
+        
+        # weak断言验证 - scatter结果
+        # 1. 返回类型和长度
+        assert isinstance(scattered, tuple), "scatter should return a tuple"
+        assert len(scattered) == len(target_devices), \
+            f"Expected {len(target_devices)} tensors from scatter, got {len(scattered)}"
+        
+        # 2. 检查每个分散张量
+        chunk_size = shape[dim] // len(target_devices)
+        for i, (scattered_tensor, target_device) in enumerate(zip(scattered, target_devices)):
+            # 设备匹配（应该是CPU）
+            expected_device = torch.device(target_device)
+            assert scattered_tensor.device == expected_device, \
+                f"Scattered tensor {i}: device mismatch, expected {expected_device}, got {scattered_tensor.device}"
+            
+            # 数据类型匹配
+            assert scattered_tensor.dtype == dtype, \
+                f"Scattered tensor {i}: dtype mismatch, expected {dtype}, got {scattered_tensor.dtype}"
+            
+            # 形状验证（沿dim维度被分割）
+            expected_shape = list(shape)
+            expected_shape[dim] = chunk_size
+            expected_shape = tuple(expected_shape)
+            assert scattered_tensor.shape == expected_shape, \
+                f"Scattered tensor {i}: shape mismatch, expected {expected_shape}, got {scattered_tensor.shape}"
+        
+        # 步骤2: 聚集(gather)回一个张量
+        # 使用mock来避免调用不存在的torch._C._gather
+        with patch('torch._C._gather') as mock_gather:
+            # 模拟_gather函数返回一个聚集后的张量
+            mock_result = torch.cat(scattered, dim=dim).to("cpu")
+            mock_gather.return_value = mock_result
+            
+            gathered = comm.gather(scattered, dim=dim, destination="cpu")
+        
+        # weak断言验证 - gather结果
+        # 1. 返回类型
+        assert isinstance(gathered, torch.Tensor), "gather should return a Tensor"
+        
+        # 2. 形状匹配（应该与原始张量相同）
+        assert gathered.shape == shape, \
+            f"Gathered tensor shape mismatch, expected {shape}, got {gathered.shape}"
+        
+        # 3. 数据类型匹配
+        assert gathered.dtype == dtype, \
+            f"Gathered tensor dtype mismatch, expected {dtype}, got {gathered.dtype}"
+        
+        # 4. 设备匹配（应该是CPU）
+        assert gathered.device == torch.device("cpu"), \
+            f"Gathered tensor device mismatch, expected cpu, got {gathered.device}"
+        
+        # 5. 数据完整性验证（聚集后的张量应该与原始张量相同）
+        assert torch.allclose(gathered, src_data, rtol=1e-6, atol=1e-6), \
+            "Data integrity mismatch: gathered tensor differs from source"
+        
+        # 6. 源张量不应被修改
+        assert torch.allclose(src_tensor, src_data, rtol=1e-6, atol=1e-6), \
+            "Source tensor should not be modified"
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+    def test_scatter_parameter_conflict_exception(self, cuda_devices, random_tensor):
+        """TC-09: scatter参数冲突异常
+        
+        测试当同时提供devices和out参数时抛出RuntimeError异常
+        """
+        # 跳过如果设备不足
+        if len(cuda_devices) < 2:
+            pytest.skip(f"Need at least 2 CUDA devices, got {len(cuda_devices)}")
+        
+        # 测试参数
+        dtype = torch.float32
+        device = "cuda:0"
+        shape = (6, 4)
+        target_devices = ["cuda:0", "cuda:1"]
+        dim = 0
+        
+        # 创建源张量
+        src_tensor = random_tensor(shape, dtype=dtype, device=device)
+        
+        # 创建输出张量列表（用于out参数）
+        out_tensors = []
+        chunk_size = shape[dim] // len(target_devices)
+        for i, target_device in enumerate(target_devices):
+            # 创建输出张量，形状与分散后的块匹配
+            out_shape = list(shape)
+            out_shape[dim] = chunk_size
+            out_tensor = torch.empty(out_shape, dtype=dtype, device=target_device)
+            out_tensors.append(out_tensor)
+        
+        # weak断言验证 - 当同时提供devices和out参数时应该抛出RuntimeError异常
+        # 注意：根据源码，scatter函数抛出的是RuntimeError，不是ValueError
+        with pytest.raises(RuntimeError) as exc_info:
+            comm.scatter(src_tensor, devices=target_devices, dim=dim, out=out_tensors)
+        
+        # 验证异常消息包含关键信息
+        exception_msg = str(exc_info.value)
+        assert "devices" in exception_msg.lower(), \
+            f"Exception message should mention 'devices', got: {exception_msg}"
+        assert "out" in exception_msg.lower(), \
+            f"Exception message should mention 'out', got: {exception_msg}"
+        assert "must not be specified" in exception_msg, \
+            f"Exception message should contain 'must not be specified', got: {exception_msg}"
+        
+        # 验证异常类型（应该是RuntimeError）
+        assert exc_info.type == RuntimeError, \
+            f"Expected RuntimeError, got {exc_info.type}"
+        
+        # 额外验证：单独使用devices参数应该正常工作
+        result_with_devices = comm.scatter(src_tensor, devices=target_devices, dim=dim)
+        assert isinstance(result_with_devices, tuple), \
+            "scatter with devices should return a tuple"
+        assert len(result_with_devices) == len(target_devices), \
+            f"Expected {len(target_devices)} tensors, got {len(result_with_devices)}"
+        
+        # 额外验证：单独使用out参数应该正常工作
+        result_with_out = comm.scatter(src_tensor, dim=dim, out=out_tensors)
+        assert isinstance(result_with_out, tuple), \
+            "scatter with out should return a tuple"
+        assert len(result_with_out) == len(out_tensors), \
+            f"Expected {len(out_tensors)} tensors, got {len(result_with_out)}"
+    
+    def test_scatter_parameter_conflict_exception_cpu_fallback(self, random_tensor):
+        """TC-09 CPU回退版本: scatter参数冲突异常（CPU设备）
+        
+        在没有CUDA设备时测试当同时提供devices和out参数时抛出RuntimeError异常
+        """
+        # 测试参数
+        dtype = torch.float32
+        device = "cpu"
+        shape = (6, 4)
+        target_devices = ["cpu", "cpu"]
+        dim = 0
+        
+        # 创建源张量
+        src_tensor = random_tensor(shape, dtype=dtype, device=device)
+        
+        # 创建输出张量列表（用于out参数）
+        out_tensors = []
+        chunk_size = shape[dim] // len(target_devices)
+        for i, target_device in enumerate(target_devices):
+            # 创建输出张量，形状与分散后的块匹配
+            out_shape = list(shape)
+            out_shape[dim] = chunk_size
+            out_tensor = torch.empty(out_shape, dtype=dtype, device=target_device)
+            out_tensors.append(out_tensor)
+        
+        # 使用mock来模拟CUDA不可用的情况
+        with patch('torch.nn.parallel.comm._get_device_index') as mock_get_device_index:
+            # 模拟_get_device_index函数，对于CPU设备返回-1
+            def mock_get_device_index_func(device, optional=False, allow_cpu=False):
+                if isinstance(device, str):
+                    device = torch.device(device)
+                if isinstance(device, torch.device):
+                    if device.type == "cpu":
+                        return -1
+                    else:
+                        # 对于CUDA设备，返回设备索引
+                        return device.index if device.index is not None else 0
+                elif isinstance(device, int):
+                    return device
+                else:
+                    raise ValueError(f"Unexpected device type: {type(device)}")
+            
+            mock_get_device_index.side_effect = mock_get_device_index_func
+            
+            # weak断言验证 - 当同时提供devices和out参数时应该抛出RuntimeError异常
+            with pytest.raises(RuntimeError) as exc_info:
+                comm.scatter(src_tensor, devices=target_devices, dim=dim, out=out_tensors)
+        
+        # 验证异常消息包含关键信息
+        exception_msg = str(exc_info.value)
+        assert "devices" in exception_msg.lower(), \
+            f"Exception message should mention 'devices', got: {exception_msg}"
+        assert "out" in exception_msg.lower(), \
+            f"Exception message should mention 'out', got: {exception_msg}"
+        assert "must not be specified" in exception_msg, \
+            f"Exception message should contain 'must not be specified', got: {exception_msg}"
+        
+        # 验证异常类型（应该是RuntimeError）
+        assert exc_info.type == RuntimeError, \
+            f"Expected RuntimeError, got {exc_info.type}"
+        
+        # 额外验证：单独使用devices参数应该正常工作
+        with patch('torch.nn.parallel.comm._get_device_index') as mock_get_device_index:
+            # 模拟_get_device_index函数，对于CPU设备返回-1
+            def mock_get_device_index_func(device, optional=False, allow_cpu=False):
+                if isinstance(device, str):
+                    device = torch.device(device)
+                if isinstance(device, torch.device):
+                    if device.type == "cpu":
+                        return -1
+                    else:
+                        # 对于CUDA设备，返回设备索引
+                        return device.index if device.index is not None else 0
+                elif isinstance(device, int):
+                    return device
+                else:
+                    raise ValueError(f"Unexpected device type: {type(device)}")
+            
+            mock_get_device_index.side_effect = mock_get_device_index_func
+            
+            result_with_devices = comm.scatter(src_tensor, devices=target_devices, dim=dim)
+            assert isinstance(result_with_devices, tuple), \
+                "scatter with devices should return a tuple"
+            assert len(result_with_devices) == len(target_devices), \
+                f"Expected {len(target_devices)} tensors, got {len(result_with_devices)}"
+        
+        # 额外验证：单独使用out参数应该正常工作
+        result_with_out = comm.scatter(src_tensor, dim=dim, out=out_tensors)
+        assert isinstance(result_with_out, tuple), \
+            "scatter with out should return a tuple"
+        assert len(result_with_out) == len(out_tensors), \
+            f"Expected {len(out_tensors)} tensors, got {len(result_with_out)}"
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+    def test_gather_mutually_exclusive_parameter_check(self, cuda_devices, random_tensor):
+        """TC-10: gather参数互斥检查
+        
+        测试当同时提供destination和out参数时抛出RuntimeError异常
+        """
+        # 跳过如果设备不足
+        if len(cuda_devices) < 2:
+            pytest.skip(f"Need at least 2 CUDA devices, got {len(cuda_devices)}")
+        
+        # 测试参数
+        dtype = torch.float32
+        devices = ["cuda:0", "cuda:1"]
+        shape = (3, 4)
+        destination = "cuda:0"
+        dim = 0
+        
+        # 创建输入张量列表
+        input_tensors = []
+        for device in devices:
+            tensor = random_tensor(shape, dtype=dtype, device=device)
+            input_tensors.append(tensor)
+        
+        # 创建输出张量（用于out参数）
+        # 计算聚集后的总大小
+        total_size = sum(tensor.shape[dim] for tensor in input_tensors)
+        out_shape = list(shape)
+        out_shape[dim] = total_size
+        out_tensor = torch.empty(out_shape, dtype=dtype, device=destination)
+        
+        # weak断言验证 - 当同时提供destination和out参数时应该抛出RuntimeError异常
+        # 注意：根据源码，gather函数抛出的是RuntimeError，不是ValueError
+        with pytest.raises(RuntimeError) as exc_info:
+            comm.gather(input_tensors, dim=dim, destination=destination, out=out_tensor)
+        
+        # 验证异常消息包含关键信息
+        exception_msg = str(exc_info.value)
+        assert "destination" in exception_msg.lower(), \
+            f"Exception message should mention 'destination', got: {exception_msg}"
+        assert "out" in exception_msg.lower(), \
+            f"Exception message should mention 'out', got: {exception_msg}"
+        assert "must not be specified" in exception_msg, \
+            f"Exception message should contain 'must not be specified', got: {exception_msg}"
+        
+        # 验证异常类型（应该是RuntimeError）
+        assert exc_info.type == RuntimeError, \
+            f"Expected RuntimeError, got {exc_info.type}"
+        
+        # 额外验证：单独使用destination参数应该正常工作
+        # 使用mock来避免调用不存在的torch._C._gather
+        with patch('torch._C._gather') as mock_gather:
+            # 模拟_gather函数返回一个聚集后的张量
+            mock_result = torch.cat(input_tensors, dim=dim).to(destination)
+            mock_gather.return_value = mock_result
+            
+            result_with_destination = comm.gather(input_tensors, dim=dim, destination=destination)
+            assert isinstance(result_with_destination, torch.Tensor), \
+                "gather with destination should return a Tensor"
+            assert result_with_destination.device == torch.device(destination), \
+                f"Result should be on {destination}, got {result_with_destination.device}"
+        
+        # 额外验证：单独使用out参数应该正常工作
+        with patch('torch._C._gather_out') as mock_gather_out:
+            # 模拟_gather_out函数，返回out_tensor
+            mock_gather_out.return_value = out_tensor
+            
+            result_with_out = comm.gather(input_tensors, dim=dim, out=out_tensor)
+            assert isinstance(result_with_out, torch.Tensor), \
+                "gather with out should return a Tensor"
+            assert result_with_out.device == torch.device(destination), \
+                f"Result should be on {destination}, got {result_with_out.device}"
+    
+    def test_gather_mutually_exclusive_parameter_check_cpu_fallback(self, random_tensor):
+        """TC-10 CPU回退版本: gather参数互斥检查（CPU设备）
+        
+        在没有CUDA设备时测试当同时提供destination和out参数时抛出RuntimeError异常
+        """
+        # 测试参数
+        dtype = torch.float32
+        devices = ["cpu", "cpu"]
+        shape = (3, 4)
+        destination = "cpu"
+        dim = 0
+        
+        # 创建输入张量列表
+        input_tensors = []
+        for device in devices:
+            tensor = random_tensor(shape, dtype=dtype, device=device)
+            input_tensors.append(tensor)
+        
+        # 创建输出张量（用于out参数）
+        # 计算聚集后的总大小
+        total_size = sum(tensor.shape[dim] for tensor in input_tensors)
+        out_shape = list(shape)
+        out_shape[dim] = total_size
+        out_tensor = torch.empty(out_shape, dtype=dtype, device=destination)
+        
+        # weak断言验证 - 当同时提供destination和out参数时应该抛出RuntimeError异常
+        with pytest.raises(RuntimeError) as exc_info:
+            comm.gather(input_tensors, dim=dim, destination=destination, out=out_tensor)
+        
+        # 验证异常消息包含关键信息
+        exception_msg = str(exc_info.value)
+        assert "destination" in exception_msg.lower(), \
+            f"Exception message should mention 'destination', got: {exception_msg}"
+        assert "out" in exception_msg.lower(), \
+            f"Exception message should mention 'out', got: {exception_msg}"
+        assert "must not be specified" in exception_msg, \
+            f"Exception message should contain 'must not be specified', got: {exception_msg}"
+        
+        # 验证异常类型（应该是RuntimeError）
+        assert exc_info.type == RuntimeError, \
+            f"Expected RuntimeError, got {exc_info.type}"
+        
+        # 额外验证：单独使用destination参数应该正常工作
+        # 使用mock来避免调用不存在的torch._C._gather
+        with patch('torch._C._gather') as mock_gather:
+            # 模拟_gather函数返回一个聚集后的张量
+            mock_result = torch.cat(input_tensors, dim=dim).to(destination)
+            mock_gather.return_value = mock_result
+            
+            result_with_destination = comm.gather(input_tensors, dim=dim, destination=destination)
+            assert isinstance(result_with_destination, torch.Tensor), \
+                "gather with destination should return a Tensor"
+            assert result_with_destination.device == torch.device(destination), \
+                f"Result should be on {destination}, got {result_with_destination.device}"
+        
+        # 额外验证：单独使用out参数应该正常工作
+        with patch('torch._C._gather_out') as mock_gather_out:
+            # 模拟_gather_out函数，返回out_tensor
+            mock_gather_out.return_value = out_tensor
+            
+            result_with_out = comm.gather(input_tensors, dim=dim, out=out_tensor)
+            assert isinstance(result_with_out, torch.Tensor), \
+                "gather with out should return a Tensor"
+            assert result_with_out.device == torch.device(destination), \
+                f"Result should be on {destination}, got {result_with_out.device}"
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

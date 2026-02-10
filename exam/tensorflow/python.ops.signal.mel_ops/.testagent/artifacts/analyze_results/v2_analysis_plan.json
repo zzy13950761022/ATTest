@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_mel_ops.py::test_default_parameters_generate_weight_matrix",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "稀疏性断言失败：非零元素比例应为0.1-0.5，实际为0.086，需要调整断言阈值"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

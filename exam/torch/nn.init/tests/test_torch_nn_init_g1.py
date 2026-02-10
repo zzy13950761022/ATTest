@@ -1,0 +1,324 @@
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+def set_random_seed(seed: int = 42) -> None:
+    """设置随机种子以确保测试可重复性"""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def assert_tensor_properties(tensor: torch.Tensor, 
+                            expected_shape: Tuple[int, ...],
+                            expected_dtype: torch.dtype,
+                            test_name: str = "") -> None:
+    """验证张量的基本属性"""
+    assert tensor.shape == expected_shape, \
+        f"{test_name}: 形状不匹配，期望 {expected_shape}，实际 {tensor.shape}"
+    assert tensor.dtype == expected_dtype, \
+        f"{test_name}: 数据类型不匹配，期望 {expected_dtype}，实际 {tensor.dtype}"
+    assert torch.isfinite(tensor).all(), \
+        f"{test_name}: 张量包含非有限值"
+
+
+def assert_in_range(tensor: torch.Tensor, 
+                   min_val: float, 
+                   max_val: float,
+                   test_name: str = "") -> None:
+    """验证张量值在指定范围内"""
+    assert (tensor >= min_val).all(), \
+        f"{test_name}: 有值小于 {min_val}"
+    assert (tensor <= max_val).all(), \
+        f"{test_name}: 有值大于 {max_val}"
+
+
+def assert_not_all_zero(tensor: torch.Tensor, test_name: str = "") -> None:
+    """验证张量不全为零"""
+    assert not torch.all(tensor == 0), \
+        f"{test_name}: 张量全为零"
+
+
+def assert_all_equal(tensor: torch.Tensor, 
+                    expected_value: float,
+                    test_name: str = "",
+                    rtol: float = 1e-6) -> None:
+    """验证张量所有元素等于指定值"""
+    assert torch.allclose(tensor, 
+                         torch.full_like(tensor, expected_value),
+                         rtol=rtol), \
+        f"{test_name}: 张量元素不全等于 {expected_value}"
+
+
+# 设置全局随机种子
+set_random_seed(42)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("dtype,device,shape,a,b,flags", [
+    (torch.float32, "cpu", (3, 4), 0.0, 1.0, []),
+    (torch.float64, "cpu", (5, 5), -1.0, 1.0, ["different_range"]),  # 参数扩展
+])
+def test_uniform_basic(dtype: torch.dtype, 
+                      device: str, 
+                      shape: Tuple[int, ...], 
+                      a: float, 
+                      b: float,
+                      flags: List[str]) -> None:
+    """测试 uniform_ 函数的基础功能
+    
+    验证均匀分布初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. 值在指定范围内 [a, b]
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 创建输入张量
+    tensor = torch.empty(shape, dtype=dtype, device=device)
+    
+    # 保存原始张量引用（用于验证原地修改）
+    original_tensor_id = id(tensor)
+    
+    # 调用初始化函数
+    result = init.uniform_(tensor, a=a, b=b)
+    
+    # 验证原地修改
+    assert id(result) == original_tensor_id, "uniform_ 应该原地修改张量"
+    
+    # weak 断言：基本属性验证
+    assert_tensor_properties(result, shape, dtype, "uniform_基础测试")
+    
+    # weak 断言：值在范围内
+    assert_in_range(result, a, b, "uniform_基础测试")
+    
+    # weak 断言：不全为零（对于非零范围的情况）
+    if a != b:
+        assert_not_all_zero(result, "uniform_基础测试")
+    
+    # 验证张量确实被修改了（不是全零或全NaN）
+    assert torch.isfinite(result).any(), "张量应该包含有限值"
+    
+    # 验证不同范围参数的效果
+    if "different_range" in flags:
+        # 验证范围参数确实影响了值
+        range_width = b - a
+        assert range_width > 0, f"范围宽度应该为正: {a} to {b}"
+        
+        # 验证值确实在指定范围内
+        min_val = result.min().item()
+        max_val = result.max().item()
+        assert min_val >= a - 1e-6, f"最小值 {min_val} 小于范围下限 {a}"
+        assert max_val <= b + 1e-6, f"最大值 {max_val} 大于范围上限 {b}"
+        
+        # 对于均匀分布，值应该分布在整个范围内
+        if range_width > 0:
+            # 检查是否有值接近边界
+            close_to_a = torch.any(torch.abs(result - a) < 0.1 * range_width)
+            close_to_b = torch.any(torch.abs(result - b) < 0.1 * range_width)
+            assert close_to_a or close_to_b, \
+                f"值应该更接近边界，范围: [{a}, {b}]"
+# ==== BLOCK:CASE_01 END ====
+
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("dtype,device,shape,mean,std,flags", [
+    (torch.float32, "cpu", (2, 5), 0.0, 1.0, []),
+    (torch.float64, "cpu", (3, 3), 2.0, 0.5, ["different_params"]),  # 参数扩展
+])
+def test_normal_basic(dtype: torch.dtype, 
+                     device: str, 
+                     shape: Tuple[int, ...], 
+                     mean: float, 
+                     std: float,
+                     flags: List[str]) -> None:
+    """测试 normal_ 函数的基础功能
+    
+    验证正态分布初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. 不全为零（对于非零标准差）
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 创建输入张量
+    tensor = torch.empty(shape, dtype=dtype, device=device)
+    
+    # 保存原始张量引用（用于验证原地修改）
+    original_tensor_id = id(tensor)
+    
+    # 调用初始化函数
+    result = init.normal_(tensor, mean=mean, std=std)
+    
+    # 验证原地修改
+    assert id(result) == original_tensor_id, "normal_ 应该原地修改张量"
+    
+    # weak 断言：基本属性验证
+    assert_tensor_properties(result, shape, dtype, "normal_基础测试")
+    
+    # weak 断言：不全为零（对于非零标准差）
+    if std > 0:
+        assert_not_all_zero(result, "normal_基础测试")
+    
+    # 验证张量确实被修改了（不是全零或全NaN）
+    assert torch.isfinite(result).any(), "张量应该包含有限值"
+    
+    # 验证没有异常值（绝对值过大）
+    # 对于正态分布，值应该在合理范围内（mean ± 5*std）
+    expected_max_abs = abs(mean) + 5.0 * std
+    max_abs_value = torch.abs(result).max().item()
+    assert max_abs_value < expected_max_abs, \
+        f"正态分布值过大: {max_abs_value}，期望小于 {expected_max_abs}"
+    
+    # 验证不同参数的效果
+    if "different_params" in flags:
+        # 验证均值和标准差参数确实影响了分布
+        sample_mean = result.mean().item()
+        sample_std = result.std().item()
+        
+        # 检查样本统计量接近参数值（允许一定误差）
+        mean_error = abs(sample_mean - mean)
+        std_error = abs(sample_std - std)
+        
+        # 对于正态分布，样本统计量应该接近参数值
+        # 由于随机性，我们使用宽松的容差
+        assert mean_error < 0.5, \
+            f"样本均值 {sample_mean} 与参数均值 {mean} 相差太大: {mean_error}"
+        assert std_error < 0.3, \
+            f"样本标准差 {sample_std} 与参数标准差 {std} 相差太大: {std_error}"
+        
+        # 验证非零均值的效果
+        if mean != 0:
+            # 样本均值应该与参数均值同号
+            assert (sample_mean > 0) == (mean > 0), \
+                f"样本均值符号错误: {sample_mean} (期望与 {mean} 同号)"
+# ==== BLOCK:CASE_02 END ====
+
+
+# ==== BLOCK:CASE_03 START ====
+# constant_和ones_zeros_测试（占位）
+# ==== BLOCK:CASE_03 END ====
+
+
+# ==== BLOCK:CASE_04 START ====
+# 基础函数边界测试（占位）
+# ==== BLOCK:CASE_04 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+def test_invalid_inputs() -> None:
+    """测试非法输入场景"""
+    
+    # 测试 uniform_ 的非法输入
+    # 注意：传入None会抛出AttributeError而不是RuntimeError
+    # 因为None没有uniform_属性
+    with pytest.raises(AttributeError):
+        # 非张量输入
+        init.uniform_(None, 0, 1)
+    
+    # 测试 normal_ 的非法标准差
+    tensor = torch.empty(2, 3)
+    with pytest.raises(RuntimeError):
+        init.normal_(tensor, mean=0, std=-1)  # 负标准差
+    
+    # 测试 constant_ 的非法值
+    tensor = torch.empty(2, 3)
+    # constant_ 应该接受任何浮点值，这里测试正常情况
+    result = init.constant_(tensor, 5.0)
+    assert torch.allclose(result, torch.full_like(result, 5.0))
+
+
+def test_no_grad_context() -> None:
+    """验证初始化函数在无梯度上下文中工作"""
+    tensor = torch.empty(3, 4, requires_grad=True)
+    
+    # 保存原始梯度状态
+    original_requires_grad = tensor.requires_grad
+    
+    # 调用初始化函数
+    result = init.uniform_(tensor, 0, 1)
+    
+    # 验证梯度状态保持不变
+    assert result.requires_grad == original_requires_grad, \
+        "初始化不应该改变张量的梯度状态"
+    
+    # 验证张量被修改了
+    assert not torch.allclose(result, torch.zeros_like(result)), \
+        "张量应该被修改"
+
+
+def test_random_seed_consistency() -> None:
+    """验证随机种子的一致性"""
+    shape = (3, 4)
+    
+    # 第一次运行
+    set_random_seed(42)
+    tensor1 = torch.empty(shape)
+    result1 = init.uniform_(tensor1, 0, 1)
+    
+    # 第二次运行（相同种子）
+    set_random_seed(42)
+    tensor2 = torch.empty(shape)
+    result2 = init.uniform_(tensor2, 0, 1)
+    
+    # 验证结果相同
+    assert torch.allclose(result1, result2), \
+        "相同随机种子应该产生相同结果"
+    
+    # 第三次运行（不同种子）
+    set_random_seed(43)
+    tensor3 = torch.empty(shape)
+    result3 = init.uniform_(tensor3, 0, 1)
+    
+    # 验证结果不同（大概率）
+    assert not torch.allclose(result1, result3), \
+        "不同随机种子应该产生不同结果"
+
+
+if __name__ == "__main__":
+    # 简单的手动测试
+    print("运行G1组手动测试...")
+    
+    # 测试 uniform_
+    tensor = torch.empty(3, 4)
+    result = init.uniform_(tensor, 0, 1)
+    print(f"uniform_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 normal_
+    tensor = torch.empty(2, 5)
+    result = init.normal_(tensor, 0, 1)
+    print(f"normal_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 constant_
+    tensor = torch.empty(2, 3)
+    result = init.constant_(tensor, 5.0)
+    print(f"constant_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 ones_
+    tensor = torch.empty(2, 3)
+    result = init.ones_(tensor)
+    print(f"ones_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 zeros_
+    tensor = torch.empty(2, 3)
+    result = init.zeros_(tensor)
+    print(f"zeros_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    print("G1组所有手动测试完成！")
+# ==== BLOCK:FOOTER END ====

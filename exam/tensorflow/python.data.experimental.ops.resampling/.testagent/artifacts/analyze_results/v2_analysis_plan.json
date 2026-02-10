@@ -1,0 +1,17 @@
+{
+  "status": "成功",
+  "passed": 1,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "test_tensorflow_python_data_experimental_ops_resampling_g2.py::TestRejectionResampleG2::test_distribution_adjustment",
+      "reason": "测试通过，覆盖率缺口为注释行，无需修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

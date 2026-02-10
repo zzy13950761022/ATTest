@@ -1,0 +1,619 @@
+=== Run Tests ===
+.........FF.................F.........F..ss..                            [100%]
+=================================== FAILURES ===================================
+_________________ TestIDCTBasic.test_idct_inverse_relationship _________________
+
+self = <test_tensorflow_python_ops_signal_dct_ops.TestIDCTBasic object at 0x13d206800>
+set_random_seed = None
+
+    def test_idct_inverse_relationship(self, set_random_seed):
+        """Test that IDCT is the inverse of DCT (basic check)."""
+        # Create test signal
+        signal = create_test_signal((8,), np.float32)
+    
+        # Test for type 2/3 pair (most common)
+        # DCT type 2
+        dct_result = dct_ops.dct(signal, type=2)
+    
+        # IDCT type 3 (inverse of DCT type 2)
+        idct_result = dct_ops.idct(dct_result, type=3)
+    
+        # According to TensorFlow documentation:
+        # Without normalization, need to scale by 1/(2N) to get inverse
+        # signal ≈ idct(dct(signal)) * 0.5 / N
+        N = signal.shape[-1]
+    
+        # However, from the implementation we saw that DCT-II has a scaling factor of 2
+        # So the actual reconstruction formula might be different
+        # Let's test what scaling factor works
+    
+        # Try different scaling factors based on observed behavior
+        # From DCT test, we saw DCT of constant [1,1,1,1] gives 8.0 (2N) instead of 4.0 (N)
+        # So DCT seems to have an extra factor of 2
+    
+        # If DCT has factor 2, then IDCT might need factor 0.25/N instead of 0.5/N
+        reconstructed = idct_result * 0.25 / N
+    
+        # Check reconstruction (with tolerance for numerical errors)
+>       np.testing.assert_allclose(signal.numpy(), reconstructed.numpy(), rtol=1e-5, atol=1e-5)
+
+tests/test_tensorflow_python_ops_signal_dct_ops.py:264: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<function assert_allclose.<locals>.compare at 0x13d278c10>, array([ 0.49671414, -0.1382643 ,  0.64768857,  1.5230298 ...3.8537094e-01, 9.6234840e-01,
+       1.2051427e-01, 7.9676136e-04, 8.8441610e-01, 8.4962130e-02],
+      dtype=float32))
+kwds = {'equal_nan': True, 'err_msg': '', 'header': 'Not equal to tolerance rtol=1e-05, atol=1e-05', 'verbose': True}
+
+    @wraps(func)
+    def inner(*args, **kwds):
+        with self._recreate_cm():
+>           return func(*args, **kwds)
+E           AssertionError: 
+E           Not equal to tolerance rtol=1e-05, atol=1e-05
+E           
+E           Mismatched elements: 8 / 8 (100%)
+E           Max absolute difference: 0.6947967
+E           Max relative difference: 294.86084
+E            x: array([ 0.496714, -0.138264,  0.647689,  1.52303 , -0.234153, -0.234137,
+E                   1.579213,  0.767435], dtype=float32)
+E            y: array([5.999322e-01, 3.129236e-01, 3.853709e-01, 9.623484e-01,
+E                  1.205143e-01, 7.967614e-04, 8.844161e-01, 8.496213e-02],
+E                 dtype=float32)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/contextlib.py:79: AssertionError
+_______________ TestIDCTBasic.test_idct_with_ortho_normalization _______________
+
+self = <test_tensorflow_python_ops_signal_dct_ops.TestIDCTBasic object at 0x13d206b00>
+set_random_seed = None
+
+    def test_idct_with_ortho_normalization(self, set_random_seed):
+        """Test IDCT with orthonormal normalization."""
+        signal = create_test_signal((8,), np.float32)
+    
+        # DCT with ortho normalization
+        dct_result = dct_ops.dct(signal, type=2, norm='ortho')
+    
+        # IDCT with ortho normalization (should be exact inverse)
+        idct_result = dct_ops.idct(dct_result, type=3, norm='ortho')
+    
+        # With ortho normalization, reconstruction should be exact
+        # (up to numerical precision)
+>       np.testing.assert_allclose(signal.numpy(), idct_result.numpy(), rtol=1e-5, atol=1e-5)
+
+tests/test_tensorflow_python_ops_signal_dct_ops.py:278: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<function assert_allclose.<locals>.compare at 0x104d3e950>, array([ 0.49671414, -0.1382643 ,  0.64768857,  1.5230298 ...51 ,  0.3093148 ,  0.47257492,  1.6563536 ,  0.01282149,
+       -0.17770758,  1.6453271 ,  0.10696205], dtype=float32))
+kwds = {'equal_nan': True, 'err_msg': '', 'header': 'Not equal to tolerance rtol=1e-05, atol=1e-05', 'verbose': True}
+
+    @wraps(func)
+    def inner(*args, **kwds):
+        with self._recreate_cm():
+>           return func(*args, **kwds)
+E           AssertionError: 
+E           Not equal to tolerance rtol=1e-05, atol=1e-05
+E           
+E           Mismatched elements: 8 / 8 (100%)
+E           Max absolute difference: 0.6604727
+E           Max relative difference: 19.262566
+E            x: array([ 0.496714, -0.138264,  0.647689,  1.52303 , -0.234153, -0.234137,
+E                   1.579213,  0.767435], dtype=float32)
+E            y: array([ 0.620225,  0.309315,  0.472575,  1.656354,  0.012821, -0.177708,
+E                   1.645327,  0.106962], dtype=float32)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/contextlib.py:79: AssertionError
+_________________ TestDCTTypes.test_dct_type3_inverse_of_type2 _________________
+
+self = <test_tensorflow_python_ops_signal_dct_ops.TestDCTTypes object at 0x13d235060>
+set_random_seed = None
+
+    def test_dct_type3_inverse_of_type2(self, set_random_seed):
+        """Test that DCT type 3 is the inverse of type 2."""
+        signal = create_test_signal((8,), np.float32)
+    
+        # DCT type 2
+        dct2_result = dct_ops.dct(signal, type=2)
+    
+        # DCT type 3 (inverse of type 2)
+        dct3_result = dct_ops.dct(dct2_result, type=3)
+    
+        # Need to scale to get back original signal
+        # Based on observed scaling factor of 2
+        N = signal.shape[-1]
+        reconstructed = dct3_result * 0.25 / N
+    
+        # Check reconstruction
+>       np.testing.assert_allclose(signal.numpy(), reconstructed.numpy(), rtol=1e-5, atol=1e-5)
+
+tests/test_tensorflow_python_ops_signal_dct_ops.py:545: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<function assert_allclose.<locals>.compare at 0x104d3f1c0>, array([ 0.49671414, -0.1382643 ,  0.64768857,  1.5230298 ...704, -0.06913209,  0.32384425,  0.7615148 , -0.11707667,
+       -0.11706838,  0.7896063 ,  0.3837173 ], dtype=float32))
+kwds = {'equal_nan': True, 'err_msg': '', 'header': 'Not equal to tolerance rtol=1e-05, atol=1e-05', 'verbose': True}
+
+    @wraps(func)
+    def inner(*args, **kwds):
+        with self._recreate_cm():
+>           return func(*args, **kwds)
+E           AssertionError: 
+E           Not equal to tolerance rtol=1e-05, atol=1e-05
+E           
+E           Mismatched elements: 8 / 8 (100%)
+E           Max absolute difference: 0.7896065
+E           Max relative difference: 1.0000017
+E            x: array([ 0.496714, -0.138264,  0.647689,  1.52303 , -0.234153, -0.234137,
+E                   1.579213,  0.767435], dtype=float32)
+E            y: array([ 0.248357, -0.069132,  0.323844,  0.761515, -0.117077, -0.117068,
+E                   0.789606,  0.383717], dtype=float32)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/contextlib.py:79: AssertionError
+__________ TestPrecisionCompatibility.test_dct_precision_error_bounds __________
+
+self = <test_tensorflow_python_ops_signal_dct_ops.TestPrecisionCompatibility object at 0x13d234f70>
+set_random_seed = None
+
+    def test_dct_precision_error_bounds(self, set_random_seed):
+        """Test error bounds for DCT with different precisions."""
+        # Create a well-conditioned test signal
+        # Use a smooth signal to minimize numerical issues
+        N = 16
+        n = np.arange(N, dtype=np.float64)
+        smooth_signal = np.cos(2 * np.pi * n / N) + 0.5 * np.cos(4 * np.pi * n / N)
+    
+        # Compute in float64 (reference)
+        signal_f64 = tf.constant(smooth_signal, dtype=tf.float64)
+        result_f64 = dct_ops.dct(signal_f64, type=2, norm='ortho')
+    
+        # Compute in float32
+        signal_f32 = tf.constant(smooth_signal.astype(np.float32), dtype=tf.float32)
+        result_f32 = dct_ops.dct(signal_f32, type=2, norm='ortho')
+    
+        # Convert both to float64 for comparison
+        result_f32_as_f64 = tf.cast(result_f32, tf.float64).numpy()
+        result_f64_np = result_f64.numpy()
+    
+        # Calculate relative error
+        rel_error = np.abs(result_f32_as_f64 - result_f64_np) / (np.abs(result_f64_np) + 1e-10)
+    
+        # Most elements should have relative error < 1e-6
+        # (float32 has about 7 decimal digits of precision)
+>       assert np.median(rel_error) < 1e-6
+E       assert 2.4925451701560663e-06 < 1e-06
+E        +  where 2.4925451701560663e-06 = <function median at 0x104eb1070>(array([3.05310400e-06, 4.50606443e-08, 1.32595093e-07, 5.38367249e-07,\n       1.40477312e-07, 4.43169030e-07, 3.297419...1.93509899e-06, 2.75266387e+02, 3.04220382e-06,\n       3.78787559e+03, 1.31882829e-05, 7.43132683e+03, 8.77875395e-05]))
+E        +    where <function median at 0x104eb1070> = np.median
+
+tests/test_tensorflow_python_ops_signal_dct_ops.py:715: AssertionError
+=============================== warnings summary ===============================
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO_DIM = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27: DeprecationWarning: Call to deprecated create function EnumDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _DATATYPE = _descriptor.EnumDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO_DTYPEANDSHAPE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _VARIANTTENSORDATAPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _ATTRVALUE_LISTVALUE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19: DeprecationWarning: the imp module is deprecated in favour of importlib and slated for removal in Python 3.12; see the module's documentation for alternative uses
+    import imp
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+tests/test_tensorflow_python_ops_signal_dct_ops.py     349     51     48      6    84%   36-39, 43-64, 68-89, 133->exit, 343->exit, 347-348, 450-455, 473, 504->exit, 579, 718, 764-774, 779-784
+------------------------------------------------------------------------------------------------
+TOTAL                                                  349     51     48      6    84%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_tensorflow_python_ops_signal_dct_ops.py::TestIDCTBasic::test_idct_inverse_relationship
+FAILED tests/test_tensorflow_python_ops_signal_dct_ops.py::TestIDCTBasic::test_idct_with_ortho_normalization
+FAILED tests/test_tensorflow_python_ops_signal_dct_ops.py::TestDCTTypes::test_dct_type3_inverse_of_type2
+FAILED tests/test_tensorflow_python_ops_signal_dct_ops.py::TestPrecisionCompatibility::test_dct_precision_error_bounds
+4 failed, 39 passed, 2 skipped, 103 warnings in 2.03s
+
+Error: exit 1

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_special_math_ops.py::test_einsum_invalid_equation",
+      "block_id": "FOOTER",
+      "error_type": "Failed: DID NOT RAISE <class 'ValueError'>",
+      "action": "adjust_assertion",
+      "note": "测试断言错误：einsum('ij,jk->ik', a, b) 未抛出ValueError，因为方程与维度匹配"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败完全重复：test_einsum_invalid_equation在相同位置失败"
+}

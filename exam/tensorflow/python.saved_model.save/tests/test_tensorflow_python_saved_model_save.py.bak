@@ -1,0 +1,445 @@
+"""
+Test cases for tensorflow.python.saved_model.save
+"""
+import os
+import tempfile
+import shutil
+from unittest import mock
+import pytest
+import tensorflow as tf
+# Note: We use tf.saved_model.save directly instead of importing from tensorflow.python.saved_model
+# because tensorflow.python is not a public API in TensorFlow 2.x
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for tensorflow.python.saved_model.save
+"""
+import os
+import tempfile
+import shutil
+from unittest import mock
+import pytest
+import tensorflow as tf
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test output."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    # Cleanup after test
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def assert_directory_created(export_dir):
+    """Weak assertion: check if directory was created."""
+    assert os.path.exists(export_dir), f"Export directory {export_dir} was not created"
+
+
+def assert_saved_model_pb_exists(export_dir):
+    """Weak assertion: check if saved_model.pb exists."""
+    saved_model_path = os.path.join(export_dir, "saved_model.pb")
+    assert os.path.exists(saved_model_path), f"saved_model.pb not found in {export_dir}"
+
+
+def assert_no_exception(func, *args, **kwargs):
+    """Weak assertion: function should not raise exception."""
+    try:
+        func(*args, **kwargs)
+    except Exception as e:
+        pytest.fail(f"Function raised unexpected exception: {e}")
+
+
+def assert_exception_raised(func, *args, error_type=None, **kwargs):
+    """Weak assertion: function should raise exception of given type."""
+    with pytest.raises(error_type) as exc_info:
+        func(*args, **kwargs)
+    return exc_info
+
+
+def assert_return_none(func, *args, **kwargs):
+    """Weak assertion: function should return None."""
+    result = func(*args, **kwargs)
+    assert result is None, f"Expected None, got {result}"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+def test_basic_tf_module_save(temp_dir):
+    """TC-01: 基本tf.Module对象保存"""
+    # Arrange
+    export_dir = os.path.join(temp_dir, "test_save_01")
+    
+    # Create a simple tf.Module object
+    class SimpleModule(tf.Module):
+        def __init__(self):
+            super().__init__()
+    
+    obj = SimpleModule()
+    
+    # Mock internal functions to avoid actual file I/O
+    # Use the actual module path from the save module
+    # Note: We need to mock the actual function in the tensorflow.python.saved_model.save module
+    with mock.patch('tensorflow.python.saved_model.save.save_and_return_nodes') as mock_save, \
+         mock.patch('tensorflow.python.saved_model.builder_impl.SavedModelBuilder') as mock_builder, \
+         mock.patch('os.makedirs') as mock_makedirs:
+        
+        # Configure mocks
+        mock_save.return_value = None
+        mock_builder_instance = mock.MagicMock()
+        mock_builder.return_value = mock_builder_instance
+        mock_builder_instance.save.return_value = None
+        
+        # Act
+        result = tf.saved_model.save(obj, export_dir)
+        
+        # Assert (weak assertions)
+        # 1. no_exception
+        assert_no_exception(tf.saved_model.save, obj, export_dir)
+        
+        # 2. directory_created
+        mock_makedirs.assert_called_once_with(export_dir, exist_ok=True)
+        
+        # 3. saved_model_pb_exists - mocked through builder.save()
+        mock_builder_instance.save.assert_called_once()
+        
+        # 4. return_none
+        assert_return_none(tf.saved_model.save, obj, export_dir)
+        
+        # Verify mock calls
+        mock_save.assert_called_once()
+        assert mock_save.call_args[0][0] == obj
+        assert mock_save.call_args[0][1] == export_dir
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+def test_tf_module_with_tf_function(temp_dir):
+    """TC-02: 带@tf.function方法的模型保存"""
+    # Arrange
+    export_dir = os.path.join(temp_dir, "test_save_02")
+    
+    # Create a tf.Module with @tf.function method
+    class ModuleWithFunction(tf.Module):
+        def __init__(self):
+            super().__init__()
+        
+        @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.float32)])
+        def add(self, x):
+            return x + x
+    
+    obj = ModuleWithFunction()
+    
+    # Mock internal functions
+    # Use the actual module paths from tensorflow.python.saved_model
+    with mock.patch('tensorflow.python.saved_model.save.save_and_return_nodes') as mock_save, \
+         mock.patch('tensorflow.python.saved_model.function_serialization') as mock_func_serialization, \
+         mock.patch('tensorflow.python.saved_model.signature_serialization') as mock_sig_serialization, \
+         mock.patch('os.makedirs') as mock_makedirs:
+        
+        # Configure mocks
+        mock_save.return_value = None
+        mock_makedirs.return_value = None
+        
+        # Mock function serialization
+        mock_serialized_function = mock.MagicMock()
+        mock_func_serialization.serialize_concrete_function.return_value = mock_serialized_function
+        
+        # Mock signature serialization
+        mock_signature_def = mock.MagicMock()
+        mock_sig_serialization.function_signature_to_signature_def.return_value = mock_signature_def
+        
+        # Act
+        result = tf.saved_model.save(obj, export_dir)
+        
+        # Assert (weak assertions)
+        # 1. no_exception
+        assert_no_exception(tf.saved_model.save, obj, export_dir)
+        
+        # 2. directory_created
+        mock_makedirs.assert_called_once_with(export_dir, exist_ok=True)
+        
+        # 3. saved_model_pb_exists - implied by save_and_return_nodes call
+        mock_save.assert_called_once()
+        
+        # 4. function_serialized
+        # Verify that function serialization was attempted
+        # The actual serialization happens inside save_and_return_nodes,
+        # but we can verify the function exists on the object
+        assert hasattr(obj, 'add')
+        assert callable(obj.add)
+        
+        # Verify mock calls
+        call_args = mock_save.call_args
+        assert call_args[0][0] == obj
+        assert call_args[0][1] == export_dir
+        assert call_args[0][2] is None  # signatures (auto-detected)
+        assert call_args[0][3] is None  # options
+        
+        # Verify return value
+        assert result is None
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+def test_explicit_signatures_parameter(temp_dir):
+    """TC-03: 显式signatures参数传递"""
+    # Arrange
+    export_dir = os.path.join(temp_dir, "test_save_03")
+    
+    # Create a tf.Module with methods
+    class ModuleWithMethods(tf.Module):
+        def __init__(self):
+            super().__init__()
+        
+        @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.float32)])
+        def serving_default(self, x):
+            return x * 2.0
+        
+        @tf.function(input_signature=[tf.TensorSpec(shape=[2, 3], dtype=tf.float32)])
+        def custom(self, x):
+            return tf.reduce_sum(x)
+    
+    obj = ModuleWithMethods()
+    
+    # Create signatures dictionary
+    signatures = {
+        "serving_default": obj.serving_default,
+        "custom": obj.custom
+    }
+    
+    # Mock internal functions
+    # Use the actual module paths from tensorflow.python.saved_model
+    with mock.patch('tensorflow.python.saved_model.save.save_and_return_nodes') as mock_save, \
+         mock.patch('tensorflow.python.saved_model.signature_serialization') as mock_sig_serialization, \
+         mock.patch('tensorflow.python.saved_model.function_serialization') as mock_func_serialization, \
+         mock.patch('os.makedirs') as mock_makedirs:
+        
+        # Configure mocks
+        mock_save.return_value = None
+        mock_makedirs.return_value = None
+        
+        # Mock signature serialization
+        mock_signature_def_1 = mock.MagicMock()
+        mock_signature_def_2 = mock.MagicMock()
+        mock_sig_serialization.function_signature_to_signature_def.side_effect = [
+            mock_signature_def_1, mock_signature_def_2
+        ]
+        
+        # Act
+        result = tf.saved_model.save(obj, export_dir, signatures=signatures)
+        
+        # Assert (weak assertions)
+        # 1. no_exception
+        assert_no_exception(tf.saved_model.save, obj, export_dir, signatures=signatures)
+        
+        # 2. directory_created
+        mock_makedirs.assert_called_once_with(export_dir, exist_ok=True)
+        
+        # 3. signatures_processed
+        mock_save.assert_called_once()
+        
+        # 4. multiple_signatures
+        # Verify that signatures parameter was passed correctly
+        call_args = mock_save.call_args
+        assert call_args[0][2] == signatures  # signatures parameter
+        
+        # Verify the signatures dictionary structure
+        assert isinstance(signatures, dict)
+        assert "serving_default" in signatures
+        assert "custom" in signatures
+        assert len(signatures) == 2
+        
+        # Verify return value
+        assert result is None
+        
+        # Verify that both functions are callable
+        assert callable(signatures["serving_default"])
+        assert callable(signatures["custom"])
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+def test_trackable_object_with_variables(temp_dir):
+    """TC-04: 包含变量的可追踪对象"""
+    # Arrange
+    export_dir = os.path.join(temp_dir, "test_save_04")
+    
+    # Create a tf.Module with variables
+    class ModuleWithVariables(tf.Module):
+        def __init__(self):
+            super().__init__()
+            # Create 2 variables as specified in param_matrix
+            self.var1 = tf.Variable(1.0, name="variable_1")
+            self.var2 = tf.Variable([2.0, 3.0], name="variable_2")
+    
+    obj = ModuleWithVariables()
+    
+    # Mock internal functions
+    # Use the actual module paths
+    with mock.patch('tensorflow.python.saved_model.save.save_and_return_nodes') as mock_save, \
+         mock.patch('tensorflow.python.saved_model.builder_impl.SavedModelBuilder') as mock_builder, \
+         mock.patch('tensorflow.python.training.tracking.util') as mock_tracking_util, \
+         mock.patch('os.makedirs') as mock_makedirs:
+        
+        # Configure mocks
+        mock_save.return_value = None
+        mock_builder_instance = mock.MagicMock()
+        mock_builder.return_value = mock_builder_instance
+        mock_builder_instance.save.return_value = None
+        
+        # Mock tracking utilities
+        mock_trackable = mock.MagicMock()
+        mock_tracking_util.list_objects.return_value = [mock_trackable]
+        
+        # Act
+        result = tf.saved_model.save(obj, export_dir)
+        
+        # Assert (weak assertions)
+        # 1. no_exception
+        assert_no_exception(tf.saved_model.save, obj, export_dir)
+        
+        # 2. directory_created
+        mock_makedirs.assert_called_once_with(export_dir, exist_ok=True)
+        
+        # 3. variables_dir_created - implied by builder.save() with variables
+        mock_builder_instance.save.assert_called_once()
+        
+        # 4. variable_files_exist - implied by the presence of variables
+        # Verify that the object has variables
+        assert hasattr(obj, 'var1')
+        assert hasattr(obj, 'var2')
+        assert isinstance(obj.var1, tf.Variable)
+        assert isinstance(obj.var2, tf.Variable)
+        assert obj.var1.shape == ()
+        assert obj.var2.shape == (2,)
+        
+        # Verify mock calls
+        mock_save.assert_called_once()
+        call_args = mock_save.call_args
+        assert call_args[0][0] == obj
+        assert call_args[0][1] == export_dir
+        assert call_args[0][2] is None  # signatures
+        assert call_args[0][3] is None  # options
+        
+        # Verify tracking utilities were used
+        mock_tracking_util.list_objects.assert_called()
+        
+        # Verify return value
+        assert result is None
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+def test_invalid_trackable_object_exception():
+    """TC-05: 无效Trackable对象异常处理"""
+    # Arrange
+    export_dir = "/tmp/test_save_05"
+    
+    # Create a non-trackable object (regular Python class)
+    class NonTrackableObject:
+        def __init__(self):
+            self.data = "not trackable"
+    
+    obj = NonTrackableObject()
+    
+    # Mock os.makedirs to verify it's not called
+    with mock.patch('os.makedirs') as mock_makedirs, \
+         mock.patch('os.path.exists') as mock_exists:
+        
+        # Configure mocks
+        mock_exists.return_value = False
+        
+        # Act & Assert (weak assertions)
+        # 1. exception_raised
+        exc_info = assert_exception_raised(
+            tf.saved_model.save, obj, export_dir, 
+            error_type=ValueError
+        )
+        
+        # 2. correct_error_type
+        assert exc_info.type == ValueError
+        
+        # 3. error_message_contains
+        error_message = str(exc_info.value).lower()
+        # Check for common error message patterns
+        assert any(keyword in error_message for keyword in 
+                  ['trackable', 'tf.module', 'checkpoint', 'not a trackable'])
+        
+        # 4. no_directory_created
+        mock_makedirs.assert_not_called()
+        
+        # Additional verification
+        # Verify that the object is indeed not trackable
+        assert not hasattr(obj, '_trackable_children')
+        assert not hasattr(obj, '_trackable_attributes')
+        
+        # Verify export_dir path format
+        assert export_dir.startswith("/tmp/")
+        assert "test_save_05" in export_dir
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test helper functions
+
+def create_simple_module():
+    """Create a simple tf.Module for testing."""
+    class SimpleTestModule(tf.Module):
+        def __init__(self, value=1.0):
+            super().__init__()
+            self.value = tf.Variable(value, name="test_variable")
+        
+        @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.float32)])
+        def double(self, x):
+            return x * 2.0
+    
+    return SimpleTestModule()
+
+
+def create_module_with_multiple_signatures():
+    """Create a tf.Module with multiple signatures for testing."""
+    class MultiSignatureModule(tf.Module):
+        def __init__(self):
+            super().__init__()
+        
+        @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.float32)])
+        def process_vector(self, x):
+            return tf.reduce_mean(x)
+        
+        @tf.function(input_signature=[
+            tf.TensorSpec(shape=[None, None], dtype=tf.float32),
+            tf.TensorSpec(shape=[], dtype=tf.bool)
+        ])
+        def process_matrix(self, x, transpose):
+            if transpose:
+                return tf.transpose(x)
+            return x
+    
+    return MultiSignatureModule()
+
+
+# Test cleanup verification
+def test_temp_dir_cleanup():
+    """Verify that temp_dir fixture cleans up after itself."""
+    import tempfile
+    import shutil
+    
+    # Create a temporary directory manually
+    temp_dir = tempfile.mkdtemp()
+    test_file = os.path.join(temp_dir, "test.txt")
+    
+    # Write a test file
+    with open(test_file, "w") as f:
+        f.write("test content")
+    
+    # Verify file exists
+    assert os.path.exists(test_file)
+    
+    # Clean up
+    shutil.rmtree(temp_dir)
+    
+    # Verify cleanup
+    assert not os.path.exists(temp_dir)
+
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

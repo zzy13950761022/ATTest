@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 4,
+  "failed": 0,
+  "errors": 2,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g2.py::TestDistributedC10DCollectiveOps::test_all_reduce_basic_operations[tensor_shape0-float32-cpu-SUM-False-2]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_process_group fixture中backend属性不存在"
+    },
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g2.py::TestDistributedC10DCollectiveOps::test_broadcast_basic_functionality[tensor_shape0-float32-cpu-0-False-2]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_process_group fixture中backend属性不存在"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

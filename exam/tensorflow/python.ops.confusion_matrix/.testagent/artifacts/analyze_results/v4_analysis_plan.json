@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 13,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_confusion_matrix.py::test_label_exceeds_num_classes_error",
+      "block_id": "CASE_08",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息关键词不匹配，实际错误消息为'labels out of bound'，需要调整断言关键词"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

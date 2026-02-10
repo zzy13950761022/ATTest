@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_adaptive_softmax_cutoffs_validation[5-30-cutoffs0-4.0-False-valid-dtype0-cpu-False]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "cutoffs 存储包含 n_classes，需要调整断言"
+    },
+    {
+      "test": "test_adaptive_softmax_invalid_parameters_g2",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "in_features=0 可能不引发异常，需要检查实现"
+    },
+    {
+      "test": "test_adaptive_softmax_log_prob_edge_cases",
+      "block_id": "FOOTER",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "非批处理输入在 log_softmax 时 dim 参数错误"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

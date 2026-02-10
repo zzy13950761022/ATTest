@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_parameters_to_vector_empty_iterable",
+      "block_id": "CASE_05",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "parameters_to_vector函数处理空迭代器时抛出RuntimeError，需要正确处理空输入"
+    },
+    {
+      "test": "test_vector_to_parameters_non_tensor_input",
+      "block_id": "CASE_07",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "vector_to_parameters函数处理非张量参数时抛出AttributeError，需要添加类型检查"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

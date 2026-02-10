@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_graphdef_import",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "导入操作缺少'import/'前缀，需调整断言或修复测试逻辑"
+    },
+    {
+      "test": "test_import_with_input_map",
+      "block_id": "CASE_02",
+      "error_type": "NotImplementedError",
+      "action": "fix_dependency",
+      "note": "TensorFlow 2.x eager模式下不支持_as_tf_output，需修改测试避免使用input_map"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_import_with_return_elements",
+      "reason": "错误类型重复（AssertionError关于前缀问题），跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

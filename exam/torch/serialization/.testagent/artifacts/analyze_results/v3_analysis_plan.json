@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_serialization_edge.py::test_weights_only_safety_mode[unsafe_object-True-False-None]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "本地类无法被pickle，需要修改UnsafeClass定义方式"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

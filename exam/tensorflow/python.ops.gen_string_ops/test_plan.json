@@ -1,0 +1,236 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_string_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_string_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_string_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "as_string 基本数值转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "as_string",
+          "input_type": "int32",
+          "input_values": [1, 2, 3, 4],
+          "precision": -1,
+          "scientific": false,
+          "shortest": false,
+          "width": -1,
+          "fill": "",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_string", "basic_conversion"],
+        "strong": ["exact_string_match", "precision_control", "edge_cases"]
+      },
+      "oracle": "manual_string_conversion",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "decode_base64/encode_base64 编解码",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "encode_base64",
+          "input_strings": ["hello", "world"],
+          "pad": false
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_string", "roundtrip_identity"],
+        "strong": ["exact_base64_encoding", "padding_handling", "unicode_support"]
+      },
+      "oracle": "python_base64_module",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "regex_replace 正则替换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "regex_replace",
+          "input": ["hello world", "test string"],
+          "pattern": "world",
+          "rewrite": "universe",
+          "replace_global": true
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_string", "basic_replacement"],
+        "strong": ["regex_pattern_matching", "global_replace", "special_chars"]
+      },
+      "oracle": "python_re_module",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "string_split 分割操作",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_split",
+          "input": ["a,b,c", "x,y,z"],
+          "sep": ",",
+          "skip_empty": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_structure", "basic_split", "skip_empty_handling"],
+        "strong": ["exact_token_match", "edge_separators", "empty_inputs"]
+      },
+      "oracle": "python_string_split",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "unicode_decode/encode 编码转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "unicode_encode",
+          "input_codepoints": [72, 101, 108, 108, 111],
+          "encoding": "UTF-8",
+          "errors": "strict"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_string", "basic_encoding"],
+        "strong": ["roundtrip_identity", "error_handling", "multi_encoding_support"]
+      },
+      "oracle": "python_unicode_handling",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "as_string",
+        "input_type": "float32",
+        "input_values": [3.14159, 2.71828],
+        "precision": 2,
+        "scientific": false,
+        "shortest": false,
+        "width": -1,
+        "fill": "",
+        "name": null
+      },
+      "note": "浮点数精度控制扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "as_string",
+        "input_type": "bool",
+        "input_values": [true, false, true],
+        "precision": -1,
+        "scientific": false,
+        "shortest": false,
+        "width": -1,
+        "fill": "",
+        "name": null
+      },
+      "note": "布尔值转换扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "decode_base64",
+        "input_strings": ["aGVsbG8=", "d29ybGQ="],
+        "pad": false
+      },
+      "note": "解码功能扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "regex_replace",
+        "input": ["test123", "456test"],
+        "pattern": "\\d+",
+        "rewrite": "NUM",
+        "replace_global": true
+      },
+      "note": "数字正则替换扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "string_split",
+        "input": ["a::b::c", "x::y::z"],
+        "sep": "::",
+        "skip_empty": false
+      },
+      "note": "多字符分隔符扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": []
+}

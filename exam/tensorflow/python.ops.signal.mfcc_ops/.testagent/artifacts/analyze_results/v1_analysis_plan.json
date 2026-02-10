@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_functionality[dtype0-shape0-40-2-flags0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "TensorFlow实现与NumPy参考实现不匹配，需要检查DCT实现或HTK缩放"
+    },
+    {
+      "test": "test_data_type_validation[dtype0-shape0-20-1-flags0]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "相对误差过大，需要调整容差或检查实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_data_type_validation[dtype1-shape1-1024-1-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

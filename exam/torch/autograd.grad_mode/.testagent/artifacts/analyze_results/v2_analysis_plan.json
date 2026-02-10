@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_autograd_grad_mode_g2.py::test_inference_mode_basic[cpu-dtype0-True]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "inference_mode(mode=True)下创建的张量requires_grad应为False但实际为True，需要修复mock实现或测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

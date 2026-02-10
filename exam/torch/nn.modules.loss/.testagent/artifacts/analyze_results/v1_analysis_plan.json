@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_loss_g1.py::TestLossFunctionsG1::test_invalid_reduction_parameter",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "无效reduction参数未抛出ValueError，需要检查PyTorch实际行为"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_loss_g1.py::TestLossFunctionsG1::test_shape_mismatch_errors",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "形状不匹配错误消息不包含'shape'，需要调整正则表达式匹配实际错误消息"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

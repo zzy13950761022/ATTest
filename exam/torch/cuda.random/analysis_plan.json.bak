@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 52,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_cuda_random_cuda_unavailable.py::TestTorchCudaRandomCudaUnavailable::test_get_rng_state_all_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "get_rng_state_all在CUDA不可用时未抛出AssertionError，需要检查_lazy_init调用逻辑"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_invalid_device_index_cuda_unavailable",
+      "block_id": "CASE_04",
+      "error_type": "RuntimeError",
+      "action": "adjust_assertion",
+      "note": "set_rng_state在CUDA不可用时对无效设备索引抛出RuntimeError而非无异常，需要调整测试预期"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_multi_device_batch_management_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "get_rng_state_all在CUDA不可用时未抛出AssertionError，与第一个失败相同"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_get_rng_state_all_cuda_unavailable",
+      "reason": "错误类型重复，与第一个失败相同，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

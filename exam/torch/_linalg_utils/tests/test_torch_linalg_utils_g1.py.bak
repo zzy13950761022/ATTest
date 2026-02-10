@@ -1,0 +1,378 @@
+import math
+import pytest
+import torch
+from torch._linalg_utils import (
+    matmul, bform, qform, symeig, basis,
+    conjugate, transpose, transjugate, get_floating_dtype,
+    matrix_rank, solve, lstsq, eig
+)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+
+def setup_module(module):
+    """Setup module-level fixtures"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+
+def teardown_module(module):
+    """Cleanup module-level fixtures"""
+    pass
+
+
+@pytest.fixture
+def random_seed():
+    """Fixture to set random seed for each test"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+    return 42
+
+
+def create_dense_matrix(shape, dtype=torch.float32, device='cpu'):
+    """Create a dense matrix with random values"""
+    return torch.randn(*shape, dtype=dtype, device=device)
+
+
+def create_sparse_matrix(shape, dtype=torch.float32, device='cpu', density=0.3):
+    """Create a sparse matrix with random values"""
+    # Create a dense matrix and convert to sparse
+    dense = torch.randn(*shape, dtype=dtype, device=device)
+    # Randomly zero out some elements to create sparsity
+    mask = torch.rand(*shape, device=device) < density
+    sparse = dense * mask
+    return sparse.to_sparse()
+
+
+def assert_tensor_equal(actual, expected, rtol=1e-6, atol=1e-6):
+    """Assert two tensors are equal within tolerance"""
+    assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} != {expected.shape}"
+    assert actual.dtype == expected.dtype, f"Dtype mismatch: {actual.dtype} != {expected.dtype}"
+    assert torch.allclose(actual, expected, rtol=rtol, atol=atol), "Tensor values not close"
+
+
+def assert_tensor_finite(tensor):
+    """Assert tensor contains only finite values"""
+    assert torch.isfinite(tensor).all(), "Tensor contains non-finite values"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# matmul基本功能测试
+@pytest.mark.parametrize("A_type,dtype,device,shape_A,shape_B,flags", [
+    # Base case from test plan
+    ("dense", torch.float32, "cpu", [3, 4], [4, 5], []),
+    # Parameter extensions
+    ("dense", torch.float64, "cpu", [5, 3], [3, 2], []),
+    ("dense", torch.float32, "cuda", [3, 4], [4, 5], []),
+])
+def test_matmul_basic(A_type, dtype, device, shape_A, shape_B, flags, random_seed):
+    """Test basic matmul functionality with dense matrices"""
+    # Skip CUDA tests if device not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA device not available")
+    
+    # Create test matrices
+    if A_type == "dense":
+        A = create_dense_matrix(shape_A, dtype=dtype, device=device)
+    else:
+        A = create_sparse_matrix(shape_A, dtype=dtype, device=device)
+    
+    B = create_dense_matrix(shape_B, dtype=dtype, device=device)
+    
+    # Call matmul function
+    result = matmul(A, B)
+    
+    # Weak assertions (epoch 1)
+    # 1. Shape assertion
+    expected_shape = (shape_A[0], shape_B[1])
+    assert result.shape == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+    
+    # 2. Dtype assertion
+    assert result.dtype == dtype, f"Expected dtype {dtype}, got {result.dtype}"
+    
+    # 3. Finite values assertion
+    assert torch.isfinite(result).all(), "Result contains non-finite values"
+    
+    # 4. Basic property: matmul with identity matrix
+    if shape_A[1] == shape_B[0]:  # Only test if dimensions are compatible
+        # Create identity matrix
+        identity = torch.eye(shape_A[1], dtype=dtype, device=device)
+        result_with_identity = matmul(A, identity)
+        # A * I should be approximately equal to A
+        assert torch.allclose(result_with_identity, A, rtol=1e-6, atol=1e-6), \
+            "matmul(A, I) should equal A"
+    
+    # Note: Strong assertions (approx_equal, matmul_identity) are deferred to later epochs
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# matmul稀疏矩阵测试
+@pytest.mark.parametrize("A_type,dtype,device,shape_A,shape_B,flags", [
+    # Base case from test plan
+    ("sparse", torch.float32, "cpu", [3, 4], [4, 5], []),
+])
+def test_matmul_sparse(A_type, dtype, device, shape_A, shape_B, flags, random_seed):
+    """Test matmul functionality with sparse matrices"""
+    # Skip CUDA tests if device not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA device not available")
+    
+    # Create sparse matrix A
+    A_sparse = create_sparse_matrix(shape_A, dtype=dtype, device=device)
+    # Create dense version for comparison
+    A_dense = A_sparse.to_dense()
+    
+    # Create dense matrix B
+    B = create_dense_matrix(shape_B, dtype=dtype, device=device)
+    
+    # Call matmul with sparse A
+    result_sparse = matmul(A_sparse, B)
+    
+    # Call matmul with dense A (for comparison)
+    result_dense = matmul(A_dense, B)
+    
+    # Weak assertions (epoch 1)
+    # 1. Shape assertion
+    expected_shape = (shape_A[0], shape_B[1])
+    assert result_sparse.shape == expected_shape, f"Expected shape {expected_shape}, got {result_sparse.shape}"
+    
+    # 2. Dtype assertion
+    assert result_sparse.dtype == dtype, f"Expected dtype {dtype}, got {result_sparse.dtype}"
+    
+    # 3. Finite values assertion
+    assert torch.isfinite(result_sparse).all(), "Result contains non-finite values"
+    
+    # 4. Sparse-dense equivalence (basic check)
+    # The results should be approximately equal
+    assert torch.allclose(result_sparse, result_dense, rtol=1e-6, atol=1e-6), \
+        "Sparse and dense matmul results should be approximately equal"
+    
+    # Test with None as A (should return B)
+    result_none = matmul(None, B)
+    assert_tensor_equal(result_none, B)
+    
+    # Note: Strong assertions (approx_equal, sparse_dense_equivalence) are deferred to later epochs
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# bform双线性形式测试
+@pytest.mark.parametrize("dtype,device,shape_X,shape_A,shape_Y,flags", [
+    # Base case from test plan
+    (torch.float32, "cpu", [3, 2], [3, 4], [4, 2], []),
+])
+def test_bform_bilinear(dtype, device, shape_X, shape_A, shape_Y, flags, random_seed):
+    """Test bilinear form function bform(X, A, Y) = X^T A Y"""
+    # Skip CUDA tests if device not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA device not available")
+    
+    # Create test matrices
+    X = create_dense_matrix(shape_X, dtype=dtype, device=device)
+    A = create_dense_matrix(shape_A, dtype=dtype, device=device)
+    Y = create_dense_matrix(shape_Y, dtype=dtype, device=device)
+    
+    # Call bform function
+    result = bform(X, A, Y)
+    
+    # Weak assertions (epoch 2)
+    # 1. Shape assertion
+    # bform(X, A, Y) = X^T A Y, where X: m×k, A: m×n, Y: n×l
+    # X^T: k×m, A: m×n, Y: n×l
+    # Result shape should be: k×l
+    expected_shape = (shape_X[1], shape_Y[1])
+    assert result.shape == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+    
+    # 2. Dtype assertion
+    assert result.dtype == dtype, f"Expected dtype {dtype}, got {result.dtype}"
+    
+    # 3. Finite values assertion
+    assert torch.isfinite(result).all(), "Result contains non-finite values"
+    
+    # 4. Manual calculation verification (basic property)
+    # Compute X^T A Y manually using torch operations
+    X_T = torch.transpose(X, 0, 1)
+    AY = torch.matmul(A, Y)
+    expected = torch.matmul(X_T, AY)
+    
+    # Check that result matches manual calculation
+    assert torch.allclose(result, expected, rtol=1e-6, atol=1e-6), \
+        "bform result should match manual calculation X^T A Y"
+    
+    # Test with A = None (should return X^T Y according to implementation)
+    result_none = bform(X, None, Y)
+    # According to implementation: bform(X, None, Y) = matmul(transpose(X), matmul(None, Y))
+    # matmul(None, Y) returns Y, so result = matmul(transpose(X), Y)
+    expected_none = torch.matmul(torch.transpose(X, 0, 1), Y)
+    assert torch.allclose(result_none, expected_none, rtol=1e-6, atol=1e-6), \
+        f"bform with A=None should return X^T Y, got shape {result_none.shape}, expected {expected_none.shape}"
+    
+    # Test bilinear property: bform is linear in each argument
+    # For scalar α, bform(αX, A, Y) = α * bform(X, A, Y)
+    alpha = 2.0
+    X_scaled = alpha * X
+    result_scaled = bform(X_scaled, A, Y)
+    expected_scaled = alpha * result
+    assert torch.allclose(result_scaled, expected_scaled, rtol=1e-6, atol=1e-6), \
+        "bform should be linear in first argument"
+    
+    # Note: Strong assertions (approx_equal, bilinear_property) are deferred to later epochs
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# qform二次形式测试
+@pytest.mark.parametrize("dtype,device,shape_A,shape_S,flags", [
+    # Base case from test plan
+    (torch.float32, "cpu", [3, 3], [3, 2], []),
+])
+def test_qform_quadratic(dtype, device, shape_A, shape_S, flags, random_seed):
+    """Test quadratic form function qform(A, S) = S^T A S"""
+    # Skip CUDA tests if device not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA device not available")
+    
+    # Create test matrices
+    # For quadratic form, A should be square matrix
+    A = create_dense_matrix(shape_A, dtype=dtype, device=device)
+    S = create_dense_matrix(shape_S, dtype=dtype, device=device)
+    
+    # Call qform function
+    result = qform(A, S)
+    
+    # Weak assertions (epoch 2)
+    # 1. Shape assertion
+    # qform(A, S) = S^T A S, where A: n×n, S: n×k
+    # S^T: k×n, A: n×n, S: n×k
+    # Result shape should be: k×k (symmetric matrix)
+    expected_shape = (shape_S[1], shape_S[1])
+    assert result.shape == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+    
+    # 2. Dtype assertion
+    assert result.dtype == dtype, f"Expected dtype {dtype}, got {result.dtype}"
+    
+    # 3. Finite values assertion
+    assert torch.isfinite(result).all(), "Result contains non-finite values"
+    
+    # 4. Manual calculation verification (basic property)
+    # Compute S^T A S manually using torch operations
+    S_T = torch.transpose(S, 0, 1)
+    AS = torch.matmul(A, S)
+    expected = torch.matmul(S_T, AS)
+    
+    # Check that result matches manual calculation
+    assert torch.allclose(result, expected, rtol=1e-6, atol=1e-6), \
+        "qform result should match manual calculation S^T A S"
+    
+    # Test with A = None (should return zeros)
+    result_none = qform(None, S)
+    expected_none = torch.zeros(expected_shape, dtype=dtype, device=device)
+    assert torch.allclose(result_none, expected_none, rtol=1e-6, atol=1e-6), \
+        "qform with A=None should return zeros"
+    
+    # Test quadratic property: qform is quadratic in S
+    # For scalar α, qform(A, αS) = α^2 * qform(A, S)
+    alpha = 2.0
+    S_scaled = alpha * S
+    result_scaled = qform(A, S_scaled)
+    expected_scaled = (alpha * alpha) * result
+    assert torch.allclose(result_scaled, expected_scaled, rtol=1e-6, atol=1e-6), \
+        "qform should be quadratic in S"
+    
+    # Test symmetry: qform(A, S) should be symmetric when A is symmetric
+    # Make A symmetric for this test
+    A_sym = 0.5 * (A + torch.transpose(A, 0, 1))
+    result_sym = qform(A_sym, S)
+    # Check that result is symmetric: result == result^T
+    result_sym_T = torch.transpose(result_sym, 0, 1)
+    assert torch.allclose(result_sym, result_sym_T, rtol=1e-6, atol=1e-6), \
+        "qform with symmetric A should produce symmetric result"
+    
+    # Note: Strong assertions (approx_equal, quadratic_property) are deferred to later epochs
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# symeig对称矩阵特征值 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# basis正交基生成CPU (DEFERRED - placeholder)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# basis正交基生成CUDA (DEFERRED - placeholder)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# symeig特征值排序测试 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# conjugate复数与非复数处理 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# get_floating_dtype类型映射 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# 已弃用函数异常测试 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# transpose和transjugate测试 (DEFERRED - placeholder)
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test functions and cleanup
+
+def test_matmul_edge_cases():
+    """Test edge cases for matmul function"""
+    # Test with scalar (1x1 matrices)
+    A = torch.tensor([[2.0]], dtype=torch.float32)
+    B = torch.tensor([[3.0]], dtype=torch.float32)
+    result = matmul(A, B)
+    expected = torch.tensor([[6.0]], dtype=torch.float32)
+    assert_tensor_equal(result, expected)
+    
+    # Test with empty matrices
+    A_empty = torch.tensor([], dtype=torch.float32).reshape(0, 3)
+    B_empty = torch.tensor([], dtype=torch.float32).reshape(3, 0)
+    result_empty = matmul(A_empty, B_empty)
+    expected_empty = torch.zeros((0, 0), dtype=torch.float32)
+    assert_tensor_equal(result_empty, expected_empty)
+    
+    # Test with 1D tensors (should work if reshaped appropriately)
+    A_1d = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32)
+    B_1d = torch.tensor([4.0, 5.0, 6.0], dtype=torch.float32)
+    # Reshape to 2D for matmul
+    A_2d = A_1d.unsqueeze(0)  # shape: [1, 3]
+    B_2d = B_1d.unsqueeze(1)  # shape: [3, 1]
+    result_1d = matmul(A_2d, B_2d)
+    expected_1d = torch.tensor([[32.0]], dtype=torch.float32)  # 1*4 + 2*5 + 3*6 = 32
+    assert_tensor_equal(result_1d, expected_1d)
+
+
+def test_matmul_invalid_inputs():
+    """Test matmul with invalid inputs"""
+    # Test with non-tensor A (should raise TypeError)
+    A = [[1, 2], [3, 4]]  # Python list, not tensor
+    B = torch.tensor([[1, 0], [0, 1]], dtype=torch.float32)
+    
+    with pytest.raises(TypeError):
+        matmul(A, B)
+    
+    # Test with non-tensor B (should raise TypeError)
+    A = torch.tensor([[1, 2], [3, 4]], dtype=torch.float32)
+    B = [[1, 0], [0, 1]]  # Python list, not tensor
+    
+    with pytest.raises(TypeError):
+        matmul(A, B)
+    
+    # Test with incompatible dimensions
+    A = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.float32)  # 2x3
+    B = torch.tensor([[1, 2], [3, 4]], dtype=torch.float32)  # 2x2 (incompatible)
+    
+    with pytest.raises(RuntimeError):
+        matmul(A, B)
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,151 @@
+=== Run Tests ===
+.F.F.                                                                    [100%]
+================================== FAILURES ===================================
+______ test_forward_compatibility_horizon_context_manager[2023-3-15-30] _______
+
+year = 2023, month = 3, day = 15, env_delta = 30, mock_env_var = None
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,env_delta",
+        [
+            (2023, 12, 1, 0),  # Modified: future date instead of past date
+            (2023, 3, 15, 30),  # Extension: future date with positive delta
+        ]
+    )
+    def test_forward_compatibility_horizon_context_manager(
+        year, month, day, env_delta, mock_env_var, mock_global_state
+    ):
+        """
+        Test basic functionality of forward_compatibility_horizon context manager.
+    
+        Weak assertions:
+        1. Context manager is usable
+        2. Modifies global state when entering (for future dates)
+        3. Restores state when exiting
+        4. No exceptions raised
+        """
+        # Save original state
+        original_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+    
+        # Mock environment variable if delta is specified
+        if env_delta != 0:
+            with mock.patch.dict(os.environ, {
+                "TF_FORWARD_COMPATIBILITY_DELTA_DAYS": str(env_delta)
+            }):
+                # Reinitialize module with new environment variable
+                compat._update_forward_compatibility_date_number()
+    
+                # Test context manager
+                with compat.forward_compatibility_horizon(year, month, day):
+                    # Check that state was modified
+                    new_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+                    assert new_state != original_state, "State should be modified inside context"
+    
+                    # Calculate expected date number
+                    expected_date = datetime.date(year, month, day)
+                    expected_number = _date_to_date_number(
+                        expected_date.year, expected_date.month, expected_date.day
+                    )
+                    assert new_state == expected_number, "State should match specified date"
+        else:
+            # Test context manager without environment variable
+            with compat.forward_compatibility_horizon(year, month, day):
+                # Check that state was modified
+                new_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+                assert new_state != original_state, "State should be modified inside context"
+    
+                # Calculate expected date number
+                expected_date = datetime.date(year, month, day)
+                expected_number = _date_to_date_number(
+                    expected_date.year, expected_date.month, expected_date.day
+                )
+                assert new_state == expected_number, "State should match specified date"
+    
+        # Check that state was restored after context exit
+        restored_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+>       assert restored_state == original_state, "State should be restored after context exit"
+E       AssertionError: State should be restored after context exit
+E       assert 1035316 == 1035157
+
+tests\test_tensorflow_python_compat_compat_g2.py:112: AssertionError
+_ test_environment_variable_impact[2023-12-1--7-forward_compatibility_horizon] _
+
+year = 2023, month = 12, day = 1, env_delta = -7
+test_type = 'forward_compatibility_horizon', mock_env_var = None
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,env_delta,test_type",
+        [
+            (2023, 12, 1, 7, "forward_compatible"),  # Modified: future date instead of past
+            (2023, 12, 1, -7, "forward_compatibility_horizon"),  # Modified: future date instead of past
+            (2023, 12, 1, 0, "both"),  # Modified: future date instead of past
+        ]
+    )
+    def test_environment_variable_impact(
+        year, month, day, env_delta, test_type, mock_env_var, mock_global_state
+    ):
+        """
+        Test that environment variable TF_FORWARD_COMPATIBILITY_DELTA_DAYS
+        affects the base date calculation.
+    
+        Weak assertions:
+        1. Environment variable affects results
+        2. Different function types are affected
+        3. No exceptions raised
+        """
+        # Set environment variable
+        with mock.patch.dict(os.environ, {
+            "TF_FORWARD_COMPATIBILITY_DELTA_DAYS": str(env_delta)
+        }):
+            # Reinitialize module with environment variable
+            compat._update_forward_compatibility_date_number()
+    
+            if test_type == "forward_compatible" or test_type == "both":
+                # Test forward_compatible function
+                result_with_env = compat.forward_compatible(year, month, day)
+                assert isinstance(result_with_env, bool), "Result should be boolean"
+    
+            if test_type == "forward_compatibility_horizon" or test_type == "both":
+                # Test forward_compatibility_horizon context manager
+                original_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+    
+                with compat.forward_compatibility_horizon(year, month, day):
+                    new_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+                    # For future dates, state should be modified
+                    assert new_state != original_state, "State should be modified for future dates"
+    
+                    # Calculate expected date (without environment variable adjustment in context)
+                    expected_date = datetime.date(year, month, day)
+                    expected_number = _date_to_date_number(
+                        expected_date.year, expected_date.month, expected_date.day
+                    )
+                    assert new_state == expected_number, "State should match specified date"
+    
+                # State should be restored
+                restored_state = compat._FORWARD_COMPATIBILITY_DATE_NUMBER
+>               assert restored_state == original_state, "State should be restored"
+E               AssertionError: State should be restored
+E               assert 1036161 == 1035157
+
+tests\test_tensorflow_python_compat_compat_g2.py:167: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:compat.py:55 Trying to set the forward compatibility date to the past date 2021-12-14. This will be ignored by TensorFlow.
+WARNING  tensorflow:compat.py:55 Trying to set the forward compatibility date to the past date 2021-12-14. This will be ignored by TensorFlow.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+test_behavior.py                                      27     27      0      0     0%   1-39
+tests\test_tensorflow_python_compat_compat_g2.py      59      0      6      0   100%
+----------------------------------------------------------------------------------------------
+TOTAL                                                 86     27      6      0    71%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_compat_compat_g2.py::test_forward_compatibility_horizon_context_manager[2023-3-15-30]
+FAILED tests\test_tensorflow_python_compat_compat_g2.py::test_environment_variable_impact[2023-12-1--7-forward_compatibility_horizon]
+2 failed, 3 passed in 1.54s
+
+Error: exit 1

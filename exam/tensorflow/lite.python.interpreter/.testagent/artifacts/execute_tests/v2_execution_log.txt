@@ -1,0 +1,58 @@
+=== Run Tests ===
+E....                                                                    [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of test_signature_runner_basic_functionality[signed_model-serving_default-1] _
+
+thing = <module 'tensorflow._api.v2.lite' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\_api\\v2\\lite\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.lite.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow._api.v2.lite' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_interpreter_with_signatures():
+        """Fixture providing a mocked Interpreter with signatures."""
+>       with mock.patch('tensorflow.lite.python.interpreter.Interpreter') as mock_cls:
+
+tests\test_tensorflow_lite_python_interpreter_g2.py:90: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow._api.v2.lite' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\_api\\v2\\lite\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.lite.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow._api.v2.lite' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests\test_tensorflow_lite_python_interpreter_g2.py     162    117     32      1    24%   17-54, 84-85, 92-109, 114-116, 120-123, 127-132, 153-279, 319, 323
+-------------------------------------------------------------------------------------------------
+TOTAL                                                   162    117     32      1    24%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_lite_python_interpreter_g2.py::test_signature_runner_basic_functionality[signed_model-serving_default-1]
+4 passed, 1 error in 1.62s
+
+Error: exit 1

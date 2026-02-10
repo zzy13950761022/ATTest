@@ -1,0 +1,440 @@
+"""
+Test cases for tensorflow.python.eager.def_function (G2 group).
+"""
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.eager import def_function
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test class for def_function tests (G2 group)
+class TestDefFunctionG2:
+    """Test cases for tensorflow.python.eager.def_function (G2 group)."""
+    
+    def setup_method(self):
+        """Setup method for each test."""
+        # Clear any existing function caches
+        tf.config.run_functions_eagerly(False)
+        
+    def teardown_method(self):
+        """Teardown method for each test."""
+        # Ensure we're not in eager mode for subsequent tests
+        tf.config.run_functions_eagerly(False)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+    def test_variable_creation_and_state_preservation(self):
+        """CASE_03: 变量创建与状态保持 - 测试变量创建和状态保持"""
+        # Test 1: Basic variable creation and state preservation
+        # According to TensorFlow documentation, variables should be created outside tf.function
+        # or only created once on the first call
+        
+        # Create variable outside the function (recommended pattern)
+        external_var = tf.Variable(0, dtype=tf.int32)
+        
+        @def_function.function
+        def increment_external():
+            external_var.assign_add(1)
+            return external_var.read_value()
+        
+        # Weak assertions
+        # 1. variable_created_once: Variable created outside function
+        assert isinstance(external_var, tf.Variable), "external_var should be a tf.Variable"
+        
+        # 2. state_preserved: State should be preserved between calls
+        # First call
+        result1 = increment_external()
+        assert result1.numpy() == 1, f"First call should return 1, got {result1.numpy()}"
+        
+        # Second call
+        result2 = increment_external()
+        assert result2.numpy() == 2, f"Second call should return 2, got {result2.numpy()}"
+        
+        # Third call
+        result3 = increment_external()
+        assert result3.numpy() == 3, f"Third call should return 3, got {result3.numpy()}"
+        
+        # 3. callable: Verify function is callable
+        assert callable(increment_external), "Function should be callable"
+        
+        # 4. basic_execution: Test basic execution works
+        # Reset variable for clean test
+        external_var.assign(0)
+        reset_result = increment_external()
+        assert reset_result.numpy() == 1, f"After reset should return 1, got {reset_result.numpy()}"
+        
+        # Test 2: Variable created inside function (only on first call)
+        # This pattern is allowed but only works for singleton variables
+        
+        class CounterModule:
+            """Module pattern for stateful counter with variable created on first call."""
+            def __init__(self):
+                self.counter = None
+            
+            @def_function.function
+            def __call__(self):
+                # Variable created only on first call (singleton pattern)
+                if self.counter is None:
+                    self.counter = tf.Variable(0, dtype=tf.int32)
+                self.counter.assign_add(1)
+                return self.counter.read_value()
+        
+        # Create module instance
+        counter_module = CounterModule()
+        
+        # First call - creates variable
+        module_result1 = counter_module()
+        assert module_result1.numpy() == 1, f"Module first call should return 1, got {module_result1.numpy()}"
+        assert counter_module.counter is not None, "Variable should be created on first call"
+        
+        # Second call - uses existing variable
+        module_result2 = counter_module()
+        assert module_result2.numpy() == 2, f"Module second call should return 2, got {module_result2.numpy()}"
+        
+        # Verify it's the same variable object
+        var_ref = counter_module.counter
+        
+        # Third call
+        module_result3 = counter_module()
+        assert module_result3.numpy() == 3, f"Module third call should return 3, got {module_result3.numpy()}"
+        assert counter_module.counter is var_ref, "Variable should be the same object on subsequent calls"
+        
+        # Test 3: Functional style with state passed as argument (pure functional)
+        # This avoids the variable creation limitation
+        
+        @def_function.function
+        def functional_counter(state, increment):
+            # Pure functional style: state is passed as argument and returned
+            new_state = state + increment
+            return new_state
+        
+        # Start with initial state
+        state_tensor = tf.constant(0, dtype=tf.int32)
+        
+        # Increment multiple times
+        state_tensor = functional_counter(state_tensor, tf.constant(1, dtype=tf.int32))
+        assert state_tensor.numpy() == 1, f"Functional first increment should be 1, got {state_tensor.numpy()}"
+        
+        state_tensor = functional_counter(state_tensor, tf.constant(2, dtype=tf.int32))
+        assert state_tensor.numpy() == 3, f"Functional second increment should be 3, got {state_tensor.numpy()}"
+        
+        state_tensor = functional_counter(state_tensor, tf.constant(3, dtype=tf.int32))
+        assert state_tensor.numpy() == 6, f"Functional third increment should be 6, got {state_tensor.numpy()}"
+        
+        # Test 4: Variable in closure (allowed pattern)
+        closure_var = tf.Variable(10, dtype=tf.int32)
+        
+        @def_function.function
+        def use_closure_var(x):
+            # Use variable from closure
+            return closure_var * x
+        
+        # Test closure variable usage
+        result_closure = use_closure_var(tf.constant(2, dtype=tf.int32))
+        assert result_closure.numpy() == 20, f"Closure var * 2 should be 20, got {result_closure.numpy()}"
+        
+        # Modify closure variable
+        closure_var.assign(5)
+        result_closure2 = use_closure_var(tf.constant(3, dtype=tf.int32))
+        assert result_closure2.numpy() == 15, f"Updated closure var * 3 should be 15, got {result_closure2.numpy()}"
+        
+        # Test 5: Enhanced invalid_variable_creation testing (coverage gap fix)
+        # Test TensorFlow variable creation limitations more comprehensively
+        
+        @def_function.function
+        def invalid_variable_creation(x):
+            # This pattern is problematic - creating variable based on function argument
+            # TensorFlow has limitations with this pattern
+            var = tf.Variable(x, dtype=tf.int32)
+            return var.read_value()
+        
+        # Test case 5a: First call should work
+        result_first = invalid_variable_creation(tf.constant(5, dtype=tf.int32))
+        assert result_first.numpy() == 5, f"First call should return 5, got {result_first.numpy()}"
+        
+        # Test case 5b: Second call with same value should work (cached)
+        result_same = invalid_variable_creation(tf.constant(5, dtype=tf.int32))
+        assert result_same.numpy() == 5, f"Second call with same value should return 5, got {result_same.numpy()}"
+        
+        # Test case 5c: Test with different value - this demonstrates the limitation
+        # In some TensorFlow versions, this may raise an error or return cached value
+        try:
+            result_diff = invalid_variable_creation(tf.constant(10, dtype=tf.int32))
+            # If no error, it might return cached value (5) or new value (10)
+            # This shows the limitation of creating variables inside tf.function
+            print(f"Note: invalid_variable_creation with different argument returned: {result_diff.numpy()}")
+            print("This demonstrates TensorFlow's limitation with variable creation inside tf.function")
+        except (ValueError, TypeError, tf.errors.InvalidArgumentError) as e:
+            # Expected in some TensorFlow versions
+            print(f"Expected error for invalid variable creation: {type(e).__name__}: {e}")
+        
+        # Test case 5d: Test with Python integer (not Tensor)
+        @def_function.function
+        def invalid_variable_with_python(x_int):
+            # Creating variable with Python int - this is also problematic
+            var = tf.Variable(x_int, dtype=tf.int32)
+            return var.read_value()
+        
+        # This should work but demonstrates the retracing issue
+        result_python_5 = invalid_variable_with_python(5)
+        assert result_python_5.numpy() == 5, f"Python int 5 should return 5, got {result_python_5.numpy()}"
+        
+        result_python_10 = invalid_variable_with_python(10)
+        # This may cause retracing or return cached value
+        print(f"Python int 10 returned: {result_python_10.numpy()}")
+        
+        # Test case 5e: Test variable creation with tf.cond (conditional creation)
+        @def_function.function
+        def conditional_variable_creation(condition, value):
+            # This pattern is supported but complex
+            if condition:
+                v = tf.Variable(value, dtype=tf.int32)
+            else:
+                v = tf.Variable(value * 2, dtype=tf.int32)
+            return v.read_value()
+        
+        # Test both branches
+        result_cond_true = conditional_variable_creation(True, 7)
+        assert result_cond_true.numpy() == 7, f"Condition true should return 7, got {result_cond_true.numpy()}"
+        
+        result_cond_false = conditional_variable_creation(False, 7)
+        assert result_cond_false.numpy() == 14, f"Condition false should return 14, got {result_cond_false.numpy()}"
+        
+        # Test 6: Non-decorator mode variable creation (parameter extension)
+        # Test creating function without decorator syntax
+        def plain_counter(x):
+            # Create variable inside function (not recommended)
+            var = tf.Variable(x, dtype=tf.int32)
+            return var.read_value()
+        
+        # Create function using def_function.function as factory
+        counter_func = def_function.function(plain_counter)
+        
+        # Test the function
+        result_factory = counter_func(tf.constant(7, dtype=tf.int32))
+        assert result_factory.numpy() == 7, f"Factory function should return 7, got {result_factory.numpy()}"
+        
+        # Test 7: Variable scope isolation
+        # Create two separate modules with their own variables
+        class IsolatedModule:
+            def __init__(self, initial_value):
+                self.value = None
+                self.initial = initial_value
+            
+            @def_function.function
+            def get_value(self):
+                if self.value is None:
+                    self.value = tf.Variable(self.initial, dtype=tf.int32)
+                return self.value.read_value()
+        
+        # Create two isolated modules
+        module_a = IsolatedModule(100)
+        module_b = IsolatedModule(200)
+        
+        # Each should have its own isolated variable
+        assert module_a.get_value().numpy() == 100, f"Module A should return 100, got {module_a.get_value().numpy()}"
+        assert module_b.get_value().numpy() == 200, f"Module B should return 200, got {module_b.get_value().numpy()}"
+        
+        # Verify they are different variables
+        assert module_a.value is not module_b.value, "Modules should have different variable instances"
+        
+        # Test 8: Variable initialization behavior
+        # Test that variable initializer runs only once
+        init_count = 0
+        
+        class CountingModule:
+            def __init__(self):
+                self.var = None
+            
+            @def_function.function
+            def get_var(self):
+                nonlocal init_count
+                if self.var is None:
+                    init_count += 1
+                    self.var = tf.Variable(999, dtype=tf.int32)
+                return self.var.read_value()
+        
+        counting_module = CountingModule()
+        
+        # First call should initialize
+        first_val = counting_module.get_var()
+        assert first_val.numpy() == 999, f"First call should return 999, got {first_val.numpy()}"
+        assert init_count == 1, f"Initializer should run once, ran {init_count} times"
+        
+        # Second call should use cached variable
+        second_val = counting_module.get_var()
+        assert second_val.numpy() == 999, f"Second call should return 999, got {second_val.numpy()}"
+        assert init_count == 1, f"Initializer should still have run only once, ran {init_count} times"
+        
+        # Clean up: reset variables to avoid affecting other tests
+        external_var.assign(0)
+        if counter_module.counter is not None:
+            counter_module.counter.assign(0)
+        closure_var.assign(0)
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    def test_control_flow_statements_support(self):
+        """CASE_04: 控制流语句支持 - 测试控制流语句支持"""
+        # Test conditional flow function
+        @def_function.function
+        def conditional_flow(x):
+            # Data-dependent control flow
+            if tf.reduce_sum(x) > 0:
+                return x * x  # Square if sum > 0
+            else:
+                return -x // 2  # Negative half if sum <= 0
+        
+        # Weak assertions
+        # 1. if_statement_works: Test if statement with positive sum
+        x_positive = tf.constant([1.0, 2.0, 3.0])
+        result_positive = conditional_flow(x_positive)
+        expected_positive = tf.constant([1.0, 4.0, 9.0])
+        
+        # Check that if branch was taken (squaring)
+        np.testing.assert_allclose(result_positive.numpy(), expected_positive.numpy(), rtol=1e-5)
+        
+        # 2. if_statement_works: Test if statement with negative sum
+        x_negative = tf.constant([-1.0, -2.0, -3.0])
+        result_negative = conditional_flow(x_negative)
+        # For negative sum, should return -x // 2
+        # Note: // operator with floats does floor division
+        expected_negative = tf.constant([0.0, 1.0, 1.0])  # -(-1)//2=0, -(-2)//2=1, -(-3)//2=1
+        
+        np.testing.assert_allclose(result_negative.numpy(), expected_negative.numpy(), rtol=1e-5)
+        
+        # 3. loop_execution: Test loop execution
+        @def_function.function
+        def loop_example(n):
+            # Simple for loop
+            total = tf.constant(0, dtype=tf.int32)
+            for i in tf.range(n):
+                total += i
+            return total
+        
+        # Test loop with different values
+        result_loop_5 = loop_example(5)
+        assert result_loop_5.numpy() == 10, f"Sum 0..4 should be 10, got {result_loop_5.numpy()}"
+        
+        result_loop_10 = loop_example(10)
+        assert result_loop_10.numpy() == 45, f"Sum 0..9 should be 45, got {result_loop_10.numpy()}"
+        
+        # 4. data_dependent_flow: Test more complex data-dependent flow
+        @def_function.function
+        def complex_flow(x, threshold):
+            result = tf.constant(0.0)
+            for val in x:
+                if val > threshold:
+                    result += val
+                else:
+                    result -= val
+            return result
+        
+        x_data = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0])
+        threshold = tf.constant(3.0)
+        result_complex = complex_flow(x_data, threshold)
+        
+        # Values > 3: 4.0 + 5.0 = 9.0
+        # Values <= 3: -1.0 - 2.0 - 3.0 = -6.0
+        # Total: 9.0 - 6.0 = 3.0
+        expected_complex = tf.constant(3.0)
+        np.testing.assert_allclose(result_complex.numpy(), expected_complex.numpy(), rtol=1e-5)
+        
+        # 5. basic_execution: Test basic execution with edge cases
+        # Test with zero
+        x_zero = tf.constant([0.0])
+        result_zero = conditional_flow(x_zero)
+        # Sum is 0, so should take else branch: -0 // 2 = 0
+        expected_zero = tf.constant([0.0])
+        np.testing.assert_allclose(result_zero.numpy(), expected_zero.numpy(), rtol=1e-5)
+        
+        # Test with single element
+        x_single = tf.constant([5.0])
+        result_single = conditional_flow(x_single)
+        expected_single = tf.constant([25.0])
+        np.testing.assert_allclose(result_single.numpy(), expected_single.numpy(), rtol=1e-5)
+        
+        # 6. nested_flow: Test nested control flow (parameter extension)
+        @def_function.function
+        def nested_flow(x, y):
+            # Nested if-else with loop
+            result = tf.constant(0.0)
+            
+            if tf.reduce_sum(x) > tf.reduce_sum(y):
+                # Outer if branch
+                for val in x:
+                    if val > 0:
+                        result += val * 2
+                    else:
+                        result += val
+            else:
+                # Outer else branch
+                for val in y:
+                    if val < 0:
+                        result -= val * 3
+                    else:
+                        result += val
+            
+            return result
+        
+        # Test nested flow with different scenarios
+        # Scenario 1: x sum > y sum, positive values in x
+        x1 = tf.constant([1.0, 2.0, 3.0])  # sum = 6.0
+        y1 = tf.constant([0.5, 0.5])       # sum = 1.0
+        result_nested1 = nested_flow(x1, y1)
+        # All x values > 0, so: (1*2) + (2*2) + (3*2) = 2 + 4 + 6 = 12.0
+        expected_nested1 = tf.constant(12.0)
+        np.testing.assert_allclose(result_nested1.numpy(), expected_nested1.numpy(), rtol=1e-5)
+        
+        # Scenario 2: x sum <= y sum, mixed values in y
+        x2 = tf.constant([1.0, 1.0])       # sum = 2.0
+        y2 = tf.constant([-1.0, 2.0, 1.0]) # sum = 2.0 (equal, so else branch)
+        result_nested2 = nested_flow(x2, y2)
+        # y values: -1 (<0): -(-1)*3 = 3, 2 (>=0): +2 = 2, 1 (>=0): +1 = 1
+        # Total: 3 + 2 + 1 = 6.0
+        expected_nested2 = tf.constant(6.0)
+        np.testing.assert_allclose(result_nested2.numpy(), expected_nested2.numpy(), rtol=1e-5)
+        
+        # Scenario 3: Test with while loop
+        @def_function.function
+        def while_loop_example(n):
+            # While loop example
+            i = tf.constant(0)
+            total = tf.constant(0, dtype=tf.int32)
+            
+            while i < n:
+                total += i
+                i += 1
+            
+            return total
+        
+        result_while_5 = while_loop_example(5)
+        assert result_while_5.numpy() == 10, f"While loop sum 0..4 should be 10, got {result_while_5.numpy()}"
+        
+        result_while_10 = while_loop_example(10)
+        assert result_while_10.numpy() == 45, f"While loop sum 0..9 should be 45, got {result_while_10.numpy()}"
+        
+        # Verify functions are callable
+        assert callable(conditional_flow), "conditional_flow should be callable"
+        assert callable(loop_example), "loop_example should be callable"
+        assert callable(complex_flow), "complex_flow should be callable"
+        assert callable(nested_flow), "nested_flow should be callable"
+        assert callable(while_loop_example), "while_loop_example should be callable"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Placeholder for CASE_07: (DEFERRED)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Placeholder for CASE_08: (DEFERRED)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestSortOps::test_argsort_indices_correctness[float64-shape1-0-DESCENDING-False-random_uniform]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "tf.gather使用错误导致形状不匹配：重构张量形状(4,3,3) vs 期望形状(4,3)"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_resource_variable_gradient_propagation[eager-dtype0-shape0-1-linear_with_variable]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "assert_tensors_close函数中Tensor比较错误：应使用np.allclose而非assert a == b"
+    },
+    {
+      "test": "test_resource_variable_gradient_propagation[eager-dtype1-shape1-2-linear_with_variable]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "自定义梯度函数grad_fn必须接受variables参数当使用ResourceVariable时"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,597 @@
+=== Run Tests ===
+FsFFFsFsF..                                                              [100%]
+================================== FAILURES ===================================
+_ test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 1.0, output_keep_prob = 1.0
+state_keep_prob = 1.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 2, time_steps = 3, input_dim = 4, units = 5
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                1.0,
+                1.0,
+                1.0,
+                False,
+                "float32",
+                2,
+                3,
+                4,
+                5
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                0.8,
+                0.9,
+                0.7,
+                False,
+                "float64",
+                4,
+                5,
+                8,
+                10
+            )
+        ]
+    )
+    def test_dropout_wrapper_basic_functionality(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test basic DropoutWrapper functionality with various parameters."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            cell.build((None, input_dim))
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create DropoutWrapper
+        wrapper = DropoutWrapper(
+            cell=cell,
+            input_keep_prob=input_keep_prob,
+            output_keep_prob=output_keep_prob,
+            state_keep_prob=state_keep_prob,
+            variational_recurrent=variational_recurrent,
+            dtype=getattr(tf, dtype),
+            seed=42
+        )
+    
+        # Weak assertion 1: instance_check
+        assert isinstance(wrapper, DropoutWrapper)
+        assert hasattr(wrapper, 'cell')
+        assert wrapper.cell is cell
+    
+        # Weak assertion 2: call_method_exists
+        assert hasattr(wrapper, 'call')
+        assert callable(wrapper.call)
+    
+        # Generate test inputs
+        inputs = tf.random.normal((batch_size, input_dim), dtype=getattr(tf, dtype))
+        initial_state = tf.random.normal((batch_size, units), dtype=getattr(tf, dtype))
+    
+        # Weak assertion 3: output_shape
+        output, next_state = wrapper.call(inputs, initial_state)
+    
+        # Check output shape matches cell output size
+>       assert_shapes_match(output, (batch_size, units))
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+actual = <tf.Tensor: shape=(2, 5), dtype=float32, numpy=
+array([[ 0.87662196, -0.9048844 ,  0.513736  , -0.02735799,  0.13571894],
+       [ 0.9164961 , -0.7986591 ,  0.7538366 ,  0.54610866, -0.6089348 ]],
+      dtype=float32)>
+expected = (2, 5)
+
+    def assert_shapes_match(actual, expected):
+        """Assert tensor shapes match."""
+>       assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} != {expected.shape}"
+E       AttributeError: 'tuple' object has no attribute 'shape'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:51: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-20 19:53:44.643501: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+_ test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 0.0, output_keep_prob = 0.5
+state_keep_prob = 1.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 1, time_steps = 2, input_dim = 3, units = 4
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                0.0,
+                0.5,
+                1.0,
+                False,
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                1.0,
+                0.0,
+                0.0,
+                False,
+                "float32",
+                3,
+                1,
+                5,
+                5
+            )
+        ]
+    )
+    def test_dropout_wrapper_probability_boundaries(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DropoutWrapper with boundary probability values."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            cell.build((None, input_dim))
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create DropoutWrapper with fixed seed for reproducibility
+        wrapper = DropoutWrapper(
+            cell=cell,
+            input_keep_prob=input_keep_prob,
+            output_keep_prob=output_keep_prob,
+            state_keep_prob=state_keep_prob,
+            variational_recurrent=variational_recurrent,
+            dtype=getattr(tf, dtype),
+            seed=12345
+        )
+    
+        # Weak assertion 1: instance_check
+        assert isinstance(wrapper, DropoutWrapper)
+    
+        # Generate test inputs
+        inputs = tf.random.normal((batch_size, input_dim), dtype=getattr(tf, dtype))
+        initial_state = tf.random.normal((batch_size, units), dtype=getattr(tf, dtype))
+    
+        # Weak assertion 2: call_method_works
+>       output, next_state = wrapper.call(inputs, initial_state)
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:242: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\rnn_cell_wrapper_v2.py:67: in call
+    return self._call_wrapped_cell(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:271: in _call_wrapped_cell
+    inputs = self._dropout(inputs, "input", self._recurrent_input_noise,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:235: in _dropout
+    return _enumerated_map_structure_up_to(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:511: in _enumerated_map_structure_up_to
+    return nest.map_structure_up_to(shallow_structure, enumerated_fn, *args,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1425: in map_structure_up_to
+    return map_structure_with_tuple_paths_up_to(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1525: in map_structure_with_tuple_paths_up_to
+    results = [
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1525: in <listcomp>
+    results = [
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1427: in <lambda>
+    lambda _, *values: func(*values),  # Discards the path arg.
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:507: in enumerated_fn
+    r = map_fn(ix[0], *inner_args, **inner_kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:230: in dropout
+    return nn_ops.dropout_v2(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+x = <tf.Tensor: shape=(1, 3), dtype=float32, numpy=array([[ 0.00924649, -0.66206276, -0.7410269 ]], dtype=float32)>
+rate = 1.0, noise_shape = None
+uniform_sampler = functools.partial(<function random_uniform at 0x0000017CCF69CC10>, seed=2037882495)
+dummy_rng_step = <function dropout_v2.<locals>.dummy_rng_step at 0x0000017CD4B2D9D0>
+name = None, default_name = 'dropout'
+
+    def _dropout(x, rate, noise_shape, uniform_sampler, dummy_rng_step, name,
+                 default_name):
+      """Shared implementation of the various dropout functions.
+    
+      Args:
+        x: same as the namesake in `dropout_v2`.
+        rate: same as the namesake in `dropout_v2`.
+        noise_shape: same as the namesake in `dropout_v2`.
+        uniform_sampler: a callable of signature `(shape, dtype) ->
+          Tensor`, used to generate a tensor of uniformly-distributed
+          random numbers, of the given shape and dtype.
+        dummy_rng_step: a callable of signature `() -> None`, to make a
+          dummy RNG call in the fast path. In the fast path where rate is
+          0, we don't need to generate random numbers, but some samplers
+          still require you to make an RNG call, to make sure that RNG
+          states won't depend on whether the fast path is taken.
+        name: same as the namesake in `dropout_v2`.
+        default_name: a default name in case `name` is `None`.
+    
+      Returns:
+        A Tensor of the same shape and dtype of `x`.
+      """
+      with ops.name_scope(name, default_name, [x]) as name:
+        is_rate_number = isinstance(rate, numbers.Real)
+        if is_rate_number and (rate < 0 or rate >= 1):
+>         raise ValueError("`rate` must be a scalar tensor or a float in the "
+                           f"range [0, 1). Received: rate={rate}")
+E         ValueError: `rate` must be a scalar tensor or a float in the range [0, 1). Received: rate=1.0
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\nn_ops.py:5647: ValueError
+_ test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5] _
+
+cell_type = 'BasicRNNCell', input_keep_prob = 1.0, output_keep_prob = 0.0
+state_keep_prob = 0.0, variational_recurrent = False, dtype = 'float32'
+batch_size = 3, time_steps = 1, input_dim = 5, units = 5
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,"
+        "variational_recurrent,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                0.0,
+                0.5,
+                1.0,
+                False,
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                1.0,
+                0.0,
+                0.0,
+                False,
+                "float32",
+                3,
+                1,
+                5,
+                5
+            )
+        ]
+    )
+    def test_dropout_wrapper_probability_boundaries(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DropoutWrapper with boundary probability values."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            cell.build((None, input_dim))
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create DropoutWrapper with fixed seed for reproducibility
+        wrapper = DropoutWrapper(
+            cell=cell,
+            input_keep_prob=input_keep_prob,
+            output_keep_prob=output_keep_prob,
+            state_keep_prob=state_keep_prob,
+            variational_recurrent=variational_recurrent,
+            dtype=getattr(tf, dtype),
+            seed=12345
+        )
+    
+        # Weak assertion 1: instance_check
+        assert isinstance(wrapper, DropoutWrapper)
+    
+        # Generate test inputs
+        inputs = tf.random.normal((batch_size, input_dim), dtype=getattr(tf, dtype))
+        initial_state = tf.random.normal((batch_size, units), dtype=getattr(tf, dtype))
+    
+        # Weak assertion 2: call_method_works
+>       output, next_state = wrapper.call(inputs, initial_state)
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:242: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\rnn_cell_wrapper_v2.py:67: in call
+    return self._call_wrapped_cell(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:279: in _call_wrapped_cell
+    new_state = self._dropout(new_state, "state", self._recurrent_state_noise,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:235: in _dropout
+    return _enumerated_map_structure_up_to(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:511: in _enumerated_map_structure_up_to
+    return nest.map_structure_up_to(shallow_structure, enumerated_fn, *args,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1425: in map_structure_up_to
+    return map_structure_with_tuple_paths_up_to(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1525: in map_structure_with_tuple_paths_up_to
+    results = [
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1525: in <listcomp>
+    results = [
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:1427: in <lambda>
+    lambda _, *values: func(*values),  # Discards the path arg.
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:507: in enumerated_fn
+    r = map_fn(ix[0], *inner_args, **inner_kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_wrapper_impl.py:230: in dropout
+    return nn_ops.dropout_v2(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+x = <tf.Tensor: shape=(3, 5), dtype=float32, numpy=
+array([[-0.17046995,  0.5269849 , -0.73247975, -0.73081154,  0.7358062...4642603,  0.82511616],
+       [ 0.47083968,  0.43928552, -0.5833999 ,  0.30246228, -0.81556785]],
+      dtype=float32)>
+rate = 1.0, noise_shape = None
+uniform_sampler = functools.partial(<function random_uniform at 0x0000017CCF69CC10>, seed=520845463)
+dummy_rng_step = <function dropout_v2.<locals>.dummy_rng_step at 0x0000017CD4C38700>
+name = None, default_name = 'dropout'
+
+    def _dropout(x, rate, noise_shape, uniform_sampler, dummy_rng_step, name,
+                 default_name):
+      """Shared implementation of the various dropout functions.
+    
+      Args:
+        x: same as the namesake in `dropout_v2`.
+        rate: same as the namesake in `dropout_v2`.
+        noise_shape: same as the namesake in `dropout_v2`.
+        uniform_sampler: a callable of signature `(shape, dtype) ->
+          Tensor`, used to generate a tensor of uniformly-distributed
+          random numbers, of the given shape and dtype.
+        dummy_rng_step: a callable of signature `() -> None`, to make a
+          dummy RNG call in the fast path. In the fast path where rate is
+          0, we don't need to generate random numbers, but some samplers
+          still require you to make an RNG call, to make sure that RNG
+          states won't depend on whether the fast path is taken.
+        name: same as the namesake in `dropout_v2`.
+        default_name: a default name in case `name` is `None`.
+    
+      Returns:
+        A Tensor of the same shape and dtype of `x`.
+      """
+      with ops.name_scope(name, default_name, [x]) as name:
+        is_rate_number = isinstance(rate, numbers.Real)
+        if is_rate_number and (rate < 0 or rate >= 1):
+>         raise ValueError("`rate` must be a scalar tensor or a float in the "
+                           f"range [0, 1). Received: rate={rate}")
+E         ValueError: `rate` must be a scalar tensor or a float in the range [0, 1). Received: rate=1.0
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\nn_ops.py:5647: ValueError
+___ test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3] ____
+
+cell_type = 'BasicRNNCell', input_dim = 6, units = 6, dtype = 'float32'
+batch_size = 2, time_steps = 3
+
+    @pytest.mark.parametrize(
+        "cell_type,input_dim,units,dtype,batch_size,time_steps",
+        [
+            (
+                "BasicRNNCell",
+                6,
+                6,
+                "float32",
+                2,
+                3
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                8,
+                8,
+                "float64",
+                4,
+                10
+            )
+        ]
+    )
+    def test_residual_wrapper_dimension_matching(
+        cell_type,
+        input_dim,
+        units,
+        dtype,
+        batch_size,
+        time_steps
+    ):
+        """Test ResidualWrapper with matching input and output dimensions."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            cell.build((None, input_dim))
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create ResidualWrapper
+        wrapper = ResidualWrapper(cell=cell)
+    
+        # Weak assertion 1: instance_check
+        assert isinstance(wrapper, ResidualWrapper)
+        assert hasattr(wrapper, 'cell')
+        assert wrapper.cell is cell
+    
+        # Weak assertion 2: call_method_works
+        assert hasattr(wrapper, 'call')
+        assert callable(wrapper.call)
+    
+        # Generate test inputs
+        inputs = tf.random.normal((batch_size, input_dim), dtype=getattr(tf, dtype))
+        initial_state = tf.random.normal((batch_size, units), dtype=getattr(tf, dtype))
+    
+        # Call the wrapper
+        output, next_state = wrapper.call(inputs, initial_state)
+    
+        # Weak assertion 3: output_shape_match
+        # Output should have same shape as input (due to residual connection)
+>       assert_shapes_match(output, (batch_size, units))
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:376: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+actual = <tf.Tensor: shape=(2, 6), dtype=float32, numpy=
+array([[ 0.86839384, -0.08042052,  0.2289598 ,  0.49940112, -1.2613003...72898],
+       [ 0.3880432 , -1.2070706 , -0.7951948 ,  1.3934699 , -1.3879057 ,
+        -1.0178051 ]], dtype=float32)>
+expected = (2, 6)
+
+    def assert_shapes_match(actual, expected):
+        """Assert tensor shapes match."""
+>       assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} != {expected.shape}"
+E       AttributeError: 'tuple' object has no attribute 'shape'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:51: AttributeError
+__ test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4] __
+
+cell_type = 'BasicRNNCell', device = '/cpu:0', dtype = 'float32', batch_size = 1
+time_steps = 2, input_dim = 3, units = 4
+
+    @pytest.mark.parametrize(
+        "cell_type,device,dtype,batch_size,time_steps,input_dim,units",
+        [
+            (
+                "BasicRNNCell",
+                "/cpu:0",
+                "float32",
+                1,
+                2,
+                3,
+                4
+            ),
+            # Parameter extension from test_plan.json
+            (
+                "BasicRNNCell",
+                "/cpu:0",
+                "float64",
+                2,
+                4,
+                6,
+                8
+            )
+        ]
+    )
+    def test_device_wrapper_device_placement(
+        cell_type,
+        device,
+        dtype,
+        batch_size,
+        time_steps,
+        input_dim,
+        units
+    ):
+        """Test DeviceWrapper places tensors on correct device."""
+        # Skip unsupported combinations
+        if dtype == "float64" and not tf.config.list_physical_devices('GPU'):
+            pytest.skip("float64 requires GPU for full precision")
+    
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:460: TypeError
+_ test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4] _
+
+wrapper_type = 'DropoutWrapper', cell_type = 'BasicRNNCell'
+input_keep_prob = 0.6, output_keep_prob = 0.7, dtype = 'float32', units = 4
+
+    @pytest.mark.parametrize(
+        "wrapper_type,cell_type,input_keep_prob,output_keep_prob,dtype,units",
+        [
+            (
+                "DropoutWrapper",
+                "BasicRNNCell",
+                0.6,
+                0.7,
+                "float32",
+                4
+            )
+        ]
+    )
+    def test_wrapper_serialization_cycle(
+        wrapper_type,
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        dtype,
+        units
+    ):
+        """Test serialization/deserialization cycle for wrappers."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+>           cell = BasicRNNCell(units=units, dtype=getattr(tf, dtype))
+E           TypeError: __init__() missing 1 required positional argument: 'num_units'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:584: TypeError
+============================== warnings summary ===============================
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_impl.py:427: UserWarning: `tf.nn.rnn_cell.BasicRNNCell` is deprecated and will be removed in a future version. This class is equivalent as `tf.keras.layers.SimpleRNNCell`, and will be replaced by that in Tensorflow 2.0.
+    warnings.warn("`tf.nn.rnn_cell.BasicRNNCell` is deprecated and will be "
+
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\engine\base_layer.py:2220: UserWarning: `layer.add_variable` is deprecated and will be removed in a future version. Please use `layer.add_weight` method instead.
+    warnings.warn('`layer.add_variable` is deprecated and '
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                               Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py     231    147     44      6    35%   25-28, 33-36, 41-43, 47, 109, 142-167, 221, 245-308, 353, 381-415, 461-539, 586-676, 714-722, 726-727
+--------------------------------------------------------------------------------------------------------------
+TOTAL                                                                231    147     44      6    35%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]
+6 failed, 2 passed, 3 skipped, 8 warnings in 1.83s
+
+Error: exit 1

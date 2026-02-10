@@ -1,0 +1,396 @@
+"""
+Test cases for tensorflow.python.ops.ragged.ragged_factory_ops
+"""
+import math
+import pytest
+import numpy as np
+import tensorflow as tf
+from tensorflow.python.ops.ragged import ragged_factory_ops
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+
+def assert_ragged_tensor_shape(rt, expected_shape):
+    """Assert that a RaggedTensor has the expected shape."""
+    assert rt.shape.as_list() == list(expected_shape)
+
+def assert_ragged_tensor_dtype(rt, expected_dtype):
+    """Assert that a RaggedTensor has the expected dtype."""
+    assert rt.dtype == expected_dtype
+
+def assert_ragged_tensor_values(rt, expected_values):
+    """Assert that a RaggedTensor has the expected values."""
+    # Convert to numpy for comparison
+    if hasattr(rt, 'numpy'):
+        values = rt.numpy()
+    else:
+        values = rt
+    np.testing.assert_array_equal(values, expected_values)
+
+def assert_ragged_tensor_rank(rt, expected_rank):
+    """Assert that a RaggedTensor has the expected rank."""
+    assert rt.ragged_rank == expected_rank
+
+def assert_ragged_tensor_row_splits_dtype(rt, expected_dtype):
+    """Assert that a RaggedTensor's row_splits have the expected dtype."""
+    assert rt.row_splits.dtype == expected_dtype
+
+def assert_tensor_or_ragged_tensor_shape(tensor, expected_shape):
+    """Assert that a Tensor or RaggedTensor has the expected shape."""
+    assert tensor.shape.as_list() == list(expected_shape)
+
+def assert_tensor_or_ragged_tensor_dtype(tensor, expected_dtype):
+    """Assert that a Tensor or RaggedTensor has the expected dtype."""
+    assert tensor.dtype == expected_dtype
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# constant基本功能测试
+@pytest.mark.parametrize("pylist,dtype,ragged_rank,inner_shape,name,row_splits_dtype,expected_dtype", [
+    # Base case from test plan
+    ([[1, 2], [3], [4, 5, 6]], None, None, None, None, "int64", tf.int32),
+    # Parameter extensions
+    ([[1.5, 2.5], [3.5], [4.5, 5.5, 6.5]], tf.float64, None, None, "test_constant", "int64", tf.float64),
+    ([[1, 2, 3], [4, 5]], tf.int32, None, None, None, "int32", tf.int32),
+])
+def test_constant_basic_functionality(pylist, dtype, ragged_rank, inner_shape, name, row_splits_dtype, expected_dtype):
+    """Test basic functionality of ragged.constant."""
+    # Convert string dtype to tf.dtype if needed
+    if row_splits_dtype == "int32":
+        row_splits_dtype = tf.int32
+    else:
+        row_splits_dtype = tf.int64
+    
+    # Call the function
+    result = ragged_factory_ops.constant(
+        pylist=pylist,
+        dtype=dtype,
+        ragged_rank=ragged_rank,
+        inner_shape=inner_shape,
+        name=name,
+        row_splits_dtype=row_splits_dtype
+    )
+    
+    # Weak assertions (epoch 1)
+    # 1. shape_match - dynamically calculate expected shape
+    expected_rows = len(pylist)
+    assert_ragged_tensor_shape(result, (expected_rows, None))
+    
+    # 2. dtype_inferred
+    assert_ragged_tensor_dtype(result, expected_dtype)
+    
+    # 3. values_correct - check that values are correct
+    # Flatten the input list for comparison
+    flat_values = []
+    for sublist in pylist:
+        flat_values.extend(sublist)
+    
+    # Convert to numpy array for comparison
+    if hasattr(result, 'numpy'):
+        result_values = result.flat_values.numpy()
+    else:
+        result_values = result.flat_values
+    
+    np.testing.assert_array_equal(result_values, np.array(flat_values, dtype=expected_dtype.as_numpy_dtype))
+    
+    # 4. basic_property - check it's a RaggedTensor
+    assert isinstance(result, tf.RaggedTensor)
+    
+    # Additional check for row_splits_dtype
+    assert_ragged_tensor_row_splits_dtype(result, row_splits_dtype)
+    
+    # Verify row_splits values
+    expected_row_splits = [0]
+    total = 0
+    for sublist in pylist:
+        total += len(sublist)
+        expected_row_splits.append(total)
+    
+    # Check row_splits values
+    if hasattr(result, 'row_splits'):
+        row_splits = result.row_splits.numpy()
+        np.testing.assert_array_equal(row_splits, np.array(expected_row_splits, dtype=row_splits_dtype.as_numpy_dtype))
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# constant_value基本功能测试
+@pytest.mark.parametrize("pylist,dtype,ragged_rank,inner_shape,row_splits_dtype,expected_dtype", [
+    # Base case from test plan
+    ([[1.0, 2.0], [3.0], [4.0, 5.0, 6.0]], tf.float32, None, None, "int64", np.float32),
+    # Parameter extension
+    ([[1, 2], [3, 4, 5]], tf.int64, None, None, "int32", np.int64),
+])
+def test_constant_value_basic_functionality(pylist, dtype, ragged_rank, inner_shape, row_splits_dtype, expected_dtype):
+    """Test basic functionality of ragged.constant_value."""
+    # Convert string dtype to numpy dtype if needed
+    if dtype is not None:
+        dtype = dtype.as_numpy_dtype
+    
+    # Convert row_splits_dtype string to numpy dtype
+    if row_splits_dtype == "int32":
+        row_splits_dtype = np.int32
+    else:
+        row_splits_dtype = np.int64
+    
+    # Call the function
+    result = ragged_factory_ops.constant_value(
+        pylist=pylist,
+        dtype=dtype,
+        ragged_rank=ragged_rank,
+        inner_shape=inner_shape,
+        row_splits_dtype=row_splits_dtype
+    )
+    
+    # Weak assertions (epoch 1)
+    # 1. shape_match - check the structure
+    assert len(result.row_splits) == len(pylist) + 1
+    
+    # 2. dtype_specified - check values dtype
+    assert result.values.dtype == expected_dtype
+    
+    # 3. values_correct - check that values are correct
+    # Flatten the input list for comparison
+    flat_values = []
+    for sublist in pylist:
+        flat_values.extend(sublist)
+    
+    np.testing.assert_array_equal(result.values, np.array(flat_values, dtype=expected_dtype))
+    
+    # 4. basic_property - check it's a RaggedTensorValue or numpy array
+    from tensorflow.python.ops.ragged import ragged_tensor_value
+    assert isinstance(result, (ragged_tensor_value.RaggedTensorValue, np.ndarray))
+    
+    # Check row_splits dtype
+    assert result.row_splits.dtype == row_splits_dtype
+    
+    # Verify row_splits values
+    expected_row_splits = [0]
+    total = 0
+    for sublist in pylist:
+        total += len(sublist)
+        expected_row_splits.append(total)
+    
+    np.testing.assert_array_equal(result.row_splits, np.array(expected_row_splits, dtype=row_splits_dtype))
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# dtype自动推断测试
+@pytest.mark.parametrize("pylist,dtype,ragged_rank,inner_shape,name,row_splits_dtype,expected_dtype", [
+    # Base case from test plan - integers should infer to int32
+    ([[1, 2], [3, 4]], None, None, None, None, "int64", tf.int32),
+    # Parameter extension - floats should infer to float32
+    ([[1.0, 2.0], [3.0, 4.0]], None, None, None, None, "int64", tf.float32),
+])
+def test_dtype_auto_inference(pylist, dtype, ragged_rank, inner_shape, name, row_splits_dtype, expected_dtype):
+    """Test automatic dtype inference in ragged.constant."""
+    # Convert string dtype to tf.dtype if needed
+    if row_splits_dtype == "int32":
+        row_splits_dtype = tf.int32
+    else:
+        row_splits_dtype = tf.int64
+    
+    # Call the function
+    result = ragged_factory_ops.constant(
+        pylist=pylist,
+        dtype=dtype,
+        ragged_rank=ragged_rank,
+        inner_shape=inner_shape,
+        name=name,
+        row_splits_dtype=row_splits_dtype
+    )
+    
+    # Weak assertions (epoch 1)
+    # 1. dtype_inferred_correctly
+    assert_ragged_tensor_dtype(result, expected_dtype)
+    
+    # 2. shape_match - dynamically calculate expected shape
+    expected_rows = len(pylist)
+    assert_ragged_tensor_shape(result, (expected_rows, None))
+    
+    # 3. basic_property
+    assert isinstance(result, tf.RaggedTensor)
+    
+    # Additional check: verify values are correct
+    flat_values = []
+    for sublist in pylist:
+        flat_values.extend(sublist)
+    
+    if hasattr(result, 'numpy'):
+        result_values = result.flat_values.numpy()
+    else:
+        result_values = result.flat_values
+    
+    np.testing.assert_array_equal(
+        result_values, 
+        np.array(flat_values, dtype=expected_dtype.as_numpy_dtype)
+    )
+    
+    # Check row_splits dtype
+    assert_ragged_tensor_row_splits_dtype(result, row_splits_dtype)
+    
+    # Verify row_splits values
+    expected_row_splits = [0]
+    total = 0
+    for sublist in pylist:
+        total += len(sublist)
+        expected_row_splits.append(total)
+    
+    if hasattr(result, 'row_splits'):
+        row_splits = result.row_splits.numpy()
+        np.testing.assert_array_equal(row_splits, np.array(expected_row_splits, dtype=row_splits_dtype.as_numpy_dtype))
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# ragged_rank参数验证
+@pytest.mark.parametrize("pylist,dtype,ragged_rank,inner_shape,name,row_splits_dtype,expected_ragged_rank", [
+    # Base case from test plan - 使用原始测试计划中的数据
+    ([[[1, 2], [3]], [[4, 5, 6]]], None, 1, None, None, "int64", 1),
+    # Parameter extension
+    ([[[1, 2], [3, 4]], [[5, 6, 7], [8, 9, 10]]], None, 2, None, None, "int64", 2),
+])
+def test_ragged_rank_parameter(pylist, dtype, ragged_rank, inner_shape, name, row_splits_dtype, expected_ragged_rank):
+    """Test ragged_rank parameter validation."""
+    # Convert string dtype to tf.dtype if needed
+    if row_splits_dtype == "int32":
+        row_splits_dtype = tf.int32
+    else:
+        row_splits_dtype = tf.int64
+    
+    # Call the function
+    result = ragged_factory_ops.constant(
+        pylist=pylist,
+        dtype=dtype,
+        ragged_rank=ragged_rank,
+        inner_shape=inner_shape,
+        name=name,
+        row_splits_dtype=row_splits_dtype
+    )
+    
+    # Weak assertions (epoch 2)
+    # 1. ragged_rank_applied
+    assert_ragged_tensor_rank(result, expected_ragged_rank)
+    
+    # 2. shape_match - dynamically calculate expected shape
+    # For ragged_rank=1, shape should be (num_outer_lists, None, inner_dim)
+    # For ragged_rank=2, shape should be (num_outer_lists, None, None)
+    if expected_ragged_rank == 1:
+        expected_rows = len(pylist)
+        # Find inner dimension from the first element
+        first_inner = pylist[0][0] if pylist and pylist[0] else []
+        inner_dim = len(first_inner) if isinstance(first_inner, (list, tuple)) else 1
+        assert_ragged_tensor_shape(result, (expected_rows, None, inner_dim))
+    else:  # expected_ragged_rank == 2
+        expected_rows = len(pylist)
+        assert_ragged_tensor_shape(result, (expected_rows, None, None))
+    
+    # 3. basic_property
+    assert isinstance(result, tf.RaggedTensor)
+    
+    # Additional check: verify values are correct
+    # For ragged_rank=1, flat_values will have inner_shape preserved
+    # For ragged_rank=2, flat_values will be flattened to 1D
+    
+    if hasattr(result, 'numpy'):
+        result_values = result.flat_values.numpy()
+    else:
+        result_values = result.flat_values
+    
+    # Determine expected dtype
+    if dtype is not None:
+        expected_dtype = dtype
+    else:
+        # Infer from first value - flatten to find first scalar
+        def find_first_scalar(lst):
+            for item in lst:
+                if isinstance(item, (list, tuple)):
+                    return find_first_scalar(item)
+                else:
+                    return item
+            return 0
+        
+        first_value = find_first_scalar(pylist)
+        if isinstance(first_value, float):
+            expected_dtype = tf.float32
+        else:
+            expected_dtype = tf.int32
+    
+    # For ragged_rank=1, we need to compare with the correct shape
+    if expected_ragged_rank == 1:
+        # Collect all inner lists
+        inner_lists = []
+        for outer in pylist:
+            for inner in outer:
+                inner_lists.append(inner)
+        
+        # Convert to numpy array with correct shape
+        expected_array = np.array(inner_lists, dtype=expected_dtype.as_numpy_dtype)
+        np.testing.assert_array_equal(result_values, expected_array)
+    else:  # ragged_rank=2
+        # Flatten completely for comparison
+        def flatten_nested(lst):
+            flat = []
+            for item in lst:
+                if isinstance(item, (list, tuple)):
+                    flat.extend(flatten_nested(item))
+                else:
+                    flat.append(item)
+            return flat
+        
+        flat_values = flatten_nested(pylist)
+        expected_array = np.array(flat_values, dtype=expected_dtype.as_numpy_dtype)
+        np.testing.assert_array_equal(result_values, expected_array)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# 错误处理-不一致嵌套深度 (DEFERRED - placeholder only)
+@pytest.mark.skip(reason="DEFERRED_SET - Will be implemented in later rounds")
+def test_error_handling_inconsistent_nesting():
+    """Test error handling for inconsistent nesting depth."""
+    pass
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and cleanup
+
+def test_constant_with_empty_lists():
+    """Test constant with empty lists."""
+    # Test with empty outer list - returns a regular Tensor, not RaggedTensor
+    result = ragged_factory_ops.constant([], dtype=tf.int32)
+    # Empty list returns a 1D tensor with shape (0,)
+    assert isinstance(result, tf.Tensor)
+    assert_tensor_or_ragged_tensor_shape(result, (0,))
+    assert_tensor_or_ragged_tensor_dtype(result, tf.int32)
+    
+    # Test with inner empty lists - this should return a RaggedTensor
+    result = ragged_factory_ops.constant([[], [], []], dtype=tf.int32)
+    assert isinstance(result, tf.RaggedTensor)
+    assert_tensor_or_ragged_tensor_shape(result, (3, None))
+    assert_tensor_or_ragged_tensor_dtype(result, tf.int32)
+    
+    # Verify row_splits for empty inner lists
+    expected_row_splits = [0, 0, 0, 0]
+    if hasattr(result, 'row_splits'):
+        row_splits = result.row_splits.numpy()
+        np.testing.assert_array_equal(row_splits, np.array(expected_row_splits, dtype=np.int64))
+
+def test_constant_with_single_element():
+    """Test constant with single element lists."""
+    result = ragged_factory_ops.constant([[1]], dtype=tf.int32)
+    assert isinstance(result, tf.RaggedTensor)
+    assert_tensor_or_ragged_tensor_shape(result, (1, None))
+    assert_tensor_or_ragged_tensor_dtype(result, tf.int32)
+    
+    if hasattr(result, 'numpy'):
+        result_values = result.flat_values.numpy()
+    else:
+        result_values = result.flat_values
+    
+    np.testing.assert_array_equal(result_values, np.array([1], dtype=np.int32))
+
+def test_constant_with_tuple_input():
+    """Test constant with tuple input instead of list."""
+    result = ragged_factory_ops.constant(((1, 2), (3,)), dtype=tf.int32)
+    assert isinstance(result, tf.RaggedTensor)
+    assert_tensor_or_ragged_tensor_shape(result, (2, None))
+    assert_tensor_or_ragged_tensor_dtype(result, tf.int32)
+# ==== BLOCK:FOOTER END ====

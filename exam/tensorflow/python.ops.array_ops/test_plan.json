@@ -1,0 +1,296 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.array_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_array_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_array_ops_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_ops_array_ops_g1.py",
+      "G2": "tests/test_tensorflow_python_ops_array_ops_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心形状操作组",
+      "entrypoints": ["reshape", "expand_dims"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试张量形状变换和维度操作"
+    },
+    {
+      "group_id": "G2",
+      "title": "张量组合操作组",
+      "entrypoints": ["concat", "stack", "unstack"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_06"],
+      "note": "测试张量连接、堆叠和解堆叠操作"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "reshape基本形状变换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func": "reshape",
+          "input_shape": [2, 3],
+          "target_shape": [6],
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "element_count", "basic_property"],
+        "strong": ["exact_values", "memory_layout"]
+      },
+      "oracle": "numpy.reshape",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.reshape",
+        "tensorflow.python.framework.tensor_util.maybe_set_static_shape",
+        "tensorflow.python.framework.ops.convert_to_tensor"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "expand_dims维度插入",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func": "expand_dims",
+          "input_shape": [10, 10, 3],
+          "axis": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "rank_increase", "basic_property"],
+        "strong": ["exact_values", "dimension_position"]
+      },
+      "oracle": "numpy.expand_dims",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.expand_dims",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.Tensor"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "concat张量连接",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func": "concat",
+          "input_shapes": [[2, 3], [2, 3]],
+          "axis": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "concatenation_dim", "basic_property"],
+        "strong": ["exact_values", "order_preservation"]
+      },
+      "oracle": "numpy.concatenate",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.concat_v2",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.constant_op.constant"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "stack张量堆叠",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func": "stack",
+          "input_shapes": [[2, 3], [2, 3]],
+          "axis": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "new_dimension", "basic_property"],
+        "strong": ["exact_values", "stack_order"]
+      },
+      "oracle": "numpy.stack",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.pack",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.constant_op.constant"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "reshape自动推断维度",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func": "reshape",
+          "input_shape": [2, 3, 4],
+          "target_shape": [2, -1, 2],
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": ["auto_infer"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "element_count", "inferred_dimension"],
+        "strong": ["exact_values", "inference_correctness"]
+      },
+      "oracle": "numpy.reshape",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.reshape",
+        "tensorflow.python.framework.tensor_util.maybe_set_static_shape",
+        "tensorflow.python.framework.ops.convert_to_tensor"
+      ]
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "unstack张量解堆叠",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func": "unstack",
+          "input_shape": [3, 2, 4],
+          "axis": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["output_count", "dtype", "shape_consistency", "basic_property"],
+        "strong": ["exact_values", "order_preservation"]
+      },
+      "oracle": "numpy.split",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_array_ops.unpack",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.Tensor"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "func": "reshape",
+        "input_shape": [4, 4],
+        "target_shape": [2, 8],
+        "dtype": "float64",
+        "device": "cpu",
+        "flags": []
+      },
+      "note": "作为参数扩展：不同形状和数据类型"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "func": "expand_dims",
+        "input_shape": [5],
+        "axis": -1,
+        "dtype": "int32",
+        "device": "cpu",
+        "flags": []
+      },
+      "note": "作为参数扩展：负轴索引和整数类型"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "func": "concat",
+        "input_shapes": [[3, 2], [3, 2]],
+        "axis": 1,
+        "dtype": "float64",
+        "device": "cpu",
+        "flags": []
+      },
+      "note": "作为参数扩展：不同连接轴和数据类型"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06"]
+}

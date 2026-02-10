@@ -1,0 +1,212 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.ragged.ragged_concat_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_ragged_ragged_concat_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_ragged_ragged_concat_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "concat基本功能-混合张量沿axis=0连接",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "concat",
+          "values_type": "mixed_ragged_dense",
+          "axis": 0,
+          "dtype": "int32",
+          "shapes": [[[1, 2], [3]], [[4, 5, 6]]],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "ragged_structure", "basic_connectivity"],
+        "strong": ["exact_values", "row_splits_correctness", "nested_structure"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "stack基本功能-混合张量沿axis=1堆叠",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stack",
+          "values_type": "mixed_ragged_dense",
+          "axis": 1,
+          "dtype": "float32",
+          "shapes": [[[1.0, 2.0], [3.0]], [[4.0], [5.0, 6.0]]],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["rank_increase", "shape_match", "dtype_match", "ragged_structure"],
+        "strong": ["exact_values", "stack_dimension_correct", "nested_alignment"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "边界处理-空values列表异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "concat",
+          "values_type": "empty_list",
+          "axis": 0,
+          "dtype": "int32",
+          "shapes": [],
+          "flags": ["expect_error"]
+        },
+        {
+          "function": "stack",
+          "values_type": "empty_list",
+          "axis": 0,
+          "dtype": "float32",
+          "shapes": [],
+          "flags": ["expect_error"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "error_message_contains"],
+        "strong": ["specific_error_code", "exception_context"]
+      },
+      "oracle": "ValueError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "错误路径-输入张量秩不匹配",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "concat",
+          "values_type": "mixed_rank",
+          "axis": 0,
+          "dtype": "int32",
+          "shapes": [[[1, 2], [3]], [1, 2, 3]],
+          "flags": ["expect_error"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "error_message_contains"],
+        "strong": ["specific_error_code", "rank_mismatch_details"]
+      },
+      "oracle": "ValueError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "负axis值处理-有静态已知秩",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "concat",
+          "values_type": "ragged_only",
+          "axis": -1,
+          "dtype": "int32",
+          "shapes": [[[1, 2], [3, 4, 5]], [[6], [7, 8]]],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "negative_axis_handled"],
+        "strong": ["axis_normalization", "equivalent_positive_axis"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "concat",
+        "values_type": "dense_only",
+        "axis": 1,
+        "dtype": "float64",
+        "shapes": [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+        "flags": []
+      },
+      "note": "作为参数扩展：全规则张量沿axis=1连接"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "stack",
+        "values_type": "ragged_only",
+        "axis": 0,
+        "dtype": "int64",
+        "shapes": [[[1, 2, 3], [4]], [[5, 6], [7, 8, 9, 10]]],
+        "flags": []
+      },
+      "note": "作为参数扩展：全不规则张量沿axis=0堆叠"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "function": "stack",
+        "values_type": "mixed_ragged_dense",
+        "axis": -2,
+        "dtype": "float32",
+        "shapes": [[[1.0], [2.0, 3.0]], [[4.0, 5.0], [6.0]]],
+        "flags": []
+      },
+      "note": "作为参数扩展：负axis值堆叠操作"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

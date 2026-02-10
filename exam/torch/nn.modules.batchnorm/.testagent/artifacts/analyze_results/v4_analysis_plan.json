@@ -1,0 +1,67 @@
+{
+  "status": "未完全通过",
+  "passed": 15,
+  "failed": 11,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g1.py::test_batchnorm3d_basic_functionality",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "eval模式下running_mean检查逻辑错误，需要修正断言条件"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g1.py::test_lazy_batchnorm1d_delayed_initialization",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "LazyBatchNorm1d初始num_features应为0而非-1，需修正预期值"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g1.py::test_invalid_num_features",
+      "block_id": "FOOTER",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "num_features=-1会抛出RuntimeError，需修正测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g2.py::test_invalid_num_features",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g2.py::test_invalid_eps",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g2.py::test_invalid_momentum",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_g2.py::test_input_dimension_validation",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_new.py::test_invalid_num_features",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_new.py::test_invalid_eps",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_new.py::test_invalid_momentum",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_batchnorm_new.py::test_input_dimension_validation",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

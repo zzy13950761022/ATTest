@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_dense_sparse_mixed_operations[set_union-dtype0-shape_a0-shape_b0-True-dense_sparse]",
+      "block_id": "CASE_02",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "形状不匹配：[2,5] vs [2,6]，密集-稀疏混合操作结果形状计算错误"
+    },
+    {
+      "test": "test_set_size_computation[set_size-dtype0-shape0-True-0.5]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "集合大小计算错误：位置(0,): 计算值2 != 期望值3，set_size实现逻辑错误"
+    },
+    {
+      "test": "test_set_difference_direction_control[set_difference-dtype1-shape_a1-shape_b1-False-True-sparse_sparse]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "差集结果不正确 (aminusb=False)，差集方向控制实现错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_sparse_tensor_basic_set_operations[set_union-dtype2-shape_a2-shape_b2-True-sparse_sparse]",
+      "reason": "错误类型重复（InvalidArgumentError），与CASE_01相同问题，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

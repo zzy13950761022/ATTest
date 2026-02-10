@@ -1,0 +1,221 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.util.compat",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_util_compat.py",
+    "all_pattern": "tests/test_tensorflow_python_util_compat.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "as_bytes 基本字符串转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_type": "str",
+          "input_value": "hello world",
+          "encoding": "utf-8",
+          "expected_type": "bytes"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "value_equality", "encoding_correctness"],
+        "strong": ["performance_boundary", "memory_usage", "edge_cases"]
+      },
+      "oracle": "bytes('hello world', 'utf-8')",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "as_text 字节串解码",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_type": "bytes",
+          "input_value": "hello world",
+          "encoding": "utf-8",
+          "expected_type": "str"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "value_equality", "decoding_correctness"],
+        "strong": ["unicode_handling", "error_recovery", "performance"]
+      },
+      "oracle": "str(b'hello world', 'utf-8')",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "无效编码触发 LookupError",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "as_bytes",
+          "input_value": "test",
+          "encoding": "invalid-encoding",
+          "expected_exception": "LookupError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message", "function_call"],
+        "strong": ["exception_details", "error_context", "recovery_path"]
+      },
+      "oracle": "codecs.lookup('invalid-encoding') raises LookupError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["codecs.lookup"]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "path_to_str 路径转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path_type": "PathLike",
+          "path_value": "/tmp/test",
+          "expected_type": "str",
+          "expected_value": "/tmp/test"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "value_equality", "path_normalization"],
+        "strong": ["cross_platform", "special_chars", "performance"]
+      },
+      "oracle": "os.fspath(Path('/tmp/test'))",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["os.fspath"]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "as_str_any 类型转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_type": "int",
+          "input_value": 123,
+          "expected_type": "str",
+          "expected_value": "123"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "value_equality", "conversion_correctness"],
+        "strong": ["complex_types", "custom_objects", "recursion_depth"]
+      },
+      "oracle": "str(123)",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "input_type": "bytearray",
+        "input_value": "test data",
+        "encoding": "ascii",
+        "expected_type": "bytes"
+      },
+      "note": "bytearray 类型输入测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "input_type": "str",
+        "input_value": "",
+        "encoding": "utf-8",
+        "expected_type": "bytes"
+      },
+      "note": "空字符串边界测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "input_type": "bytes",
+        "input_value": "",
+        "encoding": "utf-8",
+        "expected_type": "str"
+      },
+      "note": "空字节串边界测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "input_type": "bytes",
+        "input_value": "特殊字符",
+        "encoding": "utf-8",
+        "expected_type": "str"
+      },
+      "note": "特殊 Unicode 字符测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "as_text",
+        "input_value": "test",
+        "encoding": "invalid-encoding",
+        "expected_exception": "LookupError"
+      },
+      "note": "as_text 无效编码测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

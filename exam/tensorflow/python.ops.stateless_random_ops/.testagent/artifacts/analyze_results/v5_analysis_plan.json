@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 24,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_06",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加测试覆盖int64类型的边界检查（行173-175）"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加测试覆盖int64类型的边界检查（行344）"
+    },
+    {
+      "test": "coverage_gap_3",
+      "block_id": "CASE_08",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加测试覆盖assert_finite_check函数（行43-45）"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

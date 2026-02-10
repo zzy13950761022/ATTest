@@ -1,0 +1,59 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 9,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_proto_serialization[test_params0]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.eager.execute.execute不存在"
+    },
+    {
+      "test": "test_batch_processing_validation[test_params0]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.eager.execute.execute不存在"
+    },
+    {
+      "test": "test_repetition_count_control[test_params0]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.eager.execute.execute不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_basic_proto_serialization[test_params1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_batch_processing_validation[test_params1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_repetition_count_control[test_params1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_invalid_inputs",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_edge_cases",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_performance_baseline",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

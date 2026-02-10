@@ -1,0 +1,21 @@
+{
+  "status": "成功",
+  "passed": 10,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "CASE_04",
+      "reason": "已在测试计划中标记为deferred，当前轮次未执行"
+    },
+    {
+      "test": "CASE_05",
+      "reason": "已在测试计划中标记为deferred，当前轮次未执行"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

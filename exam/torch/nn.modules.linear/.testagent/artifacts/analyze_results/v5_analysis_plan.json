@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 18,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_linear_g1.py::test_linear_different_dtypes[8-4-True-dtype0-input_shape0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "state_dict加载后输出不匹配：max_diff=1.97e+00, max_relative_diff=3.31e+02，需要修复state_dict保存/加载逻辑"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_linear_g3.py::test_linear_invalid_inputs[5-3-True-dtype0-input_shape0]",
+      "block_id": "CASE_09",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "无效构造函数参数未抛出ValueError：Linear(in_features=0)应该抛出异常但未抛出"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

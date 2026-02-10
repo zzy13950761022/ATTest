@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLinalgImpl.test_complex_data_type_consistency",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "logdet函数对复数矩阵返回float32而不是complex64，需要调整断言或理解函数行为"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLinalgImpl.test_tridiagonal_solve_formats_compatibility",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

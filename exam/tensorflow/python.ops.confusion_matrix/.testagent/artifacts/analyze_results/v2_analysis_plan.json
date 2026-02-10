@@ -1,0 +1,43 @@
+{
+  "status": "成功",
+  "passed": 14,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_01",
+      "block_id": "CASE_06",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加错误处理测试：维度不匹配"
+    },
+    {
+      "test": "coverage_gap_02",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加错误处理测试：负标签值"
+    },
+    {
+      "test": "coverage_gap_03",
+      "block_id": "CASE_08",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "添加错误处理测试：标签超出num_classes"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap_04",
+      "reason": "权重形状不匹配错误处理，超出本轮限制"
+    },
+    {
+      "test": "coverage_gap_05",
+      "reason": "断言失败分支覆盖，超出本轮限制"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

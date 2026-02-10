@@ -1,0 +1,329 @@
+"""
+测试 torch.nn.modules.loss 模块中的核心损失函数族（G1组）
+包含：L1Loss, MSELoss, CrossEntropyLoss
+"""
+
+import math
+import warnings
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# 设置随机种子以确保可重复性
+torch.manual_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# 测试类定义和通用辅助函数
+class TestLossFunctionsG1:
+    """测试核心损失函数族（G1组）"""
+    
+    @staticmethod
+    def compute_l1_loss_manual(input_tensor, target_tensor, reduction='mean'):
+        """手动计算L1损失作为参考"""
+        diff = torch.abs(input_tensor - target_tensor)
+        if reduction == 'none':
+            return diff
+        elif reduction == 'mean':
+            return torch.mean(diff)
+        elif reduction == 'sum':
+            return torch.sum(diff)
+        else:
+            raise ValueError(f"Invalid reduction: {reduction}")
+    
+    @staticmethod
+    def compute_mse_loss_manual(input_tensor, target_tensor, reduction='mean'):
+        """手动计算MSE损失作为参考"""
+        diff = input_tensor - target_tensor
+        squared = diff * diff
+        if reduction == 'none':
+            return squared
+        elif reduction == 'mean':
+            return torch.mean(squared)
+        elif reduction == 'sum':
+            return torch.sum(squared)
+        else:
+            raise ValueError(f"Invalid reduction: {reduction}")
+    
+    @staticmethod
+    def compute_cross_entropy_manual(input_tensor, target_tensor, reduction='mean'):
+        """手动计算交叉熵损失作为参考"""
+        # 对输入进行softmax
+        log_softmax = F.log_softmax(input_tensor, dim=1)
+        # 获取目标类别的log概率
+        nll_loss = -log_softmax[range(len(target_tensor)), target_tensor]
+        
+        if reduction == 'none':
+            return nll_loss
+        elif reduction == 'mean':
+            return torch.mean(nll_loss)
+        elif reduction == 'sum':
+            return torch.sum(nll_loss)
+        else:
+            raise ValueError(f"Invalid reduction: {reduction}")
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("reduction, input_shape, target_shape, dtype", [
+        ("mean", (2, 3, 4), (2, 3, 4), torch.float32),  # 基础测试用例
+        ("sum", (5, 5), (5, 5), torch.float64),         # 参数扩展：不同reduction和dtype
+        ("none", (1, 10, 10), (1, 10, 10), torch.float32),  # 参数扩展：3D形状和none reduction
+    ])
+    def test_l1loss_basic_functionality(self, reduction, input_shape, target_shape, dtype):
+        """测试L1Loss基础功能验证 (TC-01)"""
+        # 创建输入和目标张量
+        input_tensor = torch.randn(input_shape, dtype=dtype)
+        target_tensor = torch.randn(target_shape, dtype=dtype)
+        
+        # 创建损失函数实例
+        loss_fn = nn.L1Loss(reduction=reduction)
+        
+        # 计算损失
+        loss = loss_fn(input_tensor, target_tensor)
+        
+        # 手动计算参考值
+        expected_loss = self.compute_l1_loss_manual(input_tensor, target_tensor, reduction)
+        
+        # weak断言验证
+        # 1. 输出形状匹配reduction模式
+        if reduction == 'none':
+            assert loss.shape == input_shape, f"Expected shape {input_shape}, got {loss.shape}"
+        elif reduction == 'mean' or reduction == 'sum':
+            assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
+        
+        # 2. 输出数据类型正确
+        assert loss.dtype == dtype, f"Expected dtype {dtype}, got {loss.dtype}"
+        
+        # 3. 有限值检查
+        assert torch.isfinite(loss).all(), f"Loss contains non-finite values: {loss}"
+        
+        # 4. reduction正确性验证（使用容差）
+        if reduction == 'none':
+            # 对于none模式，逐元素比较
+            assert torch.allclose(loss, expected_loss, rtol=1e-5, atol=1e-5), \
+                f"Loss values don't match for reduction='none'"
+        else:
+            # 对于mean/sum模式，比较标量值
+            assert torch.allclose(loss, expected_loss, rtol=1e-5, atol=1e-5), \
+                f"Loss value doesn't match for reduction='{reduction}': expected {expected_loss}, got {loss}"
+        
+        # 5. 验证损失值非负（L1损失总是非负）
+        if reduction != 'none':
+            assert loss.item() >= 0, f"L1 loss should be non-negative, got {loss.item()}"
+        else:
+            assert torch.all(loss >= 0), f"L1 loss elements should be non-negative"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("reduction, input_shape, target_shape, dtype", [
+        ("none", (3, 2), (3, 2), torch.float32),    # reduction='none'
+        ("mean", (3, 2), (3, 2), torch.float32),    # reduction='mean'
+        ("sum", (3, 2), (3, 2), torch.float32),     # reduction='sum'
+        ("mean", (100, 50), (100, 50), torch.float32),  # 参数扩展：较大形状测试
+    ])
+    def test_mseloss_reduction_modes(self, reduction, input_shape, target_shape, dtype):
+        """测试MSELoss三种reduction模式 (TC-02)"""
+        # 创建输入和目标张量
+        input_tensor = torch.randn(input_shape, dtype=dtype)
+        target_tensor = torch.randn(target_shape, dtype=dtype)
+        
+        # 创建损失函数实例
+        loss_fn = nn.MSELoss(reduction=reduction)
+        
+        # 计算损失
+        loss = loss_fn(input_tensor, target_tensor)
+        
+        # 手动计算参考值
+        expected_loss = self.compute_mse_loss_manual(input_tensor, target_tensor, reduction)
+        
+        # weak断言验证
+        # 1. 输出形状匹配reduction模式
+        if reduction == 'none':
+            assert loss.shape == input_shape, f"Expected shape {input_shape}, got {loss.shape}"
+        elif reduction == 'mean' or reduction == 'sum':
+            assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
+        
+        # 2. 数据类型保持
+        assert loss.dtype == dtype, f"Expected dtype {dtype}, got {loss.dtype}"
+        
+        # 3. 有限值检查
+        assert torch.isfinite(loss).all(), f"Loss contains non-finite values: {loss}"
+        
+        # 4. 验证损失值非负（MSE损失总是非负）
+        if reduction != 'none':
+            assert loss.item() >= 0, f"MSE loss should be non-negative, got {loss.item()}"
+        else:
+            assert torch.all(loss >= 0), f"MSE loss elements should be non-negative"
+        
+        # 5. 数值正确性验证（使用容差）
+        if reduction == 'none':
+            # 对于none模式，逐元素比较
+            assert torch.allclose(loss, expected_loss, rtol=1e-5, atol=1e-5), \
+                f"Loss values don't match for reduction='none'"
+        else:
+            # 对于mean/sum模式，比较标量值
+            assert torch.allclose(loss, expected_loss, rtol=1e-5, atol=1e-5), \
+                f"Loss value doesn't match for reduction='{reduction}': expected {expected_loss}, got {loss}"
+        
+        # 6. 验证不同reduction模式之间的关系
+        if reduction == 'none':
+            # 验证逐元素平方差
+            diff = input_tensor - target_tensor
+            squared_diff = diff * diff
+            assert torch.allclose(loss, squared_diff, rtol=1e-5, atol=1e-5)
+        elif reduction == 'mean':
+            # 验证mean是none的平均值
+            none_loss = nn.MSELoss(reduction='none')(input_tensor, target_tensor)
+            mean_from_none = torch.mean(none_loss)
+            assert torch.allclose(loss, mean_from_none, rtol=1e-5, atol=1e-5)
+        elif reduction == 'sum':
+            # 验证sum是none的总和
+            none_loss = nn.MSELoss(reduction='none')(input_tensor, target_tensor)
+            sum_from_none = torch.sum(none_loss)
+            assert torch.allclose(loss, sum_from_none, rtol=1e-5, atol=1e-5)
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("reduction, input_shape, target_shape, dtype", [
+        ("mean", (4, 10), (4,), torch.float32),  # 基础测试用例
+    ])
+    def test_crossentropyloss_shape_compatibility(self, reduction, input_shape, target_shape, dtype):
+        """测试CrossEntropyLoss形状兼容性 (TC-03)"""
+        # 创建输入张量（logits）
+        input_tensor = torch.randn(input_shape, dtype=dtype)
+        
+        # 创建目标张量（类别索引）
+        # 对于CrossEntropyLoss，目标应该是类别索引，范围在[0, num_classes-1]
+        num_classes = input_shape[1]
+        target_tensor = torch.randint(0, num_classes, target_shape, dtype=torch.long)
+        
+        # 创建损失函数实例
+        loss_fn = nn.CrossEntropyLoss(reduction=reduction)
+        
+        # 计算损失
+        loss = loss_fn(input_tensor, target_tensor)
+        
+        # 手动计算参考值
+        expected_loss = self.compute_cross_entropy_manual(input_tensor, target_tensor, reduction)
+        
+        # weak断言验证
+        # 1. 输出形状：对于mean reduction应该是标量
+        if reduction == 'mean' or reduction == 'sum':
+            assert loss.shape == torch.Size([]), f"Expected scalar, got shape {loss.shape}"
+        elif reduction == 'none':
+            # 对于none reduction，输出形状应该与target_shape相同（除了类别维度）
+            expected_none_shape = torch.Size([input_shape[0]])
+            assert loss.shape == expected_none_shape, \
+                f"Expected shape {expected_none_shape}, got {loss.shape}"
+        
+        # 2. 输出数据类型应该是float32
+        assert loss.dtype == torch.float32, f"Expected dtype float32, got {loss.dtype}"
+        
+        # 3. 有限输出检查
+        assert torch.isfinite(loss).all(), f"Loss contains non-finite values: {loss}"
+        
+        # 4. 数值正确性验证（使用容差）
+        assert torch.allclose(loss, expected_loss, rtol=1e-5, atol=1e-5), \
+            f"Loss value doesn't match: expected {expected_loss}, got {loss}"
+        
+        # 5. 验证损失值非负（交叉熵损失总是非负）
+        if reduction != 'none':
+            assert loss.item() >= 0, f"Cross entropy loss should be non-negative, got {loss.item()}"
+        else:
+            assert torch.all(loss >= 0), f"Cross entropy loss elements should be non-negative"
+        
+        # 6. 验证输入形状兼容性
+        # 输入应该是(batch_size, num_classes, ...)的形式
+        assert input_tensor.dim() >= 2, f"Input should have at least 2 dimensions, got {input_tensor.dim()}"
+        assert input_tensor.size(1) == num_classes, \
+            f"Input second dimension should be num_classes={num_classes}, got {input_tensor.size(1)}"
+        
+        # 7. 验证目标形状兼容性
+        # 目标应该是(batch_size, ...)的形式，没有类别维度
+        assert target_tensor.dim() == input_tensor.dim() - 1, \
+            f"Target should have one less dimension than input: input dim={input_tensor.dim()}, target dim={target_tensor.dim()}"
+        assert target_tensor.size(0) == input_tensor.size(0), \
+            f"Batch size mismatch: input batch={input_tensor.size(0)}, target batch={target_tensor.size(0)}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# L1Loss弃用参数向后兼容（占位）
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# 极端形状与数值边界（占位）
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+    def test_invalid_reduction_parameter(self):
+        """测试无效reduction参数"""
+        # 根据PyTorch的_Reduction.get_enum函数，无效的reduction参数会抛出ValueError
+        with pytest.raises(ValueError, match=".*is not a valid value for reduction.*"):
+            nn.L1Loss(reduction='invalid')
+        
+        with pytest.raises(ValueError, match=".*is not a valid value for reduction.*"):
+            nn.MSELoss(reduction='wrong')
+        
+        with pytest.raises(ValueError, match=".*is not a valid value for reduction.*"):
+            nn.CrossEntropyLoss(reduction='bad')
+    
+    def test_shape_mismatch_errors(self):
+        """测试形状不匹配错误"""
+        # L1Loss形状不匹配
+        loss_fn = nn.L1Loss()
+        input_tensor = torch.randn(2, 3, 4)
+        target_tensor = torch.randn(2, 3, 5)  # 形状不匹配
+        
+        # 根据执行日志，L1Loss形状不匹配会抛出RuntimeError
+        # 错误消息是："The size of tensor a (4) must match the size of tensor b (5) at non-singleton dimension 2"
+        with pytest.raises(RuntimeError, match=".*must match.*size.*tensor.*"):
+            loss_fn(input_tensor, target_tensor)
+        
+        # MSELoss形状不匹配
+        loss_fn = nn.MSELoss()
+        
+        # MSELoss也会抛出RuntimeError
+        with pytest.raises(RuntimeError, match=".*must match.*size.*tensor.*"):
+            loss_fn(input_tensor, target_tensor)
+    
+    def test_crossentropy_invalid_targets(self):
+        """测试CrossEntropyLoss无效目标"""
+        loss_fn = nn.CrossEntropyLoss()
+        input_tensor = torch.randn(4, 10)  # 4个样本，10个类别
+        
+        # 目标索引超出范围
+        target_tensor = torch.tensor([10, 1, 2, 3], dtype=torch.long)  # 10超出范围[0,9]
+        
+        # CrossEntropyLoss应该对无效索引抛出错误
+        # 注意：具体错误类型可能因PyTorch版本而异
+        with pytest.raises((RuntimeError, IndexError)):
+            loss_fn(input_tensor, target_tensor)
+    
+    def test_loss_functions_are_callable(self):
+        """测试损失函数是可调用的"""
+        # 测试所有G1组的损失函数
+        loss_classes = [nn.L1Loss, nn.MSELoss, nn.CrossEntropyLoss]
+        
+        for loss_class in loss_classes:
+            # 创建实例
+            loss_fn = loss_class()
+            
+            # 创建测试数据
+            if loss_class == nn.CrossEntropyLoss:
+                input_tensor = torch.randn(2, 5)
+                target_tensor = torch.randint(0, 5, (2,), dtype=torch.long)
+            else:
+                input_tensor = torch.randn(2, 3)
+                target_tensor = torch.randn(2, 3)
+            
+            # 验证可调用
+            assert callable(loss_fn), f"{loss_class.__name__} should be callable"
+            
+            # 验证调用返回张量
+            result = loss_fn(input_tensor, target_tensor)
+            assert isinstance(result, torch.Tensor), \
+                f"{loss_class.__name__} should return a Tensor, got {type(result)}"
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

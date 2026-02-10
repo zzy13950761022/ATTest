@@ -1,0 +1,260 @@
+{
+  "plan_version": 2,
+  "target": "torch.utils.cpp_extension",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_utils_cpp_extension.py",
+    "all_pattern": "tests/test_torch_utils_cpp_extension_*.py",
+    "groups": {
+      "G1": "tests/test_torch_utils_cpp_extension_g1.py",
+      "G2": "tests/test_torch_utils_cpp_extension_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心编译与加载功能",
+      "entrypoints": ["load"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试基本C++扩展编译和模块加载"
+    },
+    {
+      "group_id": "G2",
+      "title": "参数组合与错误处理",
+      "entrypoints": ["load"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试参数组合、边界情况和错误处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本C++扩展编译加载",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "name": "test_extension",
+          "sources": ["test.cpp"],
+          "extra_cflags": ["-O2"],
+          "verbose": false,
+          "is_python_module": true
+        }
+      ],
+      "asserts": {
+        "weak": ["module_loaded", "module_type", "has_attributes"],
+        "strong": ["function_callable", "memory_cleanup"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "subprocess.run",
+        "importlib.import_module",
+        "tempfile.mkdtemp",
+        "os.path.exists"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "混合C++/CUDA扩展编译",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "name": "cuda_extension",
+          "sources": ["cuda.cpp", "kernel.cu"],
+          "extra_cuda_cflags": ["-O3"],
+          "with_cuda": true,
+          "verbose": true
+        }
+      ],
+      "asserts": {
+        "weak": ["module_loaded", "cuda_detected", "build_success"],
+        "strong": ["cuda_function_works", "performance_check"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "subprocess.run",
+        "importlib.import_module",
+        "torch.cuda.is_available",
+        "os.path.splitext"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "参数组合测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "name": "param_test",
+          "sources": ["test.cpp"],
+          "extra_cflags": ["-Wall", "-Wextra"],
+          "extra_include_paths": ["/usr/local/include"],
+          "build_directory": "/tmp/test_build",
+          "keep_intermediates": false
+        }
+      ],
+      "asserts": {
+        "weak": ["module_loaded", "params_applied", "directory_created"],
+        "strong": ["compiler_flags_correct", "include_paths_set"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "subprocess.run",
+        "importlib.import_module",
+        "os.makedirs",
+        "shutil.rmtree"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "无效源文件错误处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "name": "invalid_ext",
+          "sources": [],
+          "expect_error": true
+        },
+        {
+          "name": "invalid_ext",
+          "sources": ["nonexistent.cpp"],
+          "expect_error": true
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type_correct", "error_message_contains"],
+        "strong": ["clean_state_after_error", "no_side_effects"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "os.path.exists",
+        "tempfile.mkdtemp"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "单字符串sources参数",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "name": "single_source",
+          "sources": "single.cpp",
+          "extra_cflags": ["-O1"]
+        }
+      ],
+      "asserts": {
+        "weak": ["module_loaded", "string_converted", "build_success"],
+        "strong": ["identical_to_list", "type_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": true,
+      "mock_targets": [
+        "subprocess.run",
+        "importlib.import_module"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "name": "test_extension_v2",
+        "sources": ["large.cpp"],
+        "extra_cflags": ["-O3", "-march=native"],
+        "verbose": true,
+        "is_python_module": true
+      },
+      "note": "作为参数扩展：更复杂的编译器标志和verbose模式"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "name": "cuda_extension_v2",
+        "sources": ["main.cpp", "utils.cu", "kernel.cuh"],
+        "extra_cuda_cflags": ["-arch=sm_70"],
+        "with_cuda": null,
+        "verbose": false
+      },
+      "note": "作为参数扩展：多个源文件、自动CUDA检测"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Low",
+      "params": {
+        "name": "complex_params",
+        "sources": ["test.cpp"],
+        "extra_cflags": ["-std=c++17", "-fPIC"],
+        "extra_ldflags": ["-lpthread"],
+        "extra_include_paths": ["/opt/include", "/usr/include"],
+        "build_directory": null,
+        "keep_intermediates": true
+      },
+      "note": "作为参数扩展：复杂参数组合，使用默认构建目录"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

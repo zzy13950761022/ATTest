@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_distance_cosine.py::TestCosineSimilarity::test_cosine_similarity_dimension_exception",
+      "block_id": "CASE_08",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "测试逻辑错误：dim=2对2D张量(3,4)无效，应抛出异常但测试期望正常工作"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

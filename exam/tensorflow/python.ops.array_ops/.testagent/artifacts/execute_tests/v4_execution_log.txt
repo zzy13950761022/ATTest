@@ -1,0 +1,279 @@
+=== Run Tests ===
+FFFFFFF.FFFF                                                             [100%]
+================================== FAILURES ===================================
+___ test_reshape_basic_shape_transform[input_shape0-target_shape0-float32] ____
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843497676512'>, 'constant': <MagicMock name='mock.constant' id='18434...ock.convert_to_tensor' id='1843497616528'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843497664624'>, ...}
+input_shape = [2, 3], target_shape = [6], dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shape,target_shape,dtype", [
+        ([2, 3], [6], np.float32),  # 基本形状变换
+        ([4, 4], [2, 8], np.float64),  # 参数扩展：不同形状和数据类型
+    ])
+    def test_reshape_basic_shape_transform(mock_tensor_ops, input_shape, target_shape, dtype):
+        """测试reshape基本形状变换"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+        expected_values = input_values.reshape(target_shape)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:142: AttributeError
+___ test_reshape_basic_shape_transform[input_shape1-target_shape1-float64] ____
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843516081824'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843516111888'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843516065776'>, ...}
+input_shape = [4, 4], target_shape = [2, 8], dtype = <class 'numpy.float64'>
+
+    @pytest.mark.parametrize("input_shape,target_shape,dtype", [
+        ([2, 3], [6], np.float32),  # 基本形状变换
+        ([4, 4], [2, 8], np.float64),  # 参数扩展：不同形状和数据类型
+    ])
+    def test_reshape_basic_shape_transform(mock_tensor_ops, input_shape, target_shape, dtype):
+        """测试reshape基本形状变换"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+        expected_values = input_values.reshape(target_shape)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:142: AttributeError
+________ test_expand_dims_dimension_insertion[input_shape0-0-float32] _________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843516356544'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843516259632'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843516291344'>, ...}
+input_shape = [10, 10, 3], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shape,axis,dtype", [
+        ([10, 10, 3], 0, np.float32),  # 在轴0插入维度
+        ([5], -1, np.int32),  # 参数扩展：负轴索引和整数类型
+    ])
+    def test_expand_dims_dimension_insertion(mock_tensor_ops, input_shape, axis, dtype):
+        """测试expand_dims维度插入"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    
+        # 计算期望形状
+        expected_shape = list(input_shape)
+        if axis >= 0:
+            expected_shape.insert(axis, 1)
+        else:
+            expected_shape.insert(axis + len(input_shape) + 1, 1)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:191: AttributeError
+_________ test_expand_dims_dimension_insertion[input_shape1--1-int32] _________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843515849936'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843516520480'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843516454032'>, ...}
+input_shape = [5], axis = -1, dtype = <class 'numpy.int32'>
+
+    @pytest.mark.parametrize("input_shape,axis,dtype", [
+        ([10, 10, 3], 0, np.float32),  # 在轴0插入维度
+        ([5], -1, np.int32),  # 参数扩展：负轴索引和整数类型
+    ])
+    def test_expand_dims_dimension_insertion(mock_tensor_ops, input_shape, axis, dtype):
+        """测试expand_dims维度插入"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    
+        # 计算期望形状
+        expected_shape = list(input_shape)
+        if axis >= 0:
+            expected_shape.insert(axis, 1)
+        else:
+            expected_shape.insert(axis + len(input_shape) + 1, 1)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:191: AttributeError
+__________ test_concat_tensor_concatenation[input_shapes0-0-float32] __________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843515891520'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843515814960'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843515994272'>, ...}
+input_shapes = [[2, 3], [2, 3]], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0连接
+        ([[3, 2], [3, 2]], 1, np.float64),  # 参数扩展：不同连接轴和数据类型
+    ])
+    def test_concat_tensor_concatenation(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试concat张量连接"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        expected_shape[axis] = sum(shape[axis] for shape in input_shapes)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:241: AttributeError
+__________ test_concat_tensor_concatenation[input_shapes1-1-float64] __________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843516782864'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843516778528'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843516576912'>, ...}
+input_shapes = [[3, 2], [3, 2]], axis = 1, dtype = <class 'numpy.float64'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0连接
+        ([[3, 2], [3, 2]], 1, np.float64),  # 参数扩展：不同连接轴和数据类型
+    ])
+    def test_concat_tensor_concatenation(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试concat张量连接"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        expected_shape[axis] = sum(shape[axis] for shape in input_shapes)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:241: AttributeError
+_____________ test_stack_tensor_stacking[input_shapes0-0-float32] _____________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843516870560'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843516802192'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843516855776'>, ...}
+input_shapes = [[2, 3], [2, 3]], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0堆叠
+    ])
+    def test_stack_tensor_stacking(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试stack张量堆叠"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        # 使用input_shapes[0]的长度来计算插入位置
+        if axis >= 0:
+            expected_shape.insert(axis, len(input_shapes))
+        else:
+            expected_shape.insert(axis + len(input_shapes[0]) + 1, len(input_shapes))
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:302: AttributeError
+___________________ TestArrayOps.test_reshape_invalid_shape ___________________
+
+self = <test_tensorflow_python_ops_array_ops.TestArrayOps object at 0x000001AD3902E790>
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843517537296'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843517296352'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843517541680'>, ...}
+
+    def test_reshape_invalid_shape(self, mock_tensor_ops):
+        """测试reshape无效形状参数"""
+        input_tensor = create_mock_tensor([2, 3], np.float32)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:367: AttributeError
+_________________ TestArrayOps.test_expand_dims_invalid_axis __________________
+
+self = <test_tensorflow_python_ops_array_ops.TestArrayOps object at 0x000001AD3902E910>
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843517431872'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843517207984'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843517354384'>, ...}
+
+    def test_expand_dims_invalid_axis(self, mock_tensor_ops):
+        """测试expand_dims无效轴参数"""
+        input_tensor = create_mock_tensor([2, 3], np.float32)
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:384: AttributeError
+_____________________ TestArrayOps.test_concat_empty_list _____________________
+
+self = <test_tensorflow_python_ops_array_ops.TestArrayOps object at 0x000001AD3902EA90>
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843517817712'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843517845712'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843517623552'>, ...}
+
+    def test_concat_empty_list(self, mock_tensor_ops):
+        """测试concat空张量列表"""
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:399: AttributeError
+_________________ TestArrayOps.test_stack_incompatible_shapes _________________
+
+self = <test_tensorflow_python_ops_array_ops.TestArrayOps object at 0x000001AD3902EC10>
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='1843517990944'>, 'constant': <MagicMock name='mock.constant' id='18435...ock.convert_to_tensor' id='1843518067664'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='1843517924592'>, ...}
+
+    def test_stack_incompatible_shapes(self, mock_tensor_ops):
+        """测试stack不兼容形状"""
+        tensor1 = create_mock_tensor([2, 3], np.float32)
+        tensor2 = create_mock_tensor([2, 4], np.float32)  # 不兼容形状
+    
+        # 使用mock_tensor_ops上下文管理器
+>       with mock_tensor_ops as mocks:
+E       AttributeError: __enter__
+
+tests\test_tensorflow_python_ops_array_ops.py:417: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_array_ops.py     192     81     24      3    59%   62->61, 89, 113-124, 144-167, 193-216, 243-274, 299, 304-338, 368-377, 385-394, 400-409, 418-427
+-------------------------------------------------------------------------------------------
+TOTAL                                             192     81     24      3    59%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape0-target_shape0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape1-target_shape1-float64]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape1--1-int32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes1-1-float64]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_stack_tensor_stacking[input_shapes0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_reshape_invalid_shape
+FAILED tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_expand_dims_invalid_axis
+FAILED tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_concat_empty_list
+FAILED tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_stack_incompatible_shapes
+11 failed, 1 passed in 1.71s
+
+Error: exit 1

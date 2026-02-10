@@ -1,0 +1,63 @@
+=== Run Tests ===
+Fs                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_sparse_matrix_eigenvalue_solution[dtype0-cpu-shape0-3-True-ortho-True] __
+
+dtype = torch.float32, device = 'cpu', shape = (12, 12), k = 3, largest = True
+method = 'ortho', sparse = True
+
+    @pytest.mark.parametrize("dtype,device,shape,k,largest,method,sparse", [
+        (torch.float32, 'cpu', (12, 12), 3, True, 'ortho', True),  # 12 ≥ 3×3 = 9, 满足条件
+    ])
+    def test_sparse_matrix_eigenvalue_solution(dtype, device, shape, k, largest, method, sparse):
+        """CASE_06: 稀疏矩阵特征值求解"""
+        # Create sparse symmetric positive definite matrix
+        A_sparse = make_sparse_matrix(shape, density=0.3, dtype=dtype, device=device)
+    
+        # Convert to dense for reference computation
+        A_dense = A_sparse.to_dense()
+    
+        # Compute eigenvalues using lobpcg with sparse matrix
+        E_lobpcg, X_lobpcg = lobpcg_module.lobpcg(
+            A=A_sparse,
+            k=k,
+            largest=largest,
+            method=method
+        )
+    
+        # Weak assertions (首轮使用weak断言)
+        # 1. Shape check
+        assert E_lobpcg.shape == (k,), f"Eigenvalues shape mismatch: {E_lobpcg.shape} != ({k},)"
+        assert X_lobpcg.shape == (shape[0], k), f"Eigenvectors shape mismatch: {X_lobpcg.shape} != ({shape[0]}, {k})"
+    
+        # 2. Dtype check
+        assert E_lobpcg.dtype == dtype, f"Eigenvalues dtype mismatch: {E_lobpcg.dtype} != {dtype}"
+        assert X_lobpcg.dtype == dtype, f"Eigenvectors dtype mismatch: {X_lobpcg.dtype} != {dtype}"
+    
+        # 3. Finite check
+        assert torch.all(torch.isfinite(E_lobpcg)), "Eigenvalues contain non-finite values"
+        assert torch.all(torch.isfinite(X_lobpcg)), "Eigenvectors contain non-finite values"
+    
+        # 4. Residual norm check (using dense matrix for computation)
+        residual_norm = compute_residual_norm(A_dense, X_lobpcg, E_lobpcg)
+        tolerance = get_tolerance(dtype)
+        # Sparse matrices may have larger residuals
+>       assert residual_norm < tolerance * 100, f"Residual norm too large for sparse matrix: {residual_norm}"
+E       AssertionError: Residual norm too large for sparse matrix: 0.018460683524608612
+E       assert tensor(0.0185) < (0.0001 * 100)
+
+tests/test_torch_lobpcg_advanced.py:134: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+tests/test_torch_lobpcg_advanced.py     110     44     24      7    54%   34-45, 49->55, 52, 59, 66-67, 91-94, 137-170, 203-206, 215-231, 236
+---------------------------------------------------------------------------------
+TOTAL                                   110     44     24      7    54%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_lobpcg_advanced.py::test_sparse_matrix_eigenvalue_solution[dtype0-cpu-shape0-3-True-ortho-True]
+1 failed, 1 skipped in 0.76s
+
+Error: exit 1

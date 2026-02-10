@@ -1,0 +1,213 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.autograph.impl.api",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_autograph_impl_api.py",
+    "all_pattern": "tests/test_tensorflow_python_autograph_impl_api_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_autograph_impl_api_g1.py",
+      "G2": "tests/test_tensorflow_python_autograph_impl_api_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心装饰器与转换函数",
+      "entrypoints": ["convert", "to_graph"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试AutoGraph主要装饰器和转换功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "控制流与异常处理",
+      "entrypoints": ["do_not_convert"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试Python控制流转换和错误处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "convert装饰器基本转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_conditional",
+          "recursive": false,
+          "optional_features": null,
+          "user_requested": true
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_decorator", "converted_function_callable", "basic_execution"],
+        "strong": ["exact_output_match", "function_attributes", "source_map_present"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "to_graph函数转换控制流",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "if_else_flow",
+          "recursive": true,
+          "experimental_optional_features": null
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_converted_function", "control_flow_execution", "type_preserved"],
+        "strong": ["graph_operation_count", "recursive_conversion", "performance_baseline"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "do_not_convert阻止转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_arithmetic",
+          "decorator_style": "direct"
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_wrapper", "no_conversion_applied", "original_behavior"],
+        "strong": ["attribute_comparison", "performance_impact", "nested_behavior"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 2,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "递归与非递归转换差异",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "nested_function",
+          "recursive": false,
+          "comparison_recursive": true
+        }
+      ],
+      "asserts": {
+        "weak": ["function_callable", "basic_execution", "output_consistency"],
+        "strong": ["call_graph_depth", "conversion_scope", "attribute_differences"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "实验性功能参数测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "func_type": "simple_loop",
+          "experimental_optional_features": "default"
+        }
+      ],
+      "asserts": {
+        "weak": ["function_callable", "basic_execution"],
+        "strong": ["feature_impact", "error_handling", "backward_compatibility"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 2,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "func_type": "while_loop",
+        "recursive": true,
+        "optional_features": null,
+        "user_requested": false
+      },
+      "note": "循环控制流转换测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "func_type": "for_loop_range",
+        "recursive": false,
+        "experimental_optional_features": null
+      },
+      "note": "for循环转换测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "func_type": "complex_conditional",
+        "decorator_style": "indirect"
+      },
+      "note": "复杂条件函数阻止转换"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

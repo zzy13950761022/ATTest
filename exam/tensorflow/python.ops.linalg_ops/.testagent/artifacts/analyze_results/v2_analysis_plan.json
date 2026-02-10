@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_matrix_triangular_solve_basic[dtype1-shape1-False-True]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "伴随矩阵求解精度验证失败，需要放宽容差"
+    },
+    {
+      "test": "test_svd_decomposition[dtype0-shape0-False-True]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "SVD重构精度验证失败，需要放宽容差或处理符号歧义"
+    },
+    {
+      "test": "test_batch_matrix_operations[dtype0-batch_shape0-matrix_shape0-cholesky_solve]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "批量Cholesky求解精度验证失败，需要放宽容差"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "当前失败集合与上一轮(v2)完全重复，均为AssertionError精度问题，需要重新评估测试策略"
+}

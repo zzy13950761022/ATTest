@@ -1,0 +1,51 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 7,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[Tensor-content0-expected_shape0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "ragged_rank应为1但实际为2，需要调整断言或理解实际行为"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[Tensor-content0-,--1-expected_shape0]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "result.shape.num_elements()返回None，无法与int比较，需要修复断言逻辑"
+    },
+    {
+      "test": "TestRaggedStringOps.test_ngrams_basic[Tensor-content0-2- -None-None-False-expected_shape0]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "ngrams返回EagerTensor而非RaggedTensor，需要调整输出类型检查"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[RaggedTensor-content1-ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_encode_basic[input_shape1-content1-UTF-16-BE-ignore-65533]",
+      "reason": "形状创建错误，需要修复输入数据准备"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[RaggedTensor-content1-None-1-ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_invalid_rank",
+      "reason": "额外测试用例，不在当前修复范围"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

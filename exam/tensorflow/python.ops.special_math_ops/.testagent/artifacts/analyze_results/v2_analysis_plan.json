@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_special_math_ops.py::test_einsum_invalid_equation",
+      "block_id": "FOOTER",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "测试期望ValueError但实际抛出InvalidArgumentError：TensorFlow对维度不匹配抛出InvalidArgumentError而非ValueError"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,232 @@
+=== Run Tests ===
+..FFF.                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_unfold_basic_tuple_params[kernel_size0-stride0-padding0-dilation0-2-3-4-6-dtype0-cpu] _
+
+kernel_size = [2, 3], stride = [1, 1], padding = [0, 0], dilation = [1, 1]
+batch_size = 2, channels = 3, input_height = 4, input_width = 6
+dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize(
+        "kernel_size,stride,padding,dilation,batch_size,channels,input_height,input_width,dtype,device",
+        [
+            # Base case from test plan
+            ([2, 3], [1, 1], [0, 0], [1, 1], 2, 3, 4, 6, torch.float32, 'cpu'),
+            # Parameter extensions
+            ([2, 3], [2, 2], [1, 1], [2, 2], 2, 3, 4, 6, torch.float32, 'cpu'),
+        ]
+    )
+    def test_unfold_basic_tuple_params(kernel_size, stride, padding, dilation, batch_size, channels, input_height, input_width, dtype, device):
+        """
+        TC-06: Unfold基本功能_tuple参数
+        Test Unfold with tuple parameters (different values for height and width dimensions)
+        """
+        # Create Unfold module
+        unfold = Unfold(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation
+        )
+    
+        # Create valid input tensor
+        input_tensor = create_unfold_input(
+            batch_size=batch_size,
+            channels=channels,
+            input_height=input_height,
+            input_width=input_width,
+            dtype=dtype,
+            device=device
+        )
+    
+        # Forward pass
+        output = unfold(input_tensor)
+    
+        # Weak assertions
+        # 1. Shape match
+        expected_shape = compute_unfold_output_shape(
+            batch_size, channels, input_height, input_width, kernel_size, stride, padding, dilation
+        )
+        assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
+    
+        # 2. Dtype match
+        assert output.dtype == dtype, f"Expected dtype {dtype}, got {output.dtype}"
+    
+        # 3. Finite values
+        assert torch.isfinite(output).all(), "Output contains non-finite values (inf or nan)"
+    
+        # 4. No NaN/Inf
+        assert not torch.isnan(output).any(), "Output contains NaN values"
+        assert not torch.isinf(output).any(), "Output contains Inf values"
+    
+        # Additional basic checks
+        assert output.device.type == device, f"Expected device {device}, got {output.device.type}"
+    
+        # Verify parameter handling
+        # Check that module stores parameters correctly
+        # Note: Unfold converts lists to tuples internally
+>       assert unfold.kernel_size == tuple(kernel_size), \
+            f"Module kernel_size mismatch: expected {tuple(kernel_size)}, got {unfold.kernel_size}"
+E       AssertionError: Module kernel_size mismatch: expected (2, 3), got [2, 3]
+E       assert [2, 3] == (2, 3)
+E         
+E         Use -v to get more diff
+
+tests/test_torch_nn_modules_fold_unfold.py:136: AssertionError
+_ test_unfold_basic_tuple_params[kernel_size1-stride1-padding1-dilation1-2-3-4-6-dtype1-cpu] _
+
+kernel_size = [2, 3], stride = [2, 2], padding = [1, 1], dilation = [2, 2]
+batch_size = 2, channels = 3, input_height = 4, input_width = 6
+dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize(
+        "kernel_size,stride,padding,dilation,batch_size,channels,input_height,input_width,dtype,device",
+        [
+            # Base case from test plan
+            ([2, 3], [1, 1], [0, 0], [1, 1], 2, 3, 4, 6, torch.float32, 'cpu'),
+            # Parameter extensions
+            ([2, 3], [2, 2], [1, 1], [2, 2], 2, 3, 4, 6, torch.float32, 'cpu'),
+        ]
+    )
+    def test_unfold_basic_tuple_params(kernel_size, stride, padding, dilation, batch_size, channels, input_height, input_width, dtype, device):
+        """
+        TC-06: Unfold基本功能_tuple参数
+        Test Unfold with tuple parameters (different values for height and width dimensions)
+        """
+        # Create Unfold module
+        unfold = Unfold(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation
+        )
+    
+        # Create valid input tensor
+        input_tensor = create_unfold_input(
+            batch_size=batch_size,
+            channels=channels,
+            input_height=input_height,
+            input_width=input_width,
+            dtype=dtype,
+            device=device
+        )
+    
+        # Forward pass
+        output = unfold(input_tensor)
+    
+        # Weak assertions
+        # 1. Shape match
+        expected_shape = compute_unfold_output_shape(
+            batch_size, channels, input_height, input_width, kernel_size, stride, padding, dilation
+        )
+        assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
+    
+        # 2. Dtype match
+        assert output.dtype == dtype, f"Expected dtype {dtype}, got {output.dtype}"
+    
+        # 3. Finite values
+        assert torch.isfinite(output).all(), "Output contains non-finite values (inf or nan)"
+    
+        # 4. No NaN/Inf
+        assert not torch.isnan(output).any(), "Output contains NaN values"
+        assert not torch.isinf(output).any(), "Output contains Inf values"
+    
+        # Additional basic checks
+        assert output.device.type == device, f"Expected device {device}, got {output.device.type}"
+    
+        # Verify parameter handling
+        # Check that module stores parameters correctly
+        # Note: Unfold converts lists to tuples internally
+>       assert unfold.kernel_size == tuple(kernel_size), \
+            f"Module kernel_size mismatch: expected {tuple(kernel_size)}, got {unfold.kernel_size}"
+E       AssertionError: Module kernel_size mismatch: expected (2, 3), got [2, 3]
+E       assert [2, 3] == (2, 3)
+E         
+E         Use -v to get more diff
+
+tests/test_torch_nn_modules_fold_unfold.py:136: AssertionError
+_ test_unfold_edge_conditions[kernel_size0-stride0-padding0-dilation0-1-1-2-2-dtype0-cpu] _
+
+kernel_size = [2, 2], stride = [1, 1], padding = [0, 0], dilation = [1, 1]
+batch_size = 1, channels = 1, input_height = 2, input_width = 2
+dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize(
+        "kernel_size,stride,padding,dilation,batch_size,channels,input_height,input_width,dtype,device",
+        [
+            # Base case from test plan - minimal valid configuration
+            ([2, 2], [1, 1], [0, 0], [1, 1], 1, 1, 2, 2, torch.float32, 'cpu'),
+        ]
+    )
+    def test_unfold_edge_conditions(kernel_size, stride, padding, dilation, batch_size, channels, input_height, input_width, dtype, device):
+        """
+        TC-07: Unfold边界条件
+        Test Unfold with edge/boundary conditions (minimal valid input size)
+        """
+        # Create Unfold module
+        unfold = Unfold(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation
+        )
+    
+        # Create valid input tensor with minimal size
+        input_tensor = create_unfold_input(
+            batch_size=batch_size,
+            channels=channels,
+            input_height=input_height,
+            input_width=input_width,
+            dtype=dtype,
+            device=device
+        )
+    
+        # Forward pass
+        output = unfold(input_tensor)
+    
+        # Weak assertions
+        # 1. Shape match
+        expected_shape = compute_unfold_output_shape(
+            batch_size, channels, input_height, input_width, kernel_size, stride, padding, dilation
+        )
+        assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
+    
+        # 2. Dtype match
+        assert output.dtype == dtype, f"Expected dtype {dtype}, got {output.dtype}"
+    
+        # 3. Finite values
+        assert torch.isfinite(output).all(), "Output contains non-finite values (inf or nan)"
+    
+        # 4. No NaN/Inf
+        assert not torch.isnan(output).any(), "Output contains NaN values"
+        assert not torch.isinf(output).any(), "Output contains Inf values"
+    
+        # Additional basic checks
+        assert output.device.type == device, f"Expected device {device}, got {output.device.type}"
+    
+        # Verify parameter handling
+        # Check that module stores parameters correctly
+>       assert unfold.kernel_size == tuple(kernel_size), \
+            f"Module kernel_size mismatch: expected {tuple(kernel_size)}, got {unfold.kernel_size}"
+E       AssertionError: Module kernel_size mismatch: expected (2, 2), got [2, 2]
+E       assert [2, 2] == (2, 2)
+E         
+E         Use -v to get more diff
+
+tests/test_torch_nn_modules_fold_unfold.py:207: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_fold_unfold.py      92     20     12      2    79%   72, 138-147, 209-232, 281-304
+----------------------------------------------------------------------------------------
+TOTAL                                           92     20     12      2    79%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_fold_unfold.py::test_unfold_basic_tuple_params[kernel_size0-stride0-padding0-dilation0-2-3-4-6-dtype0-cpu]
+FAILED tests/test_torch_nn_modules_fold_unfold.py::test_unfold_basic_tuple_params[kernel_size1-stride1-padding1-dilation1-2-3-4-6-dtype1-cpu]
+FAILED tests/test_torch_nn_modules_fold_unfold.py::test_unfold_edge_conditions[kernel_size0-stride0-padding0-dilation0-1-1-2-2-dtype0-cpu]
+3 failed, 3 passed in 0.76s
+
+Error: exit 1

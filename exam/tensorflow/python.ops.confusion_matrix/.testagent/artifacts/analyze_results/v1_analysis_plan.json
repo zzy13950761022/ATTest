@@ -1,0 +1,32 @@
+{
+  "status": "成功",
+  "passed": 10,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口87%，需要实现CASE_04以覆盖缺失代码行"
+    },
+    {
+      "test": "coverage_gap",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口87%，需要实现CASE_05以覆盖缺失代码行"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap",
+      "reason": "已达到block_limit，优先处理前两个覆盖率缺口"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

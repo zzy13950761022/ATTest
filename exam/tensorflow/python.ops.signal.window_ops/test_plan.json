@@ -1,0 +1,219 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.signal.window_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_signal_window_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_signal_window_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "基本窗口函数形状验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "hann_window",
+          "window_length": 10,
+          "periodic": true,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "value_range"],
+        "strong": ["approx_equal_numpy", "symmetry", "normalization"]
+      },
+      "oracle": "numpy.hanning",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "边界条件window_length=1",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "kaiser_window",
+          "window_length": 1,
+          "beta": 12.0,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "single_element"],
+        "strong": ["exact_value", "edge_case_consistency"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "参数验证异常测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "hamming_window",
+          "window_length": 0,
+          "periodic": true,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_consistency", "multiple_invalid_inputs"]
+      },
+      "oracle": "tensorflow_error_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "不同dtype精度验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "vorbis_window",
+          "window_length": 16,
+          "dtype": "float64"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "precision_check"],
+        "strong": ["relative_error", "absolute_error", "cross_dtype_consistency"]
+      },
+      "oracle": "numpy_reference",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "kaiser窗口beta参数影响",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "kaiser_window",
+          "window_length": 20,
+          "beta": 8.0,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "beta_effect"],
+        "strong": ["beta_sensitivity", "extreme_beta_values", "derived_window_relation"]
+      },
+      "oracle": "scipy.signal.kaiser",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "hann_window",
+        "window_length": 32,
+        "periodic": false,
+        "dtype": "float64"
+      },
+      "note": "对称窗口模式验证"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "hamming_window",
+        "window_length": 10,
+        "periodic": true,
+        "dtype": "float32"
+      },
+      "note": "hamming窗口基本验证"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "kaiser_bessel_derived_window",
+        "window_length": 1,
+        "beta": 12.0,
+        "dtype": "float32"
+      },
+      "note": "派生窗口边界条件"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "vorbis_window",
+        "window_length": 16,
+        "dtype": "float16"
+      },
+      "note": "float16精度验证"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "function": "kaiser_window",
+        "window_length": 20,
+        "beta": 2.0,
+        "dtype": "float32"
+      },
+      "note": "小beta值验证"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

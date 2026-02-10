@@ -1,0 +1,55 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_svd_lowrank_basic[dtype0-cpu-shape0-2-2-None-flags0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "重构相对误差过大(0.137>0.1)，需要放宽阈值或改进测试矩阵"
+    },
+    {
+      "test": "test_svd_lowrank_invalid_q",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "函数内部引发AssertionError而非ValueError，需要调整测试预期"
+    },
+    {
+      "test": "test_get_approximate_basis_invalid_q",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "函数返回形状(6,4)而非(6,10)，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_svd_lowrank_basic[dtype1-cpu-shape1-3-2-None-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_svd_lowrank_basic[dtype2-cpu-shape2-2-2-None-flags2]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_svd_lowrank_randomness_control[dtype0-cpu-shape0-2-2-None-flags0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_svd_lowrank_invalid_niter",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_svd_lowrank_invalid_params",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

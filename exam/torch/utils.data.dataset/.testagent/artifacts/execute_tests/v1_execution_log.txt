@@ -1,0 +1,113 @@
+=== Run Tests ===
+..FF..F                                                                  [100%]
+=================================== FAILURES ===================================
+___________ test_tensor_dataset_basic[tensor_shapes2-dtypes2-cpu-0] ____________
+
+tensor_shapes = [[0, 3, 32, 32], [0, 1]], dtypes = ['float32', 'float32']
+device = 'cpu', index = 0
+
+    @pytest.mark.parametrize("tensor_shapes,dtypes,device,index", [
+        ([[10, 3, 32, 32], [10, 1]], ["float32", "float32"], "cpu", 0),
+        ([[5, 1, 28, 28], [5, 10]], ["float64", "int64"], "cpu", -1),
+        ([[0, 3, 32, 32], [0, 1]], ["float32", "float32"], "cpu", 0),
+    ])
+    def test_tensor_dataset_basic(tensor_shapes, dtypes, device, index):
+        """TensorDataset 基本功能验证"""
+        # 创建测试张量
+        tensors = []
+        for shape, dtype in zip(tensor_shapes, dtypes):
+            if dtype == "float32":
+                tensor = torch.randn(shape, dtype=torch.float32, device=device)
+            elif dtype == "float64":
+                tensor = torch.randn(shape, dtype=torch.float64, device=device)
+            elif dtype == "int64":
+                tensor = torch.randint(0, 10, shape, dtype=torch.int64, device=device)
+            else:
+                raise ValueError(f"Unsupported dtype: {dtype}")
+            tensors.append(tensor)
+    
+        # 创建 TensorDataset
+        dataset = TensorDataset(*tensors)
+    
+        # 验证数据集长度
+        assert len(dataset) == tensor_shapes[0][0], "数据集长度应与第一个张量的第一维度一致"
+    
+        # 获取样本
+>       sample = dataset[index]
+
+tests/test_torch_utils_data_dataset.py:79: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/data/dataset.py:193: in __getitem__
+    return tuple(tensor[index] for tensor in self.tensors)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x1275b7940>
+
+>   return tuple(tensor[index] for tensor in self.tensors)
+E   IndexError: index 0 is out of bounds for dimension 0 with size 0
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/data/dataset.py:193: IndexError
+____________________ test_tensor_dataset_dimension_mismatch ____________________
+
+    def test_tensor_dataset_dimension_mismatch():
+        """TensorDataset 维度验证异常"""
+        # 创建维度不匹配的张量
+        tensor1 = torch.randn(10, 3, 32, 32)  # 10个样本
+        tensor2 = torch.randn(5, 1)           # 5个样本，维度不匹配
+    
+        # 验证异常抛出
+        with pytest.raises(RuntimeError) as exc_info:
+>           TensorDataset(tensor1, tensor2)
+
+tests/test_torch_utils_data_dataset.py:122: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.utils.data.dataset.TensorDataset object at 0x12774ce50>
+tensors = (tensor([[[[-0.8818,  0.7288,  0.1166,  ...,  0.6762, -0.0274, -0.8712],
+          [-0.6536,  0.1223,  0.7974,  ...,  ... 1.0036,  2.5496]]]]), tensor([[-2.7552],
+        [ 2.0861],
+        [-0.9410],
+        [-0.6141],
+        [ 1.2446]]))
+
+    def __init__(self, *tensors: Tensor) -> None:
+>       assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors), "Size mismatch between tensors"
+E       AssertionError: Size mismatch between tensors
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/data/dataset.py:189: AssertionError
+______________________ test_random_split_invalid_lengths _______________________
+
+    def test_random_split_invalid_lengths():
+        """random_split 长度超过数据集大小的异常测试"""
+        dataset = MockDataset(100)
+    
+        # 测试长度超过数据集大小
+        with pytest.raises(ValueError) as exc_info:
+            random_split(dataset, [101])
+    
+        # 验证错误信息
+        error_msg = str(exc_info.value).lower()
+        assert "sum" in error_msg or "length" in error_msg or "size" in error_msg, \
+            "错误信息应包含长度总和或大小的提示"
+    
+        # 测试负长度
+>       with pytest.raises(ValueError) as exc_info:
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_torch_utils_data_dataset.py:232: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                     Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------
+tests/test_torch_utils_data_dataset.py     119     26     34      1    75%   13-17, 21-32, 44-48, 69, 125-130, 236-237
+------------------------------------------------------------------------------------
+TOTAL                                      119     26     34      1    75%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_utils_data_dataset.py::test_tensor_dataset_basic[tensor_shapes2-dtypes2-cpu-0]
+FAILED tests/test_torch_utils_data_dataset.py::test_tensor_dataset_dimension_mismatch
+FAILED tests/test_torch_utils_data_dataset.py::test_random_split_invalid_lengths
+3 failed, 4 passed in 0.64s
+
+Error: exit 1

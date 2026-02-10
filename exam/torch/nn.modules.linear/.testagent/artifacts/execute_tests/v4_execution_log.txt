@@ -1,0 +1,379 @@
+=== Run Tests ===
+..F....F.......F..s..                                                    [100%]
+=================================== FAILURES ===================================
+__________ test_linear_different_dtypes[8-4-True-dtype0-input_shape0] __________
+
+in_features = 8, out_features = 4, bias = True, dtype = torch.float64
+input_shape = (32, 8)
+
+    @pytest.mark.parametrize("in_features,out_features,bias,dtype,input_shape", [
+        (8, 4, True, torch.float64, (32, 8)),  # High precision case from test plan
+    ])
+    def test_linear_different_dtypes(in_features, out_features, bias, dtype, input_shape):
+        """Test Linear layer with different data types."""
+        # Create Linear layer with specified dtype
+        linear = nn.Linear(
+            in_features=in_features,
+            out_features=out_features,
+            bias=bias,
+            dtype=dtype
+        )
+    
+        # Verify layer dtype matches expected
+        # Note: Linear layer dtype affects parameter dtypes
+        assert linear.weight.dtype == dtype, f"Weight dtype mismatch: {linear.weight.dtype} != {dtype}"
+        if bias:
+            assert linear.bias.dtype == dtype, f"Bias dtype mismatch: {linear.bias.dtype} != {dtype}"
+    
+        # Create test input with matching dtype
+        x = create_test_input(input_shape, dtype=dtype)
+    
+        # Forward pass
+        y = linear(x)
+    
+        # Check output shape
+        expected_shape = (*input_shape[:-1], out_features)
+        assert y.shape == expected_shape, f"Output shape mismatch: {y.shape} != {expected_shape}"
+    
+        # Check output dtype matches input dtype
+        assert y.dtype == dtype, f"Output dtype mismatch: {y.dtype} != {dtype}"
+    
+        # Check finite values
+        check_finite(y, "Linear output")
+    
+        # Compare with functional.linear for verification
+        with torch.no_grad():
+            weight = linear.weight
+            bias_tensor = linear.bias if bias else None
+    
+            # Compute expected output using functional linear
+            y_expected = F.linear(x, weight, bias_tensor)
+    
+            # Use appropriate tolerance based on dtype
+            if dtype == torch.float64:
+                rtol, atol = 1e-10, 1e-12  # Higher precision for float64
+            elif dtype == torch.float32:
+                rtol, atol = 1e-5, 1e-8    # Standard precision for float32
+            elif dtype == torch.float16:
+                rtol, atol = 1e-3, 1e-5    # Lower precision for float16
+            else:
+                rtol, atol = 1e-5, 1e-8    # Default
+    
+            assert_tensors_close(y, y_expected, rtol=rtol, atol=atol,
+                               msg=f"Linear output doesn't match functional.linear for dtype={dtype}")
+    
+        # Test dtype consistency across operations
+        # Create another linear layer with same parameters but different dtype for comparison
+        if dtype == torch.float64:
+            # Compare with float32 version
+            linear_f32 = nn.Linear(in_features, out_features, bias=bias, dtype=torch.float32)
+    
+            # Copy parameters (with dtype conversion)
+            with torch.no_grad():
+                linear_f32.weight.copy_(linear.weight.to(torch.float32))
+                if bias:
+                    linear_f32.bias.copy_(linear.bias.to(torch.float32))
+    
+            # Forward with float32 input
+            x_f32 = x.to(torch.float32)
+            y_f32 = linear_f32(x_f32)
+    
+            # Convert back to original dtype for comparison
+            y_f32_in_original_dtype = y_f32.to(dtype)
+    
+            # Compare with original output (should be close but not exact due to precision loss)
+            # Use relaxed tolerance for cross-dtype comparison
+            assert_tensors_close(y, y_f32_in_original_dtype, rtol=1e-4, atol=1e-6,
+                               msg="Float64 and float32 outputs differ significantly")
+    
+        # Test that parameters have correct dtype after reset_parameters
+        # Store initial parameters
+        initial_weight = linear.weight.clone()
+        if bias:
+            initial_bias = linear.bias.clone()
+    
+        # Reset parameters
+        linear.reset_parameters()
+    
+        # Check dtype preserved after reset
+        assert linear.weight.dtype == dtype, f"Weight dtype changed after reset: {linear.weight.dtype} != {dtype}"
+        if bias:
+            assert linear.bias.dtype == dtype, f"Bias dtype changed after reset: {linear.bias.dtype} != {dtype}"
+    
+        # Check parameters changed (not identical)
+        assert not torch.allclose(linear.weight, initial_weight, rtol=1e-5, atol=1e-8), \
+            "Weight unchanged after reset_parameters"
+        if bias:
+            assert not torch.allclose(linear.bias, initial_bias, rtol=1e-5, atol=1e-8), \
+                "Bias unchanged after reset_parameters"
+    
+        # Test with mixed precision (if applicable)
+        # Create input with different dtype than layer
+        if dtype == torch.float64:
+            # Test with float32 input (should be upcast to float64)
+            x_mixed = create_test_input(input_shape, dtype=torch.float32)
+    
+            # Forward pass with mixed dtypes
+>           y_mixed = linear(x_mixed)
+
+tests/test_torch_nn_modules_linear_g1.py:278: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Linear(in_features=8, out_features=4, bias=True)
+input = tensor([[ 3.3737e-01, -1.7778e-01, -3.0353e-01, -5.8801e-01,  3.4861e-01,
+          6.6034e-01, -2.1964e-01, -3.7917e-...    [-1.0944e+00, -1.0197e+00, -5.3986e-01,  1.2117e+00, -8.6321e-01,
+          1.3337e+00,  7.7101e-02, -5.2181e-02]])
+
+    def forward(self, input: Tensor) -> Tensor:
+>       return F.linear(input, self.weight, self.bias)
+E       RuntimeError: mat1 and mat2 must have the same dtype
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/linear.py:114: RuntimeError
+_ test_bilinear_basic_function[5-3-7-True-dtype0-input1_shape0-input2_shape0] __
+
+in1_features = 5, in2_features = 3, out_features = 7, bias = True
+dtype = torch.float32, input1_shape = (10, 5), input2_shape = (10, 3)
+
+    @pytest.mark.parametrize("in1_features,in2_features,out_features,bias,dtype,input1_shape,input2_shape", [
+        (5, 3, 7, True, torch.float32, (10, 5), (10, 3)),  # Base case from test plan
+    ])
+    def test_bilinear_basic_function(in1_features, in2_features, out_features, bias, dtype, input1_shape, input2_shape):
+        """Test basic forward pass of Bilinear layer."""
+        # Create Bilinear layer
+        bilinear = nn.Bilinear(
+            in1_features=in1_features,
+            in2_features=in2_features,
+            out_features=out_features,
+            bias=bias,
+            dtype=dtype
+        )
+    
+        # Verify parameter shapes
+        # Weight should have shape (out_features, in1_features, in2_features)
+        assert bilinear.weight.shape == (out_features, in1_features, in2_features), \
+            f"Weight shape mismatch: {bilinear.weight.shape} != ({out_features}, {in1_features}, {in2_features})"
+    
+        # Bias check
+        if bias:
+            assert bilinear.bias is not None, "Bias should not be None when bias=True"
+            assert bilinear.bias.shape == (out_features,), \
+                f"Bias shape mismatch: {bilinear.bias.shape} != ({out_features},)"
+        else:
+            assert bilinear.bias is None, f"Bias should be None when bias=False, got {bilinear.bias}"
+    
+        # Create test inputs
+        x1 = create_test_input(input1_shape, dtype=dtype)
+        x2 = create_test_input(input2_shape, dtype=dtype)
+    
+        # Ensure batch dimensions match (they should from test plan)
+        assert x1.shape[:-1] == x2.shape[:-1], \
+            f"Batch dimensions mismatch: {x1.shape[:-1]} != {x2.shape[:-1]}"
+    
+        # Forward pass
+        y = bilinear(x1, x2)
+    
+        # Check output shape
+        expected_shape = (*input1_shape[:-1], out_features)
+        assert y.shape == expected_shape, f"Output shape mismatch: {y.shape} != {expected_shape}"
+    
+        # Check output dtype
+        assert y.dtype == dtype, f"Output dtype mismatch: {y.dtype} != {dtype}"
+    
+        # Check finite values
+        check_finite(y, "Bilinear output")
+    
+        # Bilinear form check: compare with manual implementation
+        with torch.no_grad():
+            # Get weight and bias from the bilinear layer
+            weight = bilinear.weight
+            bias_tensor = bilinear.bias if bias else None
+    
+            # Compute expected output using manual implementation
+            y_expected = manual_bilinear_implementation(x1, x2, weight, bias_tensor)
+    
+            # Compare with tolerance
+>           assert_tensors_close(y, y_expected, rtol=1e-5, atol=1e-8,
+                               msg="Bilinear output doesn't match manual implementation")
+
+tests/test_torch_nn_modules_linear_g2.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+actual = tensor([[ 0.2451,  0.2236,  0.0866,  0.4612,  0.3491,  0.4085,  0.2534],
+        [ 0.5082,  0.3624, -0.1046,  0.2834, ...048,  0.1851],
+        [ 0.2409,  0.3173,  0.2760,  0.3815,  0.4326,  0.4037,  0.3035]],
+       grad_fn=<AddBackward0>)
+expected = tensor([[ 0.2451,  0.2236,  0.0866,  0.4612,  0.3491,  0.4085,  0.2534],
+        [ 0.5082,  0.3624, -0.1046,  0.2834, ... 1.4153,  0.8837,  0.2515,  0.0048,  0.1851],
+        [ 0.2409,  0.3173,  0.2760,  0.3815,  0.4326,  0.4037,  0.3035]])
+rtol = 1e-05, atol = 1e-08
+msg = "Bilinear output doesn't match manual implementation"
+
+    def assert_tensors_close(actual, expected, rtol=1e-5, atol=1e-8, msg=""):
+        """Assert two tensors are close within tolerance."""
+        assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} != {expected.shape}"
+        assert actual.dtype == expected.dtype, f"Dtype mismatch: {actual.dtype} != {expected.dtype}"
+    
+        diff = torch.abs(actual - expected)
+        max_diff = torch.max(diff).item()
+        max_relative_diff = torch.max(diff / (torch.abs(expected) + 1e-8)).item()
+    
+        if max_diff > atol and max_relative_diff > rtol:
+>           pytest.fail(f"{msg} Tensors not close: max_diff={max_diff:.2e}, max_relative_diff={max_relative_diff:.2e}")
+E           Failed: Bilinear output doesn't match manual implementation Tensors not close: max_diff=4.77e-07, max_relative_diff=2.51e-05
+
+tests/test_torch_nn_modules_linear_g2.py:35: Failed
+___________ test_linear_invalid_inputs[5-3-True-dtype0-input_shape0] ___________
+
+in_features = 5, out_features = 3, bias = True, dtype = torch.float32
+input_shape = (10, 4)
+
+    @pytest.mark.parametrize("in_features,out_features,bias,dtype,input_shape", [
+        (5, 3, True, torch.float32, (10, 4)),  # Wrong dimension case from test plan
+    ])
+    def test_linear_invalid_inputs(in_features, out_features, bias, dtype, input_shape):
+        """Test Linear layer with invalid inputs (wrong dimension)."""
+        # Create Linear layer
+        linear = nn.Linear(
+            in_features=in_features,
+            out_features=out_features,
+            bias=bias,
+            dtype=dtype
+        )
+    
+        # Create test input with wrong feature dimension
+        # input_shape[-1] should be 4, but in_features is 5
+        x = create_test_input(input_shape, dtype=dtype)
+    
+        # Verify that input has wrong dimension
+        assert x.shape[-1] != in_features, \
+            f"Test setup error: input feature dimension {x.shape[-1]} should not equal in_features {in_features}"
+    
+        # Forward pass should raise RuntimeError
+        with pytest.raises(RuntimeError) as exc_info:
+            linear(x)
+    
+        # Check error message contains relevant information
+        error_msg = str(exc_info.value).lower()
+    
+        # The error should mention something about shape, size, or dimension mismatch
+        assert any(keyword in error_msg for keyword in ["shape", "size", "dimension", "match", "inconsistent"]), \
+            f"Error message should mention shape/size/dimension, got: {error_msg}"
+    
+        # Check that the error message includes the actual and expected dimensions
+        # PyTorch error messages typically include something like:
+        # "mat1 and mat2 shapes cannot be multiplied (axb and cxd)"
+        # or "size mismatch"
+        assert str(in_features) in error_msg or str(x.shape[-1]) in error_msg, \
+            f"Error message should include feature dimensions, got: {error_msg}"
+    
+        # Test that layer state is preserved after error
+        # Parameters should not be corrupted
+        if bias:
+            assert linear.bias is not None, "Bias should still exist after error"
+            assert linear.bias.shape == (out_features,), \
+                f"Bias shape corrupted: {linear.bias.shape} != ({out_features},)"
+    
+        assert linear.weight.shape == (out_features, in_features), \
+            f"Weight shape corrupted: {linear.weight.shape} != ({out_features}, {in_features})"
+    
+        # Test with correct input dimension - should work
+        x_correct = create_test_input((10, in_features), dtype=dtype)
+        y_correct = linear(x_correct)
+    
+        assert y_correct.shape == (10, out_features), \
+            f"Correct input output shape mismatch: {y_correct.shape} != (10, {out_features})"
+    
+        # Test other invalid input scenarios
+    
+        # Test with 0-dimensional input (scalar)
+        x_scalar = torch.tensor(1.0, dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info2:
+            linear(x_scalar)
+    
+        # Test with 1D input but wrong dimension
+        x_1d_wrong = create_test_input((in_features + 2,), dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info3:
+            linear(x_1d_wrong)
+    
+        # Test with 1D input correct dimension
+        x_1d_correct = create_test_input((in_features,), dtype=dtype)
+        y_1d = linear(x_1d_correct)
+        assert y_1d.shape == (out_features,), \
+            f"1D input output shape mismatch: {y_1d.shape} != ({out_features},)"
+    
+        # Test with 3D input wrong dimension
+        x_3d_wrong = create_test_input((4, 5, in_features - 1), dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info4:
+            linear(x_3d_wrong)
+    
+        # Test with 3D input correct dimension
+        x_3d_correct = create_test_input((4, 5, in_features), dtype=dtype)
+        y_3d = linear(x_3d_correct)
+        assert y_3d.shape == (4, 5, out_features), \
+            f"3D input output shape mismatch: {y_3d.shape} != (4, 5, {out_features})"
+    
+        # Test with NaN/inf values in input
+        # Linear should propagate NaN/inf values
+        # IMPORTANT: Use correct input dimension for NaN/inf tests
+        x_nan = torch.full((10, in_features), float('nan'), dtype=dtype)
+        y_nan = linear(x_nan)
+    
+        # Output should contain NaN values
+        assert torch.isnan(y_nan).any(), "NaN input should produce NaN output"
+    
+        # Check shape is still correct even with NaN input
+        assert y_nan.shape == (10, out_features), \
+            f"NaN input output shape mismatch: {y_nan.shape} != (10, {out_features})"
+    
+        # Test with inf values
+        x_inf = torch.full((10, in_features), float('inf'), dtype=dtype)
+        y_inf = linear(x_inf)
+    
+        # Output should contain inf values (or very large values)
+        # Note: inf * weight could produce inf or very large finite values
+        # depending on weight values
+>       assert torch.isinf(y_inf).any() or torch.abs(y_inf).max().item() > 1e10, \
+            "Inf input should produce inf or very large output"
+E       AssertionError: Inf input should produce inf or very large output
+E       assert (tensor(False) or nan > 10000000000.0)
+E        +  where tensor(False) = <built-in method any of Tensor object at 0x13c42a930>()
+E        +    where <built-in method any of Tensor object at 0x13c42a930> = tensor([[False, False, False],\n        [False, False, False],\n        [False, False, False],\n        [False, False, Fa...   [False, False, False],\n        [False, False, False],\n        [False, False, False],\n        [False, False, False]]).any
+E        +      where tensor([[False, False, False],\n        [False, False, False],\n        [False, False, False],\n        [False, False, Fa...   [False, False, False],\n        [False, False, False],\n        [False, False, False],\n        [False, False, False]]) = <built-in method isinf of type object at 0x1055e2320>(tensor([[nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan,... [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan]], grad_fn=<AddmmBackward0>))
+E        +        where <built-in method isinf of type object at 0x1055e2320> = torch.isinf
+E        +  and   nan = <built-in method item of Tensor object at 0x13c42b420>()
+E        +    where <built-in method item of Tensor object at 0x13c42b420> = tensor(nan, grad_fn=<MaxBackward1>).item
+E        +      where tensor(nan, grad_fn=<MaxBackward1>) = <built-in method max of Tensor object at 0x13c42a980>()
+E        +        where <built-in method max of Tensor object at 0x13c42a980> = tensor([[nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan,...   [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan]], grad_fn=<AbsBackward0>).max
+E        +          where tensor([[nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan,...   [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan]], grad_fn=<AbsBackward0>) = <built-in method abs of type object at 0x1055e2320>(tensor([[nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan,... [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan],\n        [nan, nan, nan]], grad_fn=<AddmmBackward0>))
+E        +            where <built-in method abs of type object at 0x1055e2320> = torch.abs
+
+tests/test_torch_nn_modules_linear_g3.py:290: AssertionError
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::test_lazy_linear_delayed_initialization[15-True-dtype0-input_shape0]
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::TestLazyLinearEdgeCasesG3::test_lazy_linear_no_bias_extension
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::TestLazyLinearEdgeCasesG3::test_lazy_linear_different_dtypes
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/lazy.py:180: UserWarning: Lazy modules are a new feature under heavy development so changes to the API or functionality can happen at any moment.
+    warnings.warn('Lazy modules are a new feature under heavy development '
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_linear_g1.py     213     24     36     12    82%   35, 186->190, 216-221, 228->252, 235->239, 253->257, 261->265, 267->273, 281-314, 444->452, 473->exit, 541, 550-551
+tests/test_torch_nn_modules_linear_g2.py     191     15     16      3    89%   112, 149-168, 205->213, 431, 441-443, 447-448
+tests/test_torch_nn_modules_linear_g3.py     269     24     32     16    87%   35, 82, 119, 141->145, 226->231, 294-317, 347, 351->357, 379->403, 413->418, 419->423, 427->433, 452->457, 469->475, 546->exit, 551, 556, 612, 620-623, 627-628
+--------------------------------------------------------------------------------------
+TOTAL                                        673     63     84     31    86%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_linear_g1.py::test_linear_different_dtypes[8-4-True-dtype0-input_shape0]
+FAILED tests/test_torch_nn_modules_linear_g2.py::test_bilinear_basic_function[5-3-7-True-dtype0-input1_shape0-input2_shape0]
+FAILED tests/test_torch_nn_modules_linear_g3.py::test_linear_invalid_inputs[5-3-True-dtype0-input_shape0]
+3 failed, 17 passed, 1 skipped, 3 warnings in 0.80s
+
+Error: exit 1

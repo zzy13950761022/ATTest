@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 13,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedMathOps.test_reduce_sum_single_axis[input_shape2-0-float32]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "空RaggedTensor归约结果为空数组，断言np.any(values != 0.0)失败，需要特殊处理空数组情况"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,55 @@
+=== Run Tests ===
+.....F                                                                   [100%]
+================================== FAILURES ===================================
+______________________ test_clip_by_value_indexed_slices ______________________
+
+    def test_clip_by_value_indexed_slices():
+        """TC-06: IndexedSlices类型输入"""
+        # 测试参数
+        dtype = tf.float32
+        shape = [5, 3]
+        indices_shape = [3]
+        values_shape = [3, 3]
+        clip_min = -1.0
+        clip_max = 1.0
+    
+        # 生成测试数据
+        np.random.seed(42)
+    
+        # 创建IndexedSlices输入
+        indices = tf.constant([0, 2, 4], dtype=tf.int64)  # 选择第0、2、4行
+        values_data = np.random.uniform(-2.0, 2.0, size=values_shape).astype(np.float32)
+        values = tf.constant(values_data, dtype=dtype)
+    
+        # 创建IndexedSlices对象
+        t = tf.IndexedSlices(values=values, indices=indices, dense_shape=shape)
+    
+        # 执行裁剪操作
+        result = clip_ops.clip_by_value(t, clip_min, clip_max)
+    
+        # weak断言验证
+        # 1. 类型保持断言 - 结果应该是IndexedSlices类型
+        assert isinstance(result, tf.IndexedSlices), \
+            f"Expected IndexedSlices type, got {type(result)}"
+    
+        # 2. 形状保持断言
+>       assert result.dense_shape.as_list() == shape, \
+            f"Expected dense_shape {shape}, got {result.dense_shape}"
+E       AttributeError: 'list' object has no attribute 'as_list'
+
+tests\test_tensorflow_python_ops_clip_ops.py:273: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                           Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------
+test_clip_behavior.py                             23     23      0      0     0%   1-30
+tests\test_tensorflow_python_ops_clip_ops.py     127      7      4      0    95%   277-293
+------------------------------------------------------------------------------------------
+TOTAL                                            150     30      4      0    81%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_clip_ops.py::test_clip_by_value_indexed_slices
+1 failed, 5 passed in 1.96s
+
+Error: exit 1

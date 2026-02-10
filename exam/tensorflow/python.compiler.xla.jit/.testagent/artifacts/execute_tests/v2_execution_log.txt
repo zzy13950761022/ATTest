@@ -1,0 +1,196 @@
+=== Run Tests ===
+EEEEEEEE                                                                 [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[False-False] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E8E0>
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """每个测试方法前后的设置和清理"""
+        # 保存原始状态
+        self._original_executing_eagerly = None
+        if hasattr(context, 'executing_eagerly'):
+            self._original_executing_eagerly = context.executing_eagerly
+    
+        # 清理全局状态
+>       self._clear_xla_scope_collection()
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E8E0>
+
+    def _clear_xla_scope_collection(self):
+        """清理XLA作用域集合"""
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:38: AttributeError
+_ ERROR at teardown of TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[False-False] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E8E0>
+
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 恢复原始状态
+        if hasattr(context, 'executing_eagerly'):
+            # 恢复mock
+            pass
+        # 清理全局状态
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:216: AttributeError
+_ ERROR at setup of TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[True-True] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E940>
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """每个测试方法前后的设置和清理"""
+        # 保存原始状态
+        self._original_executing_eagerly = None
+        if hasattr(context, 'executing_eagerly'):
+            self._original_executing_eagerly = context.executing_eagerly
+    
+        # 清理全局状态
+>       self._clear_xla_scope_collection()
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E940>
+
+    def _clear_xla_scope_collection(self):
+        """清理XLA作用域集合"""
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:38: AttributeError
+_ ERROR at teardown of TestExperimentalJitScopeG2.test_compile_ops_boolean_parameter_functionality[True-True] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4E940>
+
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 恢复原始状态
+        if hasattr(context, 'executing_eagerly'):
+            # 恢复mock
+            pass
+        # 清理全局状态
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:216: AttributeError
+_ ERROR at setup of TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u603b\u662f\u8fd4\u56deTrue\u7684\u53ef\u8c03\u7528\u51fd\u6570] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4EC10>
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """每个测试方法前后的设置和清理"""
+        # 保存原始状态
+        self._original_executing_eagerly = None
+        if hasattr(context, 'executing_eagerly'):
+            self._original_executing_eagerly = context.executing_eagerly
+    
+        # 清理全局状态
+>       self._clear_xla_scope_collection()
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4EC10>
+
+    def _clear_xla_scope_collection(self):
+        """清理XLA作用域集合"""
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:38: AttributeError
+_ ERROR at teardown of TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u603b\u662f\u8fd4\u56deTrue\u7684\u53ef\u8c03\u7528\u51fd\u6570] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4EC10>
+
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 恢复原始状态
+        if hasattr(context, 'executing_eagerly'):
+            # 恢复mock
+            pass
+        # 清理全局状态
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:216: AttributeError
+_ ERROR at setup of TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u6761\u4ef6\u6027\u8fd4\u56de\u7684\u53ef\u8c03\u7528\u51fd\u6570] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4ED30>
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """每个测试方法前后的设置和清理"""
+        # 保存原始状态
+        self._original_executing_eagerly = None
+        if hasattr(context, 'executing_eagerly'):
+            self._original_executing_eagerly = context.executing_eagerly
+    
+        # 清理全局状态
+>       self._clear_xla_scope_collection()
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4ED30>
+
+    def _clear_xla_scope_collection(self):
+        """清理XLA作用域集合"""
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:38: AttributeError
+_ ERROR at teardown of TestExperimentalJitScopeG2.test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u6761\u4ef6\u6027\u8fd4\u56de\u7684\u53ef\u8c03\u7528\u51fd\u6570] _
+
+self = <test_tensorflow_python_compiler_xla_jit_g2.TestExperimentalJitScopeG2 object at 0x000001A921F4ED30>
+
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 恢复原始状态
+        if hasattr(context, 'executing_eagerly'):
+            # 恢复mock
+            pass
+        # 清理全局状态
+        if hasattr(ops, 'get_collection'):
+>           ops.clear_collection(xla_jit._XLA_SCOPE_KEY)
+E           AttributeError: module 'tensorflow.python.framework.ops' has no attribute 'clear_collection'
+
+tests\test_tensorflow_python_compiler_xla_jit_g2.py:216: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_compiler_xla_jit_g2.py      70     45     10      3    35%   24->28, 30-33, 37->exit, 42, 66-106, 134-186, 215->exit
+-------------------------------------------------------------------------------------------------
+TOTAL                                                    70     45     10      3    35%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_boolean_parameter_functionality[False-False]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_boolean_parameter_functionality[False-False]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_boolean_parameter_functionality[True-True]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_boolean_parameter_functionality[True-True]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u603b\u662f\u8fd4\u56deTrue\u7684\u53ef\u8c03\u7528\u51fd\u6570]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u603b\u662f\u8fd4\u56deTrue\u7684\u53ef\u8c03\u7528\u51fd\u6570]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u6761\u4ef6\u6027\u8fd4\u56de\u7684\u53ef\u8c03\u7528\u51fd\u6570]
+ERROR tests\test_tensorflow_python_compiler_xla_jit_g2.py::TestExperimentalJitScopeG2::test_compile_ops_callable_parameter_conditional_compilation[<lambda>-\u6761\u4ef6\u6027\u8fd4\u56de\u7684\u53ef\u8c03\u7528\u51fd\u6570]
+8 errors in 2.00s
+
+Error: exit 1

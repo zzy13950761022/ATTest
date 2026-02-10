@@ -1,0 +1,182 @@
+=== Run Tests ===
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____ test_parameter_boundary_values[Dropout-0.0-False-shape0-dtype0-cpu] ______
+
+class_name = 'Dropout', p = 0.0, inplace = False, shape = (2, 2)
+dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+        ("Dropout", 0.0, False, (2, 2), torch.float32, "cpu"),
+        ("Dropout", 1.0, False, (2, 2), torch.float32, "cpu"),
+    ])
+    def test_parameter_boundary_values(class_name, p, inplace, shape, dtype, device):
+        """
+        CASE_04: 参数边界值验证
+        Test edge cases for dropout parameters (p=0.0 and p=1.0).
+        """
+        # Set random seed for reproducibility
+        set_random_seed(42)
+    
+        # Create test input
+        input_tensor = torch.randn(*shape, dtype=dtype)
+    
+        # Instantiate the dropout module
+        if class_name == "Dropout":
+            dropout = nn.Dropout(p=p, inplace=inplace)
+        else:
+            raise ValueError(f"Unsupported class for boundary test: {class_name}")
+    
+        # Test in training mode
+        dropout.train()
+        output_train = dropout(input_tensor.clone())
+    
+        # Weak assertions
+        assert_tensor_properties(output_train, shape, dtype, f"{class_name} with p={p}")
+    
+        # Check no NaN values
+        assert not torch.any(torch.isnan(output_train)), "Output contains NaN values"
+    
+        # Test specific boundary cases
+        if p == 0.0:
+            # When p=0, dropout should be identity function in training mode
+            assert approx_equal(output_train, input_tensor), \
+                f"With p=0, output should equal input in training mode"
+    
+            # Check that no elements are zero (except possibly zeros in input)
+            # Since dropout probability is 0, no elements should be dropped
+            zero_mask = (output_train == 0)
+            input_zero_mask = (input_tensor == 0)
+            # Only zeros in output should correspond to zeros in input
+            assert torch.all(zero_mask == input_zero_mask), \
+                "With p=0, zeros in output should only come from zeros in input"
+    
+        elif p == 1.0:
+            # When p=1, all elements should be zero in training mode
+            assert torch.all(output_train == 0), \
+                f"With p=1, all elements should be zero in training mode"
+    
+            # Check that scaling factor would be infinite (1/(1-p) = 1/0)
+            # This is handled internally by PyTorch
+    
+        # Test evaluation mode
+        dropout.eval()
+        output_eval = dropout(input_tensor.clone())
+    
+        # In evaluation mode, dropout should always be identity function
+        assert approx_equal(output_eval, input_tensor), \
+            f"In evaluation mode, dropout should be identity function regardless of p={p}"
+    
+        # Test with different input values
+        test_inputs = [
+            torch.zeros(*shape, dtype=dtype),  # All zeros
+            torch.ones(*shape, dtype=dtype),   # All ones
+            torch.full(shape, 5.0, dtype=dtype),  # Constant positive
+            torch.full(shape, -3.0, dtype=dtype),  # Constant negative
+        ]
+    
+        for test_input in test_inputs:
+            dropout.train()
+            test_output = dropout(test_input.clone())
+    
+>           assert_tensor_properties(test_output, shape, dtype, f"Test input {test_input[0].item()}")
+E           ValueError: only one element tensors can be converted to Python scalars
+
+tests/test_torch_nn_modules_dropout_g3.py:121: ValueError
+_____ test_parameter_boundary_values[Dropout-1.0-False-shape1-dtype1-cpu] ______
+
+class_name = 'Dropout', p = 1.0, inplace = False, shape = (2, 2)
+dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+        ("Dropout", 0.0, False, (2, 2), torch.float32, "cpu"),
+        ("Dropout", 1.0, False, (2, 2), torch.float32, "cpu"),
+    ])
+    def test_parameter_boundary_values(class_name, p, inplace, shape, dtype, device):
+        """
+        CASE_04: 参数边界值验证
+        Test edge cases for dropout parameters (p=0.0 and p=1.0).
+        """
+        # Set random seed for reproducibility
+        set_random_seed(42)
+    
+        # Create test input
+        input_tensor = torch.randn(*shape, dtype=dtype)
+    
+        # Instantiate the dropout module
+        if class_name == "Dropout":
+            dropout = nn.Dropout(p=p, inplace=inplace)
+        else:
+            raise ValueError(f"Unsupported class for boundary test: {class_name}")
+    
+        # Test in training mode
+        dropout.train()
+        output_train = dropout(input_tensor.clone())
+    
+        # Weak assertions
+        assert_tensor_properties(output_train, shape, dtype, f"{class_name} with p={p}")
+    
+        # Check no NaN values
+        assert not torch.any(torch.isnan(output_train)), "Output contains NaN values"
+    
+        # Test specific boundary cases
+        if p == 0.0:
+            # When p=0, dropout should be identity function in training mode
+            assert approx_equal(output_train, input_tensor), \
+                f"With p=0, output should equal input in training mode"
+    
+            # Check that no elements are zero (except possibly zeros in input)
+            # Since dropout probability is 0, no elements should be dropped
+            zero_mask = (output_train == 0)
+            input_zero_mask = (input_tensor == 0)
+            # Only zeros in output should correspond to zeros in input
+            assert torch.all(zero_mask == input_zero_mask), \
+                "With p=0, zeros in output should only come from zeros in input"
+    
+        elif p == 1.0:
+            # When p=1, all elements should be zero in training mode
+            assert torch.all(output_train == 0), \
+                f"With p=1, all elements should be zero in training mode"
+    
+            # Check that scaling factor would be infinite (1/(1-p) = 1/0)
+            # This is handled internally by PyTorch
+    
+        # Test evaluation mode
+        dropout.eval()
+        output_eval = dropout(input_tensor.clone())
+    
+        # In evaluation mode, dropout should always be identity function
+        assert approx_equal(output_eval, input_tensor), \
+            f"In evaluation mode, dropout should be identity function regardless of p={p}"
+    
+        # Test with different input values
+        test_inputs = [
+            torch.zeros(*shape, dtype=dtype),  # All zeros
+            torch.ones(*shape, dtype=dtype),   # All ones
+            torch.full(shape, 5.0, dtype=dtype),  # Constant positive
+            torch.full(shape, -3.0, dtype=dtype),  # Constant negative
+        ]
+    
+        for test_input in test_inputs:
+            dropout.train()
+            test_output = dropout(test_input.clone())
+    
+>           assert_tensor_properties(test_output, shape, dtype, f"Test input {test_input[0].item()}")
+E           ValueError: only one element tensors can be converted to Python scalars
+
+tests/test_torch_nn_modules_dropout_g3.py:121: ValueError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                        Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_dropout_g3.py      77     34     18      5    53%   18, 36-43, 67, 93->102, 123-171, 185
+---------------------------------------------------------------------------------------
+TOTAL                                          77     34     18      5    53%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_dropout_g3.py::test_parameter_boundary_values[Dropout-0.0-False-shape0-dtype0-cpu]
+FAILED tests/test_torch_nn_modules_dropout_g3.py::test_parameter_boundary_values[Dropout-1.0-False-shape1-dtype1-cpu]
+2 failed in 0.75s
+
+Error: exit 1

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 22,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_path_to_bytes",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "path_to_bytes 函数处理相对路径时未保留 './' 前缀，返回 b'test' 而不是 b'./test'"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

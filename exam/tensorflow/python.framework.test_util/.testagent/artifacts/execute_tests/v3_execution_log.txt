@@ -1,0 +1,908 @@
+=== Run Tests ===
+FFFFFFFFFFFFFFFF.                                                        [100%]
+================================== FAILURES ===================================
+_______________ test_gpu_device_name_detection[True-True-True] ________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+device_present = True, use_mock = True, fallback_cpu = True
+fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "device_present,use_mock,fallback_cpu",
+        [
+            (True, True, True),
+            (False, True, False),  # 参数扩展
+        ]
+    )
+    def test_gpu_device_name_detection(device_present, use_mock, fallback_cpu, fixed_random_seed):
+        """CASE_04: gpu_device_name 设备检测 - weak 断言"""
+    
+        # 测试 gpu_device_name 函数
+        if use_mock:
+            # 使用 mock 来模拟设备检测
+>           with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+______________ test_gpu_device_name_detection[False-True-False] _______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+device_present = False, use_mock = True, fallback_cpu = False
+fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "device_present,use_mock,fallback_cpu",
+        [
+            (True, True, True),
+            (False, True, False),  # 参数扩展
+        ]
+    )
+    def test_gpu_device_name_detection(device_present, use_mock, fallback_cpu, fixed_random_seed):
+        """CASE_04: gpu_device_name 设备检测 - weak 断言"""
+    
+        # 测试 gpu_device_name 函数
+        if use_mock:
+            # 使用 mock 来模拟设备检测
+>           with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_____________ test_create_local_cluster_basic_creation[2-1-True] ______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+worker_count = 2, ps_count = 1, use_mock = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "worker_count,ps_count,use_mock",
+        [
+            (2, 1, True),
+            (1, 0, True),  # 参数扩展
+            (0, 2, True),  # 边界情况：0个worker
+            (3, 0, True),  # 边界情况：0个PS
+        ]
+    )
+    def test_create_local_cluster_basic_creation(worker_count, ps_count, use_mock, fixed_random_seed):
+        """CASE_05: create_local_cluster 基本创建 - weak 断言"""
+    
+        # 测试 create_local_cluster 函数
+        if use_mock:
+            # 使用 mock 来避免实际创建集群（需要端口和网络）
+>           with mock.patch('tensorflow.python.framework.test_util.portpicker') as mock_portpicker, \
+                 mock.patch('tensorflow.python.framework.test_util.server_lib') as mock_server_lib:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_____________ test_create_local_cluster_basic_creation[1-0-True] ______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+worker_count = 1, ps_count = 0, use_mock = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "worker_count,ps_count,use_mock",
+        [
+            (2, 1, True),
+            (1, 0, True),  # 参数扩展
+            (0, 2, True),  # 边界情况：0个worker
+            (3, 0, True),  # 边界情况：0个PS
+        ]
+    )
+    def test_create_local_cluster_basic_creation(worker_count, ps_count, use_mock, fixed_random_seed):
+        """CASE_05: create_local_cluster 基本创建 - weak 断言"""
+    
+        # 测试 create_local_cluster 函数
+        if use_mock:
+            # 使用 mock 来避免实际创建集群（需要端口和网络）
+>           with mock.patch('tensorflow.python.framework.test_util.portpicker') as mock_portpicker, \
+                 mock.patch('tensorflow.python.framework.test_util.server_lib') as mock_server_lib:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_____________ test_create_local_cluster_basic_creation[0-2-True] ______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+worker_count = 0, ps_count = 2, use_mock = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "worker_count,ps_count,use_mock",
+        [
+            (2, 1, True),
+            (1, 0, True),  # 参数扩展
+            (0, 2, True),  # 边界情况：0个worker
+            (3, 0, True),  # 边界情况：0个PS
+        ]
+    )
+    def test_create_local_cluster_basic_creation(worker_count, ps_count, use_mock, fixed_random_seed):
+        """CASE_05: create_local_cluster 基本创建 - weak 断言"""
+    
+        # 测试 create_local_cluster 函数
+        if use_mock:
+            # 使用 mock 来避免实际创建集群（需要端口和网络）
+>           with mock.patch('tensorflow.python.framework.test_util.portpicker') as mock_portpicker, \
+                 mock.patch('tensorflow.python.framework.test_util.server_lib') as mock_server_lib:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_____________ test_create_local_cluster_basic_creation[3-0-True] ______________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+worker_count = 3, ps_count = 0, use_mock = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "worker_count,ps_count,use_mock",
+        [
+            (2, 1, True),
+            (1, 0, True),  # 参数扩展
+            (0, 2, True),  # 边界情况：0个worker
+            (3, 0, True),  # 边界情况：0个PS
+        ]
+    )
+    def test_create_local_cluster_basic_creation(worker_count, ps_count, use_mock, fixed_random_seed):
+        """CASE_05: create_local_cluster 基本创建 - weak 断言"""
+    
+        # 测试 create_local_cluster 函数
+        if use_mock:
+            # 使用 mock 来避免实际创建集群（需要端口和网络）
+>           with mock.patch('tensorflow.python.framework.test_util.portpicker') as mock_portpicker, \
+                 mock.patch('tensorflow.python.framework.test_util.server_lib') as mock_server_lib:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+___________________ test_device_context_manager[True-True] ____________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+use_gpu = True, has_gpu_available = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "use_gpu,has_gpu_available",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ]
+    )
+    def test_device_context_manager(use_gpu, has_gpu_available, fixed_random_seed):
+        """CASE_10: device 上下文管理器测试 - weak 断言"""
+    
+        # 测试 device 上下文管理器
+>       with mock.patch('tensorflow.python.framework.test_util.is_gpu_available') as mock_is_gpu_available:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:312: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+___________________ test_device_context_manager[True-False] ___________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+use_gpu = True, has_gpu_available = False, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "use_gpu,has_gpu_available",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ]
+    )
+    def test_device_context_manager(use_gpu, has_gpu_available, fixed_random_seed):
+        """CASE_10: device 上下文管理器测试 - weak 断言"""
+    
+        # 测试 device 上下文管理器
+>       with mock.patch('tensorflow.python.framework.test_util.is_gpu_available') as mock_is_gpu_available:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:312: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+___________________ test_device_context_manager[False-True] ___________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+use_gpu = False, has_gpu_available = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "use_gpu,has_gpu_available",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ]
+    )
+    def test_device_context_manager(use_gpu, has_gpu_available, fixed_random_seed):
+        """CASE_10: device 上下文管理器测试 - weak 断言"""
+    
+        # 测试 device 上下文管理器
+>       with mock.patch('tensorflow.python.framework.test_util.is_gpu_available') as mock_is_gpu_available:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:312: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+__________________ test_device_context_manager[False-False] ___________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+use_gpu = False, has_gpu_available = False, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "use_gpu,has_gpu_available",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ]
+    )
+    def test_device_context_manager(use_gpu, has_gpu_available, fixed_random_seed):
+        """CASE_10: device 上下文管理器测试 - weak 断言"""
+    
+        # 测试 device 上下文管理器
+>       with mock.patch('tensorflow.python.framework.test_util.is_gpu_available') as mock_is_gpu_available:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:312: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+____________ test_is_gpu_available_detection[True-False-None-True] ____________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+has_gpu = True, cuda_only = False, min_compute_capability = None
+expected_result = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "has_gpu,cuda_only,min_compute_capability,expected_result",
+        [
+            (True, False, None, True),  # 有GPU，无限制
+            (False, False, None, False),  # 无GPU
+            (True, True, None, True),  # 有GPU，cuda_only=True
+            (True, False, (3, 0), True),  # 有GPU，计算能力>=3.0
+            (True, False, (7, 0), False),  # 有GPU，计算能力<7.0（假设GPU计算能力为3.5）
+        ]
+    )
+    def test_is_gpu_available_detection(has_gpu, cuda_only, min_compute_capability, expected_result, fixed_random_seed):
+        """CASE_11: is_gpu_available GPU可用性检测 - weak 断言"""
+    
+        # 注意：is_gpu_available 已被弃用，但我们仍然测试它
+    
+        # 测试 is_gpu_available 函数
+>       with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices, \
+             mock.patch('tensorflow.python.framework.test_util.gpu_util.compute_capability_from_device_desc') as mock_compute_capability:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+___________ test_is_gpu_available_detection[False-False-None-False] ___________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+has_gpu = False, cuda_only = False, min_compute_capability = None
+expected_result = False, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "has_gpu,cuda_only,min_compute_capability,expected_result",
+        [
+            (True, False, None, True),  # 有GPU，无限制
+            (False, False, None, False),  # 无GPU
+            (True, True, None, True),  # 有GPU，cuda_only=True
+            (True, False, (3, 0), True),  # 有GPU，计算能力>=3.0
+            (True, False, (7, 0), False),  # 有GPU，计算能力<7.0（假设GPU计算能力为3.5）
+        ]
+    )
+    def test_is_gpu_available_detection(has_gpu, cuda_only, min_compute_capability, expected_result, fixed_random_seed):
+        """CASE_11: is_gpu_available GPU可用性检测 - weak 断言"""
+    
+        # 注意：is_gpu_available 已被弃用，但我们仍然测试它
+    
+        # 测试 is_gpu_available 函数
+>       with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices, \
+             mock.patch('tensorflow.python.framework.test_util.gpu_util.compute_capability_from_device_desc') as mock_compute_capability:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+____________ test_is_gpu_available_detection[True-True-None-True] _____________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+has_gpu = True, cuda_only = True, min_compute_capability = None
+expected_result = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "has_gpu,cuda_only,min_compute_capability,expected_result",
+        [
+            (True, False, None, True),  # 有GPU，无限制
+            (False, False, None, False),  # 无GPU
+            (True, True, None, True),  # 有GPU，cuda_only=True
+            (True, False, (3, 0), True),  # 有GPU，计算能力>=3.0
+            (True, False, (7, 0), False),  # 有GPU，计算能力<7.0（假设GPU计算能力为3.5）
+        ]
+    )
+    def test_is_gpu_available_detection(has_gpu, cuda_only, min_compute_capability, expected_result, fixed_random_seed):
+        """CASE_11: is_gpu_available GPU可用性检测 - weak 断言"""
+    
+        # 注意：is_gpu_available 已被弃用，但我们仍然测试它
+    
+        # 测试 is_gpu_available 函数
+>       with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices, \
+             mock.patch('tensorflow.python.framework.test_util.gpu_util.compute_capability_from_device_desc') as mock_compute_capability:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+__ test_is_gpu_available_detection[True-False-min_compute_capability3-True] ___
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+has_gpu = True, cuda_only = False, min_compute_capability = (3, 0)
+expected_result = True, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "has_gpu,cuda_only,min_compute_capability,expected_result",
+        [
+            (True, False, None, True),  # 有GPU，无限制
+            (False, False, None, False),  # 无GPU
+            (True, True, None, True),  # 有GPU，cuda_only=True
+            (True, False, (3, 0), True),  # 有GPU，计算能力>=3.0
+            (True, False, (7, 0), False),  # 有GPU，计算能力<7.0（假设GPU计算能力为3.5）
+        ]
+    )
+    def test_is_gpu_available_detection(has_gpu, cuda_only, min_compute_capability, expected_result, fixed_random_seed):
+        """CASE_11: is_gpu_available GPU可用性检测 - weak 断言"""
+    
+        # 注意：is_gpu_available 已被弃用，但我们仍然测试它
+    
+        # 测试 is_gpu_available 函数
+>       with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices, \
+             mock.patch('tensorflow.python.framework.test_util.gpu_util.compute_capability_from_device_desc') as mock_compute_capability:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+__ test_is_gpu_available_detection[True-False-min_compute_capability4-False] __
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+has_gpu = True, cuda_only = False, min_compute_capability = (7, 0)
+expected_result = False, fixed_random_seed = 42
+
+    @pytest.mark.parametrize(
+        "has_gpu,cuda_only,min_compute_capability,expected_result",
+        [
+            (True, False, None, True),  # 有GPU，无限制
+            (False, False, None, False),  # 无GPU
+            (True, True, None, True),  # 有GPU，cuda_only=True
+            (True, False, (3, 0), True),  # 有GPU，计算能力>=3.0
+            (True, False, (7, 0), False),  # 有GPU，计算能力<7.0（假设GPU计算能力为3.5）
+        ]
+    )
+    def test_is_gpu_available_detection(has_gpu, cuda_only, min_compute_capability, expected_result, fixed_random_seed):
+        """CASE_11: is_gpu_available GPU可用性检测 - weak 断言"""
+    
+        # 注意：is_gpu_available 已被弃用，但我们仍然测试它
+    
+        # 测试 is_gpu_available 函数
+>       with mock.patch('tensorflow.python.framework.test_util.device_lib.list_local_devices') as mock_list_devices, \
+             mock.patch('tensorflow.python.framework.test_util.gpu_util.compute_capability_from_device_desc') as mock_compute_capability:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+________ TestDeviceManagement.test_device_context_manager_in_test_case ________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_framework_test_util_g3.TestDeviceManagement testMethod=test_device_context_manager_in_test_case>
+
+    def test_device_context_manager_in_test_case(self):
+        """在 TestCase 中使用 device 上下文管理器"""
+>       with mock.patch('tensorflow.python.framework.test_util.is_gpu_available') as mock_is_gpu_available:
+
+tests\test_tensorflow_python_framework_test_util_g3.py:470: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                     Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_test_util_g3.py     215    180     40      3    15%   36-123, 146-295, 313-349, 372-449, 464, 471-477, 482-486, 490-493, 497
+----------------------------------------------------------------------------------------------------
+TOTAL                                                      215    180     40      3    15%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_gpu_device_name_detection[True-True-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_gpu_device_name_detection[False-True-False]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_create_local_cluster_basic_creation[2-1-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_create_local_cluster_basic_creation[1-0-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_create_local_cluster_basic_creation[0-2-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_create_local_cluster_basic_creation[3-0-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_device_context_manager[True-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_device_context_manager[True-False]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_device_context_manager[False-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_device_context_manager[False-False]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_is_gpu_available_detection[True-False-None-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_is_gpu_available_detection[False-False-None-False]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_is_gpu_available_detection[True-True-None-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_is_gpu_available_detection[True-False-min_compute_capability3-True]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::test_is_gpu_available_detection[True-False-min_compute_capability4-False]
+FAILED tests\test_tensorflow_python_framework_test_util_g3.py::TestDeviceManagement::test_device_context_manager_in_test_case
+16 failed, 1 passed in 2.86s
+
+Error: exit 1

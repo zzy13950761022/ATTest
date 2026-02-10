@@ -1,0 +1,179 @@
+{
+  "workflow_id": "d1a40014",
+  "created_at": "2026-01-20T21:39:22.925274",
+  "op": "torch_nn_parallel_data_parallel",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/torch_group/nn.parallel.data_parallel",
+  "target": "torch.nn.parallel.data_parallel",
+  "target_slug": "torch_nn_parallel_data_parallel",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "6ca229e7413216cd537fb8f2a04172a55a43239d",
+  "last_error_signature": "1a08de645f07b47da094b96936fbbd63edb8837a",
+  "last_block_errors": {
+    "CASE_01": [
+      "SkipTest"
+    ],
+    "CASE_02": [
+      "SkipTest"
+    ],
+    "CASE_03": [
+      "SkipTest"
+    ]
+  },
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# torch.nn.parallel.data_parallel - 函数说明\n\n## 1. 基本信息\n- **FQN**: torch.nn.parallel.data_parallel\n- **模块文件**: `/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/parallel/__init__.py`\n- **签名**: (module, inputs, device_ids=None, output_device=None, dim=0, module_kwargs=None)\n- **对象类型**: function\n\n## 2. 功能概述\n在指定GPU设备上并行评估模块输入。这是DataParallel模块的函数版本。将输入分散到多个GPU，并行执行模块，然后收集结果到输出设备。\n\n## 3. 参数说明\n- module (Module): 要并行评估的神经网络模块\n- inputs (Tensor): 模块的输入张量\n- device_ids (list of int or torch.device, 可选): 复制模块的GPU ID列表\n- output_device (list of int or torch.device, 可选): 输出位置GPU，-1表示CPU（默认：device_ids[0]）\n- dim (int, 默认0): 分散/收集操作的维度\n- module_kwargs (dict, 可选): 传递给模块的关键字参数\n\n## 4. 返回值\n- Tensor: 包含module(input)结果的张量，位于output_device上\n\n## 5. 文档要点\n- 模块参数和缓冲区必须在device_ids[0]设备上\n- 支持-1表示CPU作为输出设备\n- 无输入时，模块在device_ids的第一个设备上执行\n\n## 6. 源码摘要\n- 检查输入是否为元组，否则包装为元组\n- 获取可用设备类型和默认设备ID\n- 验证模块参数/缓冲区在正确设备上\n- 使用scatter_kwargs分散输入和参数\n- 单设备时直接调用模块\n- 多设备时复制模块、并行应用、收集结果\n\n## 7. 示例与用法（如有）\n- 无具体示例，但文档说明是DataParallel的函数版本\n\n## 8. 风险与空白\n- 缺少具体使用示例\n- 未明确说明输入张量的形状要求\n- 未说明module_kwargs的具体格式\n- 未说明dim参数的具体影响\n- 未说明异常情况处理细节\n- 需要测试边界：空输入、单设备、多设备、CPU输出",
+    "requirements.md": "# torch.nn.parallel.data_parallel 测试需求\n\n## 1. 目标与范围\n- 主要功能与期望行为：在多个GPU设备上并行评估神经网络模块，分散输入、并行执行、收集结果到指定设备\n- 不在范围内的内容：DataParallel类的内部实现、分布式训练、梯度计算、模型训练过程\n\n## 2. 输入与约束\n- 参数列表：\n  - module (torch.nn.Module): 神经网络模块，参数和缓冲区必须在device_ids[0]设备上\n  - inputs (Tensor): 输入张量，支持任意形状，但需满足模块输入要求\n  - device_ids (list[int|torch.device], 可选): GPU设备ID列表，默认使用所有可用GPU\n  - output_device (int|torch.device, 可选): 输出设备，-1表示CPU，默认device_ids[0]\n  - dim (int, 默认0): 分散/收集操作的维度\n  - module_kwargs (dict, 可选): 传递给模块的关键字参数\n\n- 有效取值范围/维度/设备要求：\n  - device_ids必须为有效GPU设备ID列表\n  - 模块参数和缓冲区必须在device_ids[0]设备上\n  - dim必须在输入张量的有效维度范围内\n  - 支持-1表示CPU作为输出设备\n\n- 必需与可选组合：\n  - module和inputs为必需参数\n  - device_ids可选，默认使用所有可用GPU\n  - output_device可选，默认device_ids[0]\n  - module_kwargs可选，为空时使用空字典\n\n- 随机性/全局状态要求：\n  - 无随机性要求\n  - 不修改模块参数，仅前向传播\n\n## 3. 输出与判定\n- 期望返回结构及关键字段：\n  - 返回Tensor，位于output_device指定设备\n  - 形状与模块在单个设备上执行结果一致\n  - 数值精度与单设备执行结果在容差范围内一致\n\n- 容差/误差界（如浮点）：\n  - 浮点误差容差：1e-6（相对误差）\n  - 多设备并行结果应与单设备串行结果一致\n\n- 状态变化或副作用检查点：\n  - 模块参数和缓冲区保持不变\n  - 不修改输入张量\n  - 不改变CUDA设备状态\n\n## 4. 错误与异常场景\n- 非法输入/维度/类型触发的异常或警告：\n  - module非Module类型：TypeError\n  - inputs非Tensor类型：TypeError\n  - device_ids包含无效GPU ID：RuntimeError\n  - 模块参数不在device_ids[0]设备上：RuntimeError\n  - dim超出输入维度范围：IndexError\n  - module_kwargs非字典类型：TypeError\n\n- 边界值（空、None、0长度、极端形状/数值）：\n  - device_ids为空列表：使用所有可用GPU\n  - device_ids为None：使用所有可用GPU\n  - inputs为空张量：模块处理空输入\n  - 单GPU设备：直接调用模块\n  - output_device=-1：输出到CPU\n  - 极端大形状输入：内存限制测试\n  - 极端小形状输入：维度有效性测试\n\n## 5. 依赖与环境\n- 外部资源/设备/网络/文件依赖：\n  - CUDA设备可用性\n  - 至少1个GPU设备\n  - torch.cuda.is_available()返回True\n\n- 需要mock/monkeypatch的部分：\n  - `torch.nn.parallel.scatter_gather.scatter_kwargs`：输入分散\n  - `torch.nn.parallel.scatter_gather.gather`：结果收集\n  - `torch.cuda.device_count`：设备数量检测\n  - `torch.cuda.current_device`：当前设备获取\n  - `torch._C._get_available_device_types`：可用设备类型\n\n## 6. 覆盖与优先级\n- 必测路径（高优先级，最多5条，短句）：\n  1. 单GPU设备正常执行\n  2. 多GPU设备并行执行\n  3. CPU作为输出设备（output_device=-1）\n  4. 模块参数在不同设备上的验证\n  5. 带module_kwargs的关键字参数传递\n\n- 可选路径（中/低优先级合并为一组列表）：\n  - 空device_ids列表处理\n  - 不同dim值对分散/收集的影响\n  - 极端形状输入处理\n  - 混合精度输入测试\n  - 嵌套模块结构测试\n  - 梯度计算兼容性验证\n  - 内存不足场景处理\n\n- 已知风险/缺失信息（仅列条目，不展开）：\n  - 文档缺少具体使用示例\n  - 未明确输入张量形状要求\n  - 未说明module_kwargs具体格式\n  - 未说明dim参数具体影响\n  - 未说明异常情况处理细节\n  - 需要测试边界：空输入、单设备、多设备、CPU输出",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"torch.nn.parallel.data_parallel\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\n      \"include\": \"SMOKE_SET\",\n      \"assert_level\": \"weak\",\n      \"max_blocks\": 5\n    },\n    \"roundN\": {\n      \"only_fix_failed_blocks\": true,\n      \"block_limit\": 3,\n      \"promote_deferred\": true\n    },\n    \"final\": {\n      \"enable_strong_asserts\": true,\n      \"coverage_optional\": true\n    }\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_torch_nn_parallel_data_parallel.py\",\n    \"all_pattern\": \"tests/test_torch_nn_parallel_data_parallel_*.py\",\n    \"groups\": {\n      \"G1\": \"tests/test_torch_nn_parallel_data_parallel_g1.py\",\n      \"G2\": \"tests/test_torch_nn_parallel_data_parallel_g2.py\"\n    }\n  },\n  \"active_group_order\": [\"G1\", \"G2\"],\n  \"groups\": [\n    {\n      \"group_id\": \"G1\",\n      \"title\": \"核心执行路径\",\n      \"entrypoints\": [\"data_parallel\"],\n      \"smoke_set\": [\"CASE_01\", \"CASE_02\"],\n      \"deferred_set\": [\"CASE_05\"],\n      \"note\": \"测试基本功能：单设备、多设备、CPU输出\"\n    },\n    {\n      \"group_id\": \"G2\",\n      \"title\": \"参数与边界处理\",\n      \"entrypoints\": [\"data_parallel\"],\n      \"smoke_set\": [\"CASE_03\"],\n      \"deferred_set\": [\"CASE_06\", \"CASE_07\"],\n      \"note\": \"测试参数验证、边界条件、异常场景\"\n    }\n  ],\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"group_id\": \"G1\",\n      \"name\": \"单GPU设备正常执行\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Linear\",\n          \"input_shape\": [4, 10],\n          \"device_ids\": [0],\n          \"output_device\": 0,\n          \"dim\": 0,\n          \"module_kwargs\": {}\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"device_match\", \"finite_check\", \"basic_forward\"],\n        \"strong\": [\"approx_equal_single_device\", \"gradient_preserved\"]\n      },\n      \"oracle\": \"module(inputs)\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 5,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"group_id\": \"G1\",\n      \"name\": \"多GPU设备并行执行\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Conv2d\",\n          \"input_shape\": [2, 3, 32, 32],\n          \"device_ids\": [0, 1],\n          \"output_device\": 0,\n          \"dim\": 0,\n          \"module_kwargs\": {}\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"device_match\", \"finite_check\", \"parallel_execution\"],\n        \"strong\": [\"approx_equal_single_device\", \"multi_device_consistency\"]\n      },\n      \"oracle\": \"module(inputs)\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 85,\n      \"max_params\": 6,\n      \"is_parametrized\": true,\n      \"requires_mock\": true,\n      \"mock_targets\": [\n        \"torch.nn.parallel.scatter_gather.scatter_kwargs\",\n        \"torch.nn.parallel.scatter_gather.gather\"\n      ]\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"group_id\": \"G2\",\n      \"name\": \"CPU作为输出设备\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"ReLU\",\n          \"input_shape\": [8, 16],\n          \"device_ids\": [0],\n          \"output_device\": -1,\n          \"dim\": 0,\n          \"module_kwargs\": {}\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"cpu_device\", \"finite_check\", \"basic_forward\"],\n        \"strong\": [\"approx_equal_single_device\", \"cpu_output_consistency\"]\n      },\n      \"oracle\": \"module(inputs).cpu()\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 5,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"group_id\": \"G1\",\n      \"name\": \"带module_kwargs的关键字参数传递\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Dropout\",\n          \"input_shape\": [4, 20],\n          \"device_ids\": [0],\n          \"output_device\": 0,\n          \"dim\": 0,\n          \"module_kwargs\": {\"p\": 0.5}\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"device_match\", \"finite_check\", \"kwargs_passed\"],\n        \"strong\": [\"approx_equal_with_kwargs\", \"kwargs_effect_consistent\"]\n      },\n      \"oracle\": \"module(inputs, **module_kwargs)\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 6,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"input_shape\": [2, 5],\n        \"device_ids\": [0],\n        \"output_device\": 0,\n        \"dim\": 0,\n        \"module_kwargs\": {}\n      },\n      \"note\": \"小形状输入测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"input_shape\": [16, 100],\n        \"device_ids\": [0],\n        \"output_device\": 0,\n        \"dim\": 0,\n        \"module_kwargs\": {}\n      },\n      \"note\": \"中等形状输入测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Conv2d\",\n        \"input_shape\": [4, 3, 64, 64],\n        \"device_ids\": [0, 1],\n        \"output_device\": 0,\n        \"dim\": 0,\n        \"module_kwargs\": {}\n      },\n      \"note\": \"更大batch size测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"input_shape\": [8, 50],\n        \"device_ids\": [0, 1],\n        \"output_device\": 0,\n        \"dim\": 1,\n        \"module_kwargs\": {}\n      },\n      \"note\": \"不同dim值测试\"\n    },\n    {\n      \"base_block_id\": \"CASE_03\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Tanh\",\n        \"input_shape\": [1, 10],\n        \"device_ids\": [0],\n        \"output_device\": -1,\n        \"dim\": 0,\n        \"module_kwargs\": {}\n      },\n      \"note\": \"单样本输入测试\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_02\", \"CASE_03\", \"CASE_04\"],\n  \"deferred_set\": [\"CASE_05\", \"CASE_06\", \"CASE_07\"]\n}",
+    "test_plan.md": "# torch.nn.parallel.data_parallel 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：mock/monkeypatch/fixtures（针对scatter/gather操作）\n- 随机性处理：固定随机种子，控制RNG状态\n- 设备管理：CUDA设备可用性检查，设备状态隔离\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- **SMOKE_SET**: CASE_01, CASE_02, CASE_03, CASE_04\n- **DEFERRED_SET**: CASE_05, CASE_06, CASE_07\n- **group列表**: G1（核心执行路径）, G2（参数与边界处理）\n- **active_group_order**: G1 → G2\n- **断言分级策略**: 首轮使用weak断言，最终轮启用strong断言\n- **预算策略**: \n  - size: S/M（小型/中型测试）\n  - max_lines: 70-85行\n  - max_params: 5-6个参数\n\n## 3. 数据与边界\n- **正常数据集**: 随机生成符合模块输入要求的张量\n- **边界值**: \n  - 空device_ids列表（使用所有GPU）\n  - 单GPU设备执行\n  - CPU输出设备（output_device=-1）\n  - 小形状输入（[1, 10]）\n  - 不同dim值（0, 1）\n- **极端形状**: 大batch size，高维输入\n- **负例与异常场景**:\n  - 无效module类型\n  - 无效inputs类型\n  - 无效GPU设备ID\n  - 模块参数不在正确设备\n  - dim超出范围\n  - 无效module_kwargs类型\n\n## 4. 覆盖映射\n| TC ID | 需求/约束覆盖 | 优先级 |\n|-------|---------------|--------|\n| TC-01 | 单GPU设备正常执行 | High |\n| TC-02 | 多GPU设备并行执行 | High |\n| TC-03 | CPU作为输出设备 | High |\n| TC-04 | 带module_kwargs传递 | High |\n\n**尚未覆盖的风险点**:\n- 内存不足场景处理\n- 混合精度输入测试\n- 嵌套模块结构测试\n- 梯度计算兼容性验证\n- 极端大形状输入的内存限制",
+    "tests/test_torch_nn_parallel_data_parallel_g1.py": "import torch\nimport torch.nn as nn\nimport torch.nn.parallel\nimport pytest\nimport math\nfrom unittest.mock import patch, MagicMock\n\n# ==== BLOCK:HEADER START ====\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:FOOTER START ====\n# ==== BLOCK:FOOTER END ====",
+    "tests/test_torch_nn_parallel_data_parallel_g2.py": "import torch\nimport torch.nn as nn\nimport torch.nn.parallel\nimport pytest\nimport math\nfrom unittest.mock import patch, MagicMock\n\n# ==== BLOCK:HEADER START ====\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:FOOTER START ====\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\nsssssssssssssssssssssss                                                  [100%]\n================================ tests coverage ================================\n______________ coverage: platform darwin, python 3.10.19-final-0 _______________\n\nName                                               Stmts   Miss Branch BrPart  Cover   Missing\n----------------------------------------------------------------------------------------------\ntests/test_torch_nn_parallel_data_parallel_g1.py     150    127     32      1    13%   13-15, 20-45, 51-66, 71-72, 77-80, 117-162, 201-289, 300-374, 384, 395\ntests/test_torch_nn_parallel_data_parallel_g2.py     170    130     56      5    20%   14, 19-44, 50-65, 70-71, 76-79, 84-91, 96-103, 155-193, 272-310, 396-468, 477, 486, 491\n----------------------------------------------------------------------------------------------\nTOTAL                                                320    257     88      6    17%\nCoverage XML written to file coverage.xml\n23 skipped in 0.66s\n",
+    "exit_code.txt": "0",
+    "analysis_plan.json": "{\n  \"status\": \"成功\",\n  \"passed\": 0,\n  \"failed\": 0,\n  \"errors\": 0,\n  \"collection_errors\": false,\n  \"block_limit\": 3,\n  \"failures\": [\n    {\n      \"test\": \"test_single_gpu_execution\",\n      \"block_id\": \"CASE_01\",\n      \"error_type\": \"SkipTest\",\n      \"action\": \"add_case\",\n      \"note\": \"测试被跳过（需要CUDA），添加CPU回退测试\"\n    },\n    {\n      \"test\": \"test_multi_gpu_parallel_execution\",\n      \"block_id\": \"CASE_02\",\n      \"error_type\": \"SkipTest\",\n      \"action\": \"add_case\",\n      \"note\": \"测试被跳过（需要CUDA），添加模拟多设备测试\"\n    },\n    {\n      \"test\": \"test_cpu_as_output_device\",\n      \"block_id\": \"CASE_03\",\n      \"error_type\": \"SkipTest\",\n      \"action\": \"add_case\",\n      \"note\": \"测试被跳过（需要CUDA），添加纯CPU测试\"\n    }\n  ],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "# 测试执行分析\n\n## 状态与统计\n- **状态**: 成功（退出码: 0）\n- **通过**: 0\n- **失败**: 0\n- **错误**: 0\n- **跳过**: 23\n- **覆盖率**: 17%\n\n## 待修复 BLOCK 列表（3个）\n\n1. **BLOCK_ID**: CASE_01\n   - **测试**: test_single_gpu_execution\n   - **错误类型**: SkipTest\n   - **Action**: add_case\n   - **原因**: 测试被跳过（需要CUDA），添加CPU回退测试\n\n2. **BLOCK_ID**: CASE_02\n   - **测试**: test_multi_gpu_parallel_execution\n   - **错误类型**: SkipTest\n   - **Action**: add_case\n   - **原因**: 测试被跳过（需要CUDA），添加模拟多设备测试\n\n3. **BLOCK_ID**: CASE_03\n   - **测试**: test_cpu_as_output_device\n   - **错误类型**: SkipTest\n   - **Action**: add_case\n   - **原因**: 测试被跳过（需要CUDA），添加纯CPU测试\n\n## 停止建议\n- **stop_recommended**: false\n- **stop_reason**: 无",
+    "final_report.md": "# torch.nn.parallel.data_parallel 测试报告\n\n## 1. 执行摘要\n**结论**: 测试执行成功但核心功能测试被跳过，主要由于CUDA设备依赖导致无法验证GPU并行功能。\n\n**关键发现/阻塞项**:\n- 所有高优先级测试用例（单GPU、多GPU、CPU输出）均因CUDA不可用而被跳过\n- 测试覆盖率仅17%，无法验证核心并行执行功能\n- 需要添加CPU回退或模拟测试以验证逻辑正确性\n\n## 2. 测试范围\n**目标FQN**: `torch.nn.parallel.data_parallel`\n\n**测试环境**:\n- 框架: pytest\n- 依赖: torch (需要CUDA支持)\n- 设备: 当前环境CUDA不可用\n\n**覆盖场景**:\n- 基础测试框架搭建完成\n- 测试用例结构已定义但未执行\n\n**未覆盖项**:\n- 单GPU设备正常执行（CASE_01）\n- 多GPU设备并行执行（CASE_02）\n- CPU作为输出设备（CASE_03）\n- 带module_kwargs的关键字参数传递（CASE_04）\n- 所有异常场景和边界条件\n\n## 3. 结果概览\n**测试统计**:\n- 用例总数: 23个\n- 通过: 0个\n- 失败: 0个\n- 错误: 0个\n- 跳过: 23个（100%）\n- 覆盖率: 17%\n\n**主要阻塞点**:\n1. 所有测试依赖CUDA设备，但当前环境无可用GPU\n2. 缺少CPU回退或模拟测试策略\n3. 无法验证并行执行的核心功能\n\n## 4. 详细发现\n### 严重级别: 阻塞（BLOCKER）\n**问题1**: CUDA设备依赖导致测试无法执行\n- **根因**: 测试设计仅考虑GPU环境，未提供CPU回退方案\n- **影响**: 无法验证任何核心功能\n- **建议修复**: 添加CPU回退测试或mock CUDA设备\n\n**问题2**: 测试覆盖率严重不足\n- **根因**: 所有高优先级测试被跳过\n- **影响**: 无法评估函数正确性\n- **建议修复**: 实现设备无关的测试策略\n\n### 严重级别: 高（HIGH）\n**问题3**: 缺少异常场景验证\n- **根因**: 测试计划包含异常场景但未执行\n- **影响**: 无法验证错误处理逻辑\n- **建议修复**: 优先实现类型检查、维度验证等异常测试\n\n## 5. 覆盖与风险\n**需求覆盖情况**:\n- ❌ 单GPU设备正常执行（未覆盖）\n- ❌ 多GPU设备并行执行（未覆盖）\n- ❌ CPU作为输出设备（未覆盖）\n- ❌ 模块参数设备验证（未覆盖）\n- ❌ 带module_kwargs传递（未覆盖）\n\n**尚未覆盖的边界/缺失信息**:\n1. **设备依赖风险**: 函数设计为GPU并行，但无CPU回退测试\n2. **内存管理**: 极端大形状输入的内存限制未测试\n3. **精度验证**: 多设备并行结果的数值一致性未验证\n4. **异常处理**: 所有异常场景（无效设备、维度错误等）未测试\n5. **参数组合**: 不同dim值、空device_ids等边界条件未覆盖\n\n**已知文档空白**:\n- 缺少具体使用示例\n- 未明确输入张量形状要求\n- 未说明module_kwargs具体格式\n- 未说明dim参数具体影响\n- 未说明异常情况处理细节\n\n## 6. 后续动作\n### 优先级: P0（立即修复）\n1. **添加CPU回退测试**\n   - 修改现有测试用例，支持CPU环境执行\n   - 使用mock模拟CUDA设备相关函数\n   - 验证核心逻辑正确性\n\n2. **实现设备无关测试策略**\n   - 创建测试fixture支持CPU/GPU切换\n   - 添加环境检测和自动跳过机制\n   - 确保测试在无GPU环境下仍能验证逻辑\n\n### 优先级: P1（高优先级）\n3. **补充核心功能测试**\n   - 实现单设备执行验证（CPU模拟）\n   - 添加module_kwargs传递测试\n   - 验证输出设备设置逻辑\n\n4. **异常场景测试**\n   - 类型检查：无效module、inputs类型\n   - 维度验证：dim超出范围\n   - 设备验证：模块参数设备检查\n\n### 优先级: P2（中优先级）\n5. **边界条件测试**\n   - 空device_ids列表处理\n   - 不同dim值对分散/收集的影响\n   - 极端形状输入处理\n\n6. **环境调整**\n   - 配置CI/CD环境支持GPU测试\n   - 添加测试环境检测和报告\n   - 优化测试执行策略\n\n### 优先级: P3（低优先级）\n7. **扩展测试覆盖**\n   - 混合精度输入测试\n   - 嵌套模块结构测试\n   - 内存不足场景模拟\n   - 梯度计算兼容性验证\n\n**风险评估**: 当前测试状态无法保证函数质量，建议优先解决P0和P1项后再进行功能集成。"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:40:04.094283",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:40:51.713442",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:42:35.140199",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:50:03.148491",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:50:03.993515",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:51:21.629439",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:54:15.362717",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:54:16.378167",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:55:35.611090",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:58:36.870692",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T21:58:38.113337",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:00:13.075437",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:03:58.206700",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:03:59.221756",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:05:58.706641",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:11:49.561314",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:11:50.638046",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:13:42.362403",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-20T22:14:39.746708",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

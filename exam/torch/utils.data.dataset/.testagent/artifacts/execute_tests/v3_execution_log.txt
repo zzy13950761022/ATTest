@@ -1,0 +1,47 @@
+=== Run Tests ===
+........F.                                                               [100%]
+=================================== FAILURES ===================================
+____________________ test_dataset_abstract_class_interface _____________________
+
+    def test_dataset_abstract_class_interface():
+        """Dataset 抽象类接口约束"""
+        # 测试直接实例化 Dataset 抽象类
+        dataset = Dataset()
+    
+        # 验证 __len__ 方法未实现 - 实际错误信息是 "object of type 'dataset' has no len()"
+        with pytest.raises(TypeError) as exc_info:
+            len(dataset)
+    
+        error_msg = str(exc_info.value).lower()
+        # 检查错误信息是否包含 'len' 或 'no len' 等提示
+        assert "len" in error_msg, \
+            f"错误信息应提示len方法未实现，实际错误信息: {error_msg}"
+    
+        # 验证 __getitem__ 方法未实现 - 实际错误信息是 "object of type 'dataset' has no __getitem__"
+        with pytest.raises(TypeError) as exc_info:
+>           dataset[0]
+
+tests/test_torch_utils_data_dataset.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.utils.data.dataset.Dataset object at 0x127a00b50>, index = 0
+
+    def __getitem__(self, index) -> T_co:
+>       raise NotImplementedError
+E       NotImplementedError
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/data/dataset.py:53: NotImplementedError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                     Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------
+tests/test_torch_utils_data_dataset.py     214     59     56      8    71%   13-17, 21-32, 45, 48, 69, 241-243, 271-272, 277-279, 282->exit, 292->exit, 316-373
+------------------------------------------------------------------------------------
+TOTAL                                      214     59     56      8    71%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_utils_data_dataset.py::test_dataset_abstract_class_interface
+1 failed, 9 passed in 0.77s
+
+Error: exit 1

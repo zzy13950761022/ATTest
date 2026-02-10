@@ -1,0 +1,51 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 7,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_categorical_column_with_vocabulary_list_basic_creation[category-vocabulary_list1-dtype1-0-2]",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "参数扩展中同时指定了default_value=0和num_oov_buckets=2，但TensorFlow不允许同时指定这两个参数"
+    },
+    {
+      "test": "test_bucketized_column_boundary_bucketing[age-boundaries0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "bucketized_column返回的对象没有key属性，需要调整断言或检查实际对象结构"
+    },
+    {
+      "test": "test_numeric_column_error_handling[-shape0-dtype0-None-None-key cannot be empty-ValueError]",
+      "block_id": "CASE_05",
+      "error_type": "Failed",
+      "action": "rewrite_block",
+      "note": "空key没有引发ValueError，需要检查TensorFlow的实际错误处理逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_bucketized_column_boundary_bucketing[income-boundaries1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[department-16-mean-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[product-32-sqrtn-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape2-invalid-None-None-dtype-TypeError]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

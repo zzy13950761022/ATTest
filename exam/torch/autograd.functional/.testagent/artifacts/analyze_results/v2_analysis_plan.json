@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestAutogradFunctionalG2::test_create_graph_parameter[simple_scalar-inputs_shape0-dtype0-cpu-True-False]",
+      "block_id": "CASE_04",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "计算图被重复使用导致RuntimeError，需要修复梯度计算逻辑"
+    },
+    {
+      "test": "TestAutogradFunctionalG2::test_invalid_parameter_combinations",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "期望捕获ValueError/RuntimeError但实际抛出AssertionError，需要调整异常类型"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

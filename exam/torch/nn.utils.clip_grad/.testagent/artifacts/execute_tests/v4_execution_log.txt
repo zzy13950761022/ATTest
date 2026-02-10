@@ -1,0 +1,207 @@
+=== Run Tests ===
+....F......s....                                                         [100%]
+=================================== FAILURES ===================================
+_ TestClipGradNorm.test_clip_grad_norm_nonfinite_gradients[dtype1-cpu-shape1-2-1.0-2.0-False-False-True] _
+
+self = <test_torch_nn_utils_clip_grad_g1.TestClipGradNorm object at 0x1266b6c80>
+fixed_seed = None, dtype = torch.float32, device = 'cpu', shape = (2, 2)
+num_params = 2, max_norm = 1.0, norm_type = 2.0, error_if_nonfinite = False
+gradient_contains_nan = False, gradient_contains_inf = True
+
+    @pytest.mark.parametrize("dtype,device,shape,num_params,max_norm,norm_type,error_if_nonfinite,gradient_contains_nan,gradient_contains_inf", [
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, True, True, False),
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, False, False, True),
+    ])
+    def test_clip_grad_norm_nonfinite_gradients(self, fixed_seed, dtype, device, shape, num_params,
+                                               max_norm, norm_type, error_if_nonfinite,
+                                               gradient_contains_nan, gradient_contains_inf):
+        """TC-05: 非有限梯度处理"""
+        # Create parameters with gradients
+        parameters = []
+        for i in range(num_params):
+            p = torch.randn(shape, dtype=dtype, device=device, requires_grad=True)
+            # Create gradient with normal values
+            grad = torch.randn_like(p) * 2.0
+    
+            # Add NaN or Inf values based on test parameters
+            if gradient_contains_nan:
+                # Add NaN values to gradient
+                grad[0, 0] = float('nan')
+            elif gradient_contains_inf:
+                # Add Inf values to gradient
+                grad[0, 0] = float('inf')
+    
+            p.grad = grad
+            parameters.append(p)
+    
+        # Store original gradients for comparison
+        original_grads = [p.grad.clone() for p in parameters]
+    
+        # Weak assertions
+        if error_if_nonfinite and (gradient_contains_nan or gradient_contains_inf):
+            # 1. error_raised_when_required: should raise RuntimeError when error_if_nonfinite=True
+            with pytest.raises(RuntimeError) as exc_info:
+                clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+    
+            # Check error message contains expected text
+            error_msg = str(exc_info.value)
+            assert any(keyword in error_msg.lower() for keyword in ["non-finite", "nan", "inf"]), \
+                f"Error message should mention non-finite values. Got: {error_msg}"
+    
+            # 2. gradients_unchanged_on_error: gradients should not be modified when error is raised
+            for i, p in enumerate(parameters):
+                # NaN values can't be compared directly, so we check if gradients are the same object
+                # or compare non-NaN/Inf parts
+                if gradient_contains_nan:
+                    # For NaN case, we can check that other values are unchanged
+                    mask = ~torch.isnan(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Non-NaN gradient values should be unchanged when error is raised"
+                elif gradient_contains_inf:
+                    # For Inf case, we can check that other values are unchanged
+                    mask = torch.isfinite(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Finite gradient values should be unchanged when error is raised"
+        else:
+            # 3. no_error_when_disabled: should not raise error when error_if_nonfinite=False
+            try:
+                total_norm = clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+                # Should return a tensor (might be NaN or Inf)
+                assert isinstance(total_norm, torch.Tensor), "Should return a tensor"
+    
+                # Check if total_norm is NaN or Inf
+                if gradient_contains_nan or gradient_contains_inf:
+                    # When gradients contain NaN/Inf and error_if_nonfinite=False,
+                    # the function should still compute a norm (which will be NaN or Inf)
+                    # and apply clipping (which won't change NaN/Inf values)
+                    assert torch.isnan(total_norm) or torch.isinf(total_norm), \
+                        f"Total norm should be NaN or Inf when gradients contain NaN/Inf. Got: {total_norm}"
+    
+                    # Check that gradients are still NaN/Inf where they were before
+                    for i, p in enumerate(parameters):
+                        if gradient_contains_nan:
+                            assert torch.isnan(p.grad[0, 0]), "NaN value should remain NaN"
+                        elif gradient_contains_inf:
+>                           assert torch.isinf(p.grad[0, 0]), "Inf value should remain Inf"
+E                           AssertionError: Inf value should remain Inf
+E                           assert tensor(False)
+E                            +  where tensor(False) = <built-in method isinf of type object at 0x10770a320>(tensor(nan))
+E                            +    where <built-in method isinf of type object at 0x10770a320> = torch.isinf
+
+tests/test_torch_nn_utils_clip_grad_g1.py:209: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_torch_nn_utils_clip_grad_g1.TestClipGradNorm object at 0x1266b6c80>
+fixed_seed = None, dtype = torch.float32, device = 'cpu', shape = (2, 2)
+num_params = 2, max_norm = 1.0, norm_type = 2.0, error_if_nonfinite = False
+gradient_contains_nan = False, gradient_contains_inf = True
+
+    @pytest.mark.parametrize("dtype,device,shape,num_params,max_norm,norm_type,error_if_nonfinite,gradient_contains_nan,gradient_contains_inf", [
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, True, True, False),
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, False, False, True),
+    ])
+    def test_clip_grad_norm_nonfinite_gradients(self, fixed_seed, dtype, device, shape, num_params,
+                                               max_norm, norm_type, error_if_nonfinite,
+                                               gradient_contains_nan, gradient_contains_inf):
+        """TC-05: 非有限梯度处理"""
+        # Create parameters with gradients
+        parameters = []
+        for i in range(num_params):
+            p = torch.randn(shape, dtype=dtype, device=device, requires_grad=True)
+            # Create gradient with normal values
+            grad = torch.randn_like(p) * 2.0
+    
+            # Add NaN or Inf values based on test parameters
+            if gradient_contains_nan:
+                # Add NaN values to gradient
+                grad[0, 0] = float('nan')
+            elif gradient_contains_inf:
+                # Add Inf values to gradient
+                grad[0, 0] = float('inf')
+    
+            p.grad = grad
+            parameters.append(p)
+    
+        # Store original gradients for comparison
+        original_grads = [p.grad.clone() for p in parameters]
+    
+        # Weak assertions
+        if error_if_nonfinite and (gradient_contains_nan or gradient_contains_inf):
+            # 1. error_raised_when_required: should raise RuntimeError when error_if_nonfinite=True
+            with pytest.raises(RuntimeError) as exc_info:
+                clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+    
+            # Check error message contains expected text
+            error_msg = str(exc_info.value)
+            assert any(keyword in error_msg.lower() for keyword in ["non-finite", "nan", "inf"]), \
+                f"Error message should mention non-finite values. Got: {error_msg}"
+    
+            # 2. gradients_unchanged_on_error: gradients should not be modified when error is raised
+            for i, p in enumerate(parameters):
+                # NaN values can't be compared directly, so we check if gradients are the same object
+                # or compare non-NaN/Inf parts
+                if gradient_contains_nan:
+                    # For NaN case, we can check that other values are unchanged
+                    mask = ~torch.isnan(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Non-NaN gradient values should be unchanged when error is raised"
+                elif gradient_contains_inf:
+                    # For Inf case, we can check that other values are unchanged
+                    mask = torch.isfinite(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Finite gradient values should be unchanged when error is raised"
+        else:
+            # 3. no_error_when_disabled: should not raise error when error_if_nonfinite=False
+            try:
+                total_norm = clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+                # Should return a tensor (might be NaN or Inf)
+                assert isinstance(total_norm, torch.Tensor), "Should return a tensor"
+    
+                # Check if total_norm is NaN or Inf
+                if gradient_contains_nan or gradient_contains_inf:
+                    # When gradients contain NaN/Inf and error_if_nonfinite=False,
+                    # the function should still compute a norm (which will be NaN or Inf)
+                    # and apply clipping (which won't change NaN/Inf values)
+                    assert torch.isnan(total_norm) or torch.isinf(total_norm), \
+                        f"Total norm should be NaN or Inf when gradients contain NaN/Inf. Got: {total_norm}"
+    
+                    # Check that gradients are still NaN/Inf where they were before
+                    for i, p in enumerate(parameters):
+                        if gradient_contains_nan:
+                            assert torch.isnan(p.grad[0, 0]), "NaN value should remain NaN"
+                        elif gradient_contains_inf:
+                            assert torch.isinf(p.grad[0, 0]), "Inf value should remain Inf"
+                else:
+                    # Normal case: gradients are finite
+                    assert torch.isfinite(total_norm), f"Total norm should be finite. Got: {total_norm}"
+    
+            except Exception as e:
+>               pytest.fail(f"Unexpected exception with error_if_nonfinite=False: {e}")
+E               Failed: Unexpected exception with error_if_nonfinite=False: Inf value should remain Inf
+E               assert tensor(False)
+E                +  where tensor(False) = <built-in method isinf of type object at 0x10770a320>(tensor(nan))
+E                +    where <built-in method isinf of type object at 0x10770a320> = torch.isinf
+
+tests/test_torch_nn_utils_clip_grad_g1.py:215: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                        Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------
+temp_test_behavior.py                           0      0      0      0   100%
+test_actual_behavior.py                        22     22      0      0     0%   1-27
+tests/test_torch_nn_utils_clip_grad_g1.py     123     12     38     10    84%   31-32, 111->115, 112->111, 152->156, 180->174, 183-187, 205->exit, 207, 208->205, 212, 272-273, 280-281
+tests/test_torch_nn_utils_clip_grad_g2.py     129      1     36      9    94%   30, 60->59, 67->71, 72->76, 163->162, 170->175, 176->181, 182->162, 242->246, 247->exit
+---------------------------------------------------------------------------------------
+TOTAL                                         274     35     74     19    83%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_clip_grad_g1.py::TestClipGradNorm::test_clip_grad_norm_nonfinite_gradients[dtype1-cpu-shape1-2-1.0-2.0-False-False-True]
+1 failed, 14 passed, 1 skipped in 0.61s
+
+Error: exit 1

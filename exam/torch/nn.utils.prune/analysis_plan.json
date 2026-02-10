@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_prune.py::TestPruneBasic::test_l1_unstructured_validation[5-5]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "原始参数未正确保存，需要检查prune.l1_unstructured的实现"
+    },
+    {
+      "test": "tests/test_torch_nn_utils_prune.py::TestPruneBasic::test_l2_structured_pruning[3-1-2-3]",
+      "block_id": "CASE_06",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock函数参数不匹配，需要修复torch.norm的mock实现"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

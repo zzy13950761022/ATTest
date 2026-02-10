@@ -1,0 +1,32 @@
+{
+  "status": "成功",
+  "passed": 6,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_import.py",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "导入测试文件完全未覆盖（0%），需要添加测试用例验证导入功能"
+    },
+    {
+      "test": "tests/test_torch_autograd_functional_g1.py",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "strict模式检测测试已标记为deferred但未实现，需要补充实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_autograd_functional_g1.py",
+      "reason": "其他覆盖率缺口（分支和代码行）在当前轮次限制内暂不处理"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

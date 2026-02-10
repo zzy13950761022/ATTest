@@ -1,0 +1,221 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.functional_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_functional_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_functional_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "foldl基本折叠操作",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "foldl",
+          "fn_type": "lambda_sum",
+          "elems_shape": [6],
+          "dtype": "float32",
+          "initializer": null,
+          "parallel_iterations": 10,
+          "swap_memory": false,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "gradient_check", "memory_usage"]
+      },
+      "oracle": "numpy.cumsum",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "scan累积序列生成",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "scan",
+          "fn_type": "lambda_sum",
+          "elems_shape": [5],
+          "dtype": "int32",
+          "initializer": 0,
+          "reverse": false,
+          "infer_shape": true,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "sequence_correctness"],
+        "strong": ["approx_equal", "gradient_check", "shape_inference"]
+      },
+      "oracle": "numpy.cumsum",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "If条件分支执行",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "If",
+          "cond": true,
+          "input_shape": [3, 3],
+          "dtype": "float32",
+          "then_branch": "add_one",
+          "else_branch": "subtract_one",
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "branch_selection"],
+        "strong": ["approx_equal", "gradient_check", "branch_consistency"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_functional_ops",
+        "tensorflow.python.ops.control_flow_ops.while_loop"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "While循环控制流",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "While",
+          "input_shape": [1],
+          "dtype": "int32",
+          "cond_fn": "less_than_5",
+          "body_fn": "increment",
+          "parallel_iterations": 10,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "loop_termination"],
+        "strong": ["approx_equal", "gradient_check", "iteration_count"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_functional_ops",
+        "tensorflow.python.ops.control_flow_ops.while_loop"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "嵌套结构多参数支持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "foldl",
+          "fn_type": "nested_lambda",
+          "elems_structure": "nested_tuple",
+          "dtype": "float32",
+          "initializer": null,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "structure_preservation"],
+        "strong": ["approx_equal", "gradient_check", "deep_nesting"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "foldl",
+        "fn_type": "lambda_sum",
+        "elems_shape": [10],
+        "dtype": "float64",
+        "initializer": 0.0,
+        "parallel_iterations": 5,
+        "swap_memory": true,
+        "mode": "graph"
+      },
+      "note": "参数扩展：不同dtype、初始值、并行迭代数、内存交换和图模式"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "scan",
+        "fn_type": "lambda_sum",
+        "elems_shape": [8],
+        "dtype": "float32",
+        "initializer": null,
+        "reverse": true,
+        "infer_shape": false,
+        "mode": "graph"
+      },
+      "note": "参数扩展：反向扫描、形状推断禁用、图模式"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "If",
+        "cond": false,
+        "input_shape": [2, 2],
+        "dtype": "int32",
+        "then_branch": "multiply_two",
+        "else_branch": "divide_two",
+        "mode": "graph"
+      },
+      "note": "参数扩展：false条件、不同dtype和形状、图模式"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

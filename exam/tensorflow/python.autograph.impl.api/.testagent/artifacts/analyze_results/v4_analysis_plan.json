@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 6,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少未知func_type和decorator_style分支测试"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少complex_conditional函数的else分支测试"
+    },
+    {
+      "test": "coverage_gap_3",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少error_handling函数的负输入测试"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 14,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_serialization_basic.py::test_corrupted_file",
+      "block_id": "CASE_09",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "断言条件不匹配实际错误消息。实际错误消息为'pickle data was truncated'，但断言期望包含'unpickle'或'corrupt'"
+    },
+    {
+      "test": "tests/test_torch_serialization_edge.py::test_weights_only_safety_mode[unsafe_object-True-False-None]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "lambda函数无法被pickle，需要在保存前跳过或使用可pickle的不安全对象"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,205 @@
+=== Run Tests ===
+.......FF.                                                               [100%]
+================================== FAILURES ===================================
+____________________ test_context_execution_mode_switching ____________________
+
+    def test_context_execution_mode_switching():
+        """测试Context执行模式切换
+    
+        验证Context可以在SYNC和ASYNC模式之间切换
+        测试执行模式切换对操作执行的影响
+        """
+        # 创建SYNC模式的Context
+        ctx_sync = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_SILENT,
+            execution_mode=context.SYNC,
+            server_def=None
+        )
+    
+        # 验证SYNC模式设置
+        assert ctx_sync._default_is_async is False, "SYNC模式应该设置_default_is_async=False"
+    
+        # 初始化并验证
+        ctx_sync.ensure_initialized()
+        assert ctx_sync._initialized is True
+    
+        # 创建ASYNC模式的Context
+        ctx_async = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_SILENT,
+            execution_mode=context.ASYNC,
+            server_def=None
+        )
+    
+        # 验证ASYNC模式设置
+        assert ctx_async._default_is_async is True, "ASYNC模式应该设置_default_is_async=True"
+    
+        # 初始化并验证
+        ctx_async.ensure_initialized()
+        assert ctx_async._initialized is True
+    
+        # 测试使用contextlib进行临时模式切换
+        # 注意：async_scope需要全局上下文已初始化
+        # 首先确保全局上下文已初始化
+        context.ensure_initialized()
+    
+        try:
+            # 测试async_scope上下文管理器
+            # async_scope使用全局上下文，而不是我们创建的ctx_sync或ctx_async
+            with context.async_scope():
+                # 在async_scope内部，执行应该是异步的
+                # 验证当前上下文状态
+                current_ctx = context.context_safe()
+                if current_ctx is not None:
+                    # 在async_scope内部，执行模式可能被临时修改
+                    # 我们可以验证async_scope不会引发异常
+                    pass
+    
+                # 在async_scope内部可以执行一些简单操作
+                # 例如，验证executing_eagerly仍然工作
+                eager_result = context.executing_eagerly()
+                assert isinstance(eager_result, bool), \
+                    "在async_scope内部executing_eagerly应该返回bool类型"
+        except (AttributeError, NotImplementedError) as e:
+            # 某些版本可能不支持async_scope
+            # 或者async_scope可能有其他要求
+            print(f"async_scope不可用或出错: {e}")
+            # 跳过async_scope测试，继续其他验证
+    
+        # 测试执行模式属性访问
+        # 验证可以通过execution_mode()函数获取当前执行模式
+        try:
+            # 注意：execution_mode()函数使用全局上下文，而不是我们创建的ctx_sync或ctx_async
+            # 获取当前全局上下文的执行模式
+>           current_mode = context.execution_mode()
+
+tests\test_tensorflow_python_eager_context_g2.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:263: in helper
+    return _GeneratorContextManager(func, args, kwds)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <contextlib._GeneratorContextManager object at 0x000001C4B11C7220>
+func = <function execution_mode at 0x000001C4AB372430>, args = (), kwds = {}
+
+    def __init__(self, func, args, kwds):
+>       self.gen = func(*args, **kwds)
+E       TypeError: execution_mode() missing 1 required positional argument: 'mode'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:87: TypeError
+___________________ test_device_policy_behavior_differences ___________________
+
+    def test_device_policy_behavior_differences():
+        """测试不同设备策略的行为差异
+    
+        验证四种设备策略（EXPLICIT, WARN, SILENT, SILENT_FOR_INT32）的基本行为
+        测试设备策略设置和获取
+        """
+        # 测试所有四种设备策略
+        device_policies = [
+            (context.DEVICE_PLACEMENT_EXPLICIT, "EXPLICIT"),
+            (context.DEVICE_PLACEMENT_WARN, "WARN"),
+            (context.DEVICE_PLACEMENT_SILENT, "SILENT"),
+            (context.DEVICE_PLACEMENT_SILENT_FOR_INT32, "SILENT_FOR_INT32")
+        ]
+    
+        for policy_value, policy_name in device_policies:
+            # 使用当前策略创建Context
+            ctx = context.Context(
+                config=None,
+                device_policy=policy_value,
+                execution_mode=context.SYNC,
+                server_def=None
+            )
+    
+            # 验证设备策略设置正确
+            assert ctx._device_policy == policy_value, \
+                f"{policy_name}策略应该设置为{policy_value}，实际为{ctx._device_policy}"
+    
+            # 初始化Context
+            ctx.ensure_initialized()
+            assert ctx._initialized is True, f"{policy_name}策略的Context应该能初始化"
+    
+            # 测试device_policy()函数获取当前设备策略
+            # 注意：device_policy()函数使用全局上下文，而不是我们创建的ctx
+            # 因此我们不能直接测试ctx的设备策略通过device_policy()函数
+    
+            # 验证策略常量值
+            if policy_name == "EXPLICIT":
+                assert policy_value == 0, "EXPLICIT应该为0"
+            elif policy_name == "WARN":
+                assert policy_value == 1, "WARN应该为1"
+            elif policy_name == "SILENT":
+                assert policy_value == 2, "SILENT应该为2"
+            elif policy_name == "SILENT_FOR_INT32":
+                assert policy_value == 3, "SILENT_FOR_INT32应该为3"
+    
+            # 测试设备策略的基本行为
+            # 注意：实际的行为差异（如警告、静默等）需要在实际操作中测试
+            # 这里只验证基本属性设置和初始化
+    
+        # 测试设备策略切换
+        # 创建两个不同策略的Context
+        ctx_explicit = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_EXPLICIT,
+            execution_mode=context.SYNC,
+            server_def=None
+        )
+    
+        ctx_silent = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_SILENT,
+            execution_mode=context.SYNC,
+            server_def=None
+        )
+    
+        # 验证策略不同
+        assert ctx_explicit._device_policy != ctx_silent._device_policy, \
+            "不同策略的Context应该有不同_device_policy值"
+    
+        # 验证两个Context都能独立初始化
+        ctx_explicit.ensure_initialized()
+        ctx_silent.ensure_initialized()
+    
+        assert ctx_explicit._initialized is True, "EXPLICIT策略Context应该能初始化"
+        assert ctx_silent._initialized is True, "SILENT策略Context应该能初始化"
+    
+        # 验证ID不同
+        assert ctx_explicit._id != ctx_silent._id, "不同的Context对象应该有不同ID"
+    
+        # 测试device_policy()函数使用全局上下文
+        try:
+            # 获取当前全局上下文的设备策略
+>           global_policy = context.device_policy()
+
+tests\test_tensorflow_python_eager_context_g2.py:454: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:263: in helper
+    return _GeneratorContextManager(func, args, kwds)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <contextlib._GeneratorContextManager object at 0x000001C4B23F1400>
+func = <function device_policy at 0x000001C4AB372280>, args = (), kwds = {}
+
+    def __init__(self, func, args, kwds):
+>       self.gen = func(*args, **kwds)
+E       TypeError: device_policy() missing 1 required positional argument: 'policy'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:87: TypeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_eager_context_g2.py     165     28     30      3    81%   244->251, 246-248, 326-329, 340-348, 352-367, 414->386, 457-468, 472-484, 495
+----------------------------------------------------------------------------------------------
+TOTAL                                                165     28     30      3    81%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_eager_context_g2.py::test_context_execution_mode_switching
+FAILED tests\test_tensorflow_python_eager_context_g2.py::test_device_policy_behavior_differences
+2 failed, 8 passed in 1.61s
+
+Error: exit 1

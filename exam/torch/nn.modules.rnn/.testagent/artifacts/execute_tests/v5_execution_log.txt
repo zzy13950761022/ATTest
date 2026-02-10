@@ -1,0 +1,471 @@
+=== Run Tests ===
+....F....X...........F.....x.                                            [100%]
+=================================== FAILURES ===================================
+_ test_lstm_projection_functionality[LSTM-10-20-15-1-False-False-float32-2-4] __
+
+set_random_seed = None, mode = 'LSTM', input_size = 10, hidden_size = 20
+proj_size = 15, num_layers = 1, batch_first = False, bidirectional = False
+dtype_str = 'float32', batch_size = 2, seq_len = 4
+
+    @pytest.mark.parametrize(
+        "mode,input_size,hidden_size,proj_size,num_layers,batch_first,bidirectional,dtype_str,batch_size,seq_len",
+        [
+            # Base case from test plan: LSTM with projection
+            ("LSTM", 10, 20, 15, 1, False, False, "float32", 2, 4),
+        ]
+    )
+    def test_lstm_projection_functionality(
+        set_random_seed,
+        mode,
+        input_size,
+        hidden_size,
+        proj_size,
+        num_layers,
+        batch_first,
+        bidirectional,
+        dtype_str,
+        batch_size,
+        seq_len,
+    ):
+        """
+        Test LSTM projection functionality constraint checking.
+    
+        Weak assertions:
+        - output_shape_proj: Check output tensor shape with projection
+        - hidden_shape_proj: Check hidden state shape with projection
+        - dtype: Check output dtype matches input dtype
+        - finite: Check all values are finite
+        - proj_size_constraint: Check projection size constraints
+        """
+        # Convert dtype string to torch dtype
+        dtype_map = {
+            "float32": torch.float32,
+            "float64": torch.float64,
+        }
+        dtype = dtype_map[dtype_str]
+    
+        # Create LSTM instance with projection
+        # Note: proj_size is only supported for LSTM in PyTorch
+        lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            proj_size=proj_size,
+            num_layers=num_layers,
+            batch_first=batch_first,
+            bidirectional=bidirectional,
+        )
+    
+        # Convert LSTM parameters to match input dtype if needed
+        if dtype == torch.float64:
+            lstm = lstm.double()
+    
+        # Create test input
+        x = create_test_input(batch_size, seq_len, input_size, batch_first, dtype)
+    
+        # Forward pass
+        output, (h_n, c_n) = lstm(x)
+    
+        # Calculate expected shapes with projection
+        num_directions = 2 if bidirectional else 1
+    
+        # Expected output shape: output uses proj_size instead of hidden_size
+        if batch_first:
+            expected_output_shape = (batch_size, seq_len, num_directions * proj_size)
+        else:
+            expected_output_shape = (seq_len, batch_size, num_directions * proj_size)
+    
+        # Expected hidden state shape: h_n uses proj_size
+        expected_hidden_shape = (num_layers * num_directions, batch_size, proj_size)
+    
+        # Expected cell state shape: c_n still uses hidden_size (not projected)
+        expected_cell_shape = (num_layers * num_directions, batch_size, hidden_size)
+    
+        # Weak assertions
+        # 1. Output shape assertion with projection
+        assert_shape_equal(output, expected_output_shape,
+                          f"Output shape mismatch for LSTM with projection")
+    
+        # 2. Hidden state shape assertion with projection
+        assert_shape_equal(h_n, expected_hidden_shape,
+                          f"Hidden state shape mismatch for LSTM with projection")
+    
+        # 3. Cell state shape assertion (should still use hidden_size)
+        assert_shape_equal(c_n, expected_cell_shape,
+                          f"Cell state shape mismatch for LSTM with projection")
+    
+        # 4. Dtype assertion
+        assert_dtype_equal(output, dtype,
+                          f"Output dtype mismatch for LSTM with projection")
+        assert_dtype_equal(h_n, dtype,
+                          f"Hidden state dtype mismatch for LSTM with projection")
+        assert_dtype_equal(c_n, dtype,
+                          f"Cell state dtype mismatch for LSTM with projection")
+    
+        # 5. Finite values assertion
+        assert_finite(output, f"Output contains non-finite values for LSTM with projection")
+        assert_finite(h_n, f"Hidden state contains non-finite values for LSTM with projection")
+        assert_finite(c_n, f"Cell state contains non-finite values for LSTM with projection")
+    
+        # 6. No NaN assertion (additional safety check)
+        assert_no_nan(output, f"Output contains NaN values for LSTM with projection")
+        assert_no_nan(h_n, f"Hidden state contains NaN values for LSTM with projection")
+        assert_no_nan(c_n, f"Cell state contains NaN values for LSTM with projection")
+    
+        # 7. Projection size constraint check
+        # proj_size must be < hidden_size (PyTorch enforces this)
+        assert proj_size < hidden_size, \
+            f"proj_size ({proj_size}) must be smaller than hidden_size ({hidden_size})"
+    
+        # LSTM-specific projection checks
+        # Check that output dimension matches proj_size (not hidden_size)
+        assert output.shape[-1] == num_directions * proj_size, \
+            f"Output dimension should be {num_directions * proj_size} with projection, got {output.shape[-1]}"
+    
+        # Check that hidden state dimension matches proj_size
+        assert h_n.shape[-1] == proj_size, \
+            f"Hidden state dimension should be {proj_size} with projection, got {h_n.shape[-1]}"
+    
+        # Check that cell state dimension still matches hidden_size (not projected)
+        assert c_n.shape[-1] == hidden_size, \
+            f"Cell state dimension should be {hidden_size} (not projected), got {c_n.shape[-1]}"
+    
+        # Check parameter shapes for projection
+        # LSTM with projection has different weight/bias parameter shapes
+        for name, param in lstm.named_parameters():
+            if "weight_ih" in name:
+                # weight_ih_l0 shape: (4*hidden_size, input_size)
+                # For LSTM with projection, weight_ih_l0 still connects input to hidden
+                # So last dimension should be input_size for layer 0
+                if "_l0" in name:
+                    # First layer: connects input to hidden
+                    assert param.shape[-1] == input_size, \
+                        f"weight_ih_l0 should have last dimension {input_size}, got {param.shape}"
+                else:
+                    # Higher layers: connect previous hidden state to current hidden
+                    # For projection, previous hidden state has dimension proj_size
+                    # Extract layer number from name
+                    layer_num = name.split('_')[-1][1:]  # e.g., "l0" from "weight_ih_l0"
+                    assert param.shape[-1] == proj_size, \
+                        f"weight_ih_l{layer_num} should have last dimension {proj_size}, got {param.shape}"
+    
+            elif "weight_hh" in name:
+                # weight_hh_l0 shape: (4*hidden_size, proj_size) for LSTM with projection
+                # This connects previous hidden state (size proj_size) to current hidden
+                assert param.shape[-1] == proj_size, \
+                    f"weight_hh {name} should have last dimension {proj_size}, got {param.shape}"
+    
+            elif "weight_hr" in name:
+                # weight_hr_l0 shape: (proj_size, hidden_size) - projection weights
+                assert param.shape[0] == proj_size and param.shape[1] == hidden_size, \
+                    f"weight_hr {name} should have shape ({proj_size}, {hidden_size}), got {param.shape}"
+    
+        # Test that projection is only supported for LSTM
+        # (This is enforced by PyTorch at construction time)
+        # We'll verify by checking that non-LSTM RNNs don't accept proj_size parameter
+        # PyTorch raises ValueError, not TypeError, for proj_size in non-LSTM RNNs
+        with pytest.raises(ValueError, match="proj_size argument is only supported for LSTM"):
+            nn.RNN(input_size=input_size, hidden_size=hidden_size, proj_size=proj_size)
+    
+        with pytest.raises(ValueError, match="proj_size argument is only supported for LSTM"):
+            nn.GRU(input_size=input_size, hidden_size=hidden_size, proj_size=proj_size)
+    
+        # Test invalid proj_size values
+        # proj_size must be >= 0
+        with pytest.raises(ValueError, match="proj_size has to be a positive integer"):
+>           nn.LSTM(input_size=input_size, hidden_size=hidden_size, proj_size=-1)
+
+tests/test_torch_nn_modules_rnn_g1.py:440: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:678: in __init__
+    super(LSTM, self).__init__('LSTM', *args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LSTM(10, 20, proj_size=-1), mode = 'LSTM', input_size = 10
+hidden_size = 20, num_layers = 1, bias = True, batch_first = False
+dropout = 0.0, bidirectional = False, proj_size = -1, device = None
+dtype = None
+
+    def __init__(self, mode: str, input_size: int, hidden_size: int,
+                 num_layers: int = 1, bias: bool = True, batch_first: bool = False,
+                 dropout: float = 0., bidirectional: bool = False, proj_size: int = 0,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(RNNBase, self).__init__()
+        self.mode = mode
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bias = bias
+        self.batch_first = batch_first
+        self.dropout = float(dropout)
+        self.bidirectional = bidirectional
+        self.proj_size = proj_size
+        num_directions = 2 if bidirectional else 1
+    
+        if not isinstance(dropout, numbers.Number) or not 0 <= dropout <= 1 or \
+                isinstance(dropout, bool):
+            raise ValueError("dropout should be a number in range [0, 1] "
+                             "representing the probability of an element being "
+                             "zeroed")
+        if dropout > 0 and num_layers == 1:
+            warnings.warn("dropout option adds dropout after all but last "
+                          "recurrent layer, so non-zero dropout expects "
+                          "num_layers greater than 1, but got dropout={} and "
+                          "num_layers={}".format(dropout, num_layers))
+        if proj_size < 0:
+>           raise ValueError("proj_size should be a positive integer or zero to disable projections")
+E           ValueError: proj_size should be a positive integer or zero to disable projections
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:72: ValueError
+
+During handling of the above exception, another exception occurred:
+
+set_random_seed = None, mode = 'LSTM', input_size = 10, hidden_size = 20
+proj_size = 15, num_layers = 1, batch_first = False, bidirectional = False
+dtype_str = 'float32', batch_size = 2, seq_len = 4
+
+    @pytest.mark.parametrize(
+        "mode,input_size,hidden_size,proj_size,num_layers,batch_first,bidirectional,dtype_str,batch_size,seq_len",
+        [
+            # Base case from test plan: LSTM with projection
+            ("LSTM", 10, 20, 15, 1, False, False, "float32", 2, 4),
+        ]
+    )
+    def test_lstm_projection_functionality(
+        set_random_seed,
+        mode,
+        input_size,
+        hidden_size,
+        proj_size,
+        num_layers,
+        batch_first,
+        bidirectional,
+        dtype_str,
+        batch_size,
+        seq_len,
+    ):
+        """
+        Test LSTM projection functionality constraint checking.
+    
+        Weak assertions:
+        - output_shape_proj: Check output tensor shape with projection
+        - hidden_shape_proj: Check hidden state shape with projection
+        - dtype: Check output dtype matches input dtype
+        - finite: Check all values are finite
+        - proj_size_constraint: Check projection size constraints
+        """
+        # Convert dtype string to torch dtype
+        dtype_map = {
+            "float32": torch.float32,
+            "float64": torch.float64,
+        }
+        dtype = dtype_map[dtype_str]
+    
+        # Create LSTM instance with projection
+        # Note: proj_size is only supported for LSTM in PyTorch
+        lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            proj_size=proj_size,
+            num_layers=num_layers,
+            batch_first=batch_first,
+            bidirectional=bidirectional,
+        )
+    
+        # Convert LSTM parameters to match input dtype if needed
+        if dtype == torch.float64:
+            lstm = lstm.double()
+    
+        # Create test input
+        x = create_test_input(batch_size, seq_len, input_size, batch_first, dtype)
+    
+        # Forward pass
+        output, (h_n, c_n) = lstm(x)
+    
+        # Calculate expected shapes with projection
+        num_directions = 2 if bidirectional else 1
+    
+        # Expected output shape: output uses proj_size instead of hidden_size
+        if batch_first:
+            expected_output_shape = (batch_size, seq_len, num_directions * proj_size)
+        else:
+            expected_output_shape = (seq_len, batch_size, num_directions * proj_size)
+    
+        # Expected hidden state shape: h_n uses proj_size
+        expected_hidden_shape = (num_layers * num_directions, batch_size, proj_size)
+    
+        # Expected cell state shape: c_n still uses hidden_size (not projected)
+        expected_cell_shape = (num_layers * num_directions, batch_size, hidden_size)
+    
+        # Weak assertions
+        # 1. Output shape assertion with projection
+        assert_shape_equal(output, expected_output_shape,
+                          f"Output shape mismatch for LSTM with projection")
+    
+        # 2. Hidden state shape assertion with projection
+        assert_shape_equal(h_n, expected_hidden_shape,
+                          f"Hidden state shape mismatch for LSTM with projection")
+    
+        # 3. Cell state shape assertion (should still use hidden_size)
+        assert_shape_equal(c_n, expected_cell_shape,
+                          f"Cell state shape mismatch for LSTM with projection")
+    
+        # 4. Dtype assertion
+        assert_dtype_equal(output, dtype,
+                          f"Output dtype mismatch for LSTM with projection")
+        assert_dtype_equal(h_n, dtype,
+                          f"Hidden state dtype mismatch for LSTM with projection")
+        assert_dtype_equal(c_n, dtype,
+                          f"Cell state dtype mismatch for LSTM with projection")
+    
+        # 5. Finite values assertion
+        assert_finite(output, f"Output contains non-finite values for LSTM with projection")
+        assert_finite(h_n, f"Hidden state contains non-finite values for LSTM with projection")
+        assert_finite(c_n, f"Cell state contains non-finite values for LSTM with projection")
+    
+        # 6. No NaN assertion (additional safety check)
+        assert_no_nan(output, f"Output contains NaN values for LSTM with projection")
+        assert_no_nan(h_n, f"Hidden state contains NaN values for LSTM with projection")
+        assert_no_nan(c_n, f"Cell state contains NaN values for LSTM with projection")
+    
+        # 7. Projection size constraint check
+        # proj_size must be < hidden_size (PyTorch enforces this)
+        assert proj_size < hidden_size, \
+            f"proj_size ({proj_size}) must be smaller than hidden_size ({hidden_size})"
+    
+        # LSTM-specific projection checks
+        # Check that output dimension matches proj_size (not hidden_size)
+        assert output.shape[-1] == num_directions * proj_size, \
+            f"Output dimension should be {num_directions * proj_size} with projection, got {output.shape[-1]}"
+    
+        # Check that hidden state dimension matches proj_size
+        assert h_n.shape[-1] == proj_size, \
+            f"Hidden state dimension should be {proj_size} with projection, got {h_n.shape[-1]}"
+    
+        # Check that cell state dimension still matches hidden_size (not projected)
+        assert c_n.shape[-1] == hidden_size, \
+            f"Cell state dimension should be {hidden_size} (not projected), got {c_n.shape[-1]}"
+    
+        # Check parameter shapes for projection
+        # LSTM with projection has different weight/bias parameter shapes
+        for name, param in lstm.named_parameters():
+            if "weight_ih" in name:
+                # weight_ih_l0 shape: (4*hidden_size, input_size)
+                # For LSTM with projection, weight_ih_l0 still connects input to hidden
+                # So last dimension should be input_size for layer 0
+                if "_l0" in name:
+                    # First layer: connects input to hidden
+                    assert param.shape[-1] == input_size, \
+                        f"weight_ih_l0 should have last dimension {input_size}, got {param.shape}"
+                else:
+                    # Higher layers: connect previous hidden state to current hidden
+                    # For projection, previous hidden state has dimension proj_size
+                    # Extract layer number from name
+                    layer_num = name.split('_')[-1][1:]  # e.g., "l0" from "weight_ih_l0"
+                    assert param.shape[-1] == proj_size, \
+                        f"weight_ih_l{layer_num} should have last dimension {proj_size}, got {param.shape}"
+    
+            elif "weight_hh" in name:
+                # weight_hh_l0 shape: (4*hidden_size, proj_size) for LSTM with projection
+                # This connects previous hidden state (size proj_size) to current hidden
+                assert param.shape[-1] == proj_size, \
+                    f"weight_hh {name} should have last dimension {proj_size}, got {param.shape}"
+    
+            elif "weight_hr" in name:
+                # weight_hr_l0 shape: (proj_size, hidden_size) - projection weights
+                assert param.shape[0] == proj_size and param.shape[1] == hidden_size, \
+                    f"weight_hr {name} should have shape ({proj_size}, {hidden_size}), got {param.shape}"
+    
+        # Test that projection is only supported for LSTM
+        # (This is enforced by PyTorch at construction time)
+        # We'll verify by checking that non-LSTM RNNs don't accept proj_size parameter
+        # PyTorch raises ValueError, not TypeError, for proj_size in non-LSTM RNNs
+        with pytest.raises(ValueError, match="proj_size argument is only supported for LSTM"):
+            nn.RNN(input_size=input_size, hidden_size=hidden_size, proj_size=proj_size)
+    
+        with pytest.raises(ValueError, match="proj_size argument is only supported for LSTM"):
+            nn.GRU(input_size=input_size, hidden_size=hidden_size, proj_size=proj_size)
+    
+        # Test invalid proj_size values
+        # proj_size must be >= 0
+>       with pytest.raises(ValueError, match="proj_size has to be a positive integer"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'proj_size has to be a positive integer'
+E         Actual message: 'proj_size should be a positive integer or zero to disable projections'
+
+tests/test_torch_nn_modules_rnn_g1.py:439: AssertionError
+______________________ test_rnn_invalid_input_dimensions _______________________
+
+    def test_rnn_invalid_input_dimensions():
+        """Test that invalid input dimensions raise appropriate errors."""
+        # Test 1D input (invalid - should be 2D for unbatched or 3D for batched)
+        rnn = nn.RNN(input_size=10, hidden_size=20)
+        x_1d = torch.randn(10)  # 1D input - should fail
+    
+        with pytest.raises(RuntimeError, match="input must have 2 or 3 dimensions"):
+>           rnn(x_1d)
+
+tests/test_torch_nn_modules_rnn_g2.py:997: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:472: in forward
+    self.check_forward_args(input, hx, batch_sizes)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:234: in check_forward_args
+    self.check_input(input, batch_sizes)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = RNN(10, 20)
+input = tensor([[-1.3864],
+        [ 0.3249],
+        [-1.3803],
+        [-0.1548],
+        [ 0.1531],
+        [-0.5718],
+        [ 2.1046],
+        [ 0.8042],
+        [-3.1167],
+        [-2.2687]])
+batch_sizes = None
+
+    def check_input(self, input: Tensor, batch_sizes: Optional[Tensor]) -> None:
+        expected_input_dim = 2 if batch_sizes is not None else 3
+        if input.dim() != expected_input_dim:
+>           raise RuntimeError(
+                'input must have {} dimensions, got {}'.format(
+                    expected_input_dim, input.dim()))
+E           RuntimeError: input must have 3 dimensions, got 2
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:206: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_rnn_invalid_input_dimensions():
+        """Test that invalid input dimensions raise appropriate errors."""
+        # Test 1D input (invalid - should be 2D for unbatched or 3D for batched)
+        rnn = nn.RNN(input_size=10, hidden_size=20)
+        x_1d = torch.randn(10)  # 1D input - should fail
+    
+>       with pytest.raises(RuntimeError, match="input must have 2 or 3 dimensions"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'input must have 2 or 3 dimensions'
+E         Actual message: 'input must have 3 dimensions, got 2'
+
+tests/test_torch_nn_modules_rnn_g2.py:996: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+test_error_check.py                         0      0      0      0   100%
+tests/test_torch_nn_modules_rnn_g1.py     164     11     32      6    91%   148->exit, 265-266, 325, 338, 412-413, 443-447, 519
+tests/test_torch_nn_modules_rnn_g2.py     432     56    164     36    83%   51, 102-121, 125, 134, 172->exit, 245-274, 278, 288, 297, 311-313, 323-325, 334-335, 342, 353-355, 366, 372, 381-383, 394, 451, 474, 594, 597->617, 603, 628, 640, 651, 741, 745, 868->874, 878->881, 896->899, 907->929, 916, 943->953, 953->exit, 973, 1000-1018, 1187
+-----------------------------------------------------------------------------------
+TOTAL                                     596     67    196     42    85%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_rnn_g1.py::test_lstm_projection_functionality[LSTM-10-20-15-1-False-False-float32-2-4]
+FAILED tests/test_torch_nn_modules_rnn_g2.py::test_rnn_invalid_input_dimensions
+2 failed, 25 passed, 1 xfailed, 1 xpassed in 0.99s
+
+Error: exit 1

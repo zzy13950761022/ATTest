@@ -1,0 +1,71 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 2,
+  "errors": 10,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_enter_invalid_frame_name",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python不存在，应使用正确导入路径"
+    },
+    {
+      "test": "test_switch_with_different_dtypes",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python不存在，应使用正确导入路径"
+    },
+    {
+      "test": "test_enter_exit_frame_management[float32-test_frame-False-10-eager]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "fixture mock路径错误：tensorflow.python.eager.context不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_enter_exit_frame_management[float64-different_frame-True-5-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_switch_branch_selection[float32-True-shape0-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_switch_branch_selection[int32-False-shape1-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_merge_multiple_inputs[float32-3-shape0-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_merge_multiple_inputs[bool-1-shape1-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_abort_behavior[test error-False-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_abort_behavior[-True-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_ref_operations_graph_mode[ref_enter-float32-ref_frame-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_ref_operations_graph_mode[ref_switch-float64-ref_switch_frame-graph]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

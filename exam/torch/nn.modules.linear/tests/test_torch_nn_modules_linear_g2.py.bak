@@ -1,0 +1,449 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from unittest.mock import patch, MagicMock
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+
+# Helper functions for G2 tests
+def create_test_input(shape, dtype=torch.float32, device='cpu'):
+    """Create test input tensor with fixed seed."""
+    torch.manual_seed(123)
+    return torch.randn(*shape, dtype=dtype, device=device)
+
+def assert_tensors_close(actual, expected, rtol=1e-5, atol=1e-8, msg=""):
+    """Assert two tensors are close within tolerance."""
+    assert actual.shape == expected.shape, f"Shape mismatch: {actual.shape} != {expected.shape}"
+    assert actual.dtype == expected.dtype, f"Dtype mismatch: {actual.dtype} != {expected.dtype}"
+    
+    diff = torch.abs(actual - expected)
+    max_diff = torch.max(diff).item()
+    max_relative_diff = torch.max(diff / (torch.abs(expected) + 1e-8)).item()
+    
+    if max_diff > atol and max_relative_diff > rtol:
+        pytest.fail(f"{msg} Tensors not close: max_diff={max_diff:.2e}, max_relative_diff={max_relative_diff:.2e}")
+
+def check_finite(tensor, msg=""):
+    """Check tensor contains only finite values."""
+    assert torch.isfinite(tensor).all(), f"{msg} Tensor contains non-finite values"
+
+def manual_bilinear_implementation(x1, x2, weight, bias=None):
+    """
+    Manual implementation of bilinear transformation for oracle comparison.
+    y = x1^T A x2 + b
+    where A is weight tensor of shape (out_features, in1_features, in2_features)
+    """
+    # x1: (*, in1_features)
+    # x2: (*, in2_features) 
+    # weight: (out_features, in1_features, in2_features)
+    # bias: (out_features,) or None
+    
+    # Ensure batch dimensions match
+    assert x1.shape[:-1] == x2.shape[:-1], f"Batch dimensions mismatch: {x1.shape[:-1]} != {x2.shape[:-1]}"
+    
+    # Reshape for batched matrix multiplication
+    batch_shape = x1.shape[:-1]
+    batch_size = math.prod(batch_shape) if batch_shape else 1
+    
+    x1_flat = x1.reshape(-1, x1.shape[-1])  # (batch_size, in1_features)
+    x2_flat = x2.reshape(-1, x2.shape[-1])  # (batch_size, in2_features)
+    
+    # Compute bilinear form: for each output feature k:
+    # y_k = sum_{i,j} x1_i * A_{k,i,j} * x2_j
+    # This can be computed as: for each k: x1 @ A_k @ x2^T
+    out_features = weight.shape[0]
+    y_flat = torch.zeros(batch_size, out_features, dtype=x1.dtype, device=x1.device)
+    
+    for k in range(out_features):
+        # A_k shape: (in1_features, in2_features)
+        A_k = weight[k]
+        # Compute: x1 @ A_k @ x2^T, but we need diagonal of this
+        # Actually: for each sample m: x1_m @ A_k @ x2_m^T
+        # This is equivalent to: (x1 * (x2 @ A_k^T)).sum(dim=1)
+        temp = torch.matmul(x2_flat, A_k.T)  # (batch_size, in1_features)
+        y_flat[:, k] = (x1_flat * temp).sum(dim=1)
+    
+    # Add bias if present
+    if bias is not None:
+        y_flat = y_flat + bias
+    
+    # Reshape back to original batch shape
+    y = y_flat.reshape(*batch_shape, out_features)
+    return y
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("in1_features,in2_features,out_features,bias,dtype,input1_shape,input2_shape", [
+    (5, 3, 7, True, torch.float32, (10, 5), (10, 3)),  # Base case from test plan
+])
+def test_bilinear_basic_function(in1_features, in2_features, out_features, bias, dtype, input1_shape, input2_shape):
+    """Test basic forward pass of Bilinear layer."""
+    # Create Bilinear layer
+    bilinear = nn.Bilinear(
+        in1_features=in1_features,
+        in2_features=in2_features,
+        out_features=out_features,
+        bias=bias,
+        dtype=dtype
+    )
+    
+    # Verify parameter shapes
+    # Weight should have shape (out_features, in1_features, in2_features)
+    assert bilinear.weight.shape == (out_features, in1_features, in2_features), \
+        f"Weight shape mismatch: {bilinear.weight.shape} != ({out_features}, {in1_features}, {in2_features})"
+    
+    # Bias check
+    if bias:
+        assert bilinear.bias is not None, "Bias should not be None when bias=True"
+        assert bilinear.bias.shape == (out_features,), \
+            f"Bias shape mismatch: {bilinear.bias.shape} != ({out_features},)"
+    else:
+        assert bilinear.bias is None, f"Bias should be None when bias=False, got {bilinear.bias}"
+    
+    # Create test inputs
+    x1 = create_test_input(input1_shape, dtype=dtype)
+    x2 = create_test_input(input2_shape, dtype=dtype)
+    
+    # Ensure batch dimensions match (they should from test plan)
+    assert x1.shape[:-1] == x2.shape[:-1], \
+        f"Batch dimensions mismatch: {x1.shape[:-1]} != {x2.shape[:-1]}"
+    
+    # Forward pass
+    y = bilinear(x1, x2)
+    
+    # Check output shape
+    expected_shape = (*input1_shape[:-1], out_features)
+    assert y.shape == expected_shape, f"Output shape mismatch: {y.shape} != {expected_shape}"
+    
+    # Check output dtype
+    assert y.dtype == dtype, f"Output dtype mismatch: {y.dtype} != {dtype}"
+    
+    # Check finite values
+    check_finite(y, "Bilinear output")
+    
+    # Bilinear form check: compare with manual implementation
+    with torch.no_grad():
+        # Get weight and bias from the bilinear layer
+        weight = bilinear.weight
+        bias_tensor = bilinear.bias if bias else None
+        
+        # Compute expected output using manual implementation
+        y_expected = manual_bilinear_implementation(x1, x2, weight, bias_tensor)
+        
+        # Compare with tolerance
+        assert_tensors_close(y, y_expected, rtol=1e-5, atol=1e-8,
+                           msg="Bilinear output doesn't match manual implementation")
+    
+    # Additional weak assertion: check that output is not all zeros (unless inputs are zero)
+    assert not torch.allclose(y, torch.zeros_like(y), rtol=1e-5, atol=1e-8), \
+        "Bilinear output is all zeros"
+    
+    # Test bilinearity property: f(ax1, bx2) = ab * f(x1, x2) for scalars a, b
+    # (approximately, due to bias term if present)
+    a = 2.0
+    b = 3.0
+    
+    y_scaled = bilinear(a * x1, b * x2)
+    
+    if bias:
+        # With bias: f(ax1, bx2) = ab * f(x1, x2) + (1 - ab) * bias
+        # So we need to adjust for bias term
+        y_expected_scaled = a * b * (y - bilinear.bias) + bilinear.bias
+    else:
+        # Without bias: f(ax1, bx2) = ab * f(x1, x2)
+        y_expected_scaled = a * b * y
+    
+    # Use relaxed tolerance for this property check
+    assert_tensors_close(y_scaled, y_expected_scaled, rtol=1e-4, atol=1e-6,
+                       msg="Bilinearity property violated")
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+@pytest.mark.parametrize("features,dtype,input_shape", [
+    (10, torch.float32, (20, 10)),  # Base case from test plan
+])
+def test_identity_mapping(features, dtype, input_shape):
+    """Test Identity layer mapping."""
+    # Create Identity layer
+    identity = nn.Identity(features)
+    
+    # Note: Identity doesn't have dtype parameter in constructor
+    # It just passes through the input
+    
+    # Create test input
+    x = create_test_input(input_shape, dtype=dtype)
+    
+    # Forward pass
+    y = identity(x)
+    
+    # Check output equals input (same object reference for Identity)
+    # Identity should return the exact same tensor
+    assert y is x, "Identity should return the same tensor object"
+    
+    # Check shape preservation
+    assert y.shape == x.shape, f"Output shape mismatch: {y.shape} != {x.shape}"
+    
+    # Check dtype preservation
+    assert y.dtype == x.dtype, f"Output dtype mismatch: {y.dtype} != {x.dtype}"
+    
+    # Check values are exactly the same (not just close)
+    assert torch.allclose(y, x, rtol=0, atol=0), \
+        "Identity output values don't match input"
+    
+    # Additional check: verify it works with different dtypes
+    if dtype == torch.float32:
+        # Test with float64
+        x_f64 = x.to(torch.float64)
+        y_f64 = identity(x_f64)
+        assert y_f64 is x_f64, "Identity should preserve tensor object for float64"
+        assert y_f64.dtype == torch.float64, f"Dtype not preserved: {y_f64.dtype}"
+    
+    # Test with requires_grad
+    x_with_grad = x.clone().requires_grad_(True)
+    y_with_grad = identity(x_with_grad)
+    
+    assert y_with_grad is x_with_grad, "Identity should preserve tensor with requires_grad"
+    assert y_with_grad.requires_grad == True, "requires_grad not preserved"
+    
+    # Test gradient flow through identity
+    # Since y = x, dy/dx = 1
+    loss = y_with_grad.sum()
+    loss.backward()
+    
+    # Gradient should be all ones
+    expected_grad = torch.ones_like(x_with_grad)
+    assert torch.allclose(x_with_grad.grad, expected_grad, rtol=1e-5, atol=1e-8), \
+        "Gradient through identity incorrect"
+    
+    # Test with different batch dimensions
+    # 3D input
+    x_3d = create_test_input((4, 5, features), dtype=dtype)
+    y_3d = identity(x_3d)
+    assert y_3d is x_3d, "Identity should work with 3D inputs"
+    assert y_3d.shape == x_3d.shape, "Shape not preserved for 3D input"
+    
+    # 1D input (no batch dimension)
+    x_1d = create_test_input((features,), dtype=dtype)
+    y_1d = identity(x_1d)
+    assert y_1d is x_1d, "Identity should work with 1D inputs"
+    assert y_1d.shape == x_1d.shape, "Shape not preserved for 1D input"
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+@pytest.mark.parametrize("in1_features,in2_features,out_features,bias,dtype,input1_shape,input2_shape", [
+    (4, 2, 3, False, torch.float32, (8, 4), (8, 2)),  # No bias case from test plan
+])
+def test_bilinear_no_bias(in1_features, in2_features, out_features, bias, dtype, input1_shape, input2_shape):
+    """Test Bilinear layer without bias."""
+    # Create Bilinear layer without bias
+    bilinear = nn.Bilinear(
+        in1_features=in1_features,
+        in2_features=in2_features,
+        out_features=out_features,
+        bias=bias,
+        dtype=dtype
+    )
+    
+    # Verify bias is None
+    assert bilinear.bias is None, f"Bias should be None when bias=False, got {bilinear.bias}"
+    
+    # Verify weight shape
+    assert bilinear.weight.shape == (out_features, in1_features, in2_features), \
+        f"Weight shape mismatch: {bilinear.weight.shape} != ({out_features}, {in1_features}, {in2_features})"
+    
+    # Create test inputs
+    x1 = create_test_input(input1_shape, dtype=dtype)
+    x2 = create_test_input(input2_shape, dtype=dtype)
+    
+    # Ensure batch dimensions match
+    assert x1.shape[:-1] == x2.shape[:-1], \
+        f"Batch dimensions mismatch: {x1.shape[:-1]} != {x2.shape[:-1]}"
+    
+    # Forward pass
+    y = bilinear(x1, x2)
+    
+    # Check output shape
+    expected_shape = (*input1_shape[:-1], out_features)
+    assert y.shape == expected_shape, f"Output shape mismatch: {y.shape} != {expected_shape}"
+    
+    # Check output dtype
+    assert y.dtype == dtype, f"Output dtype mismatch: {y.dtype} != {dtype}"
+    
+    # Check finite values
+    check_finite(y, "Bilinear output (no bias)")
+    
+    # Verify no bias in computation by comparing with manual implementation without bias
+    with torch.no_grad():
+        weight = bilinear.weight
+        # Compute expected output using manual implementation without bias
+        y_expected = manual_bilinear_implementation(x1, x2, weight, bias=None)
+        
+        # Compare with tolerance
+        assert_tensors_close(y, y_expected, rtol=1e-5, atol=1e-8,
+                           msg="Bilinear output doesn't match manual implementation (no bias)")
+    
+    # Test perfect bilinearity property for no-bias case:
+    # f(ax1, bx2) = ab * f(x1, x2) exactly (no bias term to adjust)
+    a = 1.5
+    b = 2.0
+    
+    y_scaled = bilinear(a * x1, b * x2)
+    y_expected_scaled = a * b * y
+    
+    # Should be exact for no-bias case (within floating point tolerance)
+    assert_tensors_close(y_scaled, y_expected_scaled, rtol=1e-5, atol=1e-8,
+                       msg="Bilinearity property violated for no-bias case")
+    
+    # Test additivity in first argument: f(x1 + x1', x2) = f(x1, x2) + f(x1', x2)
+    x1_prime = create_test_input(input1_shape, dtype=dtype)
+    y_sum = bilinear(x1 + x1_prime, x2)
+    y1 = bilinear(x1, x2)
+    y1_prime = bilinear(x1_prime, x2)
+    y_expected_sum = y1 + y1_prime
+    
+    assert_tensors_close(y_sum, y_expected_sum, rtol=1e-5, atol=1e-8,
+                       msg="Additivity in first argument violated")
+    
+    # Test additivity in second argument: f(x1, x2 + x2') = f(x1, x2) + f(x1, x2')
+    x2_prime = create_test_input(input2_shape, dtype=dtype)
+    y_sum2 = bilinear(x1, x2 + x2_prime)
+    y2 = bilinear(x1, x2)
+    y2_prime = bilinear(x1, x2_prime)
+    y_expected_sum2 = y2 + y2_prime
+    
+    assert_tensors_close(y_sum2, y_expected_sum2, rtol=1e-5, atol=1e-8,
+                       msg="Additivity in second argument violated")
+    
+    # Test that output is zero when either input is zero (for no-bias case)
+    x1_zero = torch.zeros_like(x1)
+    y_zero1 = bilinear(x1_zero, x2)
+    assert torch.allclose(y_zero1, torch.zeros_like(y_zero1), rtol=1e-5, atol=1e-8), \
+        "Output should be zero when first input is zero"
+    
+    x2_zero = torch.zeros_like(x2)
+    y_zero2 = bilinear(x1, x2_zero)
+    assert torch.allclose(y_zero2, torch.zeros_like(y_zero2), rtol=1e-5, atol=1e-8), \
+        "Output should be zero when second input is zero"
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Test class for grouping related tests (optional)
+class TestBilinearIdentityG2:
+    """Test class for Bilinear and Identity functionality (Group G2)."""
+    
+    def test_bilinear_weight_initialization(self):
+        """Test weight initialization for Bilinear layer."""
+        in1_features = 5
+        in2_features = 3
+        out_features = 7
+        
+        bilinear = nn.Bilinear(in1_features, in2_features, out_features, bias=True)
+        
+        # Check weight shape
+        assert bilinear.weight.shape == (out_features, in1_features, in2_features), \
+            f"Weight shape mismatch: {bilinear.weight.shape}"
+        
+        # Check weight is not all zeros after initialization
+        assert not torch.allclose(bilinear.weight, torch.zeros_like(bilinear.weight)), \
+            "Weight initialized to all zeros"
+        
+        # Check weight values are finite
+        check_finite(bilinear.weight, "Bilinear weight")
+    
+    def test_bilinear_bias_initialization(self):
+        """Test bias initialization for Bilinear layer."""
+        in1_features = 4
+        in2_features = 2
+        out_features = 3
+        
+        # With bias
+        bilinear_with_bias = nn.Bilinear(in1_features, in2_features, out_features, bias=True)
+        assert bilinear_with_bias.bias is not None, "Bias should not be None when bias=True"
+        assert bilinear_with_bias.bias.shape == (out_features,), \
+            f"Bias shape mismatch: {bilinear_with_bias.bias.shape}"
+        check_finite(bilinear_with_bias.bias, "Bilinear bias")
+        
+        # Without bias
+        bilinear_no_bias = nn.Bilinear(in1_features, in2_features, out_features, bias=False)
+        assert bilinear_no_bias.bias is None, "Bias should be None when bias=False"
+    
+    def test_identity_constructor_args(self):
+        """Test Identity constructor with different arguments."""
+        # Identity with features argument
+        identity1 = nn.Identity(10)
+        # This should work but features argument is actually ignored in PyTorch's Identity
+        # Identity doesn't store features parameter
+        
+        # Identity without arguments (default)
+        identity2 = nn.Identity()
+        
+        # Both should be instances of Identity
+        assert isinstance(identity1, nn.Identity)
+        assert isinstance(identity2, nn.Identity)
+        
+        # Test forward pass with both
+        x = torch.randn(5, 10)
+        y1 = identity1(x)
+        y2 = identity2(x)
+        
+        assert y1 is x, "Identity1 should return same tensor"
+        assert y2 is x, "Identity2 should return same tensor"
+    
+    def test_bilinear_reset_parameters(self):
+        """Test reset_parameters method for Bilinear."""
+        in1_features = 3
+        in2_features = 2
+        out_features = 4
+        
+        bilinear = nn.Bilinear(in1_features, in2_features, out_features, bias=True)
+        
+        # Store initial parameters
+        initial_weight = bilinear.weight.clone()
+        initial_bias = bilinear.bias.clone()
+        
+        # Reset parameters
+        bilinear.reset_parameters()
+        
+        # Check parameters changed (not identical)
+        assert not torch.allclose(bilinear.weight, initial_weight), \
+            "Weight unchanged after reset_parameters"
+        assert not torch.allclose(bilinear.bias, initial_bias), \
+            "Bias unchanged after reset_parameters"
+        
+        # Check parameters are finite
+        check_finite(bilinear.weight, "Bilinear weight after reset")
+        check_finite(bilinear.bias, "Bilinear bias after reset")
+
+# Additional helpers for future test cases
+def create_bilinear_with_params(in1_features, in2_features, out_features, bias=True, dtype=torch.float32):
+    """Helper to create Bilinear layer with given parameters."""
+    return nn.Bilinear(
+        in1_features=in1_features,
+        in2_features=in2_features,
+        out_features=out_features,
+        bias=bias,
+        dtype=dtype
+    )
+
+def create_identity_layer(features=None):
+    """Helper to create Identity layer."""
+    if features is not None:
+        return nn.Identity(features)
+    return nn.Identity()
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

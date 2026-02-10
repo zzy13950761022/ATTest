@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_two_algorithms_basic_functionality[2222-2-shape1-dtype1-cpu]",
+      "block_id": "CASE_04",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "THREEFRY算法可能不被支持，需要调整测试或跳过"
+    },
+    {
+      "test": "test_error_input_triggers_exceptions[99-invalid_shape0-invalid_type-cpu]",
+      "block_id": "CASE_05",
+      "error_type": "UnimplementedError",
+      "action": "rewrite_block",
+      "note": "无效种子类型测试引发意外异常类型，需要调整异常处理"
+    },
+    {
+      "test": "test_error_input_triggers_exceptions[invalid_string-invalid_shape1-complex128-cpu]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "字符串算法参数未引发异常，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

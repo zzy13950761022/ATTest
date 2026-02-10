@@ -1,0 +1,645 @@
+=== Run Tests ===
+FFFFFF.                                                                  [100%]
+=================================== FAILURES ===================================
+_ TestQuantize.test_basic_float_model_quantization[simple_linear-False-default-simple_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g1.TestQuantize object at 0x11f982860>
+model_type = 'simple_linear', inplace = False, mapping = 'default'
+run_fn_type = 'simple_calibration'
+simple_linear_model = SimpleLinear(
+  (linear1): Linear(in_features=10, out_features=20, bias=True)
+  (relu): ReLU()
+  (linear2): Linear(in_features=20, out_features=5, bias=True)
+)
+simple_calibration_fn = <function TestQuantize.simple_calibration_fn.<locals>.calibration_fn at 0x11f9b30a0>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "default", "simple_calibration"),
+    ])
+    def test_basic_float_model_quantization(self, model_type, inplace, mapping, run_fn_type,
+                                           simple_linear_model, simple_calibration_fn):
+        """TC-01: 基本浮点模型量化验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        run_args = ()
+    
+        # Mock external dependencies
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+    
+            # Setup mock returns for prepare and convert
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.return_value = prepared_model
+            mock_convert.return_value = prepared_model  # convert returns the same model
+    
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+    
+            # 3. Model should be in eval mode
+            assert not result.training, "Quantized model should be in eval mode"
+    
+            # 4. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key],
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+    
+            # Verify API usage logging - should be called 3 times
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+    
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+    
+            # Verify prepare and convert were called
+>           mock_prepare.assert_called_once()
+
+tests/test_torch_ao_quantization_quantize_g1.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='prepare' id='4825415152'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'prepare' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+_ TestQuantize.test_inplace_quantization[simple_linear-True-default-simple_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g1.TestQuantize object at 0x11f982e00>
+model_type = 'simple_linear', inplace = True, mapping = 'default'
+run_fn_type = 'simple_calibration'
+simple_linear_model = SimpleLinear(
+  (linear1): Linear(in_features=10, out_features=20, bias=True)
+  (relu): ReLU()
+  (linear2): Linear(in_features=20, out_features=5, bias=True)
+)
+simple_calibration_fn = <function TestQuantize.simple_calibration_fn.<locals>.calibration_fn at 0x11fbe2ef0>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", True, "default", "simple_calibration"),
+    ])
+    def test_inplace_quantization(self, model_type, inplace, mapping, run_fn_type,
+                                 simple_linear_model, simple_calibration_fn):
+        """TC-02: 原地量化验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        run_args = ()
+    
+        # Mock external dependencies
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+    
+            # Setup mock returns for prepare and convert
+            # For inplace=True, prepare and convert should return the same model object
+            mock_prepare.return_value = model
+            mock_convert.return_value = model
+    
+            # Keep track of original model state and ID
+            original_model_id = id(model)
+            original_model_training = model.training
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+    
+            # 3. Model should be in eval mode
+            assert not result.training, "Quantized model should be in eval mode"
+    
+            # 4. Original model modified when inplace=True
+            if inplace:
+                # When inplace=True, the returned model should be the same object
+                assert id(result) == original_model_id, "When inplace=True, returned model should be same object as input"
+                # Original model should now be in eval mode
+                assert not model.training, "Original model should be in eval mode after inplace quantization"
+    
+            # Verify API usage logging - should be called 3 times
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+    
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+    
+            # Verify prepare and convert were called
+>           mock_prepare.assert_called_once()
+
+tests/test_torch_ao_quantization_quantize_g1.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='prepare' id='4826817984'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'prepare' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+_ TestQuantize.test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g1.TestQuantize object at 0x11f983310>
+model_type = 'simple_linear', inplace = False, mapping = 'custom'
+run_fn_type = 'simple_calibration'
+simple_linear_model = SimpleLinear(
+  (linear1): Linear(in_features=10, out_features=20, bias=True)
+  (relu): ReLU()
+  (linear2): Linear(in_features=20, out_features=5, bias=True)
+)
+simple_calibration_fn = <function TestQuantize.simple_calibration_fn.<locals>.calibration_fn at 0x11fbe3370>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "custom", "simple_calibration"),
+    ])
+    def test_custom_mapping_parameter(self, model_type, inplace, mapping, run_fn_type,
+                                     simple_linear_model, simple_calibration_fn):
+        """TC-03: 自定义映射参数验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        run_args = ()
+    
+        # Define custom mapping
+        custom_mapping = {
+            "nn.Linear": "custom.quantized.Linear",
+            "nn.ReLU": "custom.quantized.ReLU",
+            "nn.Conv2d": "custom.quantized.Conv2d"
+        }
+    
+        # Mock external dependencies
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=custom_mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+    
+            # 3. Custom mapping should be applied
+            # Verify convert was called with custom mapping
+>           mock_convert.assert_called_once()
+
+tests/test_torch_ao_quantization_quantize_g1.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='convert' id='4825395168'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'convert' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+_ TestQuantize.test_calibration_function_parameter_passing[simple_linear-False-default-complex_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g1.TestQuantize object at 0x11f983820>
+model_type = 'simple_linear', inplace = False, mapping = 'default'
+run_fn_type = 'complex_calibration'
+simple_linear_model = SimpleLinear(
+  (linear1): Linear(in_features=10, out_features=20, bias=True)
+  (relu): ReLU()
+  (linear2): Linear(in_features=20, out_features=5, bias=True)
+)
+complex_calibration_fn = <function TestQuantize.complex_calibration_fn.<locals>.calibration_fn at 0x11fbe30a0>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "default", "complex_calibration"),
+    ])
+    def test_calibration_function_parameter_passing(self, model_type, inplace, mapping, run_fn_type,
+                                                   simple_linear_model, complex_calibration_fn):
+        """TC-04: 校准函数参数传递验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "complex_calibration":
+            run_fn = complex_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        # Create complex run_args
+        mock_data_loader = Mock()
+        mock_data_loader.__iter__ = Mock(return_value=iter([(torch.randn(4, 10), torch.randn(4, 5))]))
+        num_batches = 3
+        device = "cpu"
+    
+        run_args = (mock_data_loader, num_batches, device)
+    
+        # Track if run_fn was called correctly
+        run_fn_called = False
+        run_fn_args = None
+        run_fn_kwargs = None
+    
+        # Wrap the calibration function to track calls
+        def tracked_run_fn(*args, **kwargs):
+            nonlocal run_fn_called, run_fn_args, run_fn_kwargs
+            run_fn_called = True
+            run_fn_args = args
+            run_fn_kwargs = kwargs
+            # Call the original function
+            return complex_calibration_fn(*args, **kwargs)
+    
+        # Mock external dependencies
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+    
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=tracked_run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. run_fn was called correctly
+            assert run_fn_called, "run_fn should be called during quantization"
+            assert run_fn_args is not None, "run_fn should receive arguments"
+    
+            # 3. run_args were passed correctly
+            # First argument should be the model
+>           assert run_fn_args[0] is model, "First argument to run_fn should be the model"
+E           AssertionError: First argument to run_fn should be the model
+E           assert SimpleLinear(\n  (linear1): Linear(in_features=10, out_features=20, bias=True)\n  (relu): ReLU()\n  (linear2): Linear(in_features=20, out_features=5, bias=True)\n) is SimpleLinear(\n  (linear1): Linear(in_features=10, out_features=20, bias=True)\n  (relu): ReLU()\n  (linear2): Linear(in_features=20, out_features=5, bias=True)\n)
+
+tests/test_torch_ao_quantization_quantize_g1.py:432: AssertionError
+_ TestQuantize.test_different_model_architecture_compatibility[convolutional-False-default-simple_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g1.TestQuantize object at 0x11f983d30>
+model_type = 'convolutional', inplace = False, mapping = 'default'
+run_fn_type = 'simple_calibration'
+convolutional_model = ConvModel(
+  (conv1): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (relu): ReLU()
+  (pool): MaxP...2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (linear): Linear(in_features=4096, out_features=10, bias=True)
+)
+simple_calibration_fn = <function TestQuantize.simple_calibration_fn.<locals>.calibration_fn at 0x11fbe3a30>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("convolutional", False, "default", "simple_calibration"),
+    ])
+    def test_different_model_architecture_compatibility(self, model_type, inplace, mapping, run_fn_type,
+                                                      convolutional_model, simple_calibration_fn):
+        """TC-05: 不同模型架构兼容性验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "convolutional":
+            model = convolutional_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        run_args = ()
+    
+        # Mock external dependencies
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Setup mock returns
+            # For convolutional model, mapping should include Conv2d
+            mock_mapping = {
+                "nn.Linear": "nnq.Linear",
+                "nn.ReLU": "nnq.ReLU",
+                "nn.Conv2d": "nnq.Conv2d",
+                "nn.MaxPool2d": "nnq.MaxPool2d"
+            }
+            mock_get_mappings.return_value = mock_mapping
+    
+            # Setup mock returns for prepare and convert
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.return_value = prepared_model
+            mock_convert.return_value = prepared_model  # convert returns the same model
+    
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+    
+            # 3. No exception should be raised
+            # (implicitly verified by test execution)
+    
+            # 4. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key],
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+    
+            # Verify API usage logging - should be called 3 times
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+    
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+    
+            # Verify prepare and convert were called
+>           mock_prepare.assert_called_once()
+
+tests/test_torch_ao_quantization_quantize_g1.py:551: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='prepare' id='4828427840'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'prepare' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+_ TestQuantizeG2.test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration] _
+
+self = <test_torch_ao_quantization_quantize_g2.TestQuantizeG2 object at 0x11f9da0b0>
+model_type = 'simple_linear', inplace = False, mapping = 'custom'
+run_fn_type = 'simple_calibration'
+simple_linear_model = SimpleLinear(
+  (linear1): Linear(in_features=10, out_features=20, bias=True)
+  (relu): ReLU()
+  (linear2): Linear(in_features=20, out_features=5, bias=True)
+)
+simple_calibration_fn = <function TestQuantizeG2.simple_calibration_fn.<locals>.calibration_fn at 0x11fbe3eb0>
+
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "custom", "simple_calibration"),
+    ])
+    def test_custom_mapping_parameter(self, model_type, inplace, mapping, run_fn_type,
+                                     simple_linear_model, simple_calibration_fn):
+        """TC-03: 自定义映射参数验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+    
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+    
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+    
+        run_args = ()
+    
+        # Define custom mapping
+        custom_mapping = {
+            "nn.Linear": "custom.quantized.Linear",
+            "nn.ReLU": "custom.quantized.ReLU",
+            "nn.Conv2d": "custom.quantized.Conv2d"
+        }
+    
+        # Mock external dependencies
+        # Note: We need to mock the exact functions that quantize will call
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+    
+            # Setup mock returns for prepare and convert
+            # For inplace=False, quantize will deepcopy the model first
+            # Then prepare and convert will work on the copied model
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.return_value = prepared_model
+            mock_convert.return_value = prepared_model  # convert returns the same model
+    
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+    
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=custom_mapping,
+                inplace=inplace
+            )
+    
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+    
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+    
+            # 3. Custom mapping should be applied
+            # Verify convert was called with custom mapping
+>           mock_convert.assert_called_once()
+
+tests/test_torch_ao_quantization_quantize_g2.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='convert' id='4827309072'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'convert' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+=============================== warnings summary ===============================
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_basic_float_model_quantization[simple_linear-False-default-simple_calibration]
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_inplace_quantization[simple_linear-True-default-simple_calibration]
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_calibration_function_parameter_passing[simple_linear-False-default-complex_calibration]
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_different_model_architecture_compatibility[convolutional-False-default-simple_calibration]
+exam/torch_group/ao.quantization.quantize/tests/test_torch_ao_quantization_quantize_g2.py::TestQuantizeG2::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/ao/quantization/quantize.py:294: UserWarning: None of the submodule got qconfig applied. Make sure you passed correct configuration through `qconfig_dict` or by assigning the `.qconfig` attribute directly on submodules
+    warnings.warn("None of the submodule got qconfig applied. Make sure you "
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                              Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------
+tests/test_torch_ao_quantization_quantize_g1.py     241     61     42     14    70%   24-27, 45-50, 75-78, 94, 99, 142->155, 165-168, 188, 193, 236->243, 253-267, 283, 288, 327-350, 370, 375, 434-459, 475, 480, 529->542, 552-562, 582
+tests/test_torch_ao_quantization_quantize_g2.py     110     40     14      5    60%   24-27, 36-46, 65, 70-72, 88, 93, 140-179, 199, 204, 246
+---------------------------------------------------------------------------------------------
+TOTAL                                               351    101     56     19    67%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_basic_float_model_quantization[simple_linear-False-default-simple_calibration]
+FAILED tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_inplace_quantization[simple_linear-True-default-simple_calibration]
+FAILED tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]
+FAILED tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_calibration_function_parameter_passing[simple_linear-False-default-complex_calibration]
+FAILED tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_different_model_architecture_compatibility[convolutional-False-default-simple_calibration]
+FAILED tests/test_torch_ao_quantization_quantize_g2.py::TestQuantizeG2::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]
+6 failed, 1 passed, 6 warnings in 0.99s
+
+Error: exit 1

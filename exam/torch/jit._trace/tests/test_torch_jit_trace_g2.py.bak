@@ -1,0 +1,130 @@
+import torch
+import torch.nn as nn
+import pytest
+import warnings
+import numpy as np
+from typing import Tuple, List, Dict, Any
+
+# ==== BLOCK:HEADER START ====
+# Test file for torch.jit.trace - Group G2: Module Tracing
+# This file contains tests for nn.Module tracing functionality
+# ==== BLOCK:HEADER END ====
+
+# Helper functions and fixtures
+def set_random_seed(seed: int = 42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+def create_test_tensor(shape: Tuple[int, ...], dtype: torch.dtype = torch.float32, device: str = 'cpu') -> torch.Tensor:
+    """Create a test tensor with given shape, dtype and device."""
+    return torch.randn(shape, dtype=dtype, device=device)
+
+# Simple linear module for testing
+class SimpleLinearModule(nn.Module):
+    def __init__(self, input_size: int = 10, output_size: int = 5):
+        super().__init__()
+        self.linear = nn.Linear(input_size, output_size)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.relu(self.linear(x))
+
+# ==== BLOCK:CASE_05 START ====
+def test_simple_nn_module_tracing():
+    """Test simple nn.Module tracing (CASE_05)."""
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test module
+    module = SimpleLinearModule(input_size=10, output_size=5)
+    module.eval()  # Set to eval mode for consistent behavior
+    
+    # Create test input
+    shape = (1, 10)
+    x = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    
+    # Test the original module
+    original_output = module(x)
+    
+    # Trace the module
+    traced_module = torch.jit.trace(
+        func=module,
+        example_inputs=x,
+        strict=True,
+        check_trace=True
+    )
+    
+    # Test the traced module
+    traced_output = traced_module(x)
+    
+    # Weak assertions
+    # 1. Output shape check
+    assert traced_output.shape == original_output.shape, \
+        f"Traced output shape {traced_output.shape} != original shape {original_output.shape}"
+    
+    # 2. Output dtype check
+    assert traced_output.dtype == original_output.dtype, \
+        f"Traced output dtype {traced_output.dtype} != original dtype {original_output.dtype}"
+    
+    # 3. Basic equality check (within tolerance)
+    tolerance = 1e-5
+    assert torch.allclose(traced_output, original_output, rtol=tolerance, atol=tolerance), \
+        f"Traced output differs from original output beyond tolerance {tolerance}"
+    
+    # 4. Check if result is a script module
+    assert isinstance(traced_module, torch.jit.ScriptModule), \
+        f"Traced module should be ScriptModule, got {type(traced_module)}"
+    
+    # Additional checks for module properties
+    # Check that parameters are preserved
+    original_params = dict(module.named_parameters())
+    traced_params = dict(traced_module.named_parameters())
+    
+    assert set(original_params.keys()) == set(traced_params.keys()), \
+        f"Parameter names don't match: {set(original_params.keys())} vs {set(traced_params.keys())}"
+    
+    for param_name in original_params:
+        assert torch.allclose(
+            original_params[param_name], 
+            traced_params[param_name], 
+            rtol=tolerance, 
+            atol=tolerance
+        ), f"Parameter {param_name} values don't match"
+    
+    # Test with different batch size
+    x2 = create_test_tensor((2, 10), dtype=torch.float32, device='cpu')
+    original_output2 = module(x2)
+    traced_output2 = traced_module(x2)
+    
+    assert torch.allclose(traced_output2, original_output2, rtol=tolerance, atol=tolerance), \
+        f"Traced module failed on different batch size"
+    
+    # Test module training mode is fixed (should remain in eval mode)
+    module.train()  # Change original module to training mode
+    traced_module.train()  # Change traced module to training mode
+    
+    x3 = create_test_tensor(shape, dtype=torch.float32, device='cpu')
+    # Both should produce same output as during tracing (eval mode)
+    # Note: For modules with batch norm/dropout, this would be important
+    
+    print(f"✓ CASE_05 passed: Simple nn.Module tracing")
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Deferred test: Complex module structure tracing
+# This test will be implemented in later iterations
+# Test parameters: sequential_with_layers module, shape [2, 3, 32, 32], strict=True, check_trace=True
+# Weak assertions: output_shape, output_dtype, basic_equality
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Deferred test: Module forward method tracing
+# This test will be implemented in later iterations
+# Test parameters: custom_module with forward_method target, shape [1, 5], strict=True, check_trace=True
+# Weak assertions: output_shape, output_dtype, basic_equality
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Footer block for cleanup and additional assertions
+# ==== BLOCK:FOOTER END ====

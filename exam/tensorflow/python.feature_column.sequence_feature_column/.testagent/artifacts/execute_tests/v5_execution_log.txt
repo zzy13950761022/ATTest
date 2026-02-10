@@ -1,0 +1,14 @@
+=== Run Tests ===
+..                                                                       [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                        Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------------------------------------
+check_sequence_column.py                                                       21     21      6      0     0%   1-30
+cleanup.py                                                                      6      6      4      0     0%   1-8
+tests\test_tensorflow_python_feature_column_sequence_feature_column_g2.py      73      1      4      1    97%   157
+-----------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                         100     28     14      1    66%
+Coverage XML written to file coverage.xml
+
+2 passed in 1.37s

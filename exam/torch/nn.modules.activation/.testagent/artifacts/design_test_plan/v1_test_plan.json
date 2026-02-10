@@ -1,0 +1,277 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.activation",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_activation.py",
+    "all_pattern": "tests/test_torch_nn_modules_activation_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_activation_g1.py",
+      "G2": "tests/test_torch_nn_modules_activation_g2.py",
+      "G3": "tests/test_torch_nn_modules_activation_g3.py",
+      "G4": "tests/test_torch_nn_modules_activation_g4.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3", "G4"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础激活函数族",
+      "entrypoints": ["ReLU", "Sigmoid", "Tanh", "LeakyReLU"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试最常用的基础激活函数"
+    },
+    {
+      "group_id": "G2",
+      "title": "Softmax与归一化族",
+      "entrypoints": ["Softmax", "LogSoftmax", "Softmin", "Softsign"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试归一化类激活函数"
+    },
+    {
+      "group_id": "G3",
+      "title": "阈值与分段函数族",
+      "entrypoints": ["Hardtanh", "ReLU6", "CELU", "SELU", "GELU"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试带阈值和分段特性的激活函数"
+    },
+    {
+      "group_id": "G4",
+      "title": "复杂与特殊函数族",
+      "entrypoints": ["MultiheadAttention", "RReLU", "PReLU", "Threshold"],
+      "smoke_set": [],
+      "deferred_set": ["CASE_11", "CASE_12", "CASE_13"],
+      "note": "测试复杂参数和特殊行为的激活函数"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "ReLU基础正向传播",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "activation": "ReLU",
+          "inplace": false,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3, 4],
+          "input_range": "normal"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "non_negative"],
+        "strong": ["gradient_correctness", "inplace_behavior", "edge_cases"]
+      },
+      "oracle": "torch.nn.functional.relu",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "Sigmoid与Tanh基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "activation": "Sigmoid",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 2],
+          "input_range": "normal"
+        },
+        {
+          "activation": "Tanh",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 2],
+          "input_range": "normal"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "value_range", "finite_values"],
+        "strong": ["gradient_correctness", "numerical_stability", "extreme_inputs"]
+      },
+      "oracle": "torch.sigmoid / torch.tanh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "Softmax基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "activation": "Softmax",
+          "dim": 1,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3, 4],
+          "input_range": "normal"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "sum_to_one", "non_negative"],
+        "strong": ["gradient_correctness", "numerical_stability", "dim_validation"]
+      },
+      "oracle": "torch.nn.functional.softmax",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "Hardtanh阈值函数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "activation": "Hardtanh",
+          "min_val": -1.0,
+          "max_val": 1.0,
+          "inplace": false,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "input_range": "extended"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "value_clamping", "finite_values"],
+        "strong": ["gradient_correctness", "parameter_validation", "edge_clamping"]
+      },
+      "oracle": "torch.clamp",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "LeakyReLU参数化测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "activation": "LeakyReLU",
+          "negative_slope": 0.01,
+          "inplace": false,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 3],
+          "input_range": "mixed"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "slope_effect", "finite_values"],
+        "strong": ["gradient_correctness", "inplace_behavior", "slope_variations"]
+      },
+      "oracle": "torch.nn.functional.leaky_relu",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "activation": "ReLU",
+        "inplace": true,
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [2, 3, 4],
+        "input_range": "normal"
+      },
+      "note": "ReLU的inplace参数扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "activation": "ReLU",
+        "inplace": false,
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [4, 5],
+        "input_range": "normal"
+      },
+      "note": "ReLU的float64数据类型扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "activation": "Sigmoid",
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [1, 10],
+        "input_range": "extreme"
+      },
+      "note": "Sigmoid的极端输入值测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "activation": "Softmax",
+        "dim": -1,
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [5],
+        "input_range": "normal"
+      },
+      "note": "Softmax的负维度参数测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_09", "CASE_10", "CASE_11", "CASE_12", "CASE_13"]
+}

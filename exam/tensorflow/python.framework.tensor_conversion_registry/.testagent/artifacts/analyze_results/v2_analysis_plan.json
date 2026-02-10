@@ -1,0 +1,36 @@
+{
+  "status": "成功",
+  "passed": 5,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失分支：数值类型默认转换函数测试"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_06",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失分支：相同优先级函数注册顺序测试"
+    },
+    {
+      "test": "coverage_gap_3",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失分支：fixture函数签名验证测试"
+    }
+  ],
+  "deferred": [
+    {"test": "coverage_gap_4", "reason": "其他覆盖率缺口，本轮限制3个BLOCK"}
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,25 @@
+{
+  "status": "成功",
+  "passed": 15,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "test_regex_replace_basic",
+      "reason": "CASE_04在deferred_set中，按计划跳过"
+    },
+    {
+      "test": "test_regex_replace_non_global",
+      "reason": "CASE_04扩展在deferred_set中，按计划跳过"
+    },
+    {
+      "test": "test_string_split_basic",
+      "reason": "CASE_05在deferred_set中，按计划跳过"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

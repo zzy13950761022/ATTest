@@ -1,0 +1,228 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.parsing_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_parsing_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_parsing_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "parse_example_v2基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "feature_type": "FixedLenFeature",
+          "dtype": "float32",
+          "shape": [2, 2],
+          "serialized_length": 1,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_shape", "dtype_match", "feature_keys"],
+        "strong": ["exact_values", "sparse_density", "ragged_consistency"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_parsing_ops"]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "decode_csv标准CSV解析",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "record_defaults": ["float32", "int32"],
+          "field_delim": ",",
+          "use_quote_delim": true,
+          "na_value": "",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["output_count", "dtype_match", "shape_consistency", "basic_parsing"],
+        "strong": ["exact_values", "quote_handling", "delimiter_variants"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_parsing_ops"]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "decode_raw原始字节解码",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "out_type": "float32",
+          "little_endian": true,
+          "fixed_length": null,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "dtype_match", "shape_consistency", "endianness"],
+        "strong": ["exact_values", "byte_alignment", "fixed_length_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_parsing_ops"]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "各种特征类型配置验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "feature_types": ["FixedLenFeature", "VarLenFeature"],
+          "dtype": "int64",
+          "shape": [3],
+          "serialized_length": 2,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["feature_type_handling", "output_structure", "dtype_match", "shape_validation"],
+        "strong": ["mixed_feature_consistency", "sparse_conversion", "ragged_validation"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_parsing_ops", "tensorflow.python.ops.sparse_ops"]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "错误输入异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "error_type": "empty_features",
+          "serialized_length": 1,
+          "expected_exception": "ValueError",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message", "error_condition"],
+        "strong": ["exception_context", "error_recovery", "state_cleanup"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["tensorflow.python.ops.gen_parsing_ops"]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "feature_type": "VarLenFeature",
+        "dtype": "string",
+        "shape": [],
+        "serialized_length": 3,
+        "flags": ["edge"]
+      },
+      "note": "可变长度特征类型扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "feature_type": "SparseFeature",
+        "dtype": "float64",
+        "shape": [5, 5],
+        "serialized_length": 2,
+        "flags": ["edge"]
+      },
+      "note": "稀疏特征类型扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "record_defaults": ["string", "bool"],
+        "field_delim": "\\t",
+        "use_quote_delim": false,
+        "na_value": "NA",
+        "flags": ["edge"]
+      },
+      "note": "不同分隔符和数据类型扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "out_type": "int16",
+        "little_endian": false,
+        "fixed_length": 8,
+        "flags": ["edge"]
+      },
+      "note": "大端字节序和固定长度扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "feature_types": ["RaggedFeature", "FixedLenSequenceFeature"],
+        "dtype": "float32",
+        "shape": [2, 3],
+        "serialized_length": 4,
+        "flags": ["edge"]
+      },
+      "note": "复杂特征类型组合扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

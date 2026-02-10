@@ -1,0 +1,1266 @@
+=== Run Tests ===
+FFFFFFFFsssss                                                            [100%]
+=================================== FAILURES ===================================
+____ test_assert_basic_functionality[condition_shape0-data_shapes0-3-True] _____
+
+func = <function _assert at 0x12883d510>, args = ()
+kwargs = {'condition': <tf.Tensor: shape=(2, 2), dtype=bool, numpy=
+array([[ True,  True],
+       [ True,  True]])>, 'data': [<...ay([[ 0.54256004],
+       [-0.46341768],
+       [-0.46572974],
+       [ 0.24196227]], dtype=float32)>], 'summarize': 3}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: in wrapper
+    return f(**kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:49: in _assert
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.InvalidArgumentError: In[0] should be a scalar: [2,2] [Op:Assert]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/ops.py:7164: InvalidArgumentError
+
+During handling of the above exception, another exception occurred:
+
+condition_shape = [2, 2], data_shapes = [[3, 3], [4, 1]], summarize = 3
+condition_value = True
+
+    @pytest.mark.parametrize("condition_shape,data_shapes,summarize,condition_value", [
+        # Base case from test_plan.json
+        ([2, 2], [[3, 3], [4, 1]], 3, True),
+        # Parameter extension: condition=False to trigger error
+        ([1, 1], [[1, 1]], 1, False),
+    ])
+    def test_assert_basic_functionality(condition_shape, data_shapes, summarize, condition_value):
+        """
+        Test basic functionality of Assert operation.
+    
+        Weak assertions:
+        1. operation_created: Assert operation is created
+        2. no_exception: No exception when condition is True
+        3. output_type: Returns Operation object
+    
+        Strong assertions (not enabled in round 1):
+        1. data_content_preserved: Data content is preserved
+        2. summarize_limit: Summarize parameter limits output
+        3. error_message_format: Error message format when condition is False
+        """
+        # Create condition tensor
+        condition = tf.constant(condition_value, shape=condition_shape, dtype=tf.bool)
+    
+        # Create data tensors
+        data = []
+        for i, shape in enumerate(data_shapes):
+            data_tensor = create_random_tensor(shape, dtype=tf.float32)
+            data.append(data_tensor)
+    
+        if condition_value:
+            # When condition is True, Assert should succeed
+>           result = assert_no_exception(
+                gen_logging_ops.Assert,
+                condition=condition,
+                data=data,
+                summarize=summarize
+            )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:105: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function _assert at 0x12883d510>, args = ()
+kwargs = {'condition': <tf.Tensor: shape=(2, 2), dtype=bool, numpy=
+array([[ True,  True],
+       [ True,  True]])>, 'data': [<...ay([[ 0.54256004],
+       [-0.46341768],
+       [-0.46572974],
+       [ 0.24196227]], dtype=float32)>], 'summarize': 3}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: In[0] should be a scalar: [2,2] [Op:Assert]
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+____ test_assert_basic_functionality[condition_shape1-data_shapes1-1-False] ____
+
+condition_shape = [1, 1], data_shapes = [[1, 1]], summarize = 1
+condition_value = False
+
+    @pytest.mark.parametrize("condition_shape,data_shapes,summarize,condition_value", [
+        # Base case from test_plan.json
+        ([2, 2], [[3, 3], [4, 1]], 3, True),
+        # Parameter extension: condition=False to trigger error
+        ([1, 1], [[1, 1]], 1, False),
+    ])
+    def test_assert_basic_functionality(condition_shape, data_shapes, summarize, condition_value):
+        """
+        Test basic functionality of Assert operation.
+    
+        Weak assertions:
+        1. operation_created: Assert operation is created
+        2. no_exception: No exception when condition is True
+        3. output_type: Returns Operation object
+    
+        Strong assertions (not enabled in round 1):
+        1. data_content_preserved: Data content is preserved
+        2. summarize_limit: Summarize parameter limits output
+        3. error_message_format: Error message format when condition is False
+        """
+        # Create condition tensor
+        condition = tf.constant(condition_value, shape=condition_shape, dtype=tf.bool)
+    
+        # Create data tensors
+        data = []
+        for i, shape in enumerate(data_shapes):
+            data_tensor = create_random_tensor(shape, dtype=tf.float32)
+            data.append(data_tensor)
+    
+        if condition_value:
+            # When condition is True, Assert should succeed
+            result = assert_no_exception(
+                gen_logging_ops.Assert,
+                condition=condition,
+                data=data,
+                summarize=summarize
+            )
+    
+            # Weak assertion: operation_created
+            assert result is not None, "Assert should return an Operation"
+    
+            # Weak assertion: output_type
+            assert isinstance(result, tf.Operation), f"Expected tf.Operation, got {type(result)}"
+    
+            # Execute the operation to ensure it works
+            with tf.compat.v1.Session() as sess:
+                sess.run(result)
+    
+        else:
+            # When condition is False, Assert should raise InvalidArgumentError
+            with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+                gen_logging_ops.Assert(
+                    condition=condition,
+                    data=data,
+                    summarize=summarize
+                )
+    
+            # Verify error message contains information about the assertion failure
+            error_msg = str(exc_info.value)
+>           assert "assertion failed" in error_msg.lower() or "condition" in error_msg.lower(), \
+                f"Error message should indicate assertion failure: {error_msg}"
+E           AssertionError: Error message should indicate assertion failure: In[0] should be a scalar: [1,1] [Op:Assert]
+E           assert ('assertion failed' in 'in[0] should be a scalar: [1,1] [op:assert]' or 'condition' in 'in[0] should be a scalar: [1,1] [op:assert]')
+E            +  where 'in[0] should be a scalar: [1,1] [op:assert]' = <built-in method lower of str object at 0x13c13ad90>()
+E            +    where <built-in method lower of str object at 0x13c13ad90> = 'In[0] should be a scalar: [1,1] [Op:Assert]'.lower
+E            +  and   'in[0] should be a scalar: [1,1] [op:assert]' = <built-in method lower of str object at 0x13c13ad90>()
+E            +    where <built-in method lower of str object at 0x13c13ad90> = 'In[0] should be a scalar: [1,1] [Op:Assert]'.lower
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:133: AssertionError
+_ test_audio_summary_basic_functionality[tensor_shape0-1-44100.0-3-test_audio] _
+
+func = <function audio_summary at 0x12883d7e0>, args = ()
+kwargs = {'max_outputs': 3, 'sample_rate': 44100.0, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'test_audio'>, 'tensor': ...1378596,  0.51504767,
+         3.8527315 ,  0.5708905 ,  1.1355656 ,  0.9540018 ,  0.65139127]],
+      dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: in wrapper
+    return f(**kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:118: in audio_summary
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.UnimplementedError: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2.. [Op:AudioSummary]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/ops.py:7164: UnimplementedError
+
+During handling of the above exception, another exception occurred:
+
+tensor_shape = [2, 100], channels = 1, sample_rate = 44100.0, max_outputs = 3
+tag = 'test_audio'
+
+    @pytest.mark.parametrize("tensor_shape,channels,sample_rate,max_outputs,tag", [
+        # Base case from test_plan.json: 2-D tensor
+        ([2, 100], 1, 44100.0, 3, "test_audio"),
+        # Parameter extension: 3-D tensor with 2 channels
+        ([2, 100, 2], 2, 22050.0, 1, "audio_3d"),
+    ])
+    def test_audio_summary_basic_functionality(tensor_shape, channels, sample_rate, max_outputs, tag):
+        """
+        Test basic functionality of AudioSummary operation.
+    
+        Weak assertions:
+        1. summary_created: AudioSummary returns a tensor
+        2. string_tensor: Output is a string tensor
+        3. no_exception: No exception for valid inputs
+        4. shape_2d: Output tensor has 2-D shape [batch_size, ?]
+    
+        Strong assertions (not enabled in round 1):
+        1. protocol_buffer_valid: Output contains valid protocol buffer
+        2. sample_rate_preserved: Sample rate is preserved in summary
+        3. max_outputs_limit: Max_outputs parameter limits entries
+        """
+        # Create tag tensor
+        tag_tensor = tf.constant(tag, dtype=tf.string)
+    
+        # Create audio tensor
+        if len(tensor_shape) == 2:
+            # 2-D tensor: [batch_size, frames]
+            audio_tensor = create_random_tensor(tensor_shape, dtype=tf.float32)
+        elif len(tensor_shape) == 3:
+            # 3-D tensor: [batch_size, frames, channels]
+            audio_tensor = create_random_tensor(tensor_shape, dtype=tf.float32)
+        else:
+            pytest.skip(f"Unsupported tensor shape: {tensor_shape}")
+    
+        # Call AudioSummary
+>       result = assert_no_exception(
+            gen_logging_ops.AudioSummary,
+            tag=tag_tensor,
+            tensor=audio_tensor,
+            sample_rate=sample_rate,
+            max_outputs=max_outputs
+        )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function audio_summary at 0x12883d7e0>, args = ()
+kwargs = {'max_outputs': 3, 'sample_rate': 44100.0, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'test_audio'>, 'tensor': ...1378596,  0.51504767,
+         3.8527315 ,  0.5708905 ,  1.1355656 ,  0.9540018 ,  0.65139127]],
+      dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2.. [Op:AudioSummary]
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+----------------------------- Captured stderr call -----------------------------
+2026-01-24 15:08:39.293351: W tensorflow/core/framework/op_kernel.cc:1722] OP_REQUIRES failed at op_kernel.cc:120 : UNIMPLEMENTED: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2..
+__ test_audio_summary_basic_functionality[tensor_shape1-2-22050.0-1-audio_3d] __
+
+func = <function audio_summary at 0x12883d7e0>, args = ()
+kwargs = {'max_outputs': 1, 'sample_rate': 22050.0, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'audio_3d'>, 'tensor': <t... [-1.7787203 ,  1.4960443 ],
+        [ 0.65436566, -0.05558467],
+        [ 0.27996862, -1.125489  ]]], dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: in wrapper
+    return f(**kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:118: in audio_summary
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.UnimplementedError: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2.. [Op:AudioSummary]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/ops.py:7164: UnimplementedError
+
+During handling of the above exception, another exception occurred:
+
+tensor_shape = [2, 100, 2], channels = 2, sample_rate = 22050.0, max_outputs = 1
+tag = 'audio_3d'
+
+    @pytest.mark.parametrize("tensor_shape,channels,sample_rate,max_outputs,tag", [
+        # Base case from test_plan.json: 2-D tensor
+        ([2, 100], 1, 44100.0, 3, "test_audio"),
+        # Parameter extension: 3-D tensor with 2 channels
+        ([2, 100, 2], 2, 22050.0, 1, "audio_3d"),
+    ])
+    def test_audio_summary_basic_functionality(tensor_shape, channels, sample_rate, max_outputs, tag):
+        """
+        Test basic functionality of AudioSummary operation.
+    
+        Weak assertions:
+        1. summary_created: AudioSummary returns a tensor
+        2. string_tensor: Output is a string tensor
+        3. no_exception: No exception for valid inputs
+        4. shape_2d: Output tensor has 2-D shape [batch_size, ?]
+    
+        Strong assertions (not enabled in round 1):
+        1. protocol_buffer_valid: Output contains valid protocol buffer
+        2. sample_rate_preserved: Sample rate is preserved in summary
+        3. max_outputs_limit: Max_outputs parameter limits entries
+        """
+        # Create tag tensor
+        tag_tensor = tf.constant(tag, dtype=tf.string)
+    
+        # Create audio tensor
+        if len(tensor_shape) == 2:
+            # 2-D tensor: [batch_size, frames]
+            audio_tensor = create_random_tensor(tensor_shape, dtype=tf.float32)
+        elif len(tensor_shape) == 3:
+            # 3-D tensor: [batch_size, frames, channels]
+            audio_tensor = create_random_tensor(tensor_shape, dtype=tf.float32)
+        else:
+            pytest.skip(f"Unsupported tensor shape: {tensor_shape}")
+    
+        # Call AudioSummary
+>       result = assert_no_exception(
+            gen_logging_ops.AudioSummary,
+            tag=tag_tensor,
+            tensor=audio_tensor,
+            sample_rate=sample_rate,
+            max_outputs=max_outputs
+        )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function audio_summary at 0x12883d7e0>, args = ()
+kwargs = {'max_outputs': 1, 'sample_rate': 22050.0, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'audio_3d'>, 'tensor': <t... [-1.7787203 ,  1.4960443 ],
+        [ 0.65436566, -0.05558467],
+        [ 0.27996862, -1.125489  ]]], dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2.. [Op:AudioSummary]
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+----------------------------- Captured stderr call -----------------------------
+2026-01-24 15:08:39.346490: W tensorflow/core/framework/op_kernel.cc:1722] OP_REQUIRES failed at op_kernel.cc:120 : UNIMPLEMENTED: Op AudioSummary is not available in GraphDef version 1087. It has been removed in version 15. Use AudioSummaryV2..
+_ test_image_summary_basic_functionality[tensor_shape0-3-3-test_image-dtype0] __
+
+func = <function image_summary at 0x12883dea0>, args = ()
+kwargs = {'max_images': 3, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'test_image'>, 'tensor': <tf.Tensor: shape=(2, 32,...         [-0.2585425 ,  0.35027748, -0.9596581 ],
+         [-0.9831787 ,  0.3329277 ,  0.45581368]]]], dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: in wrapper
+    return f(**kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:378: in image_summary
+    return image_summary_eager_fallback(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:417: in image_summary_eager_fallback
+    _result = _execute.execute(b"ImageSummary", 1, inputs=_inputs_flat,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_name = b'ImageSummary', num_outputs = 1
+inputs = [<tf.Tensor: shape=(), dtype=string, numpy=b'test_image'>, <tf.Tensor: shape=(2, 32, 32, 3), dtype=float32, numpy=
+arr...         [-0.2585425 ,  0.35027748, -0.9596581 ],
+         [-0.9831787 ,  0.3329277 ,  0.45581368]]]], dtype=float32)>]
+attrs = ('max_images', 3, 'T', 1, 'bad_color', dtype: DT_UINT8
+tensor_shape {
+  dim {
+    size: 4
+  }
+}
+int_val: 255
+int_val: 0
+int_val: 0
+int_val: 255
+)
+ctx = <tensorflow.python.eager.context.Context object at 0x139e8c6d0>
+name = None
+
+    def quick_execute(op_name, num_outputs, inputs, attrs, ctx, name=None):
+      """Execute a TensorFlow operation.
+    
+      Args:
+        op_name: Name of the TensorFlow operation (see REGISTER_OP in C++ code) to
+          execute.
+        num_outputs: The number of outputs of the operation to fetch. (Explicitly
+          provided instead of being inferred for performance reasons).
+        inputs: A list of inputs to the operation. Each entry should be a Tensor, or
+          a value which can be passed to the Tensor constructor to create one.
+        attrs: A tuple with alternating string attr names and attr values for this
+          operation.
+        ctx: The value of context.context().
+        name: Customized name for the operation.
+    
+      Returns:
+        List of output Tensor objects. The list is empty if there are no outputs
+    
+      Raises:
+        An exception on error.
+      """
+      device_name = ctx.device_name
+      # pylint: disable=protected-access
+      try:
+        ctx.ensure_initialized()
+>       tensors = pywrap_tfe.TFE_Py_Execute(ctx._handle, device_name, op_name,
+                                            inputs, attrs, num_outputs)
+E                                           tensorflow.python.framework.errors_impl.UnimplementedError: Attr bad_color has unhandled type 6 [Op:ImageSummary]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/eager/execute.py:54: UnimplementedError
+
+During handling of the above exception, another exception occurred:
+
+tensor_shape = [2, 32, 32, 3], channels = 3, max_images = 3, tag = 'test_image'
+dtype = tf.float32
+
+    @pytest.mark.parametrize("tensor_shape,channels,max_images,tag,dtype", [
+        # Base case from test_plan.json: RGB image
+        ([2, 32, 32, 3], 3, 3, "test_image", tf.float32),
+        # Parameter extension: Grayscale image
+        ([1, 64, 64, 1], 1, 1, "grayscale", tf.uint8),
+    ])
+    def test_image_summary_basic_functionality(tensor_shape, channels, max_images, tag, dtype):
+        """
+        Test basic functionality of ImageSummary operation.
+    
+        Weak assertions:
+        1. summary_created: ImageSummary returns a tensor
+        2. string_tensor: Output is a string tensor
+        3. no_exception: No exception for valid inputs
+        4. shape_4d: Input tensor has 4-D shape
+        5. channels_valid: Channels value is valid (1, 3, or 4)
+    
+        Strong assertions (not enabled in round 1):
+        1. protocol_buffer_valid: Output contains valid protocol buffer
+        2. max_images_limit: Max_images parameter limits entries
+        3. bad_color_default: Bad_color parameter has correct default
+        """
+        # Validate channels parameter
+        assert channels in [1, 3, 4], f"Invalid channels value: {channels}"
+    
+        # Create tag tensor
+        tag_tensor = tf.constant(tag, dtype=tf.string)
+    
+        # Create image tensor with appropriate dtype
+        if dtype == tf.uint8:
+            # For uint8, values should be in [0, 255]
+            image_data = np.random.randint(0, 256, tensor_shape, dtype=np.uint8)
+            image_tensor = tf.constant(image_data, dtype=tf.uint8)
+        else:
+            # For float32, values should be in [0, 1] or [-1, 1]
+            image_data = np.random.randn(*tensor_shape).astype(np.float32)
+            # Normalize to [-1, 1] range
+            image_data = np.tanh(image_data)
+            image_tensor = tf.constant(image_data, dtype=tf.float32)
+    
+        # Call ImageSummary
+>       result = assert_no_exception(
+            gen_logging_ops.ImageSummary,
+            tag=tag_tensor,
+            tensor=image_tensor,
+            max_images=max_images
+        )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function image_summary at 0x12883dea0>, args = ()
+kwargs = {'max_images': 3, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'test_image'>, 'tensor': <tf.Tensor: shape=(2, 32,...         [-0.2585425 ,  0.35027748, -0.9596581 ],
+         [-0.9831787 ,  0.3329277 ,  0.45581368]]]], dtype=float32)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: Attr bad_color has unhandled type 6 [Op:ImageSummary]
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+__ test_image_summary_basic_functionality[tensor_shape1-1-1-grayscale-dtype1] __
+
+func = <function image_summary at 0x12883dea0>, args = ()
+kwargs = {'max_images': 1, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'grayscale'>, 'tensor': <tf.Tensor: shape=(1, 64, ...[[ 53],
+         [123],
+         [229],
+         ...,
+         [180],
+         [133],
+         [197]]]], dtype=uint8)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: in wrapper
+    return f(**kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:378: in image_summary
+    return image_summary_eager_fallback(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_logging_ops.py:417: in image_summary_eager_fallback
+    _result = _execute.execute(b"ImageSummary", 1, inputs=_inputs_flat,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_name = b'ImageSummary', num_outputs = 1
+inputs = [<tf.Tensor: shape=(), dtype=string, numpy=b'grayscale'>, <tf.Tensor: shape=(1, 64, 64, 1), dtype=uint8, numpy=
+array(...[[ 53],
+         [123],
+         [229],
+         ...,
+         [180],
+         [133],
+         [197]]]], dtype=uint8)>]
+attrs = ('max_images', 1, 'T', 4, 'bad_color', dtype: DT_UINT8
+tensor_shape {
+  dim {
+    size: 4
+  }
+}
+int_val: 255
+int_val: 0
+int_val: 0
+int_val: 255
+)
+ctx = <tensorflow.python.eager.context.Context object at 0x139e8c6d0>
+name = None
+
+    def quick_execute(op_name, num_outputs, inputs, attrs, ctx, name=None):
+      """Execute a TensorFlow operation.
+    
+      Args:
+        op_name: Name of the TensorFlow operation (see REGISTER_OP in C++ code) to
+          execute.
+        num_outputs: The number of outputs of the operation to fetch. (Explicitly
+          provided instead of being inferred for performance reasons).
+        inputs: A list of inputs to the operation. Each entry should be a Tensor, or
+          a value which can be passed to the Tensor constructor to create one.
+        attrs: A tuple with alternating string attr names and attr values for this
+          operation.
+        ctx: The value of context.context().
+        name: Customized name for the operation.
+    
+      Returns:
+        List of output Tensor objects. The list is empty if there are no outputs
+    
+      Raises:
+        An exception on error.
+      """
+      device_name = ctx.device_name
+      # pylint: disable=protected-access
+      try:
+        ctx.ensure_initialized()
+>       tensors = pywrap_tfe.TFE_Py_Execute(ctx._handle, device_name, op_name,
+                                            inputs, attrs, num_outputs)
+E                                           tensorflow.python.framework.errors_impl.UnimplementedError: Attr bad_color has unhandled type 6 [Op:ImageSummary]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/eager/execute.py:54: UnimplementedError
+
+During handling of the above exception, another exception occurred:
+
+tensor_shape = [1, 64, 64, 1], channels = 1, max_images = 1, tag = 'grayscale'
+dtype = tf.uint8
+
+    @pytest.mark.parametrize("tensor_shape,channels,max_images,tag,dtype", [
+        # Base case from test_plan.json: RGB image
+        ([2, 32, 32, 3], 3, 3, "test_image", tf.float32),
+        # Parameter extension: Grayscale image
+        ([1, 64, 64, 1], 1, 1, "grayscale", tf.uint8),
+    ])
+    def test_image_summary_basic_functionality(tensor_shape, channels, max_images, tag, dtype):
+        """
+        Test basic functionality of ImageSummary operation.
+    
+        Weak assertions:
+        1. summary_created: ImageSummary returns a tensor
+        2. string_tensor: Output is a string tensor
+        3. no_exception: No exception for valid inputs
+        4. shape_4d: Input tensor has 4-D shape
+        5. channels_valid: Channels value is valid (1, 3, or 4)
+    
+        Strong assertions (not enabled in round 1):
+        1. protocol_buffer_valid: Output contains valid protocol buffer
+        2. max_images_limit: Max_images parameter limits entries
+        3. bad_color_default: Bad_color parameter has correct default
+        """
+        # Validate channels parameter
+        assert channels in [1, 3, 4], f"Invalid channels value: {channels}"
+    
+        # Create tag tensor
+        tag_tensor = tf.constant(tag, dtype=tf.string)
+    
+        # Create image tensor with appropriate dtype
+        if dtype == tf.uint8:
+            # For uint8, values should be in [0, 255]
+            image_data = np.random.randint(0, 256, tensor_shape, dtype=np.uint8)
+            image_tensor = tf.constant(image_data, dtype=tf.uint8)
+        else:
+            # For float32, values should be in [0, 1] or [-1, 1]
+            image_data = np.random.randn(*tensor_shape).astype(np.float32)
+            # Normalize to [-1, 1] range
+            image_data = np.tanh(image_data)
+            image_tensor = tf.constant(image_data, dtype=tf.float32)
+    
+        # Call ImageSummary
+>       result = assert_no_exception(
+            gen_logging_ops.ImageSummary,
+            tag=tag_tensor,
+            tensor=image_tensor,
+            max_images=max_images
+        )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function image_summary at 0x12883dea0>, args = ()
+kwargs = {'max_images': 1, 'tag': <tf.Tensor: shape=(), dtype=string, numpy=b'grayscale'>, 'tensor': <tf.Tensor: shape=(1, 64, ...[[ 53],
+         [123],
+         [229],
+         ...,
+         [180],
+         [133],
+         [197]]]], dtype=uint8)>}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: Attr bad_color has unhandled type 6 [Op:ImageSummary]
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+_ test_print_basic_functionality[input_shape0-data_shapes0-Test message-10-3-dtype0] _
+
+func = <function _print at 0x12883e320>, args = ()
+kwargs = {'data': [<tf.Tensor: shape=(2, 2), dtype=float32, numpy=
+array([[ 0.3144446, -0.3589584],
+       [ 0.7297729, -0.9310...968086,  1.1870776 ],
+       [-0.96478975, -0.4146305 , -0.72430253]], dtype=float32)>, 'message': 'Test message', ...}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+>           result = func(*args, **kwargs)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ()
+kwargs = {'data': [<tf.Tensor: shape=(2, 2), dtype=float32, numpy=
+array([[ 0.3144446, -0.3589584],
+       [ 0.7297729, -0.9310...968086,  1.1870776 ],
+       [-0.96478975, -0.4146305 , -0.72430253]], dtype=float32)>, 'message': 'Test message', ...}
+
+    def wrapper(*args, **kwargs):
+      if args:
+        raise TypeError(
+            '{f} only takes keyword args (possible keys: {kwargs}). '
+            'Please pass these args as kwargs instead.'
+            .format(f=f.__name__, kwargs=f_argspec.args))
+>     return f(**kwargs)
+E     TypeError: _print() got an unexpected keyword argument 'input_'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/tf_export.py:400: TypeError
+
+During handling of the above exception, another exception occurred:
+
+input_shape = [2, 3], data_shapes = [[2, 2], [3, 1]], message = 'Test message'
+first_n = 10, summarize = 3, dtype = tf.float32
+
+    @pytest.mark.parametrize("input_shape,data_shapes,message,first_n,summarize,dtype", [
+        # Base case from test_plan.json
+        ([2, 3], [[2, 2], [3, 1]], "Test message", 10, 3, tf.float32),
+    ])
+    def test_print_basic_functionality(input_shape, data_shapes, message, first_n, summarize, dtype):
+        """
+        Test basic functionality of Print operation.
+    
+        Weak assertions:
+        1. output_returned: Print returns a tensor
+        2. input_preserved: Output tensor matches input type and shape
+        3. no_exception: No exception for valid inputs
+        4. type_match: Output type matches input type
+    
+        Strong assertions (not enabled in round 1):
+        1. stderr_captured: Output is captured to stderr
+        2. message_included: Message appears in output
+        3. summarize_applied: Summarize parameter limits output
+        4. first_n_limit: First_n parameter limits number of prints
+        """
+        # Create input tensor
+        input_tensor = create_random_tensor(input_shape, dtype=dtype)
+    
+        # Create data tensors
+        data = []
+        for i, shape in enumerate(data_shapes):
+            data_tensor = create_random_tensor(shape, dtype=tf.float32)
+            data.append(data_tensor)
+    
+        # Mock sys.stderr to capture output
+        mock_stderr = io.StringIO()
+    
+        with mock.patch('sys.stderr', mock_stderr):
+            # Call Print operation
+>           result = assert_no_exception(
+                gen_logging_ops.Print,
+                input_=input_tensor,
+                data=data,
+                message=message,
+                first_n=first_n,
+                summarize=summarize
+            )
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:318: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function _print at 0x12883e320>, args = ()
+kwargs = {'data': [<tf.Tensor: shape=(2, 2), dtype=float32, numpy=
+array([[ 0.3144446, -0.3589584],
+       [ 0.7297729, -0.9310...968086,  1.1870776 ],
+       [-0.96478975, -0.4146305 , -0.72430253]], dtype=float32)>, 'message': 'Test message', ...}
+
+    def assert_no_exception(func, *args, **kwargs):
+        """Assert function executes without raising exception."""
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+>           pytest.fail(f"Function raised unexpected exception: {e}")
+E           Failed: Function raised unexpected exception: _print() got an unexpected keyword argument 'input_'
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:70: Failed
+______________________ test_timestamp_basic_functionality ______________________
+
+    def test_timestamp_basic_functionality():
+        """
+        Test basic functionality of Timestamp operation.
+    
+        Weak assertions:
+        1. tensor_created: Timestamp returns a tensor
+        2. float64_type: Output is float64 tensor
+        3. no_exception: No exception
+        4. scalar_shape: Output is a scalar tensor
+    
+        Strong assertions (not enabled in round 1):
+        1. time_monotonic: Time values are monotonic
+        2. time_accuracy: Time values are reasonably accurate
+        3. device_independent: Works on different devices
+        """
+        # Mock time.time to control the returned timestamp
+        mock_time_value = 1234567890.123456
+    
+        with mock.patch('time.time', return_value=mock_time_value):
+            # Call Timestamp operation
+            result = assert_no_exception(
+                gen_logging_ops.Timestamp
+            )
+    
+            # Weak assertion: tensor_created
+            assert result is not None, "Timestamp should return a tensor"
+    
+            # Weak assertion: float64_type
+            assert_tensor_dtype(result, tf.float64)
+    
+            # Weak assertion: scalar_shape
+            assert len(result.shape) == 0, f"Expected scalar tensor, got shape {result.shape}"
+    
+            # Execute the operation
+            with tf.compat.v1.Session() as sess:
+>               timestamp_value = sess.run(result)
+
+tests/test_tensorflow_python_ops_gen_logging_ops.py:390: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/client/session.py:967: in run
+    result = self._run(None, fetches, feed_dict, options_ptr,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tensorflow.python.client.session.Session object at 0x13c26c250>
+handle = None
+fetches = <tf.Tensor: shape=(), dtype=float64, numpy=1769238519.496707>
+feed_dict = None, options = None, run_metadata = None
+
+    def _run(self, handle, fetches, feed_dict, options, run_metadata):
+      """Perform either run or partial_run, depending the presence of `handle`."""
+    
+      def _feed_fn(feed, feed_val):
+        for tensor_type, _, feed_fn, _ in _REGISTERED_EXPANSIONS:
+          if isinstance(feed, tensor_type):
+            return feed_fn(feed, feed_val)
+        raise TypeError(f'{feed} in argument `feed_dict` has invalid type '
+                        f'"{type(feed).__name__}"')
+    
+      # Check session.
+      if self._closed:
+        raise RuntimeError('Attempted to use a closed Session.')
+      if self.graph.version == 0:
+>       raise RuntimeError('The Session graph is empty. Add operations to the '
+                           'graph before calling run().')
+E       RuntimeError: The Session graph is empty. Add operations to the graph before calling run().
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/client/session.py:1117: RuntimeError
+=============================== warnings summary ===============================
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO_DIM = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27: DeprecationWarning: Call to deprecated create function EnumDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _DATATYPE = _descriptor.EnumDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO_DTYPEANDSHAPE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _VARIANTTENSORDATAPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _ATTRVALUE_LISTVALUE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19: DeprecationWarning: the imp module is deprecated in favour of importlib and slated for removal in Python 3.12; see the module's documentation for alternative uses
+    import imp
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                  Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------
+tests/test_tensorflow_python_ops_gen_logging_ops.py     140     43     22      3    68%   47-54, 58, 113-120, 170, 182-199, 256-277, 328-348, 393-402, 464-465
+-------------------------------------------------------------------------------------------------
+TOTAL                                                   140     43     22      3    68%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_assert_basic_functionality[condition_shape0-data_shapes0-3-True]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_assert_basic_functionality[condition_shape1-data_shapes1-1-False]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_audio_summary_basic_functionality[tensor_shape0-1-44100.0-3-test_audio]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_audio_summary_basic_functionality[tensor_shape1-2-22050.0-1-audio_3d]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_image_summary_basic_functionality[tensor_shape0-3-3-test_image-dtype0]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_image_summary_basic_functionality[tensor_shape1-1-1-grayscale-dtype1]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_print_basic_functionality[input_shape0-data_shapes0-Test message-10-3-dtype0]
+FAILED tests/test_tensorflow_python_ops_gen_logging_ops.py::test_timestamp_basic_functionality
+8 failed, 5 skipped, 103 warnings in 2.40s
+
+Error: exit 1

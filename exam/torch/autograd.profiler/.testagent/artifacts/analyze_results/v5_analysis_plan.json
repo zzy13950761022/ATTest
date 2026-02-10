@@ -1,0 +1,47 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_torch_autograd_profiler_edge.py::test_emit_nvtx_basic",
+      "block_id": "CASE_09",
+      "error_type": "XFailed",
+      "action": "mark_xfail",
+      "note": "测试环境没有CUDA支持，标记为预期失败"
+    },
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_06",
+      "error_type": "MissingCoverage",
+      "action": "add_case",
+      "note": "覆盖率报告显示高级功能测试缺失，需要实现CASE_06"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "HEADER",
+      "error_type": "MissingCoverage",
+      "action": "adjust_assertion",
+      "note": "HEADER块中的fixture函数有未覆盖的行，需要增强测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_torch_autograd_profiler_basic.py::test_nested_profiler_placeholder",
+      "reason": "CASE_04已在主文件中实现，placeholder跳过"
+    },
+    {
+      "test": "test_torch_autograd_profiler_advanced.py::test_memory_profiling_placeholder",
+      "reason": "CASE_05已在主文件中实现，placeholder跳过"
+    },
+    {
+      "test": "test_torch_autograd_profiler_edge.py::test_record_function_basic",
+      "reason": "CASE_07已在主文件中实现，edge文件中的实现重复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

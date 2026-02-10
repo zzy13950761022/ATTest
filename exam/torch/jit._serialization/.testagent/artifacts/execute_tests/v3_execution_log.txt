@@ -1,0 +1,114 @@
+=== Run Tests ===
+...F.....                                                                [100%]
+=================================== FAILURES ===================================
+____ test_file_object_interface[simple_script_module-file_object-cpu-None] _____
+
+module_type = 'simple_script_module', file_type = 'file_object', device = 'cpu'
+extra_files = None
+simple_module = RecursiveScriptModule(
+  original_name=SimpleModule
+  (linear): RecursiveScriptModule(original_name=Linear)
+  (relu): RecursiveScriptModule(original_name=ReLU)
+)
+
+    @pytest.mark.parametrize("module_type,file_type,device,extra_files", [
+        ("simple_script_module", "file_object", "cpu", None),
+    ])
+    def test_file_object_interface(module_type, file_type, device, extra_files, simple_module):
+        """
+        TC-04: 文件对象接口
+        测试使用文件对象（而非路径）进行序列化和反序列化。
+        """
+        # Setup
+        if module_type == "simple_script_module":
+            module = simple_module
+        else:
+            raise ValueError(f"Unknown module type: {module_type}")
+    
+        # Test 1: Save to file-like object with write method
+        # Note: torch.jit.save documentation says file-like object needs write and flush,
+        # but actual implementation may not call flush. We'll test both scenarios.
+        mock_file = Mock(spec=['write', 'flush'])
+        buffer_content = None
+    
+        # 使用side_effect来捕获写入的数据，同时保持Mock对象的属性
+        def mock_write_side_effect(data):
+            nonlocal buffer_content
+            buffer_content = data
+            return len(data) if data else 0
+    
+        mock_file.write.side_effect = mock_write_side_effect
+        mock_file.flush.return_value = None
+    
+        # Save to mock file object
+        torch.jit.save(module, mock_file, _extra_files=extra_files)
+    
+        # Weak assertion: file_methods_called
+        assert mock_file.write.called, "write method should be called"
+        # Note: flush may or may not be called depending on implementation
+        # We'll log it but not assert it
+        if mock_file.flush.called:
+            print("flush method was called (implementation-dependent)")
+    
+        # Test 2: Load from file-like object with read/readline/tell/seek methods
+        # Create a real BytesIO buffer to test loading
+        real_buffer = io.BytesIO()
+        torch.jit.save(module, real_buffer, _extra_files=extra_files)
+    
+        # Reset buffer for loading
+        real_buffer.seek(0)
+    
+        # Create a mock that wraps the real buffer but verifies method calls
+        class VerifyingFileObject:
+            def __init__(self, buffer):
+                self.buffer = buffer
+                self.read_called = False
+                self.readline_called = False
+                self.tell_called = False
+                self.seek_called = False
+    
+            def read(self, size=-1):
+                self.read_called = True
+                return self.buffer.read(size)
+    
+            def readline(self, size=-1):
+                self.readline_called = True
+                return self.buffer.readline(size)
+    
+            def tell(self):
+                self.tell_called = True
+                return self.buffer.tell()
+    
+            def seek(self, offset, whence=0):
+                self.seek_called = True
+                return self.buffer.seek(offset, whence)
+    
+        verifying_file = VerifyingFileObject(real_buffer)
+    
+        # Load from verifying file object
+        loaded_module = torch.jit.load(verifying_file, map_location=device, _extra_files=extra_files)
+    
+        # Weak assertions for file methods
+        assert verifying_file.read_called or verifying_file.readline_called, \
+            "read or readline should be called during load"
+>       assert verifying_file.seek_called, "seek should be called during load"
+E       AssertionError: seek should be called during load
+E       assert False
+E        +  where False = <test_torch_jit_serialization.test_file_object_interface.<locals>.VerifyingFileObject object at 0x10f2de1a0>.seek_called
+
+tests/test_torch_jit_serialization.py:412: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+test_flush_behavior.py                      0      0      0      0   100%
+tests/test_torch_jit_serialization.py     330     60     54     14    79%   30, 49, 58, 71-95, 137, 147, 180->exit, 197, 267, 308, 327->exit, 344, 369, 393-394, 397-398, 401-402, 416-451, 467, 528, 548->exit, 591, 608, 665
+-----------------------------------------------------------------------------------
+TOTAL                                     330     60     54     14    79%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_jit_serialization.py::test_file_object_interface[simple_script_module-file_object-cpu-None]
+1 failed, 8 passed in 0.92s
+
+Error: exit 1

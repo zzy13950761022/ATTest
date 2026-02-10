@@ -1,0 +1,168 @@
+"""
+Test cases for tensorflow.python.framework.dtypes module (Group G1).
+Focus on DType class and basic data type constants.
+"""
+
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import dtypes
+
+# ==== BLOCK:HEADER START ====
+# Test class for DType and basic data type tests
+class TestDTypeAndBasicTypes:
+    """Test cases for DType class and basic data type constants."""
+    
+    @pytest.mark.parametrize(
+        "dtype_name,expected_name,expected_size",
+        [
+            ("float32", "float32", 4),
+            ("int64", "int64", 8),
+            ("bool", "bool", 1),
+            # Parameter extensions from test_plan.json
+            ("float64", "float64", 8),
+            ("int8", "int8", 1),
+        ]
+    )
+    def test_dtype_basic_properties(self, dtype_name, expected_name, expected_size):
+        """
+        Test basic properties of DType class.
+        
+        Weak assertions:
+        - dtype_name: Check that dtype.name matches expected_name
+        - size: Check that dtype.size matches expected_size
+        - basic_property: Verify dtype is an instance of tf.dtypes.DType
+        """
+        # Get the dtype using as_dtype
+        dtype = dtypes.as_dtype(dtype_name)
+        
+        # Weak assertion: dtype is an instance of tf.dtypes.DType
+        assert isinstance(dtype, dtypes.DType), \
+            f"Expected {dtype_name} to be a DType instance"
+        
+        # Weak assertion: dtype name matches expected
+        assert dtype.name == expected_name, \
+            f"Expected dtype name '{expected_name}', got '{dtype.name}'"
+        
+        # Weak assertion: dtype size matches expected
+        assert dtype.size == expected_size, \
+            f"Expected dtype size {expected_size}, got {dtype.size}"
+    
+    @pytest.mark.parametrize(
+        "dtype_const,expected_type",
+        [
+            ("float32", "float32"),
+            ("int32", "int32"),
+            ("bool", "bool"),
+            # Parameter extension from test_plan.json
+            ("float64", "float64"),
+        ]
+    )
+    def test_core_dtype_constants(self, dtype_const, expected_type):
+        """
+        Test core data type constants access.
+        
+        Weak assertions:
+        - is_dtype_instance: Verify constant is a DType instance
+        - type_name_match: Check that constant name matches expected type
+        """
+        # Access the dtype constant directly from dtypes module
+        dtype = getattr(dtypes, dtype_const)
+        
+        # Weak assertion: dtype is an instance of tf.dtypes.DType
+        assert isinstance(dtype, dtypes.DType), \
+            f"Expected {dtype_const} to be a DType instance"
+        
+        # Weak assertion: dtype name matches expected type
+        assert dtype.name == expected_type, \
+            f"Expected dtype name '{expected_type}', got '{dtype.name}'"
+        
+        # Additional consistency check: as_dtype should return the same type
+        dtype_from_as = dtypes.as_dtype(dtype_const)
+        assert dtype == dtype_from_as, \
+            f"Direct constant {dtype_const} should equal as_dtype({dtype_const})"
+    
+    # ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize(
+        "input_type,expected_name",
+        [
+            ("float32", "float32"),
+            ("int64", "int64"),
+            ("bool", "bool"),
+            # Parameter extension from test_plan.json
+            ("float64", "float64"),
+        ]
+    )
+    def test_as_dtype_string_conversion(self, input_type, expected_name):
+        """
+        Test as_dtype function for string type conversion.
+        
+        Weak assertions:
+        - conversion_success: Verify as_dtype returns a DType instance
+        - type_match: Check that returned dtype name matches expected
+        """
+        # Execute conversion
+        result = dtypes.as_dtype(input_type)
+        
+        # Weak assertion: conversion returns a DType instance
+        assert isinstance(result, dtypes.DType), \
+            f"as_dtype('{input_type}') should return a DType instance"
+        
+        # Weak assertion: dtype name matches expected
+        assert result.name == expected_name, \
+            f"Expected dtype name '{expected_name}', got '{result.name}'"
+        
+        # Additional consistency check
+        if hasattr(dtypes, expected_name):
+            direct_dtype = getattr(dtypes, expected_name)
+            assert result == direct_dtype, \
+                f"as_dtype('{input_type}') should equal dtypes.{expected_name}"
+    # ==== BLOCK:CASE_03 END ====
+    
+    # ==== BLOCK:CASE_04 START ====
+    # Placeholder for CASE_04: as_dtype NumPy类型转换
+    # This block will be replaced with actual test code
+    pass
+    # ==== BLOCK:CASE_04 END ====
+    
+    # ==== BLOCK:CASE_05 START ====
+    # Placeholder for CASE_05: DType数值范围验证 (deferred)
+    # This block will be replaced in later iterations
+    pass
+    # ==== BLOCK:CASE_05 END ====
+    
+    # ==== BLOCK:CASE_06 START ====
+    # Placeholder for CASE_06: (deferred)
+    # This block will be replaced in later iterations
+    pass
+    # ==== BLOCK:CASE_06 END ====
+    
+    # ==== BLOCK:CASE_07 START ====
+    # Placeholder for CASE_07: (deferred)
+    # This block will be replaced in later iterations
+    pass
+    # ==== BLOCK:CASE_07 END ====
+    
+    # ==== BLOCK:CASE_08 START ====
+    # Placeholder for CASE_08: (deferred)
+    # This block will be replaced in later iterations
+    pass
+    # ==== BLOCK:CASE_08 END ====
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper functions and fixtures
+
+@pytest.fixture
+def dtype_test_data():
+    """Fixture providing test data for dtype tests."""
+    return {
+        'float32': {'name': 'float32', 'size': 4},
+        'float64': {'name': 'float64', 'size': 8},
+        'int32': {'name': 'int32', 'size': 4},
+        'int64': {'name': 'int64', 'size': 8},
+        'int8': {'name': 'int8', 'size': 1},
+        'bool': {'name': 'bool', 'size': 1},
+    }
+
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_resource_variable_gradient_propagation[eager-dtype0-shape0-1-linear_with_variable]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "张量比较错误：assert a == b 不能直接用于多维数组，需要使用 tf.reduce_all(tf.equal(a, b)) 或类似方法"
+    },
+    {
+      "test": "test_resource_variable_gradient_propagation[eager-dtype1-shape1-2-linear_with_variable]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "多变量梯度传播失败：第二个变量的梯度为None，需要修复自定义梯度函数的实现"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_data_type_validation[dtype0-shape0-20-1-flags0]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "输出幅度比例严重偏离预期(5.568 vs 2.0)，需要修正MFCC算法实现"
+    },
+    {
+      "test": "test_boundary_conditions[dtype0-shape0-1-3-flags0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "num_mel_bins=1时缩放因子不正确(0.707 vs 0.001)，需要修正边界条件处理"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_data_type_validation[dtype1-shape1-1024-1-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_boundary_conditions[dtype1-shape1-1-1-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_scan_invalid_parameters[initial_state1-invalid_args_scan_func-expected_error1]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "测试期望弃用警告但未收到，需要调整断言逻辑"
+    },
+    {
+      "test": "test_scan_edge_cases[initial_state0-identity_scan_func-empty_dataset-handles_empty]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "测试期望弃用警告但未收到，需要调整断言逻辑"
+    },
+    {
+      "test": "test_scan_edge_cases[initial_state1-valid_scan_func-single_element_dataset-single_pass_works]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "测试期望弃用警告但未收到，需要调整断言逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_scan_extreme_numeric_handling[initial_state0-numeric_safe_scan_func-extreme_values_dataset-handles_extreme_numeric]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_scan_extreme_numeric_handling[initial_state1-numeric_safe_scan_func-extreme_values_dataset-handles_large_numeric]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

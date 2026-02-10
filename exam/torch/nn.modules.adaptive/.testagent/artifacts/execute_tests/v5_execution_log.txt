@@ -1,0 +1,194 @@
+=== Run Tests ===
+.........F.F.                                                            [100%]
+=================================== FAILURES ===================================
+____ test_adaptive_softmax_log_prob[12-80-cutoffs0-4.0-False-2-dtype0-cpu] _____
+
+in_features = 12, n_classes = 80, cutoffs = [10, 30, 60], div_value = 4.0
+head_bias = False, batch_size = 2, dtype = torch.float32, device = 'cpu'
+
+    @pytest.mark.parametrize(
+        "in_features,n_classes,cutoffs,div_value,head_bias,batch_size,dtype,device",
+        [
+            (12, 80, [10, 30, 60], 4.0, False, 2, torch.float32, "cpu"),
+        ]
+    )
+    def test_adaptive_softmax_log_prob(
+        in_features: int,
+        n_classes: int,
+        cutoffs: List[int],
+        div_value: float,
+        head_bias: bool,
+        batch_size: int,
+        dtype: torch.dtype,
+        device: str
+    ):
+        """
+        Test log_prob helper method.
+    
+        Weak assertions:
+        1. method_exists: log_prob method exists
+        2. returns_tensor: Returns a tensor
+        3. shape_match: Output shape matches expected shape
+        """
+        # Note: log_prob expects batched input (2D tensor)
+        # We'll only test with batch_size > 0
+        assert batch_size > 0, "log_prob method expects batched input (batch_size > 0)"
+    
+        # Create test data
+        input_tensor, _ = create_test_data(
+            in_features=in_features,
+            n_classes=n_classes,
+            batch_size=batch_size,
+            dtype=dtype,
+            device=device
+        )
+    
+        # Create model with correct dtype
+>       model = create_adaptive_softmax(
+            in_features=in_features,
+            n_classes=n_classes,
+            cutoffs=cutoffs,
+            div_value=div_value,
+            head_bias=head_bias,
+            dtype=dtype,  # Pass dtype to ensure model weights match input dtype
+            device=device
+        )
+E       TypeError: create_adaptive_softmax() got an unexpected keyword argument 'dtype'
+
+tests/test_torch_nn_modules_adaptive_g2.py:238: TypeError
+_________________ test_adaptive_softmax_invalid_parameters_g2 __________________
+
+    def test_adaptive_softmax_invalid_parameters_g2():
+        """Test invalid parameter combinations for G2 group."""
+        # Test n_classes < 2
+        with pytest.raises(ValueError) as exc_info:
+            AdaptiveLogSoftmaxWithLoss(
+                in_features=10,
+                n_classes=1,  # Invalid: n_classes must be >= 2
+                cutoffs=[5],
+                div_value=4.0,
+                head_bias=False
+            )
+        assert "n_classes" in str(exc_info.value).lower(), \
+            f"Expected error about n_classes, got: {exc_info.value}"
+    
+        # Note: in_features <= 0 may not raise an exception in the current implementation
+        # as Linear layer might handle it differently. We'll skip this test.
+    
+        # Test cutoffs value out of range (>= n_classes)
+        with pytest.raises(ValueError) as exc_info:
+            AdaptiveLogSoftmaxWithLoss(
+                in_features=10,
+                n_classes=20,
+                cutoffs=[25],  # Invalid: 25 >= 20
+                div_value=4.0,
+                head_bias=False
+            )
+        assert "cutoff" in str(exc_info.value).lower() or "range" in str(exc_info.value).lower(), \
+            f"Expected error about cutoff range, got: {exc_info.value}"
+    
+        # Test cutoffs value <= 0
+        with pytest.raises(ValueError) as exc_info:
+            AdaptiveLogSoftmaxWithLoss(
+                in_features=10,
+                n_classes=20,
+                cutoffs=[0],  # Invalid: must be > 0
+                div_value=4.0,
+                head_bias=False
+            )
+        assert "cutoff" in str(exc_info.value).lower() or "positive" in str(exc_info.value).lower(), \
+            f"Expected error about positive cutoff, got: {exc_info.value}"
+    
+        # Test div_value <= 0
+        with pytest.raises(ValueError) as exc_info:
+>           AdaptiveLogSoftmaxWithLoss(
+                in_features=10,
+                n_classes=20,
+                cutoffs=[5],
+                div_value=0.0,  # Invalid: must be > 0
+                head_bias=False
+            )
+
+tests/test_torch_nn_modules_adaptive_g2.py:460: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = AdaptiveLogSoftmaxWithLoss(
+  (head): Linear(in_features=10, out_features=6, bias=False)
+  (tail): ModuleList()
+)
+in_features = 10, n_classes = 20, cutoffs = [5], div_value = 0.0
+head_bias = False, device = None, dtype = None
+
+    def __init__(
+        self,
+        in_features: int,
+        n_classes: int,
+        cutoffs: Sequence[int],
+        div_value: float = 4.,
+        head_bias: bool = False,
+        device=None,
+        dtype=None
+    ) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(AdaptiveLogSoftmaxWithLoss, self).__init__()
+    
+        cutoffs = list(cutoffs)
+    
+        if (cutoffs != sorted(cutoffs)) \
+                or (min(cutoffs) <= 0) \
+                or (max(cutoffs) > (n_classes - 1)) \
+                or (len(set(cutoffs)) != len(cutoffs)) \
+                or any([int(c) != c for c in cutoffs]):
+    
+            raise ValueError("cutoffs should be a sequence of unique, positive "
+                             "integers sorted in an increasing order, where "
+                             "each value is between 1 and n_classes-1")
+    
+        self.in_features = in_features
+        self.n_classes = n_classes
+        self.cutoffs = cutoffs + [n_classes]
+        self.div_value = div_value
+        self.head_bias = head_bias
+    
+        self.shortlist_size = self.cutoffs[0]
+        self.n_clusters = len(self.cutoffs) - 1
+        self.head_size = self.shortlist_size + self.n_clusters
+    
+        self.head = Linear(self.in_features, self.head_size, bias=self.head_bias,
+                           **factory_kwargs)
+        self.tail = ModuleList()
+    
+        for i in range(self.n_clusters):
+    
+>           hsz = int(self.in_features // (self.div_value ** (i + 1)))
+E           ZeroDivisionError: float floor division by zero
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/adaptive.py:154: ZeroDivisionError
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g1.py::test_adaptive_softmax_forward_basic[10-100-cutoffs0-4.0-False-2-dtype0-cpu]
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g1.py::test_adaptive_softmax_edge_cases_g1
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g1.py::test_adaptive_softmax_shape_mismatch
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_cutoffs_validation[5-30-cutoffs0-4.0-False-valid-dtype0-cpu-False]
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_predict_method
+exam/torch_group/nn.modules.adaptive/tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_log_prob_edge_cases
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/init.py:405: UserWarning: Initializing zero-element tensors is a no-op
+    warnings.warn("Initializing zero-element tensors is a no-op")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+test_fix.py                                     31     31      0      0     0%   4-63
+tests/test_torch_nn_modules_adaptive_g1.py      92      1      6      1    98%   147
+tests/test_torch_nn_modules_adaptive_g2.py     129     37     14      3    71%   45-46, 76-83, 136->exit, 193-194, 249-281, 315-374, 396->exit, 467
+----------------------------------------------------------------------------------------
+TOTAL                                          252     69     20      4    72%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_log_prob[12-80-cutoffs0-4.0-False-2-dtype0-cpu]
+FAILED tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_invalid_parameters_g2
+2 failed, 11 passed, 6 warnings in 0.95s
+
+Error: exit 1

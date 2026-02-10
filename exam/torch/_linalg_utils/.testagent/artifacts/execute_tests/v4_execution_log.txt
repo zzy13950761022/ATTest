@@ -1,0 +1,294 @@
+=== Run Tests ===
+..s.FF....FF..FF...............                                          [100%]
+=================================== FAILURES ===================================
+______ test_bform_bilinear[dtype0-cpu-shape_X0-shape_A0-shape_Y0-flags0] _______
+
+dtype = torch.float32, device = 'cpu', shape_X = [3, 2], shape_A = [3, 4]
+shape_Y = [4, 2], flags = [], random_seed = 42
+
+    @pytest.mark.parametrize("dtype,device,shape_X,shape_A,shape_Y,flags", [
+        # Base case from test plan
+        (torch.float32, "cpu", [3, 2], [3, 4], [4, 2], []),
+    ])
+    def test_bform_bilinear(dtype, device, shape_X, shape_A, shape_Y, flags, random_seed):
+        """Test bilinear form function bform(X, A, Y) = X^T A Y"""
+        # Skip CUDA tests if device not available
+        if device == "cuda" and not torch.cuda.is_available():
+            pytest.skip("CUDA device not available")
+    
+        # Create test matrices
+        X = create_dense_matrix(shape_X, dtype=dtype, device=device)
+        A = create_dense_matrix(shape_A, dtype=dtype, device=device)
+        Y = create_dense_matrix(shape_Y, dtype=dtype, device=device)
+    
+        # Call bform function
+        result = bform(X, A, Y)
+    
+        # Weak assertions (epoch 2)
+        # 1. Shape assertion
+        # bform(X, A, Y) = X^T A Y, where X: m×k, A: m×n, Y: n×l
+        # X^T: k×m, A: m×n, Y: n×l
+        # Result shape should be: k×l
+        expected_shape = (shape_X[1], shape_Y[1])
+        assert result.shape == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+    
+        # 2. Dtype assertion
+        assert result.dtype == dtype, f"Expected dtype {dtype}, got {result.dtype}"
+    
+        # 3. Finite values assertion
+        assert torch.isfinite(result).all(), "Result contains non-finite values"
+    
+        # 4. Manual calculation verification (basic property)
+        # Compute X^T A Y manually using torch operations
+        X_T = torch.transpose(X, 0, 1)
+        AY = torch.matmul(A, Y)
+        expected = torch.matmul(X_T, AY)
+    
+        # Check that result matches manual calculation
+        assert torch.allclose(result, expected, rtol=1e-6, atol=1e-6), \
+            "bform result should match manual calculation X^T A Y"
+    
+        # Test with A = None (should return zeros)
+>       result_none = bform(X, None, Y)
+
+tests/test_torch_linalg_utils_g1.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_linalg_utils.py:69: in bform
+    return matmul(transpose(X), matmul(A, Y))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A = tensor([[ 0.3367,  0.2345, -1.1229],
+        [ 0.1288,  0.2303, -0.1863]])
+B = tensor([[-0.7658, -0.7506],
+        [ 1.3525,  0.6863],
+        [-0.3278,  0.7950],
+        [ 0.2815,  0.0562]])
+
+    def matmul(A: Optional[Tensor], B: Tensor) -> Tensor:
+        """Multiply two matrices.
+    
+        If A is None, return B. A can be sparse or dense. B is always
+        dense.
+        """
+        if A is None:
+            return B
+        if is_sparse(A):
+            return torch.sparse.mm(A, B)
+>       return torch.matmul(A, B)
+E       RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x3 and 4x2)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_linalg_utils.py:43: RuntimeError
+__________ test_qform_quadratic[dtype0-cpu-shape_A0-shape_S0-flags0] ___________
+
+dtype = torch.float32, device = 'cpu', shape_A = [3, 3], shape_S = [3, 2]
+flags = [], random_seed = 42
+
+    @pytest.mark.parametrize("dtype,device,shape_A,shape_S,flags", [
+        # Base case from test plan
+        (torch.float32, "cpu", [3, 3], [3, 2], []),
+    ])
+    def test_qform_quadratic(dtype, device, shape_A, shape_S, flags, random_seed):
+        """Test quadratic form function qform(A, S) = S^T A S"""
+        # Skip CUDA tests if device not available
+        if device == "cuda" and not torch.cuda.is_available():
+            pytest.skip("CUDA device not available")
+    
+        # Create test matrices
+        # For quadratic form, A should be square matrix
+        A = create_dense_matrix(shape_A, dtype=dtype, device=device)
+        S = create_dense_matrix(shape_S, dtype=dtype, device=device)
+    
+        # Call qform function
+        result = qform(A, S)
+    
+        # Weak assertions (epoch 2)
+        # 1. Shape assertion
+        # qform(A, S) = S^T A S, where A: n×n, S: n×k
+        # S^T: k×n, A: n×n, S: n×k
+        # Result shape should be: k×k (symmetric matrix)
+        expected_shape = (shape_S[1], shape_S[1])
+        assert result.shape == expected_shape, f"Expected shape {expected_shape}, got {result.shape}"
+    
+        # 2. Dtype assertion
+        assert result.dtype == dtype, f"Expected dtype {dtype}, got {result.dtype}"
+    
+        # 3. Finite values assertion
+        assert torch.isfinite(result).all(), "Result contains non-finite values"
+    
+        # 4. Manual calculation verification (basic property)
+        # Compute S^T A S manually using torch operations
+        S_T = torch.transpose(S, 0, 1)
+        AS = torch.matmul(A, S)
+        expected = torch.matmul(S_T, AS)
+    
+        # Check that result matches manual calculation
+        assert torch.allclose(result, expected, rtol=1e-6, atol=1e-6), \
+            "qform result should match manual calculation S^T A S"
+    
+        # Test with A = None (should return zeros)
+        result_none = qform(None, S)
+        expected_none = torch.zeros(expected_shape, dtype=dtype, device=device)
+>       assert torch.allclose(result_none, expected_none, rtol=1e-6, atol=1e-6), \
+            "qform with A=None should return zeros"
+E       AssertionError: qform with A=None should return zeros
+E       assert False
+E        +  where False = <built-in method allclose of type object at 0x104ee2320>(tensor([[3.5820, 2.7128],\n        [2.7128, 2.4969]]), tensor([[0., 0.],\n        [0., 0.]]), rtol=1e-06, atol=1e-06)
+E        +    where <built-in method allclose of type object at 0x104ee2320> = torch.allclose
+
+tests/test_torch_linalg_utils_g1.py:268: AssertionError
+_____________ test_basis_orthogonal_cpu[dtype0-cpu-shape0-flags0] ______________
+
+dtype = torch.float32, device = 'cpu', shape = [4, 3], flags = []
+random_seed = 42
+
+    @pytest.mark.parametrize("dtype,device,shape,flags", [
+        # Base case from test plan
+        (torch.float32, "cpu", [4, 3], []),
+        # Parameter extensions
+        (torch.float64, "cpu", [5, 2], []),
+    ])
+    def test_basis_orthogonal_cpu(dtype, device, shape, flags, random_seed):
+        """Test orthogonal basis generation on CPU"""
+        # Skip CUDA tests if device not available
+        if device == "cuda" and not torch.cuda.is_available():
+            pytest.skip("CUDA device not available")
+    
+        # Create random matrix with full column rank
+>       A = create_random_matrix(shape, dtype=dtype, device=device)
+
+tests/test_torch_linalg_utils_g2.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+shape = [4, 3], dtype = torch.float32, device = 'cpu'
+
+    def create_random_matrix(shape, dtype=torch.float32, device='cpu'):
+        """Create a random matrix with full column rank"""
+        # Create random matrix
+        A = torch.randn(*shape, dtype=dtype, device=device)
+        # Ensure it has full column rank by adding identity if needed
+        if shape[0] >= shape[1]:
+            # Add small multiple of identity to ensure full rank
+>           A[:, :shape[1]] += 0.1 * torch.eye(shape[1], dtype=dtype, device=device)
+E           RuntimeError: The size of tensor a (4) must match the size of tensor b (3) at non-singleton dimension 0
+
+tests/test_torch_linalg_utils_g2.py:58: RuntimeError
+_____________ test_basis_orthogonal_cpu[dtype1-cpu-shape1-flags1] ______________
+
+dtype = torch.float64, device = 'cpu', shape = [5, 2], flags = []
+random_seed = 42
+
+    @pytest.mark.parametrize("dtype,device,shape,flags", [
+        # Base case from test plan
+        (torch.float32, "cpu", [4, 3], []),
+        # Parameter extensions
+        (torch.float64, "cpu", [5, 2], []),
+    ])
+    def test_basis_orthogonal_cpu(dtype, device, shape, flags, random_seed):
+        """Test orthogonal basis generation on CPU"""
+        # Skip CUDA tests if device not available
+        if device == "cuda" and not torch.cuda.is_available():
+            pytest.skip("CUDA device not available")
+    
+        # Create random matrix with full column rank
+>       A = create_random_matrix(shape, dtype=dtype, device=device)
+
+tests/test_torch_linalg_utils_g2.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+shape = [5, 2], dtype = torch.float64, device = 'cpu'
+
+    def create_random_matrix(shape, dtype=torch.float32, device='cpu'):
+        """Create a random matrix with full column rank"""
+        # Create random matrix
+        A = torch.randn(*shape, dtype=dtype, device=device)
+        # Ensure it has full column rank by adding identity if needed
+        if shape[0] >= shape[1]:
+            # Add small multiple of identity to ensure full rank
+>           A[:, :shape[1]] += 0.1 * torch.eye(shape[1], dtype=dtype, device=device)
+E           RuntimeError: The size of tensor a (5) must match the size of tensor b (2) at non-singleton dimension 0
+
+tests/test_torch_linalg_utils_g2.py:58: RuntimeError
+____________________________ test_basis_edge_cases _____________________________
+
+    def test_basis_edge_cases():
+        """Test edge cases for basis function"""
+        # Test with square matrix
+        A_square = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
+        Q_square = basis(A_square)
+    
+        assert Q_square.shape == (2, 2)
+        assert torch.allclose(Q_square, A_square, rtol=1e-6, atol=1e-6)
+    
+        # Test with tall matrix (more rows than columns)
+        A_tall = torch.tensor([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]], dtype=torch.float32)
+        Q_tall = basis(A_tall)
+    
+        assert Q_tall.shape == (3, 2)
+        # Check orthogonality
+        Q_T = torch.transpose(Q_tall, 0, 1)
+        Q_T_Q = torch.matmul(Q_T, Q_tall)
+        identity = torch.eye(2, dtype=torch.float32)
+        assert torch.allclose(Q_T_Q, identity, rtol=1e-6, atol=1e-6)
+    
+        # Test with wide matrix (more columns than rows) - should still work
+        A_wide = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=torch.float32)
+>       Q_wide = basis(A_wide)
+
+tests/test_torch_linalg_utils_g2.py:324: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A = tensor([[1., 0., 0.],
+        [0., 1., 0.]])
+
+    def basis(A):
+        """Return orthogonal basis of A columns."""
+        if A.is_cuda:
+            # torch.orgqr is not available in CUDA
+            Q = torch.linalg.qr(A).Q
+        else:
+>           Q = torch.orgqr(*torch.geqrf(A))
+E           RuntimeError: torch.linalg.householder_product: input.shape[-2] must be greater than or equal to input.shape[-1]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_linalg_utils.py:83: RuntimeError
+__________________________ test_basis_invalid_inputs ___________________________
+
+    def test_basis_invalid_inputs():
+        """Test basis with invalid inputs"""
+        # Test with non-tensor input (should raise TypeError)
+        A_list = [[1.0, 2.0], [3.0, 4.0]]
+    
+        with pytest.raises(TypeError):
+>           basis(A_list)
+
+tests/test_torch_linalg_utils_g2.py:336: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A = [[1.0, 2.0], [3.0, 4.0]]
+
+    def basis(A):
+        """Return orthogonal basis of A columns."""
+>       if A.is_cuda:
+E       AttributeError: 'list' object has no attribute 'is_cuda'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_linalg_utils.py:79: AttributeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+tests/test_torch_linalg_utils_g1.py     144     23     16      7    81%   17, 30, 58, 80, 99->exit, 120, 169, 205-215, 231, 273-286
+tests/test_torch_linalg_utils_g2.py     139     43     26      6    63%   17, 30, 36, 59, 64-66, 71, 77-80, 96, 132-133, 166, 172-222, 326, 339-348
+tests/test_torch_linalg_utils_g3.py     202      8     44      7    94%   17, 30, 48-50, 55, 102, 198, 218->225, 234->237, 246->249
+---------------------------------------------------------------------------------
+TOTAL                                   485     74     86     20    81%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_linalg_utils_g1.py::test_bform_bilinear[dtype0-cpu-shape_X0-shape_A0-shape_Y0-flags0]
+FAILED tests/test_torch_linalg_utils_g1.py::test_qform_quadratic[dtype0-cpu-shape_A0-shape_S0-flags0]
+FAILED tests/test_torch_linalg_utils_g2.py::test_basis_orthogonal_cpu[dtype0-cpu-shape0-flags0]
+FAILED tests/test_torch_linalg_utils_g2.py::test_basis_orthogonal_cpu[dtype1-cpu-shape1-flags1]
+FAILED tests/test_torch_linalg_utils_g2.py::test_basis_edge_cases - RuntimeEr...
+FAILED tests/test_torch_linalg_utils_g2.py::test_basis_invalid_inputs - Attri...
+6 failed, 24 passed, 1 skipped in 0.76s
+
+Error: exit 1

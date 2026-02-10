@@ -1,0 +1,33 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_saved_model_save.py::test_basic_tf_module_save",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "TensorFlow 2.x中tensorflow.python模块不可直接访问，需要调整mock路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_saved_model_save.py::test_tf_module_with_tf_function",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_saved_model_save.py::test_explicit_signatures_parameter",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_saved_model_save.py::test_trackable_object_with_variables",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

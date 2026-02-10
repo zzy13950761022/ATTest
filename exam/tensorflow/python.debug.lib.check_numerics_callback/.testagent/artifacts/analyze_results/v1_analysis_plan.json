@@ -1,0 +1,43 @@
+{
+  "status": "失败",
+  "passed": 6,
+  "failed": 0,
+  "errors": 5,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_enable_check_numerics_basic",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径错误：tensorflow.python模块结构变化"
+    },
+    {
+      "test": "test_enable_check_numerics_idempotent",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "deferred",
+      "note": "依赖HEADER修复"
+    },
+    {
+      "test": "test_disable_check_numerics_basic",
+      "block_id": "CASE_06",
+      "error_type": "AttributeError",
+      "action": "deferred",
+      "note": "依赖HEADER修复"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_idempotency_with_state_check",
+      "reason": "与test_enable_check_numerics_idempotent相同BLOCK_ID，错误类型重复"
+    },
+    {
+      "test": "test_disable_without_enable",
+      "reason": "与test_disable_check_numerics_basic相同BLOCK_ID，错误类型重复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

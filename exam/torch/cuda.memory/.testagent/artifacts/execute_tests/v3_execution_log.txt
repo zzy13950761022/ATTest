@@ -1,0 +1,12 @@
+=== Run Tests ===
+ssss                                                                     [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+tests/test_torch_cuda_memory_advanced.py     124     97     22      1    19%   26-30, 39-45, 50-54, 67-176, 199-215, 225-243, 249-257, 261
+--------------------------------------------------------------------------------------
+TOTAL                                        124     97     22      1    19%
+Coverage XML written to file coverage.xml
+4 skipped in 0.64s

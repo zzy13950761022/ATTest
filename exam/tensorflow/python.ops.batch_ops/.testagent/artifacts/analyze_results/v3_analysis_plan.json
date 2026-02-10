@@ -1,0 +1,48 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 2,
+  "errors": 5,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestBatchOps.test_basic_decorator_functionality[1-2-1000-None-10-True-True-input_shape0-float32]",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock_defun不接受autograph参数，需要修复fixture"
+    },
+    {
+      "test": "TestBatchOps.test_parameter_validation[2-4-5000-allowed_batch_sizes0-5-False-False-input_shape0-float64]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_validate_allowed_batch_sizes试图mock不存在的函数"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestBatchOps.test_parameter_validation[1-1-100-allowed_batch_sizes1-1-True-True-input_shape1-float32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchOps.test_error_handling[1-2-1000-allowed_batch_sizes0-10-True-True-input_shape0-float32-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchOps.test_concurrent_batch_processing[2-4-10000-None-20-True-True-input_shape0-float32-3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchOps.test_concurrent_batch_processing[1-10-5000-None-5-True-True-input_shape1-float32-5]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchOps.test_basic_decorator_functionality[4-8-10000-allowed_batch_sizes1-20-False-False-input_shape1-float64]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

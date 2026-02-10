@@ -1,0 +1,165 @@
+=== Run Tests ===
+FFF...                                                                   [100%]
+================================== FAILURES ===================================
+_________________________ test_basic_graphdef_import __________________________
+
+    def test_basic_graphdef_import():
+        """Test basic GraphDef import without input_map or return_elements."""
+        # Create a simple constant graph
+        graph_def = create_simple_constant_graph()
+    
+        # Instead of mocking the C API directly (which causes AttributeError in TF 2.x),
+        # we'll test the actual function behavior with a simple graph.
+        # This is a weak assertion test as specified in the test plan.
+    
+        # Get the current graph before import
+        graph = ops.get_default_graph()
+        initial_operations = list(graph.get_operations())
+    
+        # Call import_graph_def
+        result = importer.import_graph_def(
+            graph_def=graph_def,
+            input_map=None,
+            return_elements=None,
+            name="import"
+        )
+    
+        # Weak assertions from test plan:
+        # 1. No exception raised (implicitly passed if we get here)
+    
+        # 2. Graph should have been modified (operations created)
+        final_operations = list(graph.get_operations())
+        assert len(final_operations) > len(initial_operations), \
+            "Graph should have new operations after import"
+    
+        # 3. Result should be None when return_elements is None
+        assert result is None, \
+            "Should return None when return_elements is None"
+    
+        # 4. Check that the imported operation has the correct name prefix
+        # Look for operations with "import/" prefix
+        imported_ops = [op for op in final_operations
+                       if op.name.startswith("import/") and op not in initial_operations]
+>       assert len(imported_ops) > 0, \
+            "Should have imported operations with 'import/' prefix"
+E       AssertionError: Should have imported operations with 'import/' prefix
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests\test_tensorflow_python_framework_importer.py:126: AssertionError
+_________________________ test_import_with_input_map __________________________
+
+    def test_import_with_input_map():
+        """Test GraphDef import with input_map for input remapping."""
+        # Create a placeholder graph
+        graph_def = create_placeholder_graph()
+    
+        # Create a tensor to map to the placeholder
+        # We need to create this in the default graph
+        mapped_tensor = tf.constant(3.14, dtype=tf.float32, name="mapped_input")
+    
+        # Get the current graph before import
+        graph = ops.get_default_graph()
+        initial_operations = list(graph.get_operations())
+    
+        # Call import_graph_def with input_map
+>       result = importer.import_graph_def(
+            graph_def=graph_def,
+            input_map={"placeholder": mapped_tensor},
+            return_elements=None,
+            name="import"
+        )
+
+tests\test_tensorflow_python_framework_importer.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\deprecation.py:548: in new_func
+    return func(*args, **kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\importer.py:403: in import_graph_def
+    return _import_graph_def_internal(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\importer.py:489: in _import_graph_def_internal
+    _PopulateTFImportGraphDefOptions(options, prefix, input_map, return_elements,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\importer.py:225: in _PopulateTFImportGraphDefOptions
+    dst_output = input_dst._as_tf_output()  # pylint: disable=protected-access
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tf.Tensor: shape=(), dtype=float32, numpy=3.14>
+
+    def _as_tf_output(self):
+>     raise NotImplementedError(
+          "_as_tf_output not supported when eager execution is enabled.")
+E     NotImplementedError: _as_tf_output not supported when eager execution is enabled.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\ops.py:1405: NotImplementedError
+---------------------------- Captured stderr call -----------------------------
+2026-01-20 14:40:06.405390: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+______________________ test_import_with_return_elements _______________________
+
+    def test_import_with_return_elements():
+        """Test GraphDef import with return_elements to get specific operations/tensors."""
+        # Create a multi-operation graph
+        graph_def = create_multi_operation_graph()
+    
+        # Get the current graph before import
+        graph = ops.get_default_graph()
+        initial_operations = list(graph.get_operations())
+    
+        # Call import_graph_def with return_elements
+        result = importer.import_graph_def(
+            graph_def=graph_def,
+            input_map=None,
+            return_elements=["input", "add:0"],
+            name="import"
+        )
+    
+        # Weak assertions from test plan:
+        # 1. No exception raised (implicitly passed if we get here)
+    
+        # 2. Returns a list
+        assert isinstance(result, list), \
+            "Should return a list when return_elements is specified"
+    
+        # 3. Correct length (should match return_elements)
+        assert len(result) == 2, \
+            f"Should return 2 elements, got {len(result)}"
+    
+        # 4. Elements should be Operation or Tensor objects
+        # First element should be an Operation (just "input")
+        assert hasattr(result[0], 'type'), "First element should be an Operation or Tensor"
+    
+        # Second element should be a Tensor ("add:0")
+        assert hasattr(result[1], 'name'), "Second element should be an Operation or Tensor"
+        assert ":0" in result[1].name, "Second element should be a tensor (have ':0' in name)"
+    
+        # 5. Graph should have been modified
+        final_operations = list(graph.get_operations())
+        assert len(final_operations) > len(initial_operations), \
+            "Graph should have new operations after import"
+    
+        # 6. Check that returned elements have correct names
+        # Names should be prefixed with "import/"
+>       assert result[0].name.startswith("import/"), \
+            f"Returned operation should have 'import/' prefix, got {result[0].name}"
+E       AssertionError: Returned operation should have 'import/' prefix, got input
+E       assert False
+E        +  where False = <built-in method startswith of str object at 0x0000015AFCA64130>('import/')
+E        +    where <built-in method startswith of str object at 0x0000015AFCA64130> = 'input'.startswith
+E        +      where 'input' = <tf.Operation 'input' type=Placeholder>.name
+
+tests\test_tensorflow_python_framework_importer.py:242: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_importer.py     151     46      4      0    68%   130-137, 168-193, 245-265, 345-377
+------------------------------------------------------------------------------------------------
+TOTAL                                                  151     46      4      0    68%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_importer.py::test_basic_graphdef_import
+FAILED tests\test_tensorflow_python_framework_importer.py::test_import_with_input_map
+FAILED tests\test_tensorflow_python_framework_importer.py::test_import_with_return_elements
+3 failed, 3 passed in 1.63s
+
+Error: exit 1

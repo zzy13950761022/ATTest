@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 18,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedArrayOps.test_size_and_rank_calculation[input_shape1-0-1-rank]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "空RaggedTensor的rank计算错误，预期1但实际2，需要根据TensorFlow实际行为调整断言"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

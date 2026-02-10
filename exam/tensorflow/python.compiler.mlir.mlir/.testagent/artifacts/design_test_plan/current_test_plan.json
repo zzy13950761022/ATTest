@@ -1,0 +1,249 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.compiler.mlir.mlir",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_compiler_mlir_mlir.py",
+    "all_pattern": "tests/test_tensorflow_python_compiler_mlir_mlir_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_compiler_mlir_mlir_g1.py",
+      "G2": "tests/test_tensorflow_python_compiler_mlir_mlir_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "convert_graph_def 函数族",
+      "entrypoints": ["convert_graph_def"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试 GraphDef 到 MLIR 的转换功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "convert_function 函数族",
+      "entrypoints": ["convert_function"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_06"],
+      "note": "测试 ConcreteFunction 到 MLIR 的转换功能"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "convert_graph_def 基本转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "simple_graph",
+          "pass_pipeline": "tf-standard-pipeline",
+          "show_debug_info": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_string", "contains_module", "no_exception"],
+        "strong": ["valid_mlir_syntax", "contains_operations", "matches_reference"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "convert_graph_def 参数验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "simple_graph",
+          "pass_pipeline": "custom-pipeline",
+          "show_debug_info": true
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_string", "no_exception", "debug_info_present"],
+        "strong": ["custom_pipeline_applied", "debug_info_format"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "convert_function 基本转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "simple_add",
+          "pass_pipeline": "tf-standard-pipeline",
+          "show_debug_info": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_string", "contains_module", "no_exception"],
+        "strong": ["valid_mlir_syntax", "contains_add_op", "matches_reference"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "convert_function 参数验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "simple_add",
+          "pass_pipeline": "custom-pipeline",
+          "show_debug_info": true
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_string", "no_exception", "debug_info_present"],
+        "strong": ["custom_pipeline_applied", "debug_info_format"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "convert_graph_def 异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "invalid_graph",
+          "pass_pipeline": "tf-standard-pipeline",
+          "show_debug_info": false
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type"],
+        "strong": ["exception_message", "error_context"]
+      },
+      "oracle": "InvalidArgumentError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "convert_function 异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "invalid_function",
+          "pass_pipeline": "tf-standard-pipeline",
+          "show_debug_info": false
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type"],
+        "strong": ["exception_message", "error_context"]
+      },
+      "oracle": "InvalidArgumentError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "complex_graph",
+        "pass_pipeline": "tf-standard-pipeline",
+        "show_debug_info": false
+      },
+      "note": "复杂图结构转换测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "text_proto",
+        "pass_pipeline": "tf-standard-pipeline",
+        "show_debug_info": false
+      },
+      "note": "文本 proto 格式输入测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function_type": "complex_function",
+        "pass_pipeline": "tf-standard-pipeline",
+        "show_debug_info": false
+      },
+      "note": "复杂函数结构转换测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function_type": "control_flow",
+        "pass_pipeline": "tf-standard-pipeline",
+        "show_debug_info": false
+      },
+      "note": "控制流操作转换测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06"]
+}

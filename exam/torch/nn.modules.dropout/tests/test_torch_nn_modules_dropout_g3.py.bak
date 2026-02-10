@@ -1,0 +1,186 @@
+"""
+Test module for torch.nn.modules.dropout - Group G3: Boundary and Exception Tests
+"""
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+from typing import Tuple, List, Dict, Any
+
+# ==== BLOCK:HEADER START ====
+def set_random_seed(seed: int):
+    """Set random seeds for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+def assert_tensor_properties(tensor: torch.Tensor, expected_shape: Tuple[int, ...], 
+                           expected_dtype: torch.dtype, context: str = ""):
+    """Assert tensor has expected shape and dtype."""
+    assert tensor.shape == expected_shape, \
+        f"{context}: Shape mismatch: expected {expected_shape}, got {tensor.shape}"
+    assert tensor.dtype == expected_dtype, \
+        f"{context}: Dtype mismatch: expected {expected_dtype}, got {tensor.dtype}"
+
+def approx_equal(tensor1: torch.Tensor, tensor2: torch.Tensor, rtol: float = 1e-5, atol: float = 1e-8) -> bool:
+    """Check if two tensors are approximately equal."""
+    return torch.allclose(tensor1, tensor2, rtol=rtol, atol=atol)
+
+# Helper function for statistical tests
+def check_statistical_properties(tensor: torch.Tensor, expected_mean: float = 0.0, 
+                               expected_std: float = 1.0, tol: float = 0.1) -> Tuple[bool, str]:
+    """Check if tensor has expected mean and standard deviation."""
+    actual_mean = tensor.mean().item()
+    actual_std = tensor.std().item()
+    
+    mean_ok = abs(actual_mean - expected_mean) < tol
+    std_ok = abs(actual_std - expected_std) < tol
+    
+    msg = f"Mean: {actual_mean:.4f} (expected {expected_mean:.4f}), Std: {actual_std:.4f} (expected {expected_std:.4f})"
+    return mean_ok and std_ok, msg
+
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+    ("Dropout", 0.0, False, (2, 2), torch.float32, "cpu"),
+    ("Dropout", 1.0, False, (2, 2), torch.float32, "cpu"),
+])
+def test_parameter_boundary_values(class_name, p, inplace, shape, dtype, device):
+    """
+    CASE_04: 参数边界值验证
+    Test edge cases for dropout parameters (p=0.0 and p=1.0).
+    """
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test input
+    input_tensor = torch.randn(*shape, dtype=dtype)
+    
+    # Instantiate the dropout module
+    if class_name == "Dropout":
+        dropout = nn.Dropout(p=p, inplace=inplace)
+    else:
+        raise ValueError(f"Unsupported class for boundary test: {class_name}")
+    
+    # Test in training mode
+    dropout.train()
+    output_train = dropout(input_tensor.clone())
+    
+    # Weak assertions
+    assert_tensor_properties(output_train, shape, dtype, f"{class_name} with p={p}")
+    
+    # Check no NaN values
+    assert not torch.any(torch.isnan(output_train)), "Output contains NaN values"
+    
+    # Test specific boundary cases
+    if p == 0.0:
+        # When p=0, dropout should be identity function in training mode
+        assert approx_equal(output_train, input_tensor), \
+            f"With p=0, output should equal input in training mode"
+        
+        # Check that no elements are zero (except possibly zeros in input)
+        # Since dropout probability is 0, no elements should be dropped
+        zero_mask = (output_train == 0)
+        input_zero_mask = (input_tensor == 0)
+        # Only zeros in output should correspond to zeros in input
+        assert torch.all(zero_mask == input_zero_mask), \
+            "With p=0, zeros in output should only come from zeros in input"
+    
+    elif p == 1.0:
+        # When p=1, all elements should be zero in training mode
+        assert torch.all(output_train == 0), \
+            f"With p=1, all elements should be zero in training mode"
+        
+        # Check that scaling factor would be infinite (1/(1-p) = 1/0)
+        # This is handled internally by PyTorch
+    
+    # Test evaluation mode
+    dropout.eval()
+    output_eval = dropout(input_tensor.clone())
+    
+    # In evaluation mode, dropout should always be identity function
+    assert approx_equal(output_eval, input_tensor), \
+        f"In evaluation mode, dropout should be identity function regardless of p={p}"
+    
+    # Test with different input values
+    test_inputs = [
+        torch.zeros(*shape, dtype=dtype),  # All zeros
+        torch.ones(*shape, dtype=dtype),   # All ones
+        torch.full(shape, 5.0, dtype=dtype),  # Constant positive
+        torch.full(shape, -3.0, dtype=dtype),  # Constant negative
+    ]
+    
+    for test_input in test_inputs:
+        dropout.train()
+        test_output = dropout(test_input.clone())
+        
+        assert_tensor_properties(test_output, shape, dtype, f"Test input {test_input[0].item()}")
+        
+        if p == 0.0:
+            assert approx_equal(test_output, test_input), \
+                f"With p=0, output should equal input for test value {test_input[0].item()}"
+        elif p == 1.0:
+            assert torch.all(test_output == 0), \
+                f"With p=1, output should be all zeros for test value {test_input[0].item()}"
+        
+        # Evaluation mode should always be identity
+        dropout.eval()
+        eval_output = dropout(test_input.clone())
+        assert approx_equal(eval_output, test_input), \
+            f"In eval mode, should be identity for test value {test_input[0].item()}"
+    
+    # Test gradient computation for boundary cases
+    if p == 0.0:
+        # With p=0, gradients should flow normally
+        test_input = torch.randn(*shape, dtype=dtype, requires_grad=True)
+        dropout.train()
+        output = dropout(test_input)
+        
+        # Create a simple loss and compute gradients
+        loss = output.sum()
+        loss.backward()
+        
+        # Check that gradients exist
+        assert test_input.grad is not None, "Gradients should exist for p=0"
+        assert not torch.any(torch.isnan(test_input.grad)), "Gradients should not contain NaN"
+        
+        # For p=0, gradient should be 1 for all elements (identity function)
+        expected_grad = torch.ones_like(test_input)
+        assert approx_equal(test_input.grad, expected_grad), \
+            "With p=0, gradients should be 1 (identity function derivative)"
+    
+    # Test memory and performance aspects (basic checks)
+    import sys
+    input_size = input_tensor.element_size() * input_tensor.nelement()
+    output_size = output_train.element_size() * output_train.nelement()
+    
+    # Output should have same memory footprint as input (except possibly inplace)
+    assert input_size == output_size, \
+        f"Input and output should have same memory size: input={input_size}, output={output_size}"
+    
+    # Test with requires_grad=True
+    input_with_grad = torch.randn(*shape, dtype=dtype, requires_grad=True)
+    dropout.train()
+    output_with_grad = dropout(input_with_grad)
+    
+    # Output should inherit requires_grad from input
+    assert output_with_grad.requires_grad == input_with_grad.requires_grad, \
+        "Output should have same requires_grad as input"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Placeholder for CASE_09: Deferred test case for G3 group
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# Placeholder for CASE_10: Deferred test case for G3 group
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

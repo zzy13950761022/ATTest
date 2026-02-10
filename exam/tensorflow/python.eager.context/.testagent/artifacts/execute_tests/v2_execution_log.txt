@@ -1,0 +1,177 @@
+=== Run Tests ===
+....F..FF.                                                               [100%]
+================================== FAILURES ===================================
+______ test_context_invalid_parameter_validation[device_policy-INVALID] _______
+
+invalid_param = 'device_policy', value = 'INVALID'
+
+    @pytest.mark.parametrize("invalid_param,value", [
+        ("device_policy", "INVALID"),
+        ("execution_mode", "INVALID")
+    ])
+    def test_context_invalid_parameter_validation(invalid_param, value):
+        """测试Context无效参数验证
+    
+        验证Context类对无效参数的验证逻辑
+        弱断言：引发ValueError、错误消息包含参数名
+    
+        Args:
+            invalid_param: 无效参数名，'device_policy'或'execution_mode'
+            value: 无效值
+        """
+        # 准备参数
+        kwargs = {
+            "config": None,
+            "server_def": None
+        }
+    
+        # 设置有效参数
+        if invalid_param == "device_policy":
+            kwargs["device_policy"] = value
+            kwargs["execution_mode"] = context.SYNC  # 有效值
+        else:  # invalid_param == "execution_mode"
+            kwargs["device_policy"] = context.DEVICE_PLACEMENT_SILENT  # 有效值
+            kwargs["execution_mode"] = value
+    
+        # 弱断言1：引发ValueError
+        with pytest.raises(ValueError) as exc_info:
+>           context.Context(**kwargs)
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_eager_context_g2.py:152: Failed
+____________________ test_context_execution_mode_switching ____________________
+
+    def test_context_execution_mode_switching():
+        """测试Context执行模式切换
+    
+        验证Context可以在SYNC和ASYNC模式之间切换
+        测试执行模式切换对操作执行的影响
+        """
+        # 创建SYNC模式的Context
+        ctx_sync = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_SILENT,
+            execution_mode=context.SYNC,
+            server_def=None
+        )
+    
+        # 验证SYNC模式设置
+        assert ctx_sync._default_is_async is False, "SYNC模式应该设置_default_is_async=False"
+    
+        # 初始化并验证
+        ctx_sync.ensure_initialized()
+        assert ctx_sync._initialized is True
+    
+        # 创建ASYNC模式的Context
+        ctx_async = context.Context(
+            config=None,
+            device_policy=context.DEVICE_PLACEMENT_SILENT,
+            execution_mode=context.ASYNC,
+            server_def=None
+        )
+    
+        # 验证ASYNC模式设置
+        assert ctx_async._default_is_async is True, "ASYNC模式应该设置_default_is_async=True"
+    
+        # 初始化并验证
+        ctx_async.ensure_initialized()
+        assert ctx_async._initialized is True
+    
+        # 测试使用contextlib进行临时模式切换
+        # 注意：某些版本可能不支持async_scope或相关功能
+        try:
+            # 测试async_scope上下文管理器
+            with context.async_scope():
+                # 在async_scope内部，执行应该是异步的
+                # 验证当前上下文状态
+                current_ctx = context.context_safe()
+                if current_ctx is not None:
+                    # 在async_scope内部，执行模式可能被临时修改
+>                   pass
+
+tests\test_tensorflow_python_eager_context_g2.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:126: in __exit__
+    next(self.gen)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\context.py:2590: in async_scope
+    context().sync_executors()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tensorflow.python.eager.context.Context object at 0x0000025DF92BEAF0>
+
+    def sync_executors(self):
+      """Sync both local executors and the ones on remote workers.
+    
+      In async execution mode, local function calls can return before the
+      corresponding remote op/function execution requests are completed. Calling
+      this method creates a synchronization barrier for remote executors. It only
+      returns when all remote pending nodes are finished, potentially with errors
+      if any remote executors are in error state.
+    
+      Raises:
+        ValueError: if context is not initialized.
+      """
+      if self._context_handle:
+        pywrap_tfe.TFE_ContextSyncExecutors(self._context_handle)
+      else:
+>       raise ValueError("Context is not initialized.")
+E       ValueError: Context is not initialized.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\context.py:696: ValueError
+___________________ test_device_policy_behavior_differences ___________________
+
+    def test_device_policy_behavior_differences():
+        """测试不同设备策略的行为差异
+    
+        验证四种设备策略（EXPLICIT, WARN, SILENT, SILENT_FOR_INT32）的基本行为
+        测试设备策略设置和获取
+        """
+        # 测试所有四种设备策略
+        device_policies = [
+            (context.DEVICE_PLACEMENT_EXPLICIT, "EXPLICIT"),
+            (context.DEVICE_PLACEMENT_WARN, "WARN"),
+            (context.DEVICE_PLACEMENT_SILENT, "SILENT"),
+            (context.DEVICE_PLACEMENT_SILENT_FOR_INT32, "SILENT_FOR_INT32")
+        ]
+    
+        for policy_value, policy_name in device_policies:
+            # 使用当前策略创建Context
+            ctx = context.Context(
+                config=None,
+                device_policy=policy_value,
+                execution_mode=context.SYNC,
+                server_def=None
+            )
+    
+            # 验证设备策略设置正确
+            assert ctx._device_policy == policy_value, \
+                f"{policy_name}策略应该设置为{policy_value}，实际为{ctx._device_policy}"
+    
+            # 初始化Context
+            ctx.ensure_initialized()
+            assert ctx._initialized is True, f"{policy_name}策略的Context应该能初始化"
+    
+            # 测试device_policy()函数获取当前设备策略
+            try:
+                # 设置当前上下文
+                original_context = context.context_safe()
+>               ctx._context_switches = context.ContextSwitch(ctx)
+E               TypeError: <lambda>() missing 2 required positional arguments: 'enter_context_fn' and 'device_stack'
+
+tests\test_tensorflow_python_eager_context_g2.py:376: TypeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_eager_context_g2.py     154     42     30      6    66%   160->167, 169-179, 233->240, 235-237, 306-336, 379-387, 390-434, 445
+----------------------------------------------------------------------------------------------
+TOTAL                                                154     42     30      6    66%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_eager_context_g2.py::test_context_invalid_parameter_validation[device_policy-INVALID]
+FAILED tests\test_tensorflow_python_eager_context_g2.py::test_context_execution_mode_switching
+FAILED tests\test_tensorflow_python_eager_context_g2.py::test_device_policy_behavior_differences
+3 failed, 7 passed in 1.65s
+
+Error: exit 1

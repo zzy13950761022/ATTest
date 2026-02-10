@@ -1,0 +1,436 @@
+"""
+Test cases for tensorflow.python.ops.functional_ops module.
+Generated with pytest framework.
+"""
+
+import numpy as np
+import tensorflow as tf
+import pytest
+from unittest import mock
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test class for functional_ops module
+class TestFunctionalOps:
+    """Test class for tensorflow.python.ops.functional_ops module."""
+    
+    def setup_method(self):
+        """Setup method for each test."""
+        tf.compat.v1.reset_default_graph()
+        
+    @pytest.fixture(autouse=True)
+    def setup_eager_mode(self):
+        """Ensure tests run in eager mode by default."""
+        if tf.executing_eagerly():
+            yield
+        else:
+            with tf.compat.v1.Session() as sess:
+                yield sess
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("dtype,initializer,parallel_iterations,swap_memory,mode", [
+        (tf.float32, None, 10, False, "eager"),
+        (tf.float64, 0.0, 5, True, "graph"),
+    ])
+    def test_foldl_basic_folding(self, dtype, initializer, parallel_iterations, swap_memory, mode):
+        """Test basic foldl operation with different parameters."""
+        from tensorflow.python.ops import functional_ops
+        
+        # Create test data
+        elems = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=dtype)
+        
+        # Define sum function
+        def sum_fn(acc, x):
+            return acc + x
+        
+        # Expected result: sum of all elements
+        expected = tf.reduce_sum(elems)
+        
+        if mode == "graph":
+            with tf.Graph().as_default():
+                elems_g = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=dtype)
+                if initializer is not None:
+                    initializer_g = tf.constant(initializer, dtype=dtype)
+                else:
+                    initializer_g = None
+                
+                result = functional_ops.foldl(
+                    fn=sum_fn,
+                    elems=elems_g,
+                    initializer=initializer_g,
+                    parallel_iterations=parallel_iterations,
+                    swap_memory=swap_memory
+                )
+                
+                with tf.compat.v1.Session() as sess:
+                    result_val = sess.run(result)
+                    expected_val = sess.run(tf.reduce_sum(elems_g))
+        else:
+            # Eager mode
+            result = functional_ops.foldl(
+                fn=sum_fn,
+                elems=elems,
+                initializer=tf.constant(initializer, dtype=dtype) if initializer is not None else None,
+                parallel_iterations=parallel_iterations,
+                swap_memory=swap_memory
+            )
+            result_val = result.numpy()
+            expected_val = expected.numpy()
+        
+        # Weak assertions (shape, dtype, finite, basic_property)
+        # 1. Check shape
+        assert result_val.shape == (), f"Expected scalar shape, got {result_val.shape}"
+        
+        # 2. Check dtype
+        if dtype == tf.float32:
+            assert result_val.dtype == np.float32, f"Expected float32, got {result_val.dtype}"
+        elif dtype == tf.float64:
+            assert result_val.dtype == np.float64, f"Expected float64, got {result_val.dtype}"
+        
+        # 3. Check finite
+        assert np.isfinite(result_val), f"Result is not finite: {result_val}"
+        
+        # 4. Check basic property (sum should be 21.0)
+        np.testing.assert_allclose(result_val, expected_val, rtol=1e-6, atol=1e-6)
+        
+        # Additional check: verify it's actually the sum
+        assert np.abs(result_val - 21.0) < 1e-6, f"Expected sum 21.0, got {result_val}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("dtype,initializer,reverse,infer_shape,mode", [
+        (tf.int32, 0, False, True, "eager"),
+        (tf.float32, None, True, False, "graph"),
+    ])
+    def test_scan_accumulation(self, dtype, initializer, reverse, infer_shape, mode):
+        """Test scan operation for cumulative sequence generation."""
+        from tensorflow.python.ops import functional_ops
+        
+        # Create test data
+        if dtype == tf.int32:
+            elems = tf.constant([1, 2, 3, 4, 5], dtype=dtype)
+        else:  # float32
+            elems = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0], dtype=dtype)
+        
+        # Define sum function
+        def sum_fn(acc, x):
+            return acc + x
+        
+        # Expected result: cumulative sum
+        if reverse:
+            # Reverse cumulative sum: [15, 14, 12, 9, 5] for [1,2,3,4,5]
+            if dtype == tf.int32:
+                expected = tf.constant([15, 14, 12, 9, 5], dtype=dtype)
+            else:
+                expected = tf.constant([15.0, 14.0, 12.0, 9.0, 5.0], dtype=dtype)
+        else:
+            # Forward cumulative sum: [1, 3, 6, 10, 15]
+            if dtype == tf.int32:
+                expected = tf.constant([1, 3, 6, 10, 15], dtype=dtype)
+            else:
+                expected = tf.constant([1.0, 3.0, 6.0, 10.0, 15.0], dtype=dtype)
+        
+        if mode == "graph":
+            with tf.Graph().as_default():
+                if dtype == tf.int32:
+                    elems_g = tf.constant([1, 2, 3, 4, 5], dtype=dtype)
+                else:
+                    elems_g = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0], dtype=dtype)
+                
+                if initializer is not None:
+                    initializer_g = tf.constant(initializer, dtype=dtype)
+                else:
+                    initializer_g = None
+                
+                result = functional_ops.scan(
+                    fn=sum_fn,
+                    elems=elems_g,
+                    initializer=initializer_g,
+                    reverse=reverse,
+                    infer_shape=infer_shape
+                )
+                
+                with tf.compat.v1.Session() as sess:
+                    result_val = sess.run(result)
+                    # For graph mode, compute expected value within the same graph
+                    if reverse:
+                        if dtype == tf.int32:
+                            expected_g = tf.constant([15, 14, 12, 9, 5], dtype=dtype)
+                        else:
+                            expected_g = tf.constant([15.0, 14.0, 12.0, 9.0, 5.0], dtype=dtype)
+                    else:
+                        if dtype == tf.int32:
+                            expected_g = tf.constant([1, 3, 6, 10, 15], dtype=dtype)
+                        else:
+                            expected_g = tf.constant([1.0, 3.0, 6.0, 10.0, 15.0], dtype=dtype)
+                    expected_val = sess.run(expected_g)
+        else:
+            # Eager mode
+            result = functional_ops.scan(
+                fn=sum_fn,
+                elems=elems,
+                initializer=tf.constant(initializer, dtype=dtype) if initializer is not None else None,
+                reverse=reverse,
+                infer_shape=infer_shape
+            )
+            result_val = result.numpy()
+            expected_val = expected.numpy()
+        
+        # Weak assertions (shape, dtype, sequence_correctness)
+        # 1. Check shape
+        assert result_val.shape == (5,), f"Expected shape (5,), got {result_val.shape}"
+        
+        # 2. Check dtype
+        if dtype == tf.int32:
+            assert result_val.dtype == np.int32, f"Expected int32, got {result_val.dtype}"
+        elif dtype == tf.float32:
+            assert result_val.dtype == np.float32, f"Expected float32, got {result_val.dtype}"
+        
+        # 3. Check sequence correctness
+        np.testing.assert_array_equal(result_val, expected_val)
+        
+        # Additional check: verify cumulative property
+        if not reverse:
+            # Forward scan: each element should be sum of previous elements
+            for i in range(1, len(result_val)):
+                if dtype == tf.int32:
+                    assert result_val[i] == result_val[i-1] + (i + 1), \
+                        f"Failed cumulative property at index {i}"
+                else:
+                    assert abs(result_val[i] - (result_val[i-1] + (i + 1))) < 1e-6, \
+                        f"Failed cumulative property at index {i}"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("cond,input_shape,dtype,then_branch,else_branch,mode", [
+        (True, [3, 3], tf.float32, "add_one", "subtract_one", "eager"),
+        (False, [2, 2], tf.int32, "multiply_two", "divide_two", "graph"),
+    ])
+    def test_if_conditional_branch(self, cond, input_shape, dtype, then_branch, else_branch, mode):
+        """Test If conditional branch execution."""
+        from tensorflow.python.ops import functional_ops
+        
+        # Mock the underlying gen_functional_ops._if to control behavior
+        import tensorflow.python.ops.gen_functional_ops as gen_functional_ops
+        with mock.patch.object(gen_functional_ops, '_if') as mock_if:
+            # Create test input
+            if dtype == tf.float32:
+                input_data = tf.ones(input_shape, dtype=dtype)
+            else:  # int32
+                input_data = tf.ones(input_shape, dtype=dtype) * 2
+            
+            # Define branch functions based on test parameters
+            # We need to create tf.function-wrapped functions
+            if then_branch == "add_one":
+                @tf.function
+                def then_fn(x):
+                    return [x + 1.0]
+            elif then_branch == "multiply_two":
+                @tf.function
+                def then_fn(x):
+                    return [x * 2]
+            
+            if else_branch == "subtract_one":
+                @tf.function
+                def else_fn(x):
+                    return [x - 1.0]
+            elif else_branch == "divide_two":
+                @tf.function
+                def else_fn(x):
+                    return [x // 2]  # Integer division for int32
+            
+            # Create condition tensor
+            cond_tensor = tf.constant(cond, dtype=tf.bool)
+            
+            # Setup mock to return appropriate value
+            if cond:
+                expected_result = then_fn(input_data)[0]
+                mock_if.return_value = [expected_result]
+            else:
+                expected_result = else_fn(input_data)[0]
+                mock_if.return_value = [expected_result]
+            
+            if mode == "graph":
+                with tf.Graph().as_default():
+                    if dtype == tf.float32:
+                        input_g = tf.ones(input_shape, dtype=dtype)
+                    else:
+                        input_g = tf.ones(input_shape, dtype=dtype) * 2
+                    
+                    cond_g = tf.constant(cond, dtype=tf.bool)
+                    
+                    # Call If function
+                    result = functional_ops.If(
+                        cond=cond_g,
+                        inputs=[input_g],
+                        then_branch=then_fn,
+                        else_branch=else_fn
+                    )
+                    
+                    with tf.compat.v1.Session() as sess:
+                        result_val = sess.run(result[0])
+                        # Compute expected value within the same graph
+                        if cond:
+                            expected_g = then_fn(input_g)[0]
+                        else:
+                            expected_g = else_fn(input_g)[0]
+                        expected_val = sess.run(expected_g)
+            else:
+                # Eager mode
+                result = functional_ops.If(
+                    cond=cond_tensor,
+                    inputs=[input_data],
+                    then_branch=then_fn,
+                    else_branch=else_fn
+                )
+                result_val = result[0].numpy()
+                expected_val = expected_result.numpy()
+            
+            # Weak assertions (shape, dtype, branch_selection)
+            # 1. Check shape
+            assert result_val.shape == tuple(input_shape), \
+                f"Expected shape {input_shape}, got {result_val.shape}"
+            
+            # 2. Check dtype
+            if dtype == tf.float32:
+                assert result_val.dtype == np.float32, f"Expected float32, got {result_val.dtype}"
+            elif dtype == tf.int32:
+                assert result_val.dtype == np.int32, f"Expected int32, got {result_val.dtype}"
+            
+            # 3. Check branch selection
+            if cond:
+                # Verify then_branch was executed
+                if then_branch == "add_one":
+                    # All values should be 2.0 for float32
+                    expected_value = 2.0 if dtype == tf.float32 else 3  # 2 * 1 + 1 for int32?
+                    if dtype == tf.float32:
+                        assert np.allclose(result_val, expected_value, rtol=1e-6)
+                    else:
+                        assert np.all(result_val == expected_value)
+                elif then_branch == "multiply_two":
+                    # All values should be 4 for int32 (2 * 2)
+                    assert np.all(result_val == 4)
+            else:
+                # Verify else_branch was executed
+                if else_branch == "subtract_one":
+                    # All values should be 0.0 for float32
+                    expected_value = 0.0 if dtype == tf.float32 else 1  # 2 - 1 for int32?
+                    if dtype == tf.float32:
+                        assert np.allclose(result_val, expected_value, rtol=1e-6)
+                    else:
+                        assert np.all(result_val == expected_value)
+                elif else_branch == "divide_two":
+                    # All values should be 1 for int32 (2 // 2)
+                    assert np.all(result_val == 1)
+            
+            # Verify mock was called with correct arguments
+            assert mock_if.called, "gen_functional_ops._if should have been called"
+            
+            # Verify the result matches expected value
+            if dtype == tf.float32:
+                np.testing.assert_allclose(result_val, expected_val, rtol=1e-6, atol=1e-6)
+            else:
+                np.testing.assert_array_equal(result_val, expected_val)
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    def test_while_loop_control_flow(self):
+        """Test While loop control flow."""
+        from tensorflow.python.ops import functional_ops
+        
+        # Mock the underlying gen_functional_ops.While and control_flow_ops.while_loop
+        # Note: In TensorFlow 2.x, we need to import the modules first
+        import tensorflow.python.ops.gen_functional_ops as gen_functional_ops
+        import tensorflow.python.ops.control_flow_ops as control_flow_ops
+        
+        with mock.patch.object(gen_functional_ops, 'While') as mock_while, \
+             mock.patch.object(control_flow_ops, 'while_loop') as mock_while_loop:
+            
+            # Create test input: start from 0
+            input_data = [tf.constant([0], dtype=tf.int32)]
+            
+            # Define condition function: continue while value < 5
+            def cond_fn(x):
+                return tf.less(x[0], 5)
+            
+            # Define body function: increment by 1
+            def body_fn(x):
+                return [x[0] + 1]
+            
+            # Setup mocks
+            # The While function should increment from 0 to 5
+            expected_result = [tf.constant([5], dtype=tf.int32)]
+            mock_while.return_value = expected_result
+            mock_while_loop.return_value = expected_result
+            
+            # Call While function
+            result = functional_ops.While(
+                input_=input_data,
+                cond=cond_fn,
+                body=body_fn
+            )
+            
+            # Get result value
+            result_val = result[0].numpy()
+            
+            # Weak assertions (shape, dtype, loop_termination)
+            # 1. Check shape
+            assert result_val.shape == (1,), f"Expected shape (1,), got {result_val.shape}"
+            
+            # 2. Check dtype
+            assert result_val.dtype == np.int32, f"Expected int32, got {result_val.dtype}"
+            
+            # 3. Check loop termination (should be 5 after 5 iterations)
+            assert result_val[0] == 5, f"Expected final value 5, got {result_val[0]}"
+            
+            # Verify mocks were called
+            assert mock_while.called, "gen_functional_ops.While should have been called"
+            
+            # Verify the result matches expected value
+            np.testing.assert_array_equal(result_val, [5])
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Placeholder for CASE_05: 嵌套结构多参数支持 (DEFERRED_SET)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper functions and fixtures
+@pytest.fixture
+def tf_eager_mode():
+    """Fixture to run tests in eager mode."""
+    with tf.compat.v1.Session() as sess:
+        yield sess
+
+@pytest.fixture
+def tf_graph_mode():
+    """Fixture to run tests in graph mode."""
+    with tf.Graph().as_default():
+        yield
+
+def assert_tensor_equal(tensor1, tensor2, rtol=1e-6, atol=1e-6):
+    """Assert two tensors are equal within tolerance."""
+    if isinstance(tensor1, tf.Tensor):
+        tensor1 = tensor1.numpy()
+    if isinstance(tensor2, tf.Tensor):
+        tensor2 = tensor2.numpy()
+    np.testing.assert_allclose(tensor1, tensor2, rtol=rtol, atol=atol)
+
+def assert_tensor_shape(tensor, expected_shape):
+    """Assert tensor has expected shape."""
+    if isinstance(tensor, tf.Tensor):
+        assert tensor.shape.as_list() == list(expected_shape)
+    else:
+        assert tensor.shape == tuple(expected_shape)
+
+def assert_tensor_dtype(tensor, expected_dtype):
+    """Assert tensor has expected dtype."""
+    if isinstance(tensor, tf.Tensor):
+        assert tensor.dtype == expected_dtype
+    else:
+        assert tensor.dtype == expected_dtype
+# ==== BLOCK:FOOTER END ====

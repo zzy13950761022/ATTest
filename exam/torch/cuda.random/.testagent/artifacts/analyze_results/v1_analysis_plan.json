@@ -1,0 +1,47 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::TestTorchCudaRandomG1::test_single_device_state_get_set",
+      "block_id": "CASE_01",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "测试因CUDA不可用被跳过，需要添加CUDA不可用场景测试"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::TestTorchCudaRandomG1::test_seed_setting_and_querying",
+      "block_id": "CASE_02",
+      "error_type": "SkipTest",
+      "action": "add_case",
+      "note": "测试因CUDA不可用被跳过，需要添加CUDA不可用场景测试"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::test_module_import",
+      "block_id": "HEADER",
+      "error_type": "SkipTest",
+      "action": "adjust_assertion",
+      "note": "模块导入测试需要处理CUDA不可用情况"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::TestTorchCudaRandomG1::test_multi_device_state_batch_management",
+      "reason": "G2测试，将在G2文件中实现"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::TestTorchCudaRandomG1::test_invalid_device_index_exception_handling",
+      "reason": "G2测试，将在G2文件中实现"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g1.py::test_cuda_initialization_by_random",
+      "reason": "CUDA不可用导致跳过，等待CUDA可用环境"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

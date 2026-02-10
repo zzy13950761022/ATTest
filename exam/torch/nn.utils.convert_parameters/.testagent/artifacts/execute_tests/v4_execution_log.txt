@@ -1,0 +1,80 @@
+=== Run Tests ===
+.s.s...s.F..                                                             [100%]
+=================================== FAILURES ===================================
+___________ test_vector_to_parameters_length_mismatch[shapes0-True] ____________
+
+shapes = [[2, 2], [3]], vec_length_mismatch = True
+
+    @pytest.mark.parametrize("shapes,vec_length_mismatch", [
+        ([[2, 2], [3]], True),  # Original test case with vector length mismatch
+    ])
+    def test_vector_to_parameters_length_mismatch(shapes, vec_length_mismatch):
+        """Test case: 向量长度不匹配异常
+        TC-04: 向量长度不匹配异常
+        Priority: High
+        Group: G2
+        Assertion level: weak
+        """
+        # Skip if not testing mismatch
+        if not vec_length_mismatch:
+            return
+    
+        # Create parameters
+        parameters = []
+        total_elements = 0
+    
+        for i, shape in enumerate(shapes):
+            tensor = torch.randn(shape, dtype=torch.float32)
+            parameters.append(tensor)
+            total_elements += tensor.numel()
+    
+        # Create a vector with wrong length (one element shorter)
+        wrong_length = total_elements - 1
+        vec = torch.randn(wrong_length, dtype=torch.float32)
+    
+        # Create target parameters
+        target_parameters = [torch.empty_like(p) for p in parameters]
+    
+        # Weak assertions: should raise RuntimeError for length mismatch
+        with pytest.raises(RuntimeError) as exc_info:
+            convert_parameters.vector_to_parameters(vec, target_parameters)
+    
+        # Check exception message
+        error_msg = str(exc_info.value).lower()
+    
+        # PyTorch's actual error message is: "shape '[X]' is invalid for input of size Y"
+        # This happens when trying to view a slice with wrong size as the parameter shape
+        # We check for shape/size/invalid keywords which are present in the actual error
+        assert "shape" in error_msg or "size" in error_msg or "invalid" in error_msg, \
+            f"Expected shape/size/invalid error, got: {error_msg}"
+    
+        # Additional check: verify it's not a device mismatch error
+        assert "device" not in error_msg, \
+            f"Expected length mismatch error, got device error: {error_msg}"
+    
+        # Test with vector that's too long
+        vec_too_long = torch.randn(total_elements + 1, dtype=torch.float32)
+    
+>       with pytest.raises(RuntimeError) as exc_info2:
+E       Failed: DID NOT RAISE <class 'RuntimeError'>
+
+tests/test_torch_nn_utils_convert_parameters_g2.py:197: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+cleanup.py                                               6      6      4      0     0%   1-8
+run_test.py                                              8      8      0      0     0%   1-10
+test_error_behavior.py                                  44     44      4      0     0%   1-61
+test_vector_length_mismatch.py                          20     20      0      0     0%   1-32
+tests/test_torch_nn_utils_convert_parameters_g1.py     104     37     36      4    59%   73, 77, 132, 153-176, 202, 211-214, 222-235, 240-257
+tests/test_torch_nn_utils_convert_parameters_g2.py     114     29     44      7    71%   69, 75, 79, 91, 96, 139-141, 159, 200-201, 227, 235-238, 245-253, 258-271
+------------------------------------------------------------------------------------------------
+TOTAL                                                  296    144     88     11    51%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_convert_parameters_g2.py::test_vector_to_parameters_length_mismatch[shapes0-True]
+1 failed, 8 passed, 3 skipped in 0.81s
+
+Error: exit 1

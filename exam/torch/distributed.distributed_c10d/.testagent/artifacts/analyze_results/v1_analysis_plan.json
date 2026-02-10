@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_basic[gloo-env://-2-0-1800-]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "Mock对象缺少backend属性，需要修复mock配置"
+    },
+    {
+      "test": "tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_invalid_backend",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "期望RuntimeError但实际抛出ValueError，需要调整异常断言"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

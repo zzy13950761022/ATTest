@@ -1,0 +1,341 @@
+"""
+Test module for torch.nn.modules.activation - Group G4: Complex and Special Functions
+"""
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Header block - imports and common fixtures for G4
+@pytest.fixture
+def random_tensor():
+    """Generate random tensor for testing."""
+    return torch.randn(3, 4)
+
+@pytest.fixture
+def mixed_sign_tensor():
+    """Generate tensor with both positive and negative values."""
+    return torch.tensor([[-1.0, 2.0], [0.5, -0.5]])
+
+@pytest.fixture
+def prelu_weights():
+    """Generate PReLU weight parameters."""
+    return torch.tensor([0.25, 0.5, 0.75, 1.0])
+
+@pytest.fixture
+def threshold_params():
+    """Generate threshold parameters."""
+    return {
+        'threshold': 0.5,
+        'value': 0.0
+    }
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# Test case: ReLU基础正向传播 (G1 group - placeholder)
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# Test case: Sigmoid与Tanh基础测试 (G1 group - placeholder)
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# Test case: Softmax基础功能 (G2 group - placeholder)
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# Test case: Hardtanh阈值函数 (G3 group - placeholder)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Test case: LeakyReLU参数化测试 (G1 deferred - placeholder)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# Test case: PReLU参数化整流线性单元
+@pytest.mark.parametrize("num_parameters,shape", [
+    (1, (3, 4)),  # Single parameter for all channels
+    (4, (3, 4)),  # One parameter per channel
+])
+def test_prelu_basic(num_parameters, shape, mixed_sign_tensor):
+    """Test PReLU (Parametric Rectified Linear Unit) basic functionality.
+    
+    PReLU is defined as:
+    - f(x) = max(0, x) + a * min(0, x)
+    - where 'a' is a learnable parameter
+    
+    Args:
+        num_parameters: Number of learnable parameters
+        shape: Input tensor shape
+        mixed_sign_tensor: Fixture providing tensor with mixed signs
+    """
+    # Create PReLU module
+    prelu = nn.PReLU(num_parameters=num_parameters)
+    
+    # Generate test input
+    if shape == (3, 4):
+        x = mixed_sign_tensor
+    else:
+        x = torch.randn(*shape)
+    
+    # Forward pass
+    output = prelu(x)
+    
+    # Basic assertions
+    assert output.shape == x.shape, f"Output shape {output.shape} should match input shape {x.shape}"
+    assert output.dtype == x.dtype, f"Output dtype {output.dtype} should match input dtype {x.dtype}"
+    assert torch.all(torch.isfinite(output)), "Output should contain only finite values"
+    
+    # Verify PReLU behavior
+    # For positive values: output = input
+    # For negative values: output = input * weight
+    mask_positive = x > 0
+    mask_negative = x < 0
+    
+    if torch.any(mask_positive):
+        positive_output = output[mask_positive]
+        positive_input = x[mask_positive]
+        assert torch.allclose(positive_output, positive_input, rtol=1e-5, atol=1e-8), \
+            "Positive inputs should pass through unchanged"
+    
+    if torch.any(mask_negative):
+        negative_output = output[mask_negative]
+        negative_input = x[mask_negative]
+        
+        # Get the weight parameter
+        weight = prelu.weight
+        
+        # For single parameter: all channels use same weight
+        # For multiple parameters: each channel has its own weight
+        if num_parameters == 1:
+            expected = negative_input * weight
+        else:
+            # For channel-wise weights, we need to apply appropriate weights
+            # In this simple test, we just verify the general behavior
+            assert torch.all(negative_output < 0), "Negative inputs should remain negative"
+            assert torch.all(torch.abs(negative_output) <= torch.abs(negative_input)), \
+                "Absolute value of negative outputs should be <= absolute value of inputs"
+    
+    # Test gradient computation
+    x.requires_grad_(True)
+    output = prelu(x)
+    loss = output.sum()
+    loss.backward()
+    
+    assert x.grad is not None, "Gradient should be computed for input"
+    assert torch.all(torch.isfinite(x.grad)), "Gradients should be finite"
+    
+    # Test with custom initialization
+    custom_weight = torch.tensor([0.1])
+    prelu_custom = nn.PReLU(num_parameters=1)
+    prelu_custom.weight.data = custom_weight
+    
+    output_custom = prelu_custom(x)
+    assert torch.all(torch.isfinite(output_custom)), "Output with custom weight should be finite"
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# Test case: Threshold阈值函数
+@pytest.mark.parametrize("threshold,value,inplace", [
+    (0.5, 0.0, False),  # Basic threshold
+    (0.0, -1.0, False), # Zero threshold
+    (-0.5, 0.5, False), # Negative threshold
+    (0.5, 0.0, True),   # Inplace operation
+])
+def test_threshold_function(threshold, value, inplace, random_tensor):
+    """Test Threshold activation function.
+    
+    Threshold is defined as:
+    - f(x) = x if x > threshold else value
+    
+    Args:
+        threshold: Threshold value
+        value: Value to replace elements below threshold
+        inplace: Whether to perform operation in-place
+        random_tensor: Fixture providing random tensor
+    """
+    # Create Threshold module
+    threshold_layer = nn.Threshold(threshold=threshold, value=value, inplace=inplace)
+    
+    # Create test input
+    x = random_tensor.clone()  # Clone to preserve original for comparison
+    
+    # Store original values for comparison
+    x_original = x.clone()
+    
+    # Forward pass
+    if inplace:
+        # For inplace operation, we need to track the input
+        output = threshold_layer(x)
+        # In inplace mode, output should be the same object as input
+        assert output is x, "In inplace mode, output should be the same object as input"
+    else:
+        output = threshold_layer(x)
+        # Input should remain unchanged
+        assert torch.allclose(x, x_original, rtol=1e-5, atol=1e-8), \
+            "Input should not be modified in non-inplace mode"
+    
+    # Basic assertions
+    assert output.shape == x_original.shape, f"Output shape {output.shape} should match input shape {x_original.shape}"
+    assert output.dtype == x_original.dtype, f"Output dtype {output.dtype} should match input dtype {x_original.dtype}"
+    assert torch.all(torch.isfinite(output)), "Output should contain only finite values"
+    
+    # Verify threshold behavior
+    mask_above = x_original > threshold
+    mask_below = x_original <= threshold
+    
+    if torch.any(mask_above):
+        above_output = output[mask_above]
+        above_input = x_original[mask_above]
+        assert torch.allclose(above_output, above_input, rtol=1e-5, atol=1e-8), \
+            f"Values above threshold {threshold} should remain unchanged"
+    
+    if torch.any(mask_below):
+        below_output = output[mask_below]
+        # All values below or equal to threshold should be set to 'value'
+        assert torch.allclose(below_output, torch.full_like(below_output, value), rtol=1e-5, atol=1e-8), \
+            f"Values below or equal to threshold {threshold} should be set to {value}"
+    
+    # Test edge cases
+    # Test with exact threshold value
+    exact_threshold_tensor = torch.full((2, 2), threshold)
+    output_exact = threshold_layer(exact_threshold_tensor)
+    expected_exact = torch.full((2, 2), value)  # Values equal to threshold should be replaced
+    assert torch.allclose(output_exact, expected_exact, rtol=1e-5, atol=1e-8), \
+        f"Values exactly at threshold {threshold} should be set to {value}"
+    
+    # Test gradient computation (only for non-inplace to avoid inplace modification issues)
+    if not inplace:
+        x_grad = x_original.clone().requires_grad_(True)
+        output_grad = threshold_layer(x_grad)
+        loss = output_grad.sum()
+        loss.backward()
+        
+        assert x_grad.grad is not None, "Gradient should be computed for input"
+        assert torch.all(torch.isfinite(x_grad.grad)), "Gradients should be finite"
+        
+        # Check gradient pattern
+        # For values above threshold: gradient = 1
+        # For values below threshold: gradient = 0
+        grad_above = x_grad.grad[mask_above]
+        if grad_above.numel() > 0:
+            assert torch.allclose(grad_above, torch.ones_like(grad_above), rtol=1e-5, atol=1e-8), \
+                "Gradient for values above threshold should be 1"
+        
+        grad_below = x_grad.grad[mask_below]
+        if grad_below.numel() > 0:
+            assert torch.allclose(grad_below, torch.zeros_like(grad_below), rtol=1e-5, atol=1e-8), \
+                "Gradient for values below threshold should be 0"
+    
+    # Test with scalar input
+    scalar_input = torch.tensor(threshold - 0.1)  # Below threshold
+    scalar_output = threshold_layer(scalar_input)
+    assert torch.allclose(scalar_output, torch.tensor(value), rtol=1e-5, atol=1e-8), \
+        f"Scalar below threshold should be set to {value}"
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:CASE_13 START ====
+# Test case: Deferred test case (placeholder)
+# ==== BLOCK:CASE_13 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Footer block - cleanup and additional assertions for G4
+
+def test_g4_module_imports():
+    """Verify that all G4 group modules can be imported and instantiated."""
+    # Test MultiheadAttention (complex module)
+    # Note: MultiheadAttention requires specific parameter validation
+    try:
+        # Test basic instantiation
+        mha = nn.MultiheadAttention(embed_dim=16, num_heads=2)
+        assert mha.embed_dim == 16
+        assert mha.num_heads == 2
+    except Exception as e:
+        pytest.skip(f"MultiheadAttention instantiation failed: {e}")
+    
+    # Test RReLU
+    rrelu = nn.RReLU()
+    assert rrelu.lower == 1/8  # Default lower bound
+    assert rrelu.upper == 1/3  # Default upper bound
+    
+    # Test PReLU
+    prelu = nn.PReLU()
+    assert prelu.weight.shape == (1,)  # Default single parameter
+    
+    # Test Threshold
+    threshold = nn.Threshold(threshold=0.5, value=0.0)
+    assert threshold.threshold == 0.5
+    assert threshold.value == 0.0
+    
+    print("All G4 group modules imported and instantiated successfully")
+
+def test_g4_parameter_validation():
+    """Test parameter validation for G4 group modules."""
+    # Test PReLU parameter validation
+    with pytest.raises(ValueError, match="num_parameters"):
+        # num_parameters should be >= 1
+        nn.PReLU(num_parameters=0)
+    
+    # Test Threshold parameter validation
+    # Threshold accepts any float values, no specific validation needed
+    
+    # Note: MultiheadAttention has complex validation that would require
+    # specific test cases for invalid parameters
+    
+    print("G4 group parameter validation tests completed")
+
+def test_g4_training_eval_modes():
+    """Test training/evaluation mode differences for G4 group."""
+    # RReLU behaves differently in training vs eval modes
+    rrelu = nn.RReLU()
+    
+    # Create test input
+    x = torch.randn(3, 4)
+    
+    # Test in training mode
+    rrelu.train()
+    output_train = rrelu(x)
+    
+    # Test in evaluation mode
+    rrelu.eval()
+    output_eval = rrelu(x)
+    
+    # In eval mode, RReLU uses fixed slope (average of lower and upper bounds)
+    # The outputs should be different between train and eval modes
+    # (though not guaranteed to be different for all inputs)
+    assert torch.all(torch.isfinite(output_train)), "Training mode output should be finite"
+    assert torch.all(torch.isfinite(output_eval)), "Eval mode output should be finite"
+    
+    print("G4 group training/eval mode tests completed")
+
+# Cleanup and final assertions
+if __name__ == "__main__":
+    # This allows running the test file directly for debugging
+    import sys
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

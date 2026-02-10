@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_feature_column_sequence_feature_column_g1.py::TestSequenceFeatureColumnG1::test_sequence_categorical_column_creation[sequence_categorical_column_with_identity-params0-SequenceCategoricalColumn]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "SequenceCategoricalColumn是包装类，key属性在categorical_column内部对象上"
+    },
+    {
+      "test": "tests/test_tensorflow_python_feature_column_sequence_feature_column_g1.py::TestSequenceFeatureColumnG1::test_sequence_categorical_column_creation[sequence_categorical_column_with_identity-params2-SequenceCategoricalColumn]",
+      "block_id": "CASE_01",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "参数扩展中的default_value=-1无效，应修改为有效值或标记为xfail"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_feature_column_sequence_feature_column_g1.py::TestSequenceFeatureColumnG1::test_sequence_categorical_column_creation[sequence_categorical_column_with_hash_bucket-params1-SequenceCategoricalColumn]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_feature_column_sequence_feature_column_g1.py::TestSequenceFeatureColumnG1::test_sequence_categorical_column_creation[sequence_categorical_column_with_hash_bucket-params3-SequenceCategoricalColumn]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

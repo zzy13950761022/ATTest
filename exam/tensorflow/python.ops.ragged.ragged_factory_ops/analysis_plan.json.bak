@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_ragged_rank_parameter[pylist0-None-1-None-None-int64-1]",
+      "block_id": "CASE_04",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "测试数据[[[1,2],[3]],[[4,5,6]]]在ragged_rank=1时内部形状不一致，需要修正测试数据使其内部维度一致"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,279 @@
+{
+  "plan_version": 2,
+  "target": "torch.autograd.profiler",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_autograd_profiler.py",
+    "all_pattern": "tests/test_torch_autograd_profiler_*.py",
+    "groups": {
+      "G1": "tests/test_torch_autograd_profiler_basic.py",
+      "G2": "tests/test_torch_autograd_profiler_advanced.py",
+      "G3": "tests/test_torch_autograd_profiler_edge.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础功能测试",
+      "entrypoints": ["profile", "__enter__", "__exit__"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_04"],
+      "note": "测试 profile 上下文管理器的基本功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级配置测试",
+      "entrypoints": ["key_averages", "table", "export_chrome_trace"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试不同配置参数组合和输出方法"
+    },
+    {
+      "group_id": "G3",
+      "title": "边界与异常测试",
+      "entrypoints": ["record_function", "emit_nvtx"],
+      "smoke_set": [],
+      "deferred_set": ["CASE_07", "CASE_08", "CASE_09"],
+      "note": "测试异常场景、边界条件和相关类"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本 CPU 分析",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "enabled": true,
+          "use_cuda": false,
+          "record_shapes": false,
+          "with_flops": false,
+          "profile_memory": false,
+          "with_stack": false,
+          "with_modules": false,
+          "use_kineto": false,
+          "use_cpu": true,
+          "experimental_config": null
+        }
+      ],
+      "asserts": {
+        "weak": ["context_manager_works", "profiler_created", "events_recorded", "no_exception"],
+        "strong": ["event_count_positive", "cpu_time_measured", "table_format_correct", "key_averages_works"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "禁用分析器",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "enabled": false,
+          "use_cuda": false,
+          "record_shapes": false,
+          "with_flops": false,
+          "profile_memory": false,
+          "with_stack": false,
+          "with_modules": false,
+          "use_kineto": false,
+          "use_cpu": true,
+          "experimental_config": null
+        }
+      ],
+      "asserts": {
+        "weak": ["context_manager_works", "profiler_created", "no_events_when_disabled", "no_exception"],
+        "strong": ["event_count_zero", "table_empty", "key_averages_empty", "total_average_none"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "形状记录功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "enabled": true,
+          "use_cuda": false,
+          "record_shapes": true,
+          "with_flops": false,
+          "profile_memory": false,
+          "with_stack": false,
+          "with_modules": false,
+          "use_kineto": false,
+          "use_cpu": true,
+          "experimental_config": null
+        }
+      ],
+      "asserts": {
+        "weak": ["context_manager_works", "profiler_created", "events_recorded", "shape_info_present"],
+        "strong": ["shape_correctness", "multiple_shapes_recorded", "table_includes_shapes", "export_includes_shapes"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "嵌套调用检测",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "enabled": true,
+          "use_cuda": false,
+          "record_shapes": false,
+          "with_flops": false,
+          "profile_memory": false,
+          "with_stack": false,
+          "with_modules": false,
+          "use_kineto": false,
+          "use_cpu": true,
+          "experimental_config": null
+        }
+      ],
+      "asserts": {
+        "weak": ["nested_context_raises", "exception_type_correct", "error_message_contains_nested"],
+        "strong": ["outer_profiler_unaffected", "inner_context_not_entered", "state_restored_after_exception"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "内存分析功能",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "enabled": true,
+          "use_cuda": false,
+          "record_shapes": false,
+          "with_flops": false,
+          "profile_memory": true,
+          "with_stack": false,
+          "with_modules": false,
+          "use_kineto": false,
+          "use_cpu": true,
+          "experimental_config": null
+        }
+      ],
+      "asserts": {
+        "weak": ["context_manager_works", "profiler_created", "events_recorded", "memory_info_present"],
+        "strong": ["memory_allocations_recorded", "memory_deallocations_recorded", "memory_usage_tracked", "no_memory_leak"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "enabled": true,
+        "use_cuda": false,
+        "record_shapes": true,
+        "with_flops": false,
+        "profile_memory": false,
+        "with_stack": false,
+        "with_modules": false,
+        "use_kineto": false,
+        "use_cpu": true,
+        "experimental_config": null
+      },
+      "note": "作为参数扩展：添加形状记录"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "enabled": true,
+        "use_cuda": false,
+        "record_shapes": false,
+        "with_flops": true,
+        "profile_memory": false,
+        "with_stack": false,
+        "with_modules": false,
+        "use_kineto": false,
+        "use_cpu": true,
+        "experimental_config": null
+      },
+      "note": "作为参数扩展：添加 FLOPs 估计"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "enabled": true,
+        "use_cuda": false,
+        "record_shapes": false,
+        "with_flops": false,
+        "profile_memory": false,
+        "with_stack": true,
+        "with_modules": false,
+        "use_kineto": false,
+        "use_cpu": true,
+        "experimental_config": null
+      },
+      "note": "作为参数扩展：添加源代码归属"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

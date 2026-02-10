@@ -1,0 +1,428 @@
+=== Run Tests ===
+....FF.......                                                            [100%]
+================================== FAILURES ===================================
+_ TestDatasetOps.test_map_operation[tensor-data_shape0-float32-cpu-None-False-lambda x: x * 2] _
+
+self = <test_tensorflow_python_data_ops_dataset_ops.TestDatasetOps object at 0x000001EDB8B83790>
+data_type = 'tensor', data_shape = [8, 2], dtype = 'float32', device = 'cpu'
+batch_size = None, shuffle = False, map_func = 'lambda x: x * 2'
+
+    @pytest.mark.parametrize("data_type,data_shape,dtype,device,batch_size,shuffle,map_func", [
+        ("tensor", [8, 2], "float32", "cpu", None, False, "lambda x: x * 2"),
+        ("tensor", [5, 2, 2], "float32", "cpu", None, False, "lambda x: tf.reduce_sum(x)"),  # param extension
+    ])
+    def test_map_operation(self, data_type, data_shape, dtype, device, batch_size, shuffle, map_func):
+        """Test map operation on dataset (CASE_03)."""
+        # Create test data
+        if data_type == "tensor":
+            if dtype == "float32":
+                data = tf.random.normal(data_shape, dtype=tf.float32)
+            else:
+                raise ValueError(f"Unsupported dtype: {dtype}")
+        else:
+            raise ValueError(f"Unsupported data_type: {data_type}")
+    
+        # Create base dataset
+        dataset = tf.data.Dataset.from_tensor_slices(data)
+    
+        # Parse map function
+        if map_func == "lambda x: x * 2":
+            def map_fn(x):
+                return x * 2
+        elif map_func == "lambda x: tf.reduce_sum(x)":
+            def map_fn(x):
+                return tf.reduce_sum(x)
+        else:
+            raise ValueError(f"Unsupported map_func: {map_func}")
+    
+        # Apply map operation
+        mapped_dataset = dataset.map(map_fn)
+    
+        # Weak assertions
+        # 1. element_spec_preserved (structure preserved, dtype might change)
+        assert hasattr(mapped_dataset, 'element_spec'), "Mapped dataset should have element_spec"
+        assert mapped_dataset.element_spec is not None, "element_spec should not be None"
+    
+        # 2. cardinality_unchanged
+        expected_cardinality = data_shape[0]
+    
+        # Collect elements from both datasets
+        original_elements = list(dataset.as_numpy_iterator())
+        mapped_elements = list(mapped_dataset.as_numpy_iterator())
+    
+        assert len(mapped_elements) == len(original_elements), \
+            f"Cardinality changed: original {len(original_elements)}, mapped {len(mapped_elements)}"
+    
+        assert len(mapped_elements) == expected_cardinality, \
+            f"Expected {expected_cardinality} elements, got {len(mapped_elements)}"
+    
+        # 3. map_applied
+        # Verify map function was applied correctly
+        for i, (orig, mapped) in enumerate(zip(original_elements, mapped_elements)):
+            if map_func == "lambda x: x * 2":
+                expected = orig * 2
+                np.testing.assert_array_almost_equal(
+                    mapped,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Map function not applied correctly to element {i}"
+                )
+            elif map_func == "lambda x: tf.reduce_sum(x)":
+                expected = np.sum(orig)
+                np.testing.assert_array_almost_equal(
+                    mapped,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Reduce sum not applied correctly to element {i}"
+                )
+    
+        # 4. shape_unchanged (for multiplication) or changed (for reduction)
+        if map_func == "lambda x: x * 2":
+            # Shape should be unchanged
+            expected_element_shape = data_shape[1:]
+            for i, element in enumerate(mapped_elements):
+                assert element.shape == tuple(expected_element_shape), \
+                    f"Element {i} shape mismatch: expected {expected_element_shape}, got {element.shape}"
+        elif map_func == "lambda x: tf.reduce_sum(x)":
+            # Shape should be scalar after reduction
+            for i, element in enumerate(mapped_elements):
+                assert element.shape == (), \
+                    f"Element {i} should be scalar after reduction, got shape {element.shape}"
+    
+        # Check that iteration order is preserved
+        for i in range(len(original_elements)):
+            # Verify mapping is consistent
+            if map_func == "lambda x: x * 2":
+                assert np.allclose(mapped_elements[i], original_elements[i] * 2), \
+                    f"Mapping not consistent for element {i}"
+            elif map_func == "lambda x: tf.reduce_sum(x)":
+                assert np.allclose(mapped_elements[i], np.sum(original_elements[i])), \
+                    f"Reduction not consistent for element {i}"
+    
+        # Strong assertions (enabled in final rounds)
+        # 1. function_composition - test chaining multiple map operations
+        if map_func == "lambda x: x * 2":
+            # Chain multiple map operations
+            def add_one(x):
+                return x + 1.0
+    
+            def square(x):
+                return x * x
+    
+            # Compose: multiply by 2, then add 1, then square
+            composed_dataset = dataset.map(map_fn).map(add_one).map(square)
+            composed_elements = list(composed_dataset.as_numpy_iterator())
+    
+            assert len(composed_elements) == expected_cardinality, \
+                f"Composed dataset cardinality mismatch: expected {expected_cardinality}, got {len(composed_elements)}"
+    
+            # Verify composition correctness
+            for i, orig in enumerate(original_elements):
+                expected = ((orig * 2) + 1.0) ** 2
+                actual = composed_elements[i]
+                np.testing.assert_array_almost_equal(
+                    actual,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Function composition incorrect for element {i}"
+                )
+    
+        # 2. parallel_execution - test map with num_parallel_calls parameter
+        if map_func == "lambda x: x * 2":
+            # Test parallel map execution
+            for num_parallel_calls in [1, 2, tf.data.AUTOTUNE]:
+                parallel_dataset = dataset.map(map_fn, num_parallel_calls=num_parallel_calls)
+                parallel_elements = list(parallel_dataset.as_numpy_iterator())
+    
+                assert len(parallel_elements) == expected_cardinality, \
+                    f"Parallel map (num_parallel_calls={num_parallel_calls}) cardinality mismatch: " \
+                    f"expected {expected_cardinality}, got {len(parallel_elements)}"
+    
+                # Verify correctness
+                for i, (orig, parallel) in enumerate(zip(original_elements, parallel_elements)):
+                    expected = orig * 2
+                    np.testing.assert_array_almost_equal(
+                        parallel,
+                        expected,
+                        decimal=5,
+                        err_msg=f"Parallel map (num_parallel_calls={num_parallel_calls}) incorrect for element {i}"
+                    )
+    
+        # 3. error_handling - test map with error conditions
+        # Test with function that raises an error
+        def error_func(x):
+            if x[0] > 0.5:  # Arbitrary condition
+                raise ValueError("Test error")
+            return x
+    
+        # This should work without error until we try to iterate
+>       error_dataset = dataset.map(error_func)
+
+tests\test_tensorflow_python_data_ops_dataset_ops.py:509: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:2016: in map
+    return MapDataset(self, map_func, preserve_cardinality=True, name=name)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:5191: in __init__
+    self._map_func = structured_function.StructuredFunctionWrapper(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:271: in __init__
+    self._function = fn_factory()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3070: in get_concrete_function
+    graph_function = self._get_concrete_function_garbage_collected(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3036: in _get_concrete_function_garbage_collected
+    graph_function, _ = self._maybe_define_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3292: in _maybe_define_function
+    graph_function = self._create_graph_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3130: in _create_graph_function
+    func_graph_module.func_graph_from_py_func(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\func_graph.py:1161: in func_graph_from_py_func
+    func_outputs = python_func(*func_args, **func_kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:248: in wrapped_fn
+    ret = wrapper_helper(*args)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:177: in wrapper_helper
+    ret = autograph.tf_convert(self._func, ag_ctx)(*nested_args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (<tf.Tensor 'args_0:0' shape=(2,) dtype=float32>,), kwargs = {}
+options = <tensorflow.python.autograph.core.converter.ConversionOptions object at 0x000001EDBA02BB50>
+
+    def wrapper(*args, **kwargs):
+      """Wrapper that calls the converted version of f."""
+      options = converter.ConversionOptions(
+          recursive=recursive,
+          user_requested=user_requested,
+          optional_features=optional_features)
+      try:
+        with conversion_ctx:
+          return converted_call(f, args, kwargs, options=options)
+      except Exception as e:  # pylint:disable=broad-except
+        if hasattr(e, 'ag_error_metadata'):
+>         raise e.ag_error_metadata.to_exception(e)
+E         ValueError: in user code:
+E         
+E             File "D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.ops.dataset_ops\tests\test_tensorflow_python_data_ops_dataset_ops.py", line 505, in error_func  *
+E                 raise ValueError("Test error")
+E         
+E             ValueError: Test error
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\autograph\impl\api.py:692: ValueError
+_ TestDatasetOps.test_map_operation[tensor-data_shape1-float32-cpu-None-False-lambda x: tf.reduce_sum(x)] _
+
+self = <test_tensorflow_python_data_ops_dataset_ops.TestDatasetOps object at 0x000001EDB8B83A90>
+data_type = 'tensor', data_shape = [5, 2, 2], dtype = 'float32', device = 'cpu'
+batch_size = None, shuffle = False, map_func = 'lambda x: tf.reduce_sum(x)'
+
+    @pytest.mark.parametrize("data_type,data_shape,dtype,device,batch_size,shuffle,map_func", [
+        ("tensor", [8, 2], "float32", "cpu", None, False, "lambda x: x * 2"),
+        ("tensor", [5, 2, 2], "float32", "cpu", None, False, "lambda x: tf.reduce_sum(x)"),  # param extension
+    ])
+    def test_map_operation(self, data_type, data_shape, dtype, device, batch_size, shuffle, map_func):
+        """Test map operation on dataset (CASE_03)."""
+        # Create test data
+        if data_type == "tensor":
+            if dtype == "float32":
+                data = tf.random.normal(data_shape, dtype=tf.float32)
+            else:
+                raise ValueError(f"Unsupported dtype: {dtype}")
+        else:
+            raise ValueError(f"Unsupported data_type: {data_type}")
+    
+        # Create base dataset
+        dataset = tf.data.Dataset.from_tensor_slices(data)
+    
+        # Parse map function
+        if map_func == "lambda x: x * 2":
+            def map_fn(x):
+                return x * 2
+        elif map_func == "lambda x: tf.reduce_sum(x)":
+            def map_fn(x):
+                return tf.reduce_sum(x)
+        else:
+            raise ValueError(f"Unsupported map_func: {map_func}")
+    
+        # Apply map operation
+        mapped_dataset = dataset.map(map_fn)
+    
+        # Weak assertions
+        # 1. element_spec_preserved (structure preserved, dtype might change)
+        assert hasattr(mapped_dataset, 'element_spec'), "Mapped dataset should have element_spec"
+        assert mapped_dataset.element_spec is not None, "element_spec should not be None"
+    
+        # 2. cardinality_unchanged
+        expected_cardinality = data_shape[0]
+    
+        # Collect elements from both datasets
+        original_elements = list(dataset.as_numpy_iterator())
+        mapped_elements = list(mapped_dataset.as_numpy_iterator())
+    
+        assert len(mapped_elements) == len(original_elements), \
+            f"Cardinality changed: original {len(original_elements)}, mapped {len(mapped_elements)}"
+    
+        assert len(mapped_elements) == expected_cardinality, \
+            f"Expected {expected_cardinality} elements, got {len(mapped_elements)}"
+    
+        # 3. map_applied
+        # Verify map function was applied correctly
+        for i, (orig, mapped) in enumerate(zip(original_elements, mapped_elements)):
+            if map_func == "lambda x: x * 2":
+                expected = orig * 2
+                np.testing.assert_array_almost_equal(
+                    mapped,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Map function not applied correctly to element {i}"
+                )
+            elif map_func == "lambda x: tf.reduce_sum(x)":
+                expected = np.sum(orig)
+                np.testing.assert_array_almost_equal(
+                    mapped,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Reduce sum not applied correctly to element {i}"
+                )
+    
+        # 4. shape_unchanged (for multiplication) or changed (for reduction)
+        if map_func == "lambda x: x * 2":
+            # Shape should be unchanged
+            expected_element_shape = data_shape[1:]
+            for i, element in enumerate(mapped_elements):
+                assert element.shape == tuple(expected_element_shape), \
+                    f"Element {i} shape mismatch: expected {expected_element_shape}, got {element.shape}"
+        elif map_func == "lambda x: tf.reduce_sum(x)":
+            # Shape should be scalar after reduction
+            for i, element in enumerate(mapped_elements):
+                assert element.shape == (), \
+                    f"Element {i} should be scalar after reduction, got shape {element.shape}"
+    
+        # Check that iteration order is preserved
+        for i in range(len(original_elements)):
+            # Verify mapping is consistent
+            if map_func == "lambda x: x * 2":
+                assert np.allclose(mapped_elements[i], original_elements[i] * 2), \
+                    f"Mapping not consistent for element {i}"
+            elif map_func == "lambda x: tf.reduce_sum(x)":
+                assert np.allclose(mapped_elements[i], np.sum(original_elements[i])), \
+                    f"Reduction not consistent for element {i}"
+    
+        # Strong assertions (enabled in final rounds)
+        # 1. function_composition - test chaining multiple map operations
+        if map_func == "lambda x: x * 2":
+            # Chain multiple map operations
+            def add_one(x):
+                return x + 1.0
+    
+            def square(x):
+                return x * x
+    
+            # Compose: multiply by 2, then add 1, then square
+            composed_dataset = dataset.map(map_fn).map(add_one).map(square)
+            composed_elements = list(composed_dataset.as_numpy_iterator())
+    
+            assert len(composed_elements) == expected_cardinality, \
+                f"Composed dataset cardinality mismatch: expected {expected_cardinality}, got {len(composed_elements)}"
+    
+            # Verify composition correctness
+            for i, orig in enumerate(original_elements):
+                expected = ((orig * 2) + 1.0) ** 2
+                actual = composed_elements[i]
+                np.testing.assert_array_almost_equal(
+                    actual,
+                    expected,
+                    decimal=5,
+                    err_msg=f"Function composition incorrect for element {i}"
+                )
+    
+        # 2. parallel_execution - test map with num_parallel_calls parameter
+        if map_func == "lambda x: x * 2":
+            # Test parallel map execution
+            for num_parallel_calls in [1, 2, tf.data.AUTOTUNE]:
+                parallel_dataset = dataset.map(map_fn, num_parallel_calls=num_parallel_calls)
+                parallel_elements = list(parallel_dataset.as_numpy_iterator())
+    
+                assert len(parallel_elements) == expected_cardinality, \
+                    f"Parallel map (num_parallel_calls={num_parallel_calls}) cardinality mismatch: " \
+                    f"expected {expected_cardinality}, got {len(parallel_elements)}"
+    
+                # Verify correctness
+                for i, (orig, parallel) in enumerate(zip(original_elements, parallel_elements)):
+                    expected = orig * 2
+                    np.testing.assert_array_almost_equal(
+                        parallel,
+                        expected,
+                        decimal=5,
+                        err_msg=f"Parallel map (num_parallel_calls={num_parallel_calls}) incorrect for element {i}"
+                    )
+    
+        # 3. error_handling - test map with error conditions
+        # Test with function that raises an error
+        def error_func(x):
+            if x[0] > 0.5:  # Arbitrary condition
+                raise ValueError("Test error")
+            return x
+    
+        # This should work without error until we try to iterate
+>       error_dataset = dataset.map(error_func)
+
+tests\test_tensorflow_python_data_ops_dataset_ops.py:509: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:2016: in map
+    return MapDataset(self, map_func, preserve_cardinality=True, name=name)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:5191: in __init__
+    self._map_func = structured_function.StructuredFunctionWrapper(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:271: in __init__
+    self._function = fn_factory()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3070: in get_concrete_function
+    graph_function = self._get_concrete_function_garbage_collected(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3036: in _get_concrete_function_garbage_collected
+    graph_function, _ = self._maybe_define_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3292: in _maybe_define_function
+    graph_function = self._create_graph_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3130: in _create_graph_function
+    func_graph_module.func_graph_from_py_func(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\func_graph.py:1161: in func_graph_from_py_func
+    func_outputs = python_func(*func_args, **func_kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:248: in wrapped_fn
+    ret = wrapper_helper(*args)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:177: in wrapper_helper
+    ret = autograph.tf_convert(self._func, ag_ctx)(*nested_args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (<tf.Tensor 'args_0:0' shape=(2, 2) dtype=float32>,), kwargs = {}
+options = <tensorflow.python.autograph.core.converter.ConversionOptions object at 0x000001EDB9DE93A0>
+
+    def wrapper(*args, **kwargs):
+      """Wrapper that calls the converted version of f."""
+      options = converter.ConversionOptions(
+          recursive=recursive,
+          user_requested=user_requested,
+          optional_features=optional_features)
+      try:
+        with conversion_ctx:
+          return converted_call(f, args, kwargs, options=options)
+      except Exception as e:  # pylint:disable=broad-except
+        if hasattr(e, 'ag_error_metadata'):
+>         raise e.ag_error_metadata.to_exception(e)
+E         ValueError: in user code:
+E         
+E             File "D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.ops.dataset_ops\tests\test_tensorflow_python_data_ops_dataset_ops.py", line 504, in error_func  *
+E                 if x[0] > 0.5:  # Arbitrary condition
+E         
+E             ValueError: condition of if statement expected to be `tf.bool` scalar, got Tensor("Greater:0", shape=(2,), dtype=bool); to check for None, use `is not None`
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\autograph\impl\api.py:692: ValueError
+---------------------------- Captured stderr call -----------------------------
+2026-01-19 11:59:09.571590: W tensorflow/core/data/root_dataset.cc:200] Optimization loop failed: CANCELLED: Operation was cancelled
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                   Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_ops_dataset_ops.py     578     97    274     45    81%   40-42, 56->63, 58->63, 97->102, 169-171, 183->190, 185->190, 207, 221->228, 232->231, 351->exit, 371-373, 381, 384-386, 420->411, 436->443, 448->443, 457, 460, 504-506, 513-617, 637-639, 682, 742-744, 753, 774->782, 783, 791-793, 796->802, 817, 825-827, 873, 878-880, 935->968, 938->949, 940->938, 949->954, 968->1007, 1057, 1063-1065, 1076, 1080, 1083, 1123->1117, 1147->1150, 1161, 1169, 1189, 1229-1235, 1241, 1257
+--------------------------------------------------------------------------------------------------
+TOTAL                                                    578     97    274     45    81%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_ops_dataset_ops.py::TestDatasetOps::test_map_operation[tensor-data_shape0-float32-cpu-None-False-lambda x: x * 2]
+FAILED tests\test_tensorflow_python_data_ops_dataset_ops.py::TestDatasetOps::test_map_operation[tensor-data_shape1-float32-cpu-None-False-lambda x: tf.reduce_sum(x)]
+2 failed, 11 passed in 2.64s
+
+Error: exit 1

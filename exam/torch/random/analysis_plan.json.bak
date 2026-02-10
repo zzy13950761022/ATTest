@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestTorchRandom.test_fork_rng_basic_context[None-True-basic]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "CUDA模拟调用不匹配：测试期望fork_rng调用get_rng_state/set_rng_state（单设备版本），但实际实现可能使用get_rng_state_all/set_rng_state_all（所有设备版本）"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,235 @@
+# ==== BLOCK:HEADER START ====
+import pytest
+import torch.cuda.nvtx as nvtx
+from unittest.mock import patch, MagicMock
+import sys
+
+
+class TestNVTXBasicFunctions:
+    """Test basic NVTX functions: range_push, range_pop, and mark."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self):
+        """Setup mock for _nvtx module to avoid CUDA dependency."""
+        self.mock_nvtx = MagicMock()
+        self.mock_nvtx.rangePushA = MagicMock()
+        self.mock_nvtx.rangePop = MagicMock()
+        self.mock_nvtx.markA = MagicMock()
+        
+        with patch('torch.cuda.nvtx._nvtx', self.mock_nvtx):
+            yield
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("msg,depth,use_ascii", [
+        ("test_range", 1, True),
+        ("nested_range", 3, True),
+        ("empty_string", 1, True),
+    ])
+    def test_basic_range_stack_operations(self, msg, depth, use_ascii):
+        """Test basic range stack operations with various parameters.
+        
+        Weak assertions:
+        - range_push_returns_int: range_push should return an integer
+        - range_pop_returns_int: range_pop should return an integer  
+        - depth_consistent: depth should be consistent between push and pop
+        - no_exception: no exceptions should be raised
+        """
+        # Setup mock return values
+        self.mock_nvtx.rangePushA.return_value = 0  # Starting depth
+        self.mock_nvtx.rangePop.return_value = 0    # Ending depth
+        
+        # Test range_push
+        push_result = nvtx.range_push(msg)
+        
+        # Weak assertion: range_push returns int
+        assert isinstance(push_result, int), f"range_push should return int, got {type(push_result)}"
+        
+        # Verify mock was called with correct arguments
+        self.mock_nvtx.rangePushA.assert_called_once_with(msg)
+        
+        # Test range_pop
+        pop_result = nvtx.range_pop()
+        
+        # Weak assertion: range_pop returns int
+        assert isinstance(pop_result, int), f"range_pop should return int, got {type(pop_result)}"
+        
+        # Weak assertion: depth consistency (both should be 0 in this mock setup)
+        assert push_result == pop_result, f"Push depth {push_result} should match pop depth {pop_result}"
+        
+        # Verify mock was called
+        self.mock_nvtx.rangePop.assert_called_once()
+        
+        # Weak assertion: no exception raised
+        # (If we get here without exception, this assertion passes)
+        
+        # Reset mocks for next test iteration
+        self.mock_nvtx.rangePushA.reset_mock()
+        self.mock_nvtx.rangePop.reset_mock()
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("msg,use_ascii", [
+        ("test_mark", True),
+        ("long_ascii_string", True),
+    ])
+    def test_mark_event_functionality(self, msg, use_ascii):
+        """Test mark event functionality with various parameters.
+        
+        Weak assertions:
+        - no_exception: no exceptions should be raised
+        - function_executes: mark function should execute without error
+        - returns_none_or_int: mark should return None or int (based on implementation)
+        """
+        # Setup mock return value (markA may return None or int)
+        self.mock_nvtx.markA.return_value = None
+        
+        # Test mark function
+        result = nvtx.mark(msg)
+        
+        # Weak assertion: function executes without exception
+        # (If we get here, this assertion passes)
+        
+        # Weak assertion: returns None or int
+        assert result is None or isinstance(result, int), \
+            f"mark should return None or int, got {type(result)}"
+        
+        # Verify mock was called with correct arguments
+        self.mock_nvtx.markA.assert_called_once_with(msg)
+        
+        # Test with different return value (int)
+        self.mock_nvtx.markA.reset_mock()
+        self.mock_nvtx.markA.return_value = 0
+        
+        result2 = nvtx.mark(msg)
+        
+        # Weak assertion: returns None or int
+        assert result2 is None or isinstance(result2, int), \
+            f"mark should return None or int, got {type(result2)}"
+        
+        # Verify mock was called again
+        self.mock_nvtx.markA.assert_called_once_with(msg)
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("msg,cuda_available", [
+        ("test_error", False),
+    ])
+    def test_cuda_unavailable_exception(self, msg, cuda_available):
+        """Test CUDA unavailable scenario.
+        
+        Weak assertions:
+        - raises_runtime_error: should raise RuntimeError when CUDA is unavailable
+        - error_message_contains: error message should contain relevant information
+        - no_side_effects: no side effects should occur after error
+        """
+        # When CUDA is not available, the _nvtx module import fails
+        # and a stub class is created that raises RuntimeError
+        
+        # We need to patch the _nvtx module to simulate CUDA unavailable
+        # First, let's test with the actual module to see the error
+        try:
+            # Temporarily remove the _nvtx module from torch.cuda.nvtx
+            # to simulate CUDA unavailable
+            import torch.cuda.nvtx as nvtx_module
+            
+            # Save the original _nvtx
+            original_nvtx = nvtx_module._nvtx
+            
+            # Create a stub that raises RuntimeError
+            class _NVTXStub:
+                @staticmethod
+                def _fail(*args, **kwargs):
+                    raise RuntimeError("NVTX functions not installed. Are you sure you have a CUDA build?")
+                
+                rangePushA = _fail
+                rangePop = _fail
+                markA = _fail
+                rangeStartA = _fail
+                rangeEnd = _fail
+            
+            # Replace _nvtx with stub
+            nvtx_module._nvtx = _NVTXStub()
+            
+            # Test range_push - should raise RuntimeError
+            with pytest.raises(RuntimeError) as exc_info:
+                nvtx.range_push(msg)
+            
+            # Weak assertion: raises RuntimeError
+            assert exc_info.type is RuntimeError
+            
+            # Weak assertion: error message contains relevant information
+            error_msg = str(exc_info.value)
+            assert "NVTX" in error_msg or "CUDA" in error_msg, \
+                f"Error message should mention NVTX or CUDA, got: {error_msg}"
+            
+            # Test range_pop - should also raise RuntimeError
+            with pytest.raises(RuntimeError) as exc_info2:
+                nvtx.range_pop()
+            
+            assert exc_info2.type is RuntimeError
+            
+            # Test mark - should also raise RuntimeError
+            with pytest.raises(RuntimeError) as exc_info3:
+                nvtx.mark(msg)
+            
+            assert exc_info3.type is RuntimeError
+            
+            # Weak assertion: no side effects - we can verify by checking
+            # that the stub was properly created and used
+            # (If we get here without other exceptions, this assertion passes)
+            
+            # Restore original _nvtx
+            nvtx_module._nvtx = original_nvtx
+            
+        except Exception as e:
+            # Restore original _nvtx if it was saved
+            if 'original_nvtx' in locals() and 'nvtx_module' in locals():
+                nvtx_module._nvtx = original_nvtx
+            raise e
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+    def test_nested_range_depth(self):
+        """Test nested range depth tracking (additional test for depth consistency)."""
+        # Test multiple pushes and pops
+        depths = []
+        
+        # Push 3 ranges
+        for i in range(3):
+            self.mock_nvtx.rangePushA.return_value = i
+            depth = nvtx.range_push(f"range_{i}")
+            depths.append(depth)
+            self.mock_nvtx.rangePushA.assert_called_with(f"range_{i}")
+        
+        # Verify depths are 0, 1, 2
+        assert depths == [0, 1, 2], f"Expected depths [0, 1, 2], got {depths}"
+        
+        # Pop 3 ranges
+        pop_depths = []
+        for i in range(2, -1, -1):
+            self.mock_nvtx.rangePop.return_value = i
+            depth = nvtx.range_pop()
+            pop_depths.append(depth)
+        
+        # Verify pop depths are 2, 1, 0
+        assert pop_depths == [2, 1, 0], f"Expected pop depths [2, 1, 0], got {pop_depths}"
+        
+        # Verify total calls
+        assert self.mock_nvtx.rangePushA.call_count == 3
+        assert self.mock_nvtx.rangePop.call_count == 3
+    
+    def test_mark_with_empty_string(self):
+        """Test mark function with empty string parameter."""
+        self.mock_nvtx.markA.return_value = None
+        
+        result = nvtx.mark("")
+        
+        # Weak assertion: no exception
+        assert result is None or isinstance(result, int)
+        self.mock_nvtx.markA.assert_called_once_with("")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

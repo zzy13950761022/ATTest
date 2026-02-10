@@ -1,0 +1,12 @@
+=== Run Tests ===
+.........                                                                [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_eager_context_g1.py     126      4     20      3    95%   230, 268->272, 320-322, 345
+----------------------------------------------------------------------------------------------
+TOTAL                                                126      4     20      3    95%
+Coverage XML written to file coverage.xml
+
+9 passed in 1.37s

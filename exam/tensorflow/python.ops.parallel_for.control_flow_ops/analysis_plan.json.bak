@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_for_loop_basic_functionality[5-dtype0-shape0-None-basic_scalar]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "for_loop结果与顺序实现不匹配，需要修复实现逻辑"
+    },
+    {
+      "test": "test_pfor_vectorization_conversion[10-dtype0-shape0-4-arithmetic_ops]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python不存在，需要调整mock目标"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_for_loop_basic_functionality[100-dtype2-shape2-10-large_iterations]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_pfor_vectorization_conversion[3-dtype1-shape1-2-extreme_shape]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

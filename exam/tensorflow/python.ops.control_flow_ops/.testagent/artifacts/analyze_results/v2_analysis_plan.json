@@ -1,0 +1,43 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 5,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_cond_basic_functionality[True-1.0]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_control_flow_ops fixture中gen_control_flow_ops模块patch错误"
+    },
+    {
+      "test": "test_cond_basic_functionality[False-0.0]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_control_flow_ops fixture中gen_control_flow_ops模块patch错误"
+    },
+    {
+      "test": "test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_control_flow_ops fixture中gen_control_flow_ops模块patch错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_gradient_verification[cond-eager-True]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

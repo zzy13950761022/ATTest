@@ -1,0 +1,55 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[Tensor-content0-expected_shape0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "ragged_rank应为2而非1，需要修正断言逻辑"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_encode_basic[input_shape0-content0-UTF-8-replace-65533]",
+      "block_id": "CASE_02",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "形状检查逻辑错误，需要修正测试用例"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[Tensor-content0-,--1-expected_shape0]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "字节字符串与普通字符串比较，需要修正断言"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[RaggedTensor-content1-ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[RaggedTensor-content1-None-1-ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_ngrams_basic[Tensor-content0-2- -None-None-False-expected_shape0]",
+      "reason": "输出类型错误，需要修正测试逻辑"
+    },
+    {
+      "test": "TestRaggedStringOps.test_ngrams_basic[RaggedTensor-content1-3---PAD-2-True-ragged]",
+      "reason": "输出秩错误，需要修正测试逻辑"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_invalid_rank",
+      "reason": "未抛出预期异常，需要修正测试逻辑"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

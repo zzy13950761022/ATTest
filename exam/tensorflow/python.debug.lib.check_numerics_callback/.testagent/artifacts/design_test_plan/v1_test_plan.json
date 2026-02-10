@@ -1,0 +1,311 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.debug.lib.check_numerics_callback",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_debug_lib_check_numerics_callback.py",
+    "all_pattern": "tests/test_tensorflow_python_debug_lib_check_numerics_callback_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_debug_lib_check_numerics_callback_g1.py",
+      "G2": "tests/test_tensorflow_python_debug_lib_check_numerics_callback_g2.py",
+      "G3": "tests/test_tensorflow_python_debug_lib_check_numerics_callback_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "enable_check_numerics 核心功能",
+      "entrypoints": ["enable_check_numerics"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04", "CASE_05"],
+      "note": "测试基本启用功能和浮点张量异常检测"
+    },
+    {
+      "group_id": "G2",
+      "title": "disable_check_numerics 和状态管理",
+      "entrypoints": ["disable_check_numerics"],
+      "smoke_set": ["CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试禁用功能和状态管理"
+    },
+    {
+      "group_id": "G3",
+      "title": "CheckNumericsCallback 类测试",
+      "entrypoints": ["CheckNumericsCallback"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11"],
+      "note": "测试回调类内部逻辑"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本启用功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {"stack_height_limit": 30, "path_length_limit": 50}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "callback_registered", "state_updated"],
+        "strong": ["exact_state_check", "counter_incremented", "log_recorded"]
+      },
+      "oracle": "enable_check_numerics",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 2,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "浮点张量 NaN 检测",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "value": "nan"},
+        {"dtype": "float64", "value": "nan"}
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "contains_nan"],
+        "strong": ["exception_message", "stack_trace", "exact_error_code"]
+      },
+      "oracle": "InvalidArgumentError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "幂等性测试",
+      "priority": "High",
+      "param_matrix": [
+        {"call_count": 3}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "single_callback", "state_consistent"],
+        "strong": ["counter_check", "no_duplicate_registration", "thread_local_consistent"]
+      },
+      "oracle": "enable_check_numerics",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 1,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "参数边界值测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"stack_height_limit": 1, "path_length_limit": 1},
+        {"stack_height_limit": 100, "path_length_limit": 200}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "callback_registered"],
+        "strong": ["parameter_applied", "stack_limit_effective", "path_limit_effective"]
+      },
+      "oracle": "enable_check_numerics",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "浮点张量 Infinity 检测",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "value": "inf"},
+        {"dtype": "float32", "value": "-inf"}
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "contains_inf"],
+        "strong": ["exception_message", "positive_vs_negative", "exact_error_code"]
+      },
+      "oracle": "InvalidArgumentError",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "基本禁用功能",
+      "priority": "High",
+      "param_matrix": [
+        {}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "callback_removed", "state_cleared"],
+        "strong": ["exact_state_clear", "counter_reset", "log_recorded"]
+      },
+      "oracle": "disable_check_numerics",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 0,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "启用-禁用循环测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {"cycles": 2}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "state_transitions", "callback_management"],
+        "strong": ["no_leaks", "counter_consistency", "thread_safety"]
+      },
+      "oracle": "enable/disable_check_numerics",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 1,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "线程局部行为验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {"thread_count": 2}
+      ],
+      "asserts": {
+        "weak": ["thread_isolation", "independent_states", "no_interference"],
+        "strong": ["exact_thread_local", "memory_isolation", "concurrent_safety"]
+      },
+      "oracle": "threading.Thread",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 1,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "回调类实例化",
+      "priority": "Medium",
+      "param_matrix": [
+        {"stack_height_limit": 30, "path_length_limit": 50}
+      ],
+      "asserts": {
+        "weak": ["instance_created", "attributes_set", "no_exception"],
+        "strong": ["attribute_values", "method_availability", "internal_state"]
+      },
+      "oracle": "CheckNumericsCallback",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 2,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "非浮点数据类型忽略",
+      "priority": "Low",
+      "param_matrix": [
+        {"dtype": "int32", "value": 1},
+        {"dtype": "bool", "value": true}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "operation_completes"],
+        "strong": ["callback_invoked", "check_skipped", "performance_ok"]
+      },
+      "oracle": "CheckNumericsCallback.__call__",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "IGNORE_OP_OUTPUTS 列表验证",
+      "priority": "Low",
+      "param_matrix": [
+        {"op_type": "Const"},
+        {"op_type": "Identity"}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "operation_completes"],
+        "strong": ["callback_skipped", "exact_op_check", "list_coverage"]
+      },
+      "oracle": "CheckNumericsCallback.__call__",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 2,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"dtype": "float16", "value": "nan"},
+      "note": "扩展支持 float16 数据类型"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Low",
+      "params": {"stack_height_limit": 0, "path_length_limit": 0},
+      "note": "测试零值参数边界"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "value": "inf"},
+      "note": "扩展支持 float64 Infinity 检测"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_06", "CASE_09"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_07", "CASE_08", "CASE_10", "CASE_11"]
+}

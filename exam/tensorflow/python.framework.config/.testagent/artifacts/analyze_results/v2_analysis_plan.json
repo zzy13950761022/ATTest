@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 2,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_framework_config_g2.py::test_memory_growth_configuration_basic_functionality[GPU:0-True-True]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "TensorFlow 2.x模块结构变化，tensorflow.python不可直接访问，需要修复patch路径"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_config_g2.py::test_tensorfloat_32_switch_state_control[False-True]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "TensorFlow 2.x模块结构变化，tensorflow.python不可直接访问，需要修复patch路径"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

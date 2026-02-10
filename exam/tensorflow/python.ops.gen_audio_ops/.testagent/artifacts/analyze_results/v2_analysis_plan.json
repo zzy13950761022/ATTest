@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGenAudioOps.test_mfcc_feature_extraction[spectrogram_shape0-16000-4000.0-20.0-40-13-float32]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "MFCC返回形状为(1, time, dct_coeff)而非(time, dct_coeff)，需要调整断言或理解API行为"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestGenAudioOps.test_mfcc_feature_extraction[spectrogram_shape1-8000-2000.0-100.0-20-20-float32]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

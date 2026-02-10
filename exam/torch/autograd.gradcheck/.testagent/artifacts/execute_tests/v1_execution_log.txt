@@ -1,0 +1,121 @@
+=== Run Tests ===
+..F.                                                                     [100%]
+=================================== FAILURES ===================================
+_ TestGradcheckBasic.test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001] _
+
+self = <test_torch_autograd_gradcheck_basic.TestGradcheckBasic object at 0x10a1d01f0>
+dtype = torch.complex64, shape = (2, 2), eps = 1e-06, atol = 1e-05, rtol = 0.001
+
+    @pytest.mark.parametrize("dtype,shape,eps,atol,rtol", [
+        (torch.complex64, (2, 2), 1e-6, 1e-5, 0.001),   # Base case from param_matrix
+        (torch.complex128, (3, 3), 1e-6, 1e-5, 0.001),  # Extension: double precision complex
+    ])
+    def test_complex_function_wirtinger_derivative_check(self, dtype, shape, eps, atol, rtol):
+        """
+        TC-02: Complex function Wirtinger derivative check
+        Test gradcheck with complex-valued function to verify Wirtinger derivatives.
+    
+        Weak assertions:
+        - returns_bool: gradcheck returns boolean
+        - no_exception: no exception raised during execution
+        - complex_gradient_check: gradient check passes for complex function
+        """
+        # Set random seed for reproducibility
+        torch.manual_seed(42)
+    
+        # Create complex input tensor with requires_grad=True
+        real_part = torch.randn(*shape, dtype=torch.float32 if dtype == torch.complex64 else torch.float64)
+        imag_part = torch.randn(*shape, dtype=torch.float32 if dtype == torch.complex64 else torch.float64)
+        z = torch.complex(real_part, imag_part)
+        z.requires_grad_(True)
+    
+        # Test with complex function
+>       result = torch.autograd.gradcheck(
+            func=complex_function,
+            inputs=(z,),
+            eps=eps,
+            atol=atol,
+            rtol=rtol,
+            raise_exception=True,
+            check_backward_ad=True
+        )
+
+tests/test_torch_autograd_gradcheck_basic.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/gradcheck.py:1418: in gradcheck
+    return _gradcheck_helper(**args)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/gradcheck.py:1432: in _gradcheck_helper
+    _gradcheck_real_imag(gradcheck_fn, func, func_out, tupled_inputs, outputs, eps,
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/gradcheck.py:1066: in _gradcheck_real_imag
+    gradcheck_fn(imag_fn, imag_func_out, tupled_inputs, imag_outputs, eps,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function _real_and_imag_output.<locals>.apply_to_c_outs.<locals>.wrapped_fn at 0x10a219bd0>
+func_out = (tensor([[-2.2457, -0.3727],
+        [ 4.4164, -1.2760]], grad_fn=<SelectBackward0>),)
+tupled_inputs = (tensor([[0.3367-1.1229j, 0.1288-0.1863j],
+        [0.2345+2.2082j, 0.2303-0.6380j]], requires_grad=True),)
+outputs = (tensor([[-2.2457, -0.3727],
+        [ 4.4164, -1.2760]], grad_fn=<SelectBackward0>),)
+eps = 1e-06, rtol = 0.001, atol = 1e-05, check_grad_dtypes = False
+nondet_tol = 0.0
+
+    def _slow_gradcheck(func, func_out, tupled_inputs, outputs, eps, rtol, atol, check_grad_dtypes,
+                        nondet_tol, *, use_forward_ad=False, complex_indices=None, test_imag=False):
+        func_out = _as_tuple(func_out)
+        if not outputs:
+            return _check_no_differentiable_outputs(func, tupled_inputs, func_out, eps)
+    
+        numerical = _transpose(_get_numerical_jacobian(func, tupled_inputs, func_out, eps=eps, is_forward_ad=use_forward_ad))
+        # Note: [numerical vs analytical output length]
+        # The numerical path returns jacobian quantity for all outputs, even if requires_grad of that
+        # output is False. This behavior is necessary for _check_no_differentiable_outputs to work.
+        numerical = [nj for o, nj in zip(func_out, numerical) if o.requires_grad]
+        if use_forward_ad:
+            analytical_forward = _get_analytical_jacobian_forward_ad(func, tupled_inputs, func_out, check_grad_dtypes=check_grad_dtypes)
+    
+            for i, n_per_out in enumerate(numerical):
+                for j, n in enumerate(n_per_out):
+                    a = analytical_forward[j][i]
+                    if not _allclose_with_type_promotion(a, n.to(a.device), rtol, atol):
+                        raise GradcheckError(_get_notallclose_msg(a, n, i, j, complex_indices, test_imag,
+                                                                  is_forward_ad=True))
+        else:
+            for i, o in enumerate(outputs):
+                analytical = _check_analytical_jacobian_attributes(tupled_inputs, o, nondet_tol, check_grad_dtypes)
+    
+                for j, (a, n) in enumerate(zip(analytical, numerical[i])):
+                    if not _allclose_with_type_promotion(a, n.to(a.device), rtol, atol):
+>                       raise GradcheckError(_get_notallclose_msg(a, n, i, j, complex_indices, test_imag))
+E                       torch.autograd.gradcheck.GradcheckError: While considering the imaginary part of complex outputs only, Jacobian mismatch for output 0 with respect to input 0,
+E                       numerical:tensor([[0.+1.9073j, 0.+0.0000j, 0.+0.0000j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+1.9968j, 0.+0.0000j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+0.0000j, 0.+1.9073j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+0.0000j, 0.+0.0000j, 0.+2.0266j]])
+E                       analytical:tensor([[0.+2.0000j, 0.+0.0000j, 0.+0.0000j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+2.0000j, 0.+0.0000j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+0.0000j, 0.+2.0000j, 0.+0.0000j],
+E                               [0.+0.0000j, 0.+0.0000j, 0.+0.0000j, 0.+2.0000j]])
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/gradcheck.py:1131: GradcheckError
+=============================== warnings summary ===============================
+exam/torch_group/autograd.gradcheck/tests/test_torch_autograd_gradcheck_basic.py::TestGradcheckBasic::test_basic_real_function_gradient_verification[dtype1-shape1-1e-05-0.0001-0.01]
+exam/torch_group/autograd.gradcheck/tests/test_torch_autograd_gradcheck_basic.py::TestGradcheckBasic::test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/gradcheck.py:652: UserWarning: Input #0 requires gradient and is not a double precision floating point or complex. This check will likely fail if all the inputs are not of double precision floating point or complex. 
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                           Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------
+tests/test_torch_autograd_gradcheck_basic.py      31      2      2      1    91%   25, 122
+------------------------------------------------------------------------------------------
+TOTAL                                             31      2      2      1    91%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_autograd_gradcheck_basic.py::TestGradcheckBasic::test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001]
+1 failed, 3 passed, 2 warnings in 0.80s
+
+Error: exit 1

@@ -1,0 +1,47 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_categorical_column_with_vocabulary_list_basic_creation[category-vocabulary_list1-dtype1-None-2-False]",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "测试逻辑错误：当default_value=None且num_oov_buckets=2时，TensorFlow内部将default_value视为-1（默认值），导致冲突。需要调整测试逻辑。"
+    },
+    {
+      "test": "test_bucketized_column_boundary_bucketing[age-boundaries0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "parse_example_spec返回字典而不是可调用对象，需要调整断言逻辑。"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape2-invalid-None-None-dtype-expected_exception_type2]",
+      "block_id": "CASE_05",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "测试传入字符串'dtype'参数，但TensorFlow期望dtype对象。需要调整测试逻辑以正确处理dtype参数。"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_bucketized_column_boundary_bucketing[income-boundaries1]",
+      "reason": "错误类型重复，与age-boundaries0相同，跳过该块"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[department-16-mean-True]",
+      "reason": "错误类型重复，parse_example_spec断言问题，将在CASE_03修复后处理"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[product-32-sqrtn-False]",
+      "reason": "错误类型重复，与department-16-mean-True相同，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

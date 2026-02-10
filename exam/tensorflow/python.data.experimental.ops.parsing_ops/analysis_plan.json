@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_fixed_len_feature_basic_parsing",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "create_string_dataset函数创建的dataset形状为[]而不是[None]，需要修复数据集创建逻辑"
+    },
+    {
+      "test": "test_fixed_len_feature_basic_parsing",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "数据集形状断言失败，需要根据修复后的HEADER调整形状断言"
+    },
+    {
+      "test": "test_parallel_parsing_functionality",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock补丁路径错误：'tensorflow.python.data.experimental.ops.parsing_ops.gen_experimental_dataset_ops.parse_example_dataset_v2'路径不正确"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_multiple_feature_types_support",
+      "reason": "错误类型重复（与CASE_03相同的AttributeError），跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

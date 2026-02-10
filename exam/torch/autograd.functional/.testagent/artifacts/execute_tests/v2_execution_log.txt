@@ -1,0 +1,317 @@
+=== Run Tests ===
+.F..F.                                                                   [100%]
+=================================== FAILURES ===================================
+_ TestAutogradFunctionalG2.test_create_graph_parameter[simple_scalar-inputs_shape0-dtype0-cpu-True-False] _
+
+self = <test_torch_autograd_functional_g2.TestAutogradFunctionalG2 object at 0x10fc8c730>
+func_type = 'simple_scalar', inputs_shape = [2, 2], dtype = torch.float32
+device = 'cpu', create_graph = True, strict = False
+
+    @pytest.mark.parametrize("func_type,inputs_shape,dtype,device,create_graph,strict", [
+        ("simple_scalar", [2, 2], torch.float32, "cpu", True, False),
+    ])
+    def test_create_graph_parameter(self, func_type, inputs_shape, dtype, device, create_graph, strict):
+        """TC-04: create_graph参数测试
+    
+        Test create_graph parameter functionality with weak assertions.
+        """
+        # Setup
+        torch.manual_seed(42)
+    
+        # Create input tensor
+        x = torch.randn(*inputs_shape, dtype=dtype, device=device, requires_grad=True)
+    
+        # Select function based on type
+        if func_type == "simple_scalar":
+            func = simple_scalar_func
+        else:
+            pytest.skip(f"Unsupported func_type: {func_type}")
+    
+        # Create vector v (same shape as output)
+        with torch.no_grad():
+            y = func(x)
+            if y.dim() == 0:  # scalar output
+                v = torch.tensor(1.0, dtype=dtype, device=device)
+            else:
+                v = torch.randn_like(y)
+    
+        # Compute vjp with create_graph=True
+        output, vjp_result = autograd_func.vjp(
+            func=func,
+            inputs=x,
+            v=v,
+            create_graph=create_graph,
+            strict=strict
+        )
+    
+        # Weak assertion 1: shape_match
+        assert output.shape == y.shape, f"Output shape mismatch: {output.shape} != {y.shape}"
+        assert vjp_result.shape == x.shape, f"VJP result shape mismatch: {vjp_result.shape} != {x.shape}"
+    
+        # Weak assertion 2: dtype_match
+        assert output.dtype == dtype, f"Output dtype mismatch: {output.dtype} != {dtype}"
+        assert vjp_result.dtype == dtype, f"VJP result dtype mismatch: {vjp_result.dtype} != {dtype}"
+    
+        # Weak assertion 3: finite_values
+        assert torch.isfinite(output).all(), "Output contains non-finite values"
+        assert torch.isfinite(vjp_result).all(), "VJP result contains non-finite values"
+    
+        # Weak assertion 4: graph_creation
+        # When create_graph=True, we should be able to compute higher-order gradients
+        if create_graph:
+            # vjp_result should have gradient history
+            assert vjp_result.requires_grad, "vjp_result should require grad when create_graph=True"
+    
+            # Test that we can compute gradient of vjp_result
+            # Create a simple function of vjp_result
+            loss = torch.sum(vjp_result ** 2)
+    
+            # Compute gradient
+            grad_of_vjp = torch.autograd.grad(loss, x, create_graph=False)[0]
+    
+            # Check that gradient computation succeeds
+            assert grad_of_vjp is not None, "Should be able to compute gradient of vjp_result"
+            assert grad_of_vjp.shape == x.shape, "Gradient shape should match input shape"
+            assert torch.isfinite(grad_of_vjp).all(), "Gradient should contain finite values"
+    
+            # For create_graph=True, we should also be able to compute second-order gradients
+            # by setting create_graph=True in the inner grad call
+            if x.requires_grad:
+                loss2 = torch.sum(vjp_result ** 2)
+>               second_order_grad = torch.autograd.grad(loss2, x, create_graph=True)[0]
+
+tests/test_torch_autograd_functional_g2.py:239: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+outputs = tensor(0.9519, grad_fn=<SumBackward0>)
+inputs = tensor([[0.3367, 0.1288],
+        [0.2345, 0.2303]], requires_grad=True)
+grad_outputs = None, retain_graph = True, create_graph = True
+only_inputs = True, allow_unused = False, is_grads_batched = False
+
+    def grad(
+        outputs: _TensorOrTensors,
+        inputs: _TensorOrTensors,
+        grad_outputs: Optional[_TensorOrTensors] = None,
+        retain_graph: Optional[bool] = None,
+        create_graph: bool = False,
+        only_inputs: bool = True,
+        allow_unused: bool = False,
+        is_grads_batched: bool = False
+    ) -> Tuple[torch.Tensor, ...]:
+        r"""Computes and returns the sum of gradients of outputs with respect to
+        the inputs.
+    
+        ``grad_outputs`` should be a sequence of length matching ``output``
+        containing the "vector" in vector-Jacobian product, usually the pre-computed
+        gradients w.r.t. each of the outputs. If an output doesn't require_grad,
+        then the gradient can be ``None``).
+    
+        .. note::
+    
+            If you run any forward ops, create ``grad_outputs``, and/or call ``grad``
+            in a user-specified CUDA stream context, see
+            :ref:`Stream semantics of backward passes<bwd-cuda-stream-semantics>`.
+    
+        .. note::
+    
+            ``only_inputs`` argument is deprecated and is ignored now (defaults to ``True``).
+            To accumulate gradient for other parts of the graph, please use
+            ``torch.autograd.backward``.
+    
+        Args:
+            outputs (sequence of Tensor): outputs of the differentiated function.
+            inputs (sequence of Tensor): Inputs w.r.t. which the gradient will be
+                returned (and not accumulated into ``.grad``).
+            grad_outputs (sequence of Tensor): The "vector" in the vector-Jacobian product.
+                Usually gradients w.r.t. each output. None values can be specified for scalar
+                Tensors or ones that don't require grad. If a None value would be acceptable
+                for all grad_tensors, then this argument is optional. Default: None.
+            retain_graph (bool, optional): If ``False``, the graph used to compute the grad
+                will be freed. Note that in nearly all cases setting this option to ``True``
+                is not needed and often can be worked around in a much more efficient
+                way. Defaults to the value of ``create_graph``.
+            create_graph (bool, optional): If ``True``, graph of the derivative will
+                be constructed, allowing to compute higher order derivative products.
+                Default: ``False``.
+            allow_unused (bool, optional): If ``False``, specifying inputs that were not
+                used when computing outputs (and therefore their grad is always zero)
+                is an error. Defaults to ``False``.
+            is_grads_batched (bool, optional): If ``True``, the first dimension of each
+                tensor in ``grad_outputs`` will be interpreted as the batch dimension.
+                Instead of computing a single vector-Jacobian product, we compute a
+                batch of vector-Jacobian products for each "vector" in the batch.
+                We use the vmap prototype feature as the backend to vectorize calls
+                to the autograd engine so that this computation can be performed in a
+                single call. This should lead to performance improvements when compared
+                to manually looping and performing backward multiple times. Note that
+                due to this feature being experimental, there may be performance
+                cliffs. Please use ``torch._C._debug_only_display_vmap_fallback_warnings(True)``
+                to show any performance warnings and file an issue on github if warnings exist
+                for your use case. Defaults to ``False``.
+        """
+        t_outputs = cast(Tuple[torch.Tensor, ...], (outputs,) if is_tensor_like(outputs) else tuple(outputs))
+        t_inputs = cast(Tuple[torch.Tensor, ...], (inputs,) if is_tensor_like(inputs) else tuple(inputs))
+        overridable_args = t_outputs + t_inputs
+        if has_torch_function(overridable_args):
+            return handle_torch_function(
+                grad,
+                overridable_args,
+                t_outputs,
+                t_inputs,
+                grad_outputs=grad_outputs,
+                retain_graph=retain_graph,
+                create_graph=create_graph,
+                only_inputs=only_inputs,
+                allow_unused=allow_unused,
+                is_grads_batched=is_grads_batched,
+            )
+    
+        if not only_inputs:
+            warnings.warn("only_inputs argument is deprecated and is ignored now "
+                          "(defaults to True). To accumulate gradient for other "
+                          "parts of the graph, please use torch.autograd.backward.")
+    
+        grad_outputs_ = _tensor_or_tensors_to_tuple(grad_outputs, len(t_outputs))
+        grad_outputs_ = _make_grads(t_outputs, grad_outputs_, is_grads_batched=is_grads_batched)
+    
+        if retain_graph is None:
+            retain_graph = create_graph
+    
+        # The reason we repeat same the comment several times below is because
+        # some Python versions print out the first line of multi-line function
+        # calls in the traceback and some print out the last line
+        if is_grads_batched:
+            def vjp(gO):
+                return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+                    t_outputs, gO, retain_graph, create_graph, t_inputs,
+                    allow_unused, accumulate_grad=False)  # Calls into the C++ engine to run the backward pass
+            return _vmap_internals._vmap(vjp, 0, 0, allow_none_pass_through=True)(grad_outputs_)
+        else:
+>           return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+                t_outputs, grad_outputs_, retain_graph, create_graph, t_inputs,
+                allow_unused, accumulate_grad=False)  # Calls into the C++ engine to run the backward pass
+E           RuntimeError: Trying to backward through the graph a second time (or directly access saved tensors after they have already been freed). Saved intermediate values of the graph are freed when you call .backward() or autograd.grad(). Specify retain_graph=True if you need to backward through the graph a second time or if you need to access saved tensors after calling backward.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/__init__.py:300: RuntimeError
+_________ TestAutogradFunctionalG2.test_invalid_parameter_combinations _________
+
+self = <test_torch_autograd_functional_g2.TestAutogradFunctionalG2 object at 0x10fc8d1b0>
+
+    def test_invalid_parameter_combinations(self):
+        """Test invalid parameter combinations raise appropriate errors"""
+        x = torch.randn(2, 2, dtype=torch.float32, requires_grad=True)
+        func = simple_scalar_func
+        v = torch.tensor(1.0, dtype=torch.float32)
+    
+        # Test with invalid strategy for jacobian
+        with pytest.raises((ValueError, RuntimeError)):
+>           autograd_func.jacobian(func, x, strategy="invalid_strategy")
+
+tests/test_torch_autograd_functional_g2.py:318: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+func = <function simple_scalar_func at 0x10fc63d00>
+inputs = tensor([[-1.6270, -1.3951],
+        [-0.2387, -0.5050]], requires_grad=True)
+create_graph = False, strict = False, vectorize = False
+strategy = 'invalid_strategy'
+
+    def jacobian(func, inputs, create_graph=False, strict=False, vectorize=False, strategy="reverse-mode"):
+        r"""Function that computes the Jacobian of a given function.
+    
+        Args:
+            func (function): a Python function that takes Tensor inputs and returns
+                a tuple of Tensors or a Tensor.
+            inputs (tuple of Tensors or Tensor): inputs to the function ``func``.
+            create_graph (bool, optional): If ``True``, the Jacobian will be
+                computed in a differentiable manner. Note that when ``strict`` is
+                ``False``, the result can not require gradients or be disconnected
+                from the inputs.  Defaults to ``False``.
+            strict (bool, optional): If ``True``, an error will be raised when we
+                detect that there exists an input such that all the outputs are
+                independent of it. If ``False``, we return a Tensor of zeros as the
+                jacobian for said inputs, which is the expected mathematical value.
+                Defaults to ``False``.
+            vectorize (bool, optional): This feature is experimental.
+                Please consider using
+                `functorch's jacrev or jacfwd <https://github.com/pytorch/functorch#what-are-the-transforms>`_
+                instead if you are looking for something less experimental and more performant.
+                When computing the jacobian, usually we invoke
+                ``autograd.grad`` once per row of the jacobian. If this flag is
+                ``True``, we perform only a single ``autograd.grad`` call with
+                ``batched_grad=True`` which uses the vmap prototype feature.
+                Though this should lead to performance improvements in many cases,
+                because this feature is still experimental, there may be performance
+                cliffs. See :func:`torch.autograd.grad`'s ``batched_grad`` parameter for
+                more information.
+            strategy (str, optional): Set to ``"forward-mode"`` or ``"reverse-mode"`` to
+                determine whether the Jacobian will be computed with forward or reverse
+                mode AD. Currently, ``"forward-mode"`` requires ``vectorized=True``.
+                Defaults to ``"reverse-mode"``. If ``func`` has more outputs than
+                inputs, ``"forward-mode"`` tends to be more performant. Otherwise,
+                prefer to use ``"reverse-mode"``.
+    
+        Returns:
+            Jacobian (Tensor or nested tuple of Tensors): if there is a single
+            input and output, this will be a single Tensor containing the
+            Jacobian for the linearized inputs and output. If one of the two is
+            a tuple, then the Jacobian will be a tuple of Tensors. If both of
+            them are tuples, then the Jacobian will be a tuple of tuple of
+            Tensors where ``Jacobian[i][j]`` will contain the Jacobian of the
+            ``i``\th output and ``j``\th input and will have as size the
+            concatenation of the sizes of the corresponding output and the
+            corresponding input and will have same dtype and device as the
+            corresponding input. If strategy is ``forward-mode``, the dtype will be
+            that of the output; otherwise, the input.
+    
+        Example:
+    
+            >>> def exp_reducer(x):
+            ...   return x.exp().sum(dim=1)
+            >>> inputs = torch.rand(2, 2)
+            >>> # xdoctest: +IGNORE_WANT("non-deterministic")
+            >>> jacobian(exp_reducer, inputs)
+            tensor([[[1.4917, 2.4352],
+                     [0.0000, 0.0000]],
+                    [[0.0000, 0.0000],
+                     [2.4369, 2.3799]]])
+    
+            >>> jacobian(exp_reducer, inputs, create_graph=True)
+            tensor([[[1.4917, 2.4352],
+                     [0.0000, 0.0000]],
+                    [[0.0000, 0.0000],
+                     [2.4369, 2.3799]]], grad_fn=<ViewBackward>)
+    
+            >>> def exp_adder(x, y):
+            ...   return 2 * x.exp() + 3 * y
+            >>> inputs = (torch.rand(2), torch.rand(2))
+            >>> jacobian(exp_adder, inputs)
+            (tensor([[2.8052, 0.0000],
+                    [0.0000, 3.3963]]),
+             tensor([[3., 0.],
+                     [0., 3.]]))
+        """
+>       assert strategy in ("forward-mode", "reverse-mode"), (
+            'Expected strategy to be either "forward-mode" or "reverse-mode". Hint: If your '
+            'function has more outputs than inputs, "forward-mode" tends to be more performant. '
+            'Otherwise, prefer to use "reverse-mode".')
+E       AssertionError: Expected strategy to be either "forward-mode" or "reverse-mode". Hint: If your function has more outputs than inputs, "forward-mode" tends to be more performant. Otherwise, prefer to use "reverse-mode".
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/autograd/functional.py:562: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+test_import.py                                  31     31      0      0     0%   4-55
+tests/test_torch_autograd_functional_g2.py     144     36     20      7    70%   29, 33-59, 67, 72, 77, 103, 147->159, 161, 186, 194, 240-259, 336-339
+----------------------------------------------------------------------------------------
+TOTAL                                          175     67     20      7    59%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_autograd_functional_g2.py::TestAutogradFunctionalG2::test_create_graph_parameter[simple_scalar-inputs_shape0-dtype0-cpu-True-False]
+FAILED tests/test_torch_autograd_functional_g2.py::TestAutogradFunctionalG2::test_invalid_parameter_combinations
+2 failed, 4 passed in 0.84s
+
+Error: exit 1

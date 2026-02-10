@@ -1,0 +1,161 @@
+=== Run Tests ===
+F.FF                                                                     [100%]
+=================================== FAILURES ===================================
+_____________ TestSpectralNorm.test_standard_linear_spectral_norm ______________
+
+self = <test_torch_nn_utils_spectral_norm.TestSpectralNorm object at 0x1277b4fd0>
+
+    def test_standard_linear_spectral_norm(self):
+        """TC-01: 标准线性层谱归一化"""
+        # 创建线性层
+        linear = nn.Linear(in_features=20, out_features=40)
+    
+        # 应用谱归一化
+        sn_linear = spectral_norm(
+            module=linear,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=None
+        )
+    
+        # weak 断言检查
+        # 1. 返回模块
+        assert sn_linear is linear, "Should return the original module"
+    
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_linear, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_linear.weight_u, torch.Tensor), "weight_u should be a tensor"
+        assert sn_linear.weight_u.shape == (40,), f"weight_u shape should be (40,), got {sn_linear.weight_u.shape}"
+    
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_linear, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_linear.weight_v, torch.Tensor), "weight_v should be a tensor"
+        assert sn_linear.weight_v.shape == (20,), f"weight_v shape should be (20,), got {sn_linear.weight_v.shape}"
+    
+        # 4. 检查是否有前向传播钩子
+        assert hasattr(sn_linear, '_forward_pre_hooks'), "Module should have forward pre-hooks"
+        assert len(sn_linear._forward_pre_hooks) > 0, "Should have at least one forward pre-hook"
+    
+        # 5. 检查权重参数仍然存在
+        assert hasattr(sn_linear, 'weight'), "Module should still have weight parameter"
+>       assert isinstance(sn_linear.weight, nn.Parameter), "weight should be a Parameter"
+E       AssertionError: weight should be a Parameter
+E       assert False
+E        +  where False = isinstance(tensor([[ 0.1710,  0.1856, -0.0524,  0.2054, -0.0490,  0.0451, -0.1089,  0.1313,\n          0.1971, -0.1640,  0.1944,  ... -0.1137,  0.2155, -0.1011,  0.1511,  0.1134, -0.1875,  0.1442, -0.2056,\n         -0.1239, -0.0373, -0.1507,  0.2184]]), <class 'torch.nn.parameter.Parameter'>)
+E        +    where tensor([[ 0.1710,  0.1856, -0.0524,  0.2054, -0.0490,  0.0451, -0.1089,  0.1313,\n          0.1971, -0.1640,  0.1944,  ... -0.1137,  0.2155, -0.1011,  0.1511,  0.1134, -0.1875,  0.1442, -0.2056,\n         -0.1239, -0.0373, -0.1507,  0.2184]]) = Linear(in_features=20, out_features=40, bias=True).weight
+E        +    and   <class 'torch.nn.parameter.Parameter'> = nn.Parameter
+
+tests/test_torch_nn_utils_spectral_norm.py:54: AssertionError
+__________ TestSpectralNorm.test_different_module_type_compatibility ___________
+
+self = <test_torch_nn_utils_spectral_norm.TestSpectralNorm object at 0x1277b5450>
+
+    def test_different_module_type_compatibility(self):
+        """TC-05: 不同模块类型兼容性"""
+        # 创建 Conv2d 模块
+        conv2d = nn.Conv2d(
+            in_channels=3,
+            out_channels=6,
+            kernel_size=3
+        )
+    
+        # 应用谱归一化
+        sn_conv2d = spectral_norm(
+            module=conv2d,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=None
+        )
+    
+        # weak 断言检查
+        # 1. 返回模块
+        assert sn_conv2d is conv2d, "Should return the original module"
+    
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_conv2d, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_conv2d.weight_u, torch.Tensor), "weight_u should be a tensor"
+        # Conv2d 权重形状: [out_channels, in_channels, kernel_size, kernel_size]
+        # 展平后: [out_channels, in_channels * kernel_size * kernel_size]
+        # weight_u 应该对应输出维度: out_channels (dim=0)
+        assert sn_conv2d.weight_u.shape == (6,), f"weight_u shape should be (6,), got {sn_conv2d.weight_u.shape}"
+    
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_conv2d, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_conv2d.weight_v, torch.Tensor), "weight_v should be a tensor"
+        # weight_v 应该对应输入维度: in_channels * kernel_size * kernel_size
+        assert sn_conv2d.weight_v.shape == (3 * 3 * 3,), f"weight_v shape should be (27,), got {sn_conv2d.weight_v.shape}"
+    
+        # 4. 检查 Conv2d 模块是否被支持
+        # 通过检查是否有前向传播钩子来验证
+        assert hasattr(sn_conv2d, '_forward_pre_hooks'), "Module should have forward pre-hooks"
+        assert len(sn_conv2d._forward_pre_hooks) > 0, "Should have at least one forward pre-hook"
+    
+        # 5. 检查权重参数仍然存在
+        assert hasattr(sn_conv2d, 'weight'), "Module should still have weight parameter"
+>       assert isinstance(sn_conv2d.weight, nn.Parameter), "weight should be a Parameter"
+E       AssertionError: weight should be a Parameter
+E       assert False
+E        +  where False = isinstance(tensor([[[[ 0.1471,  0.1597, -0.0451],\n          [ 0.1768, -0.0422,  0.0388],\n          [-0.0937,  0.1130,  0.1697]],\n...         [[-0.1440,  0.1753, -0.1412],\n          [ 0.1029,  0.0676,  0.0625],\n          [-0.1040,  0.1749,  0.0423]]]]), <class 'torch.nn.parameter.Parameter'>)
+E        +    where tensor([[[[ 0.1471,  0.1597, -0.0451],\n          [ 0.1768, -0.0422,  0.0388],\n          [-0.0937,  0.1130,  0.1697]],\n...         [[-0.1440,  0.1753, -0.1412],\n          [ 0.1029,  0.0676,  0.0625],\n          [-0.1040,  0.1749,  0.0423]]]]) = Conv2d(3, 6, kernel_size=(3, 3), stride=(1, 1)).weight
+E        +    and   <class 'torch.nn.parameter.Parameter'> = nn.Parameter
+
+tests/test_torch_nn_utils_spectral_norm.py:163: AssertionError
+____________ TestSpectralNorm.test_nonexistent_parameter_exception _____________
+
+self = <test_torch_nn_utils_spectral_norm.TestSpectralNorm object at 0x1277b5750>
+
+    def test_nonexistent_parameter_exception(self):
+        """TC-09: 参数不存在异常处理"""
+        # 创建线性层
+        linear = nn.Linear(in_features=10, out_features=20)
+    
+        # 尝试对不存在的参数应用谱归一化
+        # 应该抛出 AttributeError
+        with pytest.raises(AttributeError) as exc_info:
+>           spectral_norm(
+                module=linear,
+                name='nonexistent_param',  # 不存在的参数名
+                n_power_iterations=1,
+                eps=1e-12,
+                dim=None
+            )
+
+tests/test_torch_nn_utils_spectral_norm.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/spectral_norm.py:282: in spectral_norm
+    SpectralNorm.apply(module, name, n_power_iterations, dim, eps)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+module = Linear(in_features=10, out_features=20, bias=True)
+name = 'nonexistent_param', n_power_iterations = 1, dim = 0, eps = 1e-12
+
+    @staticmethod
+    def apply(module: Module, name: str, n_power_iterations: int, dim: int, eps: float) -> 'SpectralNorm':
+        for k, hook in module._forward_pre_hooks.items():
+            if isinstance(hook, SpectralNorm) and hook.name == name:
+                raise RuntimeError("Cannot register two spectral_norm hooks on "
+                                   "the same parameter {}".format(name))
+    
+        fn = SpectralNorm(name, n_power_iterations, dim, eps)
+>       weight = module._parameters[name]
+E       KeyError: 'nonexistent_param'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/spectral_norm.py:124: KeyError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/test_torch_nn_utils_spectral_norm.py      62      9      2      1    84%   201-217, 239
+----------------------------------------------------------------------------------------
+TOTAL                                           62      9      2      1    84%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_standard_linear_spectral_norm
+FAILED tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_different_module_type_compatibility
+FAILED tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_nonexistent_parameter_exception
+3 failed, 1 passed in 0.57s
+
+Error: exit 1

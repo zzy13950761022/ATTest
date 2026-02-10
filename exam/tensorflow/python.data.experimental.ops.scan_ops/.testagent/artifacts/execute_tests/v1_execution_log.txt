@@ -1,0 +1,101 @@
+=== Run Tests ===
+FF.                                                                      [100%]
+================================== FAILURES ===================================
+________________________ test_scan_basic_functionality ________________________
+
+    def test_scan_basic_functionality():
+        """Test basic scan functionality with scalar state and simple sum function.
+    
+        This test verifies:
+        1. scan() returns a callable function
+        2. Deprecation warning is triggered
+        3. Basic state update works correctly
+        4. The returned function can be applied to a dataset
+        """
+        # Test parameters
+        initial_state = tf.constant(0.0, dtype=tf.float32)
+    
+        # Define a simple scan function that sums state and element
+        def scan_func(state, element):
+            new_state = state + element
+            output_element = new_state  # Output the new state
+            return new_state, output_element
+    
+        # Capture deprecation warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+    
+            # Call scan function
+            transform_fn = scan(initial_state, scan_func)
+    
+            # Verify deprecation warning
+>           assert len(w) > 0, "Expected deprecation warning"
+E           AssertionError: Expected deprecation warning
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py:93: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 22:47:44.299767: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:deprecation.py:337 From D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.scan_ops\tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py:90: scan (from tensorflow.python.data.experimental.ops.scan_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.data.Dataset.scan(...) instead
+_____________________ test_scan_nested_structure_matching _____________________
+
+    def test_scan_nested_structure_matching():
+        """Test scan with nested dictionary state structure.
+    
+        This test verifies:
+        1. scan() works with nested state structures
+        2. State structure is preserved during updates
+        3. No exceptions are raised with proper structure matching
+        4. The scan function correctly updates nested state
+        """
+        # Create a nested initial state (dictionary with tensor values)
+        initial_state = {
+            'a': tf.constant(1.0, dtype=tf.float32),
+            'b': tf.constant(2.0, dtype=tf.float32)
+        }
+    
+        # Define a scan function that updates nested state
+        def scan_func(state, element):
+            # state is a dict with keys 'a' and 'b'
+            new_state = {
+                'a': state['a'] + element,
+                'b': state['b'] * element
+            }
+            # Output is the 'a' value from new state
+            output_element = new_state['a']
+            return new_state, output_element
+    
+        # Capture deprecation warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+    
+            # Call scan function
+            transform_fn = scan(initial_state, scan_func)
+    
+            # Verify deprecation warning
+>           assert len(w) > 0, "Expected deprecation warning"
+E           AssertionError: Expected deprecation warning
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py:166: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py     130     88     36      1    26%   35, 39-40, 44-46, 51-56, 62-63, 81-83, 98-127, 150-156, 171-220, 257-270, 282-311, 316, 321-322
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 130     88     36      1    26%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_basic_functionality
+FAILED tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_nested_structure_matching
+2 failed, 1 passed in 1.58s
+
+Error: exit 1

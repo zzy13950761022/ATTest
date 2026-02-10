@@ -1,0 +1,810 @@
+"""
+Test cases for tensorflow.python.training.checkpoint_management module.
+"""
+import os
+import tempfile
+import pytest
+from unittest import mock
+import tensorflow as tf
+from tensorflow.python.training import checkpoint_management
+from tensorflow.python.training.checkpoint_state_pb2 import CheckpointState
+from tensorflow.core.protobuf import saver_pb2
+
+# ==== BLOCK:HEADER START ====
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield tmpdir
+
+
+@pytest.fixture
+def mock_file_io():
+    """Mock the file_io module to avoid actual file system operations."""
+    # Use the correct import path that checkpoint_management uses
+    with mock.patch('tensorflow.python.training.checkpoint_management.file_io') as mock_io:
+        yield mock_io
+
+
+@pytest.fixture
+def mock_os_path():
+    """Mock the os.path module for path operations."""
+    # Mock os.path directly since it's imported in checkpoint_management
+    with mock.patch('tensorflow.python.training.checkpoint_management.os.path') as mock_path:
+        yield mock_path
+
+
+@pytest.fixture
+def mock_gfile():
+    """Mock the gfile module for file operations."""
+    # Mock gfile through the correct import path
+    with mock.patch('tensorflow.python.platform.gfile') as mock_gfile:
+        yield mock_gfile
+
+
+@pytest.fixture
+def mock_checkpoint():
+    """Mock the Checkpoint class."""
+    with mock.patch('tensorflow.train.Checkpoint') as mock_ckpt:
+        yield mock_ckpt
+
+
+def create_checkpoint_state_proto(model_checkpoint_path, all_model_checkpoint_paths=None):
+    """Helper to create a CheckpointState proto for testing."""
+    checkpoint_state = CheckpointState()
+    checkpoint_state.model_checkpoint_path = model_checkpoint_path
+    if all_model_checkpoint_paths:
+        checkpoint_state.all_model_checkpoint_paths.extend(all_model_checkpoint_paths)
+    return checkpoint_state
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+class TestLatestCheckpoint:
+    """Test cases for latest_checkpoint function."""
+    
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", None, "v2_checkpoint_exists"),
+        ("/tmp/test_checkpoints_v1", "checkpoint", "v1_checkpoint_only"),
+        ("/tmp/test_checkpoints_mixed", None, "v2_and_v1_mixed"),
+    ])
+    def test_latest_checkpoint_basic(self, checkpoint_dir, latest_filename, scenario):
+        """Test basic functionality of latest_checkpoint with different scenarios."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+        
+        # Mock get_checkpoint_state function
+        with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+            mock_get_state.return_value = checkpoint_state
+            
+            # Mock file_io.get_matching_files based on scenario
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files:
+                if scenario == "v2_checkpoint_exists":
+                    # V2 checkpoint exists
+                    mock_get_matching_files.side_effect = [
+                        ["/tmp/test_checkpoints/model.ckpt-1000.index"],  # V2 path exists
+                        []  # V1 path doesn't exist
+                    ]
+                elif scenario == "v1_checkpoint_only":
+                    # Only V1 checkpoint exists
+                    mock_get_matching_files.side_effect = [
+                        [],  # V2 path doesn't exist
+                        ["/tmp/test_checkpoints_v1/model.ckpt-1000"]  # V1 path exists
+                    ]
+                elif scenario == "v2_and_v1_mixed":
+                    # Both V2 and V1 checkpoints exist (V2 should be preferred)
+                    mock_get_matching_files.side_effect = [
+                        ["/tmp/test_checkpoints_mixed/model.ckpt-1000.index"],  # V2 path exists
+                        ["/tmp/test_checkpoints_mixed/model.ckpt-1000"]  # V1 path also exists
+                    ]
+                
+                # Call the function
+                result = checkpoint_management.latest_checkpoint(
+                    checkpoint_dir=checkpoint_dir,
+                    latest_filename=latest_filename
+                )
+                
+                # Weak assertions
+                # 1. returns_string_or_none
+                assert result is None or isinstance(result, str)
+                
+                # 2. path_format_correct
+                if result is not None:
+                    assert isinstance(result, str)
+                    # Check that result matches the expected model_checkpoint_path
+                    assert result == checkpoint_state.model_checkpoint_path
+                
+                # 3. no_exception - if we got here, no exception was raised
+                assert True
+                
+                # Verify get_checkpoint_state was called with correct arguments
+                mock_get_state.assert_called_once_with(
+                    checkpoint_dir=checkpoint_dir,
+                    latest_filename=latest_filename
+                )
+    
+    def test_latest_checkpoint_no_checkpoint(self):
+        """Test latest_checkpoint when no checkpoint exists."""
+        # Mock get_checkpoint_state to return None
+        with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+            mock_get_state.return_value = None
+            
+            result = checkpoint_management.latest_checkpoint(
+                checkpoint_dir="/tmp/test_checkpoints",
+                latest_filename=None
+            )
+            
+            # Should return None when no checkpoint state
+            assert result is None
+    
+    def test_latest_checkpoint_no_matching_files(self):
+        """Test latest_checkpoint when checkpoint state exists but files don't."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+        
+        with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+            mock_get_state.return_value = checkpoint_state
+            
+            # Mock file_io.get_matching_files to return empty lists (no files found)
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files:
+                mock_get_matching_files.return_value = []
+                
+                result = checkpoint_management.latest_checkpoint(
+                    checkpoint_dir="/tmp/test_checkpoints",
+                    latest_filename=None
+                )
+                
+                # Should return None when no matching files found
+                assert result is None
+                
+                # Verify get_matching_files was called for both V2 and V1 paths
+                assert mock_get_matching_files.call_count == 2
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+class TestGetCheckpointState:
+    """Test cases for get_checkpoint_state function."""
+    
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", "checkpoint", "valid_state_file"),
+    ])
+    def test_get_checkpoint_state_valid(self, checkpoint_dir, latest_filename, scenario):
+        """Test get_checkpoint_state with valid state file."""
+        # Mock file_io.file_exists to return True
+        with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+            mock_file_exists.return_value = True
+            
+            # Create a valid checkpoint state content
+            checkpoint_content = """
+model_checkpoint_path: "model.ckpt-1000"
+all_model_checkpoint_paths: "model.ckpt-999"
+all_model_checkpoint_paths: "model.ckpt-1000"
+"""
+            
+            # Mock file_io.read_file_to_string to return the content
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.read_file_to_string') as mock_read_file:
+                mock_read_file.return_value = checkpoint_content
+                
+                # Mock os.path.isabs to return False (relative paths)
+                with mock.patch('tensorflow.python.training.checkpoint_management.os.path.isabs') as mock_isabs:
+                    mock_isabs.return_value = False
+                    
+                    # Mock os.path.join to construct absolute paths
+                    with mock.patch('tensorflow.python.training.checkpoint_management.os.path.join') as mock_join:
+                        def mock_join_func(dir_path, file_path):
+                            return f"{dir_path}/{file_path}"
+                        mock_join.side_effect = mock_join_func
+                        
+                        # Call the function
+                        result = checkpoint_management.get_checkpoint_state(
+                            checkpoint_dir=checkpoint_dir,
+                            latest_filename=latest_filename
+                        )
+                        
+                        # Weak assertions
+                        # 1. returns_checkpointstate_or_none
+                        assert result is None or isinstance(result, CheckpointState)
+                        
+                        # 2. has_model_checkpoint_path
+                        if result is not None:
+                            assert hasattr(result, 'model_checkpoint_path')
+                            assert result.model_checkpoint_path is not None
+                            # Check that path was made absolute
+                            assert result.model_checkpoint_path.startswith(checkpoint_dir)
+                        
+                        # 3. no_exception - if we got here, no exception was raised
+                        assert True
+                        
+                        # Verify file_io.file_exists was called
+                        expected_filename = f"{checkpoint_dir}/{latest_filename}"
+                        mock_file_exists.assert_called_once_with(expected_filename)
+                        
+                        # Verify file_io.read_file_to_string was called
+                        mock_read_file.assert_called_once_with(expected_filename)
+    
+    def test_get_checkpoint_state_file_not_exists(self):
+        """Test get_checkpoint_state when state file doesn't exist."""
+        # Mock file_io.file_exists to return False
+        with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+            mock_file_exists.return_value = False
+            
+            result = checkpoint_management.get_checkpoint_state(
+                checkpoint_dir="/tmp/test_checkpoints",
+                latest_filename="checkpoint"
+            )
+            
+            # Should return None when file doesn't exist
+            assert result is None
+            
+            # file_io.read_file_to_string should not be called
+            # (We need to verify this by checking it wasn't called)
+            # Since we're not mocking read_file_to_string in this test,
+            # we can't directly assert it wasn't called
+    
+    def test_get_checkpoint_state_absolute_paths(self):
+        """Test get_checkpoint_state with absolute paths in state file."""
+        # Mock file_io.file_exists to return True
+        with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+            mock_file_exists.return_value = True
+            
+            # Create checkpoint content with absolute paths
+            checkpoint_content = """
+model_checkpoint_path: "/absolute/path/model.ckpt-1000"
+all_model_checkpoint_paths: "/absolute/path/model.ckpt-999"
+all_model_checkpoint_paths: "/absolute/path/model.ckpt-1000"
+"""
+            
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.read_file_to_string') as mock_read_file:
+                mock_read_file.return_value = checkpoint_content
+                
+                # Mock os.path.isabs to return True for absolute paths
+                with mock.patch('tensorflow.python.training.checkpoint_management.os.path.isabs') as mock_isabs:
+                    mock_isabs.return_value = True
+                    
+                    result = checkpoint_management.get_checkpoint_state(
+                        checkpoint_dir="/tmp/test_checkpoints",
+                        latest_filename="checkpoint"
+                    )
+                    
+                    # Should return CheckpointState with absolute paths unchanged
+                    assert isinstance(result, CheckpointState)
+                    assert result.model_checkpoint_path == "/absolute/path/model.ckpt-1000"
+                    
+                    # os.path.join should not be called for absolute paths
+                    # (We're not mocking os.path.join in this test, so we can't assert this directly)
+    
+    def test_get_checkpoint_state_op_error(self):
+        """Test get_checkpoint_state when file_io raises OpError."""
+        # Mock file_io.file_exists to return True
+        with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+            mock_file_exists.return_value = True
+            
+            # Mock file_io.read_file_to_string to raise OpError
+            from tensorflow.python.framework import errors
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.read_file_to_string') as mock_read_file:
+                mock_read_file.side_effect = errors.OpError(
+                    node_def=None, op=None, message="Permission denied"
+                )
+                
+                result = checkpoint_management.get_checkpoint_state(
+                    checkpoint_dir="/tmp/test_checkpoints",
+                    latest_filename="checkpoint"
+                )
+                
+                # Should return None when OpError occurs
+                assert result is None
+    
+    def test_get_checkpoint_state_parse_error(self):
+        """Test get_checkpoint_state when state file has parse error."""
+        # Mock file_io.file_exists to return True
+        with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+            mock_file_exists.return_value = True
+            
+            # Mock file_io.read_file_to_string to return invalid content
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.read_file_to_string') as mock_read_file:
+                mock_read_file.return_value = "invalid proto content"
+                
+                result = checkpoint_management.get_checkpoint_state(
+                    checkpoint_dir="/tmp/test_checkpoints",
+                    latest_filename="checkpoint"
+                )
+                
+                # Should return None when parse error occurs
+                assert result is None
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+class TestCheckpointManager:
+    """Test cases for CheckpointManager class."""
+    
+    @pytest.mark.parametrize("directory,max_to_keep,checkpoint_interval,scenario", [
+        ("/tmp/test_manager", 3, 1, "basic_retention"),
+        ("/tmp/test_manager_unlimited", 0, 5, "unlimited_retention"),
+        ("/tmp/test_manager_single", 1, 10, "single_checkpoint_retention"),
+    ])
+    def test_checkpoint_manager_basic(self, directory, max_to_keep, checkpoint_interval, scenario):
+        """Test basic CheckpointManager functionality with different retention policies."""
+        # Create a mock checkpoint object
+        mock_ckpt = mock.MagicMock()
+        
+        # Mock tensorflow.train.Checkpoint to return our mock
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+            
+            # Mock file_io functions
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files:
+                
+                mock_file_exists.return_value = False  # No existing checkpoint file
+                mock_get_matching_files.return_value = []  # No existing checkpoint files
+                
+                # Mock gfile functions
+                with mock.patch('tensorflow.python.platform.gfile.MakeDirs') as mock_makedirs, \
+                     mock.patch('tensorflow.python.platform.gfile.Exists') as mock_gfile_exists:
+                    
+                    mock_gfile_exists.return_value = False
+                    
+                    # Create CheckpointManager
+                    manager = checkpoint_management.CheckpointManager(
+                        checkpoint=mock_ckpt,
+                        directory=directory,
+                        max_to_keep=max_to_keep,
+                        checkpoint_interval=checkpoint_interval
+                    )
+                    
+                    # Weak assertions
+                    # 1. manager_created
+                    assert manager is not None
+                    assert isinstance(manager, checkpoint_management.CheckpointManager)
+                    
+                    # 2. save_returns_path
+                    # Mock the save method
+                    expected_save_path = f"{directory}/ckpt-1"
+                    mock_ckpt.save.return_value = expected_save_path
+                    
+                    # Mock update_checkpoint_state to avoid actual file operations
+                    with mock.patch('tensorflow.python.training.checkpoint_management.update_checkpoint_state') as mock_update:
+                        mock_update.return_value = None
+                        
+                        # Call save
+                        save_result = manager.save(checkpoint_number=1)
+                        
+                        # Should return the save path
+                        assert save_result == expected_save_path
+                        
+                        # Verify checkpoint.save was called
+                        mock_ckpt.save.assert_called_once()
+                    
+                    # 3. no_exception - if we got here, no exception was raised
+                    assert True
+                    
+                    # Verify directory was created
+                    mock_makedirs.assert_called_once_with(directory)
+    
+    def test_checkpoint_manager_with_existing_checkpoints(self):
+        """Test CheckpointManager with existing checkpoints."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+        
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+            
+            # Mock existing checkpoint files
+            existing_files = [
+                "/tmp/test_manager/ckpt-1.index",
+                "/tmp/test_manager/ckpt-2.index",
+                "/tmp/test_manager/ckpt-3.index"
+            ]
+            
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files:
+                mock_get_matching_files.return_value = existing_files
+                
+                # Mock file_io.file_exists for checkpoint state file
+                with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists:
+                    mock_file_exists.return_value = True
+                    
+                    # Mock checkpoint state content
+                    checkpoint_content = """
+model_checkpoint_path: "ckpt-3"
+all_model_checkpoint_paths: "ckpt-1"
+all_model_checkpoint_paths: "ckpt-2"
+all_model_checkpoint_paths: "ckpt-3"
+"""
+                    with mock.patch('tensorflow.python.training.checkpoint_management.file_io.read_file_to_string') as mock_read_file:
+                        mock_read_file.return_value = checkpoint_content
+                        
+                        # Mock os.path functions
+                        with mock.patch('tensorflow.python.training.checkpoint_management.os.path.isabs') as mock_isabs, \
+                             mock.patch('tensorflow.python.training.checkpoint_management.os.path.join') as mock_join:
+                            
+                            mock_isabs.return_value = False
+                            mock_join.side_effect = lambda a, b: f"{a}/{b}"
+                            
+                            # Create CheckpointManager with max_to_keep=2
+                            manager = checkpoint_management.CheckpointManager(
+                                checkpoint=mock_ckpt,
+                                directory="/tmp/test_manager",
+                                max_to_keep=2,
+                                checkpoint_interval=1
+                            )
+                            
+                            # Manager should be created successfully
+                            assert manager is not None
+                            
+                            # Check that it loaded existing checkpoints
+                            # (This would be verified by checking internal state in strong assertions)
+    
+    def test_checkpoint_manager_save_interval(self):
+        """Test CheckpointManager checkpoint interval functionality."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+        
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+            
+            # Mock file_io and gfile functions
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files, \
+                 mock.patch('tensorflow.python.platform.gfile.MakeDirs') as mock_makedirs, \
+                 mock.patch('tensorflow.python.platform.gfile.Exists') as mock_gfile_exists:
+                
+                mock_file_exists.return_value = False
+                mock_get_matching_files.return_value = []
+                mock_gfile_exists.return_value = False
+                
+                # Create CheckpointManager with interval=5
+                manager = checkpoint_management.CheckpointManager(
+                    checkpoint=mock_ckpt,
+                    directory="/tmp/test_manager",
+                    max_to_keep=3,
+                    checkpoint_interval=5
+                )
+                
+                # Mock save to return path
+                mock_ckpt.save.return_value = "/tmp/test_manager/ckpt-1"
+                
+                # Mock update_checkpoint_state
+                with mock.patch('tensorflow.python.training.checkpoint_management.update_checkpoint_state') as mock_update:
+                    mock_update.return_value = None
+                    
+                    # First save should work (checkpoint_number=5, which is multiple of interval)
+                    result1 = manager.save(checkpoint_number=5)
+                    assert result1 == "/tmp/test_manager/ckpt-1"
+                    mock_ckpt.save.assert_called_once()
+                    
+                    # Reset mock
+                    mock_ckpt.save.reset_mock()
+                    
+                    # Second save with checkpoint_number=6 (not multiple of 5) should return None
+                    result2 = manager.save(checkpoint_number=6)
+                    assert result2 is None
+                    mock_ckpt.save.assert_not_called()
+    
+    def test_checkpoint_manager_init_fn(self):
+        """Test CheckpointManager with init_fn parameter."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+        
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+            
+            # Mock file_io and gfile functions
+            with mock.patch('tensorflow.python.training.checkpoint_management.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.training.checkpoint_management.file_io.get_matching_files') as mock_get_matching_files, \
+                 mock.patch('tensorflow.python.platform.gfile.MakeDirs') as mock_makedirs, \
+                 mock.patch('tensorflow.python.platform.gfile.Exists') as mock_gfile_exists:
+                
+                mock_file_exists.return_value = False
+                mock_get_matching_files.return_value = []
+                mock_gfile_exists.return_value = False
+                
+                # Create a mock init_fn
+                mock_init_fn = mock.MagicMock()
+                
+                # Create CheckpointManager with init_fn
+                manager = checkpoint_management.CheckpointManager(
+                    checkpoint=mock_ckpt,
+                    directory="/tmp/test_manager",
+                    max_to_keep=3,
+                    checkpoint_interval=1,
+                    init_fn=mock_init_fn
+                )
+                
+                # Manager should be created
+                assert manager is not None
+                
+                # init_fn should be stored (would be verified in strong assertions)
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+class TestEmptyAndNonexistentDirectory:
+    """Test cases for handling empty and non-existent directories."""
+    
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/nonexistent", None, "directory_not_exists"),
+        ("", None, "empty_string_directory"),
+    ])
+    def test_empty_and_nonexistent_directory(self, mock_file_io, mock_os_path,
+                                             checkpoint_dir, latest_filename, scenario):
+        """Test handling of empty and non-existent directories."""
+        # Mock file_io.file_exists to return False for non-existent directory
+        mock_file_io.file_exists.return_value = False
+        
+        # Mock get_checkpoint_state to return None for non-existent directory
+        with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+            mock_get_state.return_value = None
+            
+            # For empty string directory, mock os.path functions
+            if scenario == "empty_string_directory":
+                # Mock os.path.isabs to handle empty string
+                mock_os_path.isabs.return_value = False
+                # Mock os.path.join to handle empty directory
+                def mock_join(dir_path, file_path):
+                    if not dir_path:
+                        return file_path
+                    return f"{dir_path}/{file_path}"
+                mock_os_path.join.side_effect = mock_join
+            
+            # Call latest_checkpoint
+            result = checkpoint_management.latest_checkpoint(
+                checkpoint_dir=checkpoint_dir,
+                latest_filename=latest_filename
+            )
+            
+            # Weak assertions
+            # 1. returns_none_or_empty
+            assert result is None or isinstance(result, str)
+            
+            # 2. no_exception - if we got here, no exception was raised
+            assert True
+            
+            # For non-existent directory, result should be None
+            if scenario == "directory_not_exists":
+                assert result is None
+            
+            # Verify get_checkpoint_state was called
+            mock_get_state.assert_called_once_with(
+                checkpoint_dir=checkpoint_dir,
+                latest_filename=latest_filename
+            )
+    
+    def test_get_checkpoint_state_empty_directory(self, mock_file_io, mock_os_path):
+        """Test get_checkpoint_state with empty directory."""
+        # Mock file_io.file_exists to return False
+        mock_file_io.file_exists.return_value = False
+        
+        # Mock os.path functions for empty directory
+        mock_os_path.isabs.return_value = False
+        def mock_join(dir_path, file_path):
+            if not dir_path:
+                return file_path
+            return f"{dir_path}/{file_path}"
+        mock_os_path.join.side_effect = mock_join
+        
+        result = checkpoint_management.get_checkpoint_state(
+            checkpoint_dir="",
+            latest_filename="checkpoint"
+        )
+        
+        # Should return None for empty directory
+        assert result is None
+        
+        # Verify file_io.file_exists was called with correct path
+        mock_file_io.file_exists.assert_called_once_with("checkpoint")
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+class TestCorruptedCheckpointFile:
+    """Test cases for handling corrupted checkpoint files."""
+    
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/corrupted_checkpoints", "checkpoint", "corrupted_state_file"),
+    ])
+    def test_corrupted_checkpoint_file(self, mock_file_io, mock_os_path,
+                                       checkpoint_dir, latest_filename, scenario):
+        """Test handling of corrupted checkpoint state files."""
+        # Mock file_io.file_exists to return True (file exists)
+        mock_file_io['file_exists'].return_value = True
+        
+        # Mock file_io.read_file_to_string based on scenario
+        if scenario == "corrupted_state_file":
+            # Return corrupted/invalid content
+            mock_file_io['read_file_to_string'].return_value = "corrupted proto content !@#$%"
+        
+        # Mock os.path functions
+        mock_os_path['isabs'].return_value = False
+        def mock_join(dir_path, file_path):
+            return f"{dir_path}/{file_path}"
+        mock_os_path['join'].side_effect = mock_join
+        
+        # Call get_checkpoint_state
+        result = checkpoint_management.get_checkpoint_state(
+            checkpoint_dir=checkpoint_dir,
+            latest_filename=latest_filename
+        )
+        
+        # Weak assertions
+        # 1. handles_exception - function should handle parse error gracefully
+        # 2. returns_none_or_default - should return None for corrupted file
+        assert result is None
+        
+        # 3. no_crash - if we got here, no crash occurred
+        assert True
+        
+        # Verify file_io.file_exists was called
+        expected_filename = f"{checkpoint_dir}/{latest_filename}"
+        mock_file_io['file_exists'].assert_called_once_with(expected_filename)
+        
+        # Verify file_io.read_file_to_string was called
+        mock_file_io['read_file_to_string'].assert_called_once_with(expected_filename)
+    
+    def test_corrupted_checkpoint_with_op_error(self, mock_file_io):
+        """Test handling of OpError when reading checkpoint file."""
+        # Mock file_io.file_exists to return True
+        mock_file_io['file_exists'].return_value = True
+        
+        # Mock file_io.read_file_to_string to raise OpError
+        from tensorflow.python.framework import errors
+        mock_file_io['read_file_to_string'].side_effect = errors.OpError(
+            node_def=None, op=None, message="Read error"
+        )
+        
+        result = checkpoint_management.get_checkpoint_state(
+            checkpoint_dir="/tmp/corrupted_checkpoints",
+            latest_filename="checkpoint"
+        )
+        
+        # Should return None when OpError occurs
+        assert result is None
+    
+    def test_latest_checkpoint_with_corrupted_state(self, mock_file_io):
+        """Test latest_checkpoint when checkpoint state file is corrupted."""
+        # Mock get_checkpoint_state to return None (due to corruption)
+        with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+            mock_get_state.return_value = None
+            
+            result = checkpoint_management.latest_checkpoint(
+                checkpoint_dir="/tmp/corrupted_checkpoints",
+                latest_filename="checkpoint"
+            )
+            
+            # Should return None when checkpoint state is None
+            assert result is None
+    
+    def test_checkpoint_exists_with_corrupted_files(self, mock_file_io):
+        """Test checkpoint_exists when checkpoint files are corrupted/missing."""
+        # Mock file_io.get_matching_files to return empty lists (no valid files)
+        mock_file_io['get_matching_files'].return_value = []
+        
+        result = checkpoint_management.checkpoint_exists(
+            checkpoint_prefix="/tmp/corrupted_checkpoints/model.ckpt-1000"
+        )
+        
+        # Should return False when no valid checkpoint files
+        assert result is False
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases for other functions in the module
+
+class TestCheckpointExists:
+    """Test cases for checkpoint_exists function."""
+    
+    def test_checkpoint_exists_v2(self, mock_file_io):
+        """Test checkpoint_exists for V2 checkpoint format."""
+        # Mock file_io.get_matching_files to return V2 checkpoint files
+        mock_file_io.get_matching_files.return_value = [
+            "/tmp/test_checkpoints/model.ckpt-1000.index"
+        ]
+        
+        result = checkpoint_management.checkpoint_exists(
+            checkpoint_prefix="/tmp/test_checkpoints/model.ckpt-1000"
+        )
+        
+        # Should return True for V2 checkpoint
+        assert result is True
+        
+        # Verify get_matching_files was called with V2 pattern
+        mock_file_io.get_matching_files.assert_called_once()
+    
+    def test_checkpoint_exists_v1(self, mock_file_io):
+        """Test checkpoint_exists for V1 checkpoint format."""
+        # Mock file_io.get_matching_files: first call returns empty (V2), second returns V1
+        mock_file_io.get_matching_files.side_effect = [
+            [],  # No V2 checkpoint
+            ["/tmp/test_checkpoints/model.ckpt-1000"]  # V1 checkpoint exists
+        ]
+        
+        result = checkpoint_management.checkpoint_exists(
+            checkpoint_prefix="/tmp/test_checkpoints/model.ckpt-1000"
+        )
+        
+        # Should return True for V1 checkpoint
+        assert result is True
+        
+        # Verify get_matching_files was called twice (V2 then V1)
+        assert mock_file_io.get_matching_files.call_count == 2
+    
+    def test_checkpoint_exists_none(self, mock_file_io):
+        """Test checkpoint_exists when no checkpoint files exist."""
+        # Mock file_io.get_matching_files to return empty lists
+        mock_file_io.get_matching_files.return_value = []
+        
+        result = checkpoint_management.checkpoint_exists(
+            checkpoint_prefix="/tmp/test_checkpoints/model.ckpt-1000"
+        )
+        
+        # Should return False when no checkpoint files
+        assert result is False
+
+
+class TestUpdateCheckpointState:
+    """Test cases for update_checkpoint_state function."""
+    
+    def test_update_checkpoint_state_basic(self, mock_file_io):
+        """Test basic update_checkpoint_state functionality."""
+        # Mock file_io functions
+        mock_file_io.FileIO.return_value = mock.MagicMock()
+        
+        # Create a checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000",
+            all_model_checkpoint_paths=["model.ckpt-999", "model.ckpt-1000"]
+        )
+        
+        # Call update_checkpoint_state
+        result = checkpoint_management.update_checkpoint_state(
+            save_dir="/tmp/test_checkpoints",
+            model_checkpoint_path="model.ckpt-1000",
+            all_model_checkpoint_paths=["model.ckpt-999", "model.ckpt-1000"],
+            latest_filename="checkpoint"
+        )
+        
+        # Should not raise exception
+        assert True
+        
+        # file_io.FileIO should have been called
+        assert mock_file_io.FileIO.called
+
+
+class TestRemoveCheckpoint:
+    """Test cases for remove_checkpoint function."""
+    
+    def test_remove_checkpoint_basic(self, mock_file_io):
+        """Test basic remove_checkpoint functionality."""
+        # Mock file_io.remove
+        mock_file_io.remove = mock.MagicMock()
+        
+        # Call remove_checkpoint
+        checkpoint_management.remove_checkpoint(
+            checkpoint_prefix="/tmp/test_checkpoints/model.ckpt-1000",
+            checkpoint_format_version=saver_pb2.SaverDef.V2
+        )
+        
+        # Should not raise exception
+        assert True
+        
+        # file_io.remove should have been called for V2 checkpoint files
+        assert mock_file_io.remove.call_count >= 1
+
+
+# Cleanup and utility tests
+def test_module_import():
+    """Test that the module can be imported correctly."""
+    # This is a simple smoke test for module import
+    assert checkpoint_management is not None
+    assert hasattr(checkpoint_management, 'latest_checkpoint')
+    assert hasattr(checkpoint_management, 'get_checkpoint_state')
+    assert hasattr(checkpoint_management, 'CheckpointManager')
+    assert hasattr(checkpoint_management, 'checkpoint_exists')
+    assert hasattr(checkpoint_management, 'update_checkpoint_state')
+    assert hasattr(checkpoint_management, 'remove_checkpoint')
+
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

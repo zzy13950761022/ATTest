@@ -1,0 +1,59 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 9,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_assert_equal_eager_mode[assert_equal-x_shape0-y_shape0-float32-eager]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_executing_eagerly被调用5次而非1次，需要修复mock设置"
+    },
+    {
+      "test": "test_assert_equal_graph_mode[assert_equal-x_shape0-y_shape0-int32-graph]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "实际执行eager模式而非graph模式，mock未正确生效"
+    },
+    {
+      "test": "test_assert_less_static_failure[assert_less-x_shape0-y_shape0-float64-static_fail]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息不匹配预期，需要调整断言或修复mock"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_assert_equal_eager_mode[assert_equal-x_shape1-y_shape1-float64-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_assert_equal_eager_mode[assert_greater-x_shape2-y_shape2-float32-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_assert_equal_graph_mode[assert_equal-x_shape1-y_shape1-int32-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_assert_less_static_failure[assert_less-x_shape1-y_shape1-float32-static_fail]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_assert_positive_empty_tensor[assert_positive-x_shape0-float32-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_assert_positive_empty_tensor[assert_positive-x_shape1-int32-graph]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

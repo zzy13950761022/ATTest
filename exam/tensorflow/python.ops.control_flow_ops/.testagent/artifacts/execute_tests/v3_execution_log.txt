@@ -1,0 +1,322 @@
+=== Run Tests ===
+EEEEEE                                                                   [100%]
+=================================== ERRORS ====================================
+__________ ERROR at setup of test_cond_basic_functionality[True-1.0] __________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_________ ERROR at setup of test_cond_basic_functionality[False-0.0] __________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+________ ERROR at setup of test_gradient_verification[cond-eager-True] ________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_______ ERROR at setup of test_eager_graph_mode_consistency[cond-True] ________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_control_flow_ops():
+        """模拟控制流操作内部函数"""
+        # 导入实际模块
+        import tensorflow.python.ops.cond_v2 as cond_v2_module
+        import tensorflow.python.ops.while_v2 as while_v2_module
+        import tensorflow.python.ops.gen_control_flow_ops as gen_ops_module
+    
+        with patch.object(cond_v2_module, 'cond_v2') as mock_cond_v2:
+            with patch.object(while_v2_module, 'while_loop') as mock_while_v2:
+                # 注意：gen_control_flow_ops是一个模块，我们需要patch模块本身
+                # 使用patch模块的方式，而不是patch.object
+>               with patch('tensorflow.python.ops.gen_control_flow_ops', autospec=True) as mock_gen_ops:
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                   Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_control_flow_ops.py     173    128     36      1    22%   17-18, 53-73, 81-85, 89-93, 97-100, 104-107, 120-154, 172-197, 216-268, 280-334, 346-414, 419
+--------------------------------------------------------------------------------------------------
+TOTAL                                                    173    128     36      1    22%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[True-1.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[False-0.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_gradient_verification[cond-eager-True]
+ERROR tests\test_tensorflow_python_ops_control_flow_ops.py::test_eager_graph_mode_consistency[cond-True]
+6 errors in 2.05s
+
+Error: exit 1

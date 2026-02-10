@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_functional_ops.py::TestFunctionalOps::test_scan_accumulation[dtype1-None-True-False-graph]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "Tensor.graph属性在eager执行模式下不可用，需要修复图模式下的expected tensor处理"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_functional_ops.py::TestFunctionalOps::test_if_conditional_branch[True-input_shape0-dtype0-add_one-subtract_one-eager]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径'tensorflow.python.ops.gen_functional_ops._if'不存在，需要修复导入路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_functional_ops.py::TestFunctionalOps::test_if_conditional_branch[False-input_shape1-dtype1-multiply_two-divide_two-graph]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

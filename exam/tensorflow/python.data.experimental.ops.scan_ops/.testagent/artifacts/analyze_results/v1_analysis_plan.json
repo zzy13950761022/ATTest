@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_scan_basic_functionality",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "警告捕获机制问题，需要修复警告断言逻辑"
+    },
+    {
+      "test": "test_scan_nested_structure_matching",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "警告捕获机制问题，与CASE_01相同错误类型"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

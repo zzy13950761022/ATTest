@@ -1,0 +1,433 @@
+=== Run Tests ===
+FF......FF                                                               [100%]
+=================================== FAILURES ===================================
+_____________ test_init_process_group_basic[gloo-env://-2-0-1800-] _____________
+
+backend = 'gloo', init_method = 'env://', world_size = 2, rank = 0
+timeout_val = 1800, group_name = '', mock_backend_detection = None
+cleanup_process_groups = None
+
+    @pytest.mark.parametrize("backend,init_method,world_size,rank,timeout_val,group_name", [
+        ("gloo", "env://", 2, 0, 1800, ""),
+    ])
+    def test_init_process_group_basic(
+        backend, init_method, world_size, rank, timeout_val, group_name,
+        mock_backend_detection, cleanup_process_groups
+    ):
+        """
+        TC-01: 基本进程组初始化与销毁
+        验证进程组可以正常初始化和销毁
+        """
+        # 模拟环境变量
+        with patch.dict(os.environ, {
+            "MASTER_ADDR": "localhost",
+            "MASTER_PORT": "12345",
+            "WORLD_SIZE": str(world_size),
+            "RANK": str(rank)
+        }):
+            # 模拟init_process_group内部调用
+            mock_pg = Mock(spec=dist_c10d.ProcessGroup)
+            mock_pg.rank.return_value = rank
+            mock_pg.size.return_value = world_size
+            # 注意：ProcessGroup类可能没有backend属性，所以不设置它
+    
+            with patch.object(dist_c10d, '_GLOO_AVAILABLE', True):
+                with patch('torch.distributed.distributed_c10d.ProcessGroupGloo', return_value=mock_pg):
+                    with patch.object(dist_c10d, '_pg_map', {}):
+                        with patch.object(dist_c10d, '_pg_names', {}):
+                            with patch.object(dist_c10d, '_pg_group_ranks', {}):
+                                # 调用初始化
+>                               dist_c10d.init_process_group(
+                                    backend=backend,
+                                    init_method=init_method,
+                                    world_size=world_size,
+                                    rank=rank,
+                                    timeout=timedelta(seconds=timeout_val),
+                                    group_name=group_name
+                                )
+
+tests/test_torch_distributed_distributed_c10d_g1.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:786: in init_process_group
+    _store_based_barrier(rank, store, timeout)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rank = 0
+store = <torch.distributed.distributed_c10d.PrefixStore object at 0x14084a930>
+timeout = datetime.timedelta(seconds=1800)
+
+    def _store_based_barrier(rank, store, timeout):
+        """
+        Barrier based on store which is used for synchronizing processes after
+        ``init_process_group`` or ``new_group``. Intended to be used only with
+        those two methods and is not a generic alternative to ``barrier()``.
+        """
+        store_key = "{}:{}".format(STORE_BASED_BARRIER_PREFIX, _group_count)
+        store.add(store_key, 1)
+        logger.info("Added key: {} to store for rank: {}".format(store_key, rank))
+    
+        # Now wait for all workers to check in with the store.
+        world_size = get_world_size()
+        # Use 'add' instead of 'get' since for some store implementations 'add'
+        # doesn't work well with 'get'. Ideally the store implementations should
+        # be fixed, but for backward compatiblity reasons it is risky to change
+        # the store implementations. Once, we completely migrate away from these
+        # legacy stores, we can use 'get' here instead.
+        worker_count = store.add(store_key, 0)
+        start = time.time()
+        log_time = time.time()
+        while worker_count != world_size:
+            time.sleep(0.01)
+            worker_count = store.add(store_key, 0)
+    
+            # Print status periodically to keep track.
+            if timedelta(seconds=(time.time() - log_time)) > timedelta(seconds=10):
+                logger.info(
+                    "Waiting in store based barrier to initialize process group for "
+                    "rank: {}, key: {} (world_size={}, worker_count={}, timeout={})".format(
+                        rank, store_key, world_size, worker_count, timeout
+                    )
+                )
+                log_time = time.time()
+    
+            if timedelta(seconds=(time.time() - start)) > timeout:
+>               raise RuntimeError(
+                    "Timed out initializing process group in store based barrier on "
+                    "rank: {}, for key: {} (world_size={}, worker_count={}, timeout={})".format(
+                        rank, store_key, world_size, worker_count, timeout
+                    )
+                )
+E               RuntimeError: Timed out initializing process group in store based barrier on rank: 0, for key: store_based_barrier_key:1 (world_size=2, worker_count=1, timeout=0:30:00)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:346: RuntimeError
+___________________ test_init_process_group_invalid_backend ____________________
+
+mock_backend_detection = None, cleanup_process_groups = None
+
+    def test_init_process_group_invalid_backend(
+        mock_backend_detection, cleanup_process_groups
+    ):
+        """
+        TC-02: 无效backend参数异常
+        验证传入无效backend时会抛出ValueError
+        """
+        backend = "invalid_backend"
+        init_method = "env://"
+        world_size = 2
+        rank = 0
+        timeout_val = 1800
+    
+        # 模拟环境变量
+        with patch.dict(os.environ, {
+            "MASTER_ADDR": "localhost",
+            "MASTER_PORT": "12345",
+            "WORLD_SIZE": str(world_size),
+            "RANK": str(rank)
+        }):
+            # weak断言1: 异常被抛出
+            with pytest.raises(ValueError) as exc_info:
+>               dist_c10d.init_process_group(
+                    backend=backend,
+                    init_method=init_method,
+                    world_size=world_size,
+                    rank=rank,
+                    timeout=timedelta(seconds=timeout_val)
+                )
+
+tests/test_torch_distributed_distributed_c10d_g1.py:156: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+backend = 'invalid_backend', init_method = 'env://'
+timeout = datetime.timedelta(seconds=1800), world_size = 2, rank = 0
+store = None, group_name = '', pg_options = None
+
+    def init_process_group(
+        backend: Union[str, Backend],
+        init_method: Optional[str] = None,
+        timeout: timedelta = default_pg_timeout,
+        world_size: int = -1,
+        rank: int = -1,
+        store: Optional[Store] = None,
+        group_name: str = "",
+        pg_options: Optional[Any] = None,
+    ):
+        """
+        Initializes the default distributed process group, and this will also
+        initialize the distributed package.
+    
+        There are 2 main ways to initialize a process group:
+            1. Specify ``store``, ``rank``, and ``world_size`` explicitly.
+            2. Specify ``init_method`` (a URL string) which indicates where/how
+               to discover peers. Optionally specify ``rank`` and ``world_size``,
+               or encode all required parameters in the URL and omit them.
+    
+        If neither is specified, ``init_method`` is assumed to be "env://".
+    
+    
+        Args:
+            backend (str or Backend): The backend to use. Depending on
+                build-time configurations, valid values include ``mpi``, ``gloo``,
+                ``nccl``, and ``ucc``. This field should be given as a lowercase
+                string (e.g., ``"gloo"``), which can also be accessed via
+                :class:`Backend` attributes (e.g., ``Backend.GLOO``). If using
+                multiple processes per machine with ``nccl`` backend, each process
+                must have exclusive access to every GPU it uses, as sharing GPUs
+                between processes can result in deadlocks. ``ucc`` backend is
+                experimental.
+            init_method (str, optional): URL specifying how to initialize the
+                                         process group. Default is "env://" if no
+                                         ``init_method`` or ``store`` is specified.
+                                         Mutually exclusive with ``store``.
+            world_size (int, optional): Number of processes participating in
+                                        the job. Required if ``store`` is specified.
+            rank (int, optional): Rank of the current process (it should be a
+                                  number between 0 and ``world_size``-1).
+                                  Required if ``store`` is specified.
+            store(Store, optional): Key/value store accessible to all workers, used
+                                    to exchange connection/address information.
+                                    Mutually exclusive with ``init_method``.
+            timeout (timedelta, optional): Timeout for operations executed against
+                the process group. Default value equals 30 minutes.
+                This is applicable for the ``gloo`` backend. For ``nccl``, this is
+                applicable only if the environment variable ``NCCL_BLOCKING_WAIT``
+                or ``NCCL_ASYNC_ERROR_HANDLING`` is set to 1. When
+                ``NCCL_BLOCKING_WAIT`` is set, this is the duration for which the
+                process will block and wait for collectives to complete before
+                throwing an exception. When ``NCCL_ASYNC_ERROR_HANDLING`` is set,
+                this is the duration after which collectives will be aborted
+                asynchronously and the process will crash. ``NCCL_BLOCKING_WAIT``
+                will provide errors to the user which can be caught and handled,
+                but due to its blocking nature, it has a performance overhead. On
+                the other hand, ``NCCL_ASYNC_ERROR_HANDLING`` has very little
+                performance overhead, but crashes the process on errors. This is
+                done since CUDA execution is async and it is no longer safe to
+                continue executing user code since failed async NCCL operations
+                might result in subsequent CUDA operations running on corrupted
+                data. Only one of these two environment variables should be set.
+                For ``ucc``, blocking wait is supported similar to NCCL. However,
+                async error handling is done differently since with UCC we have
+                progress thread and not watch-dog thread.
+            group_name (str, optional, deprecated): Group name.
+            pg_options (ProcessGroupOptions, optional): process group options
+                specifying what additional options need to be passed in during
+                the construction of specific process groups. As of now, the only
+                options we support is ``ProcessGroupNCCL.Options`` for the ``nccl``
+                backend, ``is_high_priority_stream`` can be specified so that
+                the nccl backend can pick up high priority cuda streams when
+                there're compute kernels waiting.
+    
+        .. note:: To enable ``backend == Backend.MPI``, PyTorch needs to be built from source
+            on a system that supports MPI.
+    
+        """
+        global _pg_group_ranks
+        global _backend
+        global _default_pg_init_method
+    
+        if not isinstance(timeout, timedelta):
+            raise RuntimeError(
+                "Expected timeout argument to be of type" "datetime.timedelta"
+            )
+    
+        if GroupMember.WORLD is not None:
+>           raise RuntimeError("trying to initialize the default process group " "twice!")
+E           RuntimeError: trying to initialize the default process group twice!
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:722: RuntimeError
+_ TestDistributedC10DP2PAndUtils.test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2] _
+
+self = <test_torch_distributed_distributed_c10d_g3_fixed.TestDistributedC10DP2PAndUtils object at 0x1408452a0>
+tensor_shape = [4], dtype = 'float32', device = 'cpu', src_rank = 0
+dst_rank = 1, world_size = 2
+mock_default_group = <MagicMock name='_get_default_group' id='5378725088'>
+mock_is_initialized = <MagicMock name='is_initialized' id='5377682080'>
+mock_rank_not_in_group = <MagicMock name='_rank_not_in_group' id='5378034176'>
+mock_warn_not_in_group = <MagicMock name='_warn_not_in_group' id='5378042240'>
+mock_check_single_tensor = <MagicMock name='_check_single_tensor' id='5377968496'>
+mock_supports_complex = <MagicMock name='supports_complex' id='5377976560'>
+mock_get_group_rank = <MagicMock name='get_group_rank' id='5378001024'>
+mock_work = <Mock name='_get_default_group().send()' spec='Work' id='5378009040'>
+
+    @pytest.mark.parametrize(
+        "tensor_shape,dtype,device,src_rank,dst_rank,world_size",
+        [
+            # 基础用例来自测试计划
+            ([4], "float32", "cpu", 0, 1, 2),
+        ]
+    )
+    def test_async_send_recv_basic_flow(
+        self,
+        tensor_shape,
+        dtype,
+        device,
+        src_rank,
+        dst_rank,
+        world_size,
+        mock_default_group,
+        mock_is_initialized,
+        mock_rank_not_in_group,
+        mock_warn_not_in_group,
+        mock_check_single_tensor,
+        mock_supports_complex,
+        mock_get_group_rank,
+        mock_work
+    ):
+        """
+        TC-05: 异步发送接收基本流程
+        验证异步发送和接收的基本功能
+        """
+        # 创建测试张量
+        if dtype == "float32":
+            tensor = torch.randn(*tensor_shape, dtype=torch.float32)
+        elif dtype == "float64":
+            tensor = torch.randn(*tensor_shape, dtype=torch.float64)
+        else:
+            tensor = torch.randn(*tensor_shape)
+    
+        # 创建接收张量
+        recv_tensor = torch.zeros_like(tensor)
+    
+        # 获取模拟的进程组
+        mock_pg = mock_default_group.return_value
+    
+        # 模拟send和recv操作
+        mock_pg.send.return_value = mock_work
+        mock_pg.recv.return_value = mock_work
+        mock_pg.recv_anysource.return_value = mock_work
+    
+        # 模拟get_group_rank返回相同rank
+        mock_get_group_rank.return_value = dst_rank
+    
+        # 测试同步发送 - 直接patch torch.distributed.send
+        with patch('torch.distributed.send') as mock_send_func:
+            # 设置返回值
+            mock_send_func.return_value = mock_work
+    
+            # 调用send函数
+            result = dist.send(tensor, dst_rank)
+    
+            # weak断言1: 发送已初始化
+            mock_send_func.assert_called_once()
+            call_args = mock_send_func.call_args
+            # 检查参数
+            assert call_args[0][0] is tensor  # 第一个位置参数是张量
+            assert call_args[0][1] == dst_rank  # 第二个位置参数是目标rank
+            # 检查关键字参数（默认值）
+            assert call_args[1].get('group') is None  # group默认为None
+>           assert call_args[1].get('tag') == 0  # tag默认为0
+E           AssertionError: assert None == 0
+E            +  where None = <built-in method get of dict object at 0x1408db500>('tag')
+E            +    where <built-in method get of dict object at 0x1408db500> = {}.get
+
+tests/test_torch_distributed_distributed_c10d_g3_fixed.py:183: AssertionError
+_______ test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2] _______
+
+tensor_shape = [4], dtype = 'float32', device = 'cpu', src_rank = 0
+dst_rank = 1, world_size = 2
+mock_default_group = <MagicMock name='_get_default_group' id='5379214400'>
+mock_is_initialized = <MagicMock name='is_initialized' id='5379224528'>
+mock_rank_not_in_group = <MagicMock name='_rank_not_in_group' id='5378729072'>
+mock_warn_not_in_group = <MagicMock name='_warn_not_in_group' id='5378734544'>
+mock_check_single_tensor = <MagicMock name='_check_single_tensor' id='5377383424'>
+mock_supports_complex = <MagicMock name='supports_complex' id='5377509072'>
+mock_get_group_rank = <MagicMock name='get_group_rank' id='5377514880'>
+mock_work = <Mock name='_get_default_group().send()' spec='Work' id='5376986512'>
+
+    @pytest.mark.parametrize(
+        "tensor_shape,dtype,device,src_rank,dst_rank,world_size",
+        [
+            # 基础用例来自测试计划
+            ([4], "float32", "cpu", 0, 1, 2),
+        ]
+    )
+    def test_async_send_recv_basic_flow(
+        tensor_shape,
+        dtype,
+        device,
+        src_rank,
+        dst_rank,
+        world_size,
+        mock_default_group,
+        mock_is_initialized,
+        mock_rank_not_in_group,
+        mock_warn_not_in_group,
+        mock_check_single_tensor,
+        mock_supports_complex,
+        mock_get_group_rank,
+        mock_work
+    ):
+        """
+        TC-05: 异步发送接收基本流程
+        验证异步发送和接收的基本功能
+        """
+        # 创建测试张量
+        if dtype == "float32":
+            tensor = torch.randn(*tensor_shape, dtype=torch.float32)
+        elif dtype == "float64":
+            tensor = torch.randn(*tensor_shape, dtype=torch.float64)
+        else:
+            tensor = torch.randn(*tensor_shape)
+    
+        # 创建接收张量
+        recv_tensor = torch.zeros_like(tensor)
+    
+        # 获取模拟的进程组
+        mock_pg = mock_default_group.return_value
+    
+        # 模拟send和recv操作
+        mock_pg.send.return_value = mock_work
+        mock_pg.recv.return_value = mock_work
+        mock_pg.recv_anysource.return_value = mock_work
+    
+        # 模拟get_group_rank返回相同rank
+        mock_get_group_rank.return_value = dst_rank
+    
+        # 测试同步发送
+        with patch('torch.distributed.distributed_c10d.send') as mock_send_func:
+            # 模拟send函数返回Work对象
+            mock_send_func.return_value = mock_work
+    
+            # 调用send函数，提供正确的参数
+            result = dist.send(tensor, dst_rank, group=None, tag=0)
+    
+            # weak断言1: 发送已初始化
+>           mock_send_func.assert_called_once()
+
+tests/test_torch_distributed_distributed_c10d_g3.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='send' id='5376987232'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'send' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                        Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------------
+tests/test_torch_distributed_distributed_c10d_g1.py            86     33     24      3    62%   24-29, 34-38, 54->56, 56->58, 58->exit, 103-130, 165-177
+tests/test_torch_distributed_distributed_c10d_g2.py           125      7      8      4    92%   154-155, 215, 236-237, 240-241
+tests/test_torch_distributed_distributed_c10d_g3.py           118     47      4      1    59%   89-91, 141-144, 170-243
+tests/test_torch_distributed_distributed_c10d_g3_fixed.py     112     36      4      1    66%   88-90, 148-151, 186-247
+verify_fixes.py                                                38     38     16      0     0%   6-64
+-------------------------------------------------------------------------------------------------------
+TOTAL                                                         479    161     56      9    63%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_basic[gloo-env://-2-0-1800-]
+FAILED tests/test_torch_distributed_distributed_c10d_g1.py::test_init_process_group_invalid_backend
+FAILED tests/test_torch_distributed_distributed_c10d_g3_fixed.py::TestDistributedC10DP2PAndUtils::test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2]
+FAILED tests/test_torch_distributed_distributed_c10d_g3.py::test_async_send_recv_basic_flow[tensor_shape0-float32-cpu-0-1-2]
+4 failed, 6 passed in 3601.93s (1:00:01)
+
+Error: exit 1

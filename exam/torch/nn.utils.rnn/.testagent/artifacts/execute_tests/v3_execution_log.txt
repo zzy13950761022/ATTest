@@ -1,0 +1,119 @@
+=== Run Tests ===
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________ test_enforce_sorted_parameter_behavior[False-False-cpu-dtype0] ________
+
+dtype = torch.float32, device = 'cpu', batch_first = False
+enforce_sorted = False
+
+    @pytest.mark.parametrize("dtype", [torch.float32])
+    @pytest.mark.parametrize("device", ["cpu"])
+    @pytest.mark.parametrize("batch_first", [False])
+    @pytest.mark.parametrize("enforce_sorted", [False])
+    def test_enforce_sorted_parameter_behavior(
+        dtype: torch.dtype,
+        device: str,
+        batch_first: bool,
+        enforce_sorted: bool
+    ):
+        """TC-04: enforce_sorted参数行为"""
+        # Test parameters from param_matrix
+        unsorted_lengths = True
+        batch_size = 3
+        max_len = 5
+        feature_dim = 3
+    
+        # Generate UNSORTED lengths (not in descending order)
+        if unsorted_lengths:
+            # Create lengths that are not sorted
+            lengths = torch.tensor([3, 5, 2], device=device)  # Not sorted: 3, 5, 2
+        else:
+            lengths = torch.tensor([5, 3, 2], device=device)  # Sorted: 5, 3, 2
+    
+        # Create padded sequence with unsorted lengths
+        if batch_first:
+            padded = torch.zeros(batch_size, max_len, feature_dim, dtype=dtype, device=device)
+            for i, length in enumerate(lengths):
+                padded[i, :length] = torch.randn(length, feature_dim, dtype=dtype, device=device)
+        else:
+            padded = torch.zeros(max_len, batch_size, feature_dim, dtype=dtype, device=device)
+            for i, length in enumerate(lengths):
+                padded[:length, i] = torch.randn(length, feature_dim, dtype=dtype, device=device)
+    
+        # Weak assertions (epoch 1)
+        # Test with enforce_sorted=False (should work even with unsorted lengths)
+        if not enforce_sorted:
+            # 1. function_executes: Should execute without exception
+            packed = rnn_utils.pack_padded_sequence(
+                padded,
+                lengths,
+                batch_first=batch_first,
+                enforce_sorted=enforce_sorted
+            )
+    
+            # 2. no_exception: Already verified by execution
+            # 3. output_type_correct: Should return PackedSequence
+            assert isinstance(packed, rnn_utils.PackedSequence), \
+                f"Expected PackedSequence, got {type(packed)}"
+    
+            # 4. sorted_indices_present: Should have sorted_indices attribute
+            assert hasattr(packed, 'sorted_indices'), "PackedSequence should have sorted_indices"
+            assert hasattr(packed, 'unsorted_indices'), "PackedSequence should have unsorted_indices"
+    
+            # Verify that sorted_indices reflects the sorting
+            # When enforce_sorted=False, the function should sort internally
+            # sorted_indices should show the sorting order
+            assert packed.sorted_indices.shape == (batch_size,), \
+                f"Expected sorted_indices shape ({batch_size},), got {packed.sorted_indices.shape}"
+    
+            # Verify that unsorted_indices can restore original order
+            assert packed.unsorted_indices.shape == (batch_size,), \
+                f"Expected unsorted_indices shape ({batch_size},), got {packed.unsorted_indices.shape}"
+    
+            # Basic consistency checks
+            total_elements = lengths.sum().item()
+            assert packed.data.shape[0] == total_elements, \
+                f"Expected {total_elements} elements in data, got {packed.data.shape[0]}"
+    
+            # Device and dtype preservation
+            assert packed.data.device.type == device, \
+                f"Expected device {device}, got {packed.data.device.type}"
+            assert packed.data.dtype == dtype, \
+                f"Expected dtype {dtype}, got {packed.data.dtype}"
+    
+            # batch_sizes should be on CPU
+            assert packed.batch_sizes.device.type == 'cpu', \
+                f"batch_sizes should be on CPU, got {packed.batch_sizes.device.type}"
+    
+            # Test that we can pad back and recover data
+            padded_back, lengths_back = rnn_utils.pad_packed_sequence(
+                packed,
+                batch_first=batch_first
+            )
+    
+            # Verify lengths are recovered correctly
+            # Note: when unpacking, lengths should be in the sorted order
+            # We need to use unsorted_indices to get back to original order
+            sorted_lengths = lengths[packed.sorted_indices]
+>           assert torch.equal(lengths_back, sorted_lengths), \
+                f"Lengths mismatch: expected {sorted_lengths}, got {lengths_back}"
+E           AssertionError: Lengths mismatch: expected tensor([5, 3, 2]), got tensor([3, 5, 2])
+E           assert False
+E            +  where False = <built-in method equal of type object at 0x107252320>(tensor([3, 5, 2]), tensor([5, 3, 2]))
+E            +    where <built-in method equal of type object at 0x107252320> = torch.equal
+
+tests/test_torch_nn_utils_rnn_edge_cases.py:102: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                          Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------
+tests/test_torch_nn_utils_rnn_edge_cases.py      39      4     10      3    82%   35, 39-41, 49->exit
+-----------------------------------------------------------------------------------------
+TOTAL                                            39      4     10      3    82%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_rnn_edge_cases.py::test_enforce_sorted_parameter_behavior[False-False-cpu-dtype0]
+1 failed in 0.73s
+
+Error: exit 1

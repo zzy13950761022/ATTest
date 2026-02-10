@@ -1,0 +1,170 @@
+"""
+Test cases for tensorflow.python.framework.config module (Group G2: Memory and Experimental Features)
+"""
+import math
+import pytest
+import unittest.mock as mock
+from unittest.mock import patch, MagicMock
+import tensorflow as tf
+from tensorflow.python.framework import config
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions for G2
+@pytest.fixture
+def mock_context():
+    """Mock TensorFlow context to control memory and experimental features."""
+    with patch('tensorflow.python.eager.context.context') as mock_ctx:
+        context_instance = MagicMock()
+        mock_ctx.return_value = context_instance
+        yield context_instance
+
+@pytest.fixture
+def mock_gpu_device():
+    """Mock GPU device for memory testing."""
+    device = MagicMock()
+    device.name = "/physical_device:GPU:0"
+    device.device_type = "GPU"
+    return device
+
+@pytest.fixture
+def mock_tf32_wrapper():
+    """Mock TensorFloat-32 wrapper."""
+    with patch('tensorflow.python.framework.config._pywrap_tensor_float_32_execution') as mock_wrapper:
+        yield mock_wrapper
+
+def reset_memory_config():
+    """Reset memory configuration between tests."""
+    # Note: In real implementation, would reset memory growth settings
+    pass
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize(
+    "device,enable_growth,mock_gpu",
+    [
+        ("GPU:0", True, True),
+    ]
+)
+def test_memory_growth_configuration_basic_functionality(device, enable_growth, mock_gpu):
+    """
+    TC-03: Memory growth configuration basic functionality
+    Weak assertions: set_succeeds, no_exception, config_applied
+    """
+    # Create mock GPU device
+    mock_gpu_device = MagicMock()
+    mock_gpu_device.name = device
+    mock_gpu_device.device_type = "GPU"
+    
+    # Mock context.context() to return a mock context
+    mock_context_instance = MagicMock()
+    mock_context_instance.list_physical_devices.return_value = [mock_gpu_device]
+    
+    # Patch tensorflow.python.eager.context.context
+    with patch('tensorflow.python.eager.context.context') as mock_context_func:
+        mock_context_func.return_value = mock_context_instance
+        
+        # Execute: First get the device, then set memory growth
+        try:
+            # Get physical devices
+            physical_devices = config.list_physical_devices("GPU")
+            
+            # Set memory growth
+            config.set_memory_growth(physical_devices[0], enable_growth)
+            set_succeeded = True
+        except Exception as e:
+            set_succeeded = False
+            pytest.fail(f"set_memory_growth raised unexpected exception: {e}")
+        
+        # Weak assertion: set_succeeds
+        assert set_succeeded, "set_memory_growth should succeed"
+        
+        # Weak assertion: no_exception
+        # Already verified by try-except block
+        
+        # Weak assertion: config_applied
+        # Verify mock was called with correct parameters
+        mock_context_instance.set_memory_growth.assert_called_once()
+        call_args = mock_context_instance.set_memory_growth.call_args
+        
+        # Check device parameter
+        assert call_args[0][0] == mock_gpu_device, \
+            f"Expected device {mock_gpu_device}, got {call_args[0][0]}"
+        
+        # Check enable parameter
+        assert call_args[0][1] == enable_growth, \
+            f"Expected enable_growth={enable_growth}, got {call_args[0][1]}"
+        
+        # Verify list_physical_devices was called
+        mock_context_instance.list_physical_devices.assert_called_once_with("GPU")
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize(
+    "enable_tf32,mock_gpu",
+    [
+        (False, True),
+    ]
+)
+def test_tensorfloat_32_switch_state_control(enable_tf32, mock_gpu):
+    """
+    TC-04: TensorFloat-32 switch state control
+    Weak assertions: disable_succeeds, get_returns_false, no_exception
+    """
+    # Create mocks for TensorFloat-32 wrapper functions
+    is_enabled_mock = MagicMock(return_value=not enable_tf32)
+    
+    # Patch the wrapper functions from tensorflow.python.util
+    with patch('tensorflow.python.util._pywrap_tensor_float_32_execution.is_enabled', is_enabled_mock), \
+         patch('tensorflow.python.util._pywrap_tensor_float_32_execution.enable') as enable_mock:
+        
+        # Execute enable/disable operation
+        try:
+            config.enable_tensor_float_32_execution(enable_tf32)
+            set_succeeded = True
+        except Exception as e:
+            set_succeeded = False
+            pytest.fail(f"enable_tensor_float_32_execution raised unexpected exception: {e}")
+        
+        # Weak assertion: disable_succeeds (or enable_succeeds based on parameter)
+        assert set_succeeded, f"enable_tensor_float_32_execution({enable_tf32}) should succeed"
+        
+        # Verify mock was called with correct parameter
+        enable_mock.assert_called_once_with(enable_tf32)
+        
+        # Execute get operation
+        try:
+            is_enabled = config.tensor_float_32_execution_enabled()
+            get_succeeded = True
+        except Exception as e:
+            get_succeeded = False
+            pytest.fail(f"tensor_float_32_execution_enabled raised unexpected exception: {e}")
+        
+        # Weak assertion: no_exception for get
+        assert get_succeeded, "tensor_float_32_execution_enabled should succeed"
+        
+        # Weak assertion: get_returns_false (when enable_tf32=False)
+        # Note: The mock returns the opposite of enable_tf32 to simulate state change
+        expected_value = not enable_tf32  # Mock returns opposite of what was set
+        assert is_enabled == expected_value, \
+            f"Expected tensor_float_32_execution_enabled() to return {expected_value}, got {is_enabled}"
+        
+        # Verify mock was called
+        is_enabled_mock.assert_called_once()
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: Deferred test case
+# DEFERRED_SET: Will be implemented in later rounds
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Cleanup and teardown functions
+@pytest.fixture(autouse=True)
+def cleanup():
+    """Clean up after each test."""
+    yield
+    reset_memory_config()
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

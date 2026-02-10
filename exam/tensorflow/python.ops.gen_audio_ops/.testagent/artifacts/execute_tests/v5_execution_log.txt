@@ -1,0 +1,42 @@
+=== Run Tests ===
+...........F.Fatal Python error: Aborted
+
+Current thread 0x000000020345e240 (most recent call first):
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_audio_ops.py", line 72 in audio_spectrogram
+  File "/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/tensorflow/python.ops.gen_audio_ops/tests/test_tensorflow_python_ops_gen_audio_ops.py", line 723 in test_data_type_and_shape_error_handling
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/python.py", line 166 in pytest_pyfunc_call
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/python.py", line 1720 in runtest
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 179 in pytest_runtest_call
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 245 in <lambda>
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 353 in from_call
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 244 in call_and_report
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 137 in runtestprotocol
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/main.py", line 396 in pytest_runtestloop
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/main.py", line 372 in _main
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/main.py", line 318 in wrap_session
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/main.py", line 365 in pytest_cmdline_main
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/config/__init__.py", line 199 in main
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/config/__init__.py", line 223 in console_main
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pytest/__main__.py", line 9 in <module>
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/runpy.py", line 86 in _run_code
+  File "/opt/anaconda3/envs/testagent-experiment/lib/python3.10/runpy.py", line 196 in _run_module_as_main
+
+Extension modules: numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, tensorflow.python.framework.fast_tensor_util, charset_normalizer.md, requests.packages.charset_normalizer.md, requests.packages.chardet.md, h5py._errors, h5py.defs, h5py._objects, h5py.h5, h5py.utils, h5py.h5t, h5py.h5s, h5py.h5ac, h5py.h5p, h5py.h5r, h5py._proxy, h5py._conv, h5py.h5z, h5py.h5a, h5py.h5d, h5py.h5ds, h5py.h5g, h5py.h5i, h5py.h5o, h5py.h5f, h5py.h5fd, h5py.h5pl, h5py.h5l, h5py._selector (total: 41)
+
+Error: exit -6

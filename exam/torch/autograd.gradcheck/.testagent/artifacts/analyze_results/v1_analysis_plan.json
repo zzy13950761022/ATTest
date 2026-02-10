@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_autograd_gradcheck_basic.py::TestGradcheckBasic::test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001]",
+      "block_id": "CASE_02",
+      "error_type": "GradcheckError",
+      "action": "rewrite_block",
+      "note": "复数函数梯度计算错误：Jacobian mismatch，需要修正complex_function的梯度实现或调整测试参数"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

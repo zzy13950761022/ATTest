@@ -1,0 +1,43 @@
+{
+  "status": "成功",
+  "passed": 22,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_g3",
+      "block_id": "CASE_11",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "G3文件覆盖率仅63%，需补充测试覆盖缺失行20,25,35-46,118,266-308"
+    },
+    {
+      "test": "coverage_gap_g1",
+      "block_id": "CASE_12",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "G1文件覆盖率79%，需补充测试覆盖缺失行20,25,35-46,128,531-535"
+    },
+    {
+      "test": "mask_type_warning",
+      "block_id": "CASE_10",
+      "error_type": "DeprecationWarning",
+      "action": "adjust_assertion",
+      "note": "Byte tensor掩码已弃用，需更新测试使用bool tensor"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap_g2",
+      "reason": "G2文件覆盖率88%较高，优先级较低"
+    },
+    {
+      "test": "deferred_cases",
+      "reason": "原deferred_set中的CASE_03,06,07,08,09待后续迭代"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

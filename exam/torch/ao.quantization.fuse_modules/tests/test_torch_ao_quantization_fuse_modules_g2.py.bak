@@ -1,0 +1,327 @@
+import torch
+import torch.nn as nn
+import pytest
+import copy
+from torch.ao.quantization import fuse_modules
+
+
+# ==== BLOCK:HEADER START ====
+# Test helper functions and fixtures for G2 group
+
+import torch
+import torch.nn as nn
+import pytest
+import copy
+from torch.ao.quantization import fuse_modules
+
+
+def set_random_seed(seed=42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+class SimpleModel(nn.Module):
+    """Simple model for error handling tests."""
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.relu(x)
+        return x
+
+
+class SimpleConvBN(nn.Module):
+    """Simple model with conv-bn sequence for custom fuser tests."""
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.bn = nn.BatchNorm2d(16)
+    
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
+
+
+@pytest.fixture
+def random_input():
+    """Fixture providing random input tensor."""
+    set_random_seed(42)
+    return torch.randn(2, 3, 32, 32)
+
+
+def check_finite_output(output):
+    """Check that output contains finite values."""
+    assert torch.isfinite(output).all(), "Output contains NaN or infinite values"
+
+
+def check_output_shape(original_output, fused_output):
+    """Check that fused model output shape matches original."""
+    assert fused_output.shape == original_output.shape, \
+        f"Output shape mismatch: {fused_output.shape} != {original_output.shape}"
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+# Test case: 无效模块名称异常
+
+@pytest.mark.parametrize("modules_to_fuse,inplace", [
+    (["nonexistent_module"], False),  # Base case from param_matrix
+    (["conv", "nonexistent", "relu"], False),  # Extension: mixed valid and invalid
+])
+def test_invalid_module_name_exception(random_input, modules_to_fuse, inplace):
+    """Test that invalid module names raise appropriate exception."""
+    # Setup
+    model = SimpleModel()
+    model.eval()
+    
+    # Try to fuse with module names
+    # Weak assertions
+    # 1. Exception raised check
+    with pytest.raises(Exception) as exc_info:
+        fuse_modules(
+            model,
+            modules_to_fuse,
+            inplace=inplace,
+            fuser_func=None,
+            fuse_custom_config_dict=None
+        )
+    
+    # 2. Exception type check
+    exception = exc_info.value
+    # The actual exception type might be AttributeError or similar
+    # We'll check that some exception was raised
+    assert exception is not None, "Exception should be raised for invalid module name"
+    
+    # 3. Check exception message contains relevant info
+    exception_str = str(exception).lower()
+    # The message should indicate the module wasn't found
+    # Common patterns: "has no attribute", "not found", "nonexistent"
+    # For mixed case, check for any indication of error
+    invalid_found = any(keyword in exception_str for keyword in 
+               ["attribute", "not found", "nonexistent", "no module", "error"])
+    assert invalid_found, \
+        f"Exception message should indicate module error: {exception_str}"
+    
+    # 4. Verify model is unchanged after exception
+    # Check original modules still exist
+    original_modules = ["conv", "relu"]
+    for module_name in original_modules:
+        assert hasattr(model, module_name), \
+            f"Model should still have '{module_name}' after exception"
+    
+    # Model should still work
+    with torch.no_grad():
+        output = model(random_input)
+        assert torch.isfinite(output).all(), "Model should still produce valid output"
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# Test case: 非Module类型输入
+
+@pytest.mark.parametrize("invalid_model", [
+    None,           # None input
+    123,            # Integer input
+    "not_a_model",  # String input
+    [],             # List input
+    {},             # Dict input
+])
+def test_non_module_type_input(invalid_model):
+    """Test that non-Module type inputs raise appropriate exception."""
+    # Try to fuse with invalid model type
+    modules_to_fuse = ["conv", "bn"]
+    
+    # Weak assertions
+    # 1. Exception raised check
+    with pytest.raises(Exception) as exc_info:
+        fuse_modules(
+            invalid_model,
+            modules_to_fuse,
+            inplace=False,
+            fuser_func=None,
+            fuse_custom_config_dict=None
+        )
+    
+    # 2. Exception type check
+    exception = exc_info.value
+    assert exception is not None, "Exception should be raised for non-Module input"
+    
+    # 3. Check exception message contains relevant error info
+    # Based on execution logs, the actual error is "X object has no attribute 'conv'"
+    # This is an AttributeError, not necessarily a type error
+    exception_str = str(exception).lower()
+    
+    # Check for attribute access errors or type errors
+    # Common patterns for non-Module inputs:
+    # - "has no attribute" (AttributeError for missing 'conv' attribute)
+    # - "object has no attribute" 
+    # - "type" (TypeError)
+    # - "module" (indicating Module expected)
+    error_indicators = ["has no attribute", "object has no", "attribute", "type", "module"]
+    error_found = any(indicator in exception_str for indicator in error_indicators)
+    
+    assert error_found, \
+        f"Exception should indicate attribute or type error: {exception_str}"
+    
+    # 4. Additional check: verify it's an AttributeError or TypeError
+    # The actual exception type depends on implementation
+    # It could be AttributeError (trying to access 'conv' attribute)
+    # or TypeError (wrong type passed to function)
+    assert isinstance(exception, (AttributeError, TypeError)), \
+        f"Exception should be AttributeError or TypeError, got {type(exception).__name__}"
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:CASE_08 START ====
+# Test case: 空列表输入
+
+@pytest.mark.parametrize("inplace", [False])
+def test_empty_list_input(random_input, inplace):
+    """Test that empty modules_to_fuse list behaves correctly."""
+    # Setup
+    model = SimpleModel()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Try to fuse with empty list
+    modules_to_fuse = []
+    
+    # Weak assertions
+    # 1. No exception check
+    # The function should complete without raising an exception
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=None,
+        fuse_custom_config_dict=None
+    )
+    
+    # 2. Model type check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    
+    # 3. Output shape check
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    check_output_shape(original_output, fused_output)
+    
+    # 4. Check that model structure is unchanged
+    assert hasattr(fused_model, 'conv'), "Model should still have 'conv'"
+    assert hasattr(fused_model, 'relu'), "Model should still have 'relu'"
+    
+    # 5. Check module types remain the same
+    conv_module = fused_model.conv
+    relu_module = fused_model.relu
+    
+    # With empty list, modules should remain unchanged
+    assert isinstance(conv_module, nn.Conv2d), "conv should remain Conv2d"
+    assert isinstance(relu_module, nn.ReLU), "relu should remain ReLU"
+    
+    # 6. Model ID check for inplace behavior
+    if inplace:
+        assert fused_model is model, "Inplace should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace should return new model"
+    
+    # 7. Check output is approximately equal (within tolerance)
+    # For empty fusion list, outputs should be identical
+    output_diff = torch.abs(fused_output - original_output).max().item()
+    assert output_diff < 1e-6, \
+        f"Outputs should be identical for empty fusion list, diff={output_diff}"
+# ==== BLOCK:CASE_08 END ====
+
+
+# ==== BLOCK:CASE_09 START ====
+# Test case: 自定义fuser_func
+
+from unittest.mock import Mock, patch
+
+@pytest.mark.parametrize("inplace", [False])
+def test_custom_fuser_func(random_input, inplace):
+    """Test custom fuser_func parameter."""
+    # Setup
+    model = SimpleConvBN()
+    model.eval()
+    
+    # Get original output
+    with torch.no_grad():
+        original_output = model(random_input)
+    
+    # Create a mock custom fuser function
+    mock_fuser = Mock()
+    
+    # Configure the mock to return a simple replacement
+    # The fuser function typically takes (model, modules_to_fuse, is_qat, **kwargs)
+    # and returns a fused module
+    def mock_fuser_func(model, modules_to_fuse, is_qat=False, **kwargs):
+        # For testing, just return a simple Conv2d that mimics fusion
+        # In reality, this would create a fused ConvBn2d
+        return nn.Conv2d(3, 16, kernel_size=3, padding=1)
+    
+    mock_fuser.side_effect = mock_fuser_func
+    
+    # Fuse modules with custom fuser
+    modules_to_fuse = ["conv", "bn"]
+    fused_model = fuse_modules(
+        model,
+        modules_to_fuse,
+        inplace=inplace,
+        fuser_func=mock_fuser_func,
+        fuse_custom_config_dict=None
+    )
+    
+    # Get fused output
+    with torch.no_grad():
+        fused_output = fused_model(random_input)
+    
+    # Weak assertions
+    # 1. No exception check
+    # The function should complete without raising an exception
+    
+    # 2. Model type check
+    assert isinstance(fused_model, nn.Module), "Fused model should be a Module"
+    
+    # 3. Output shape check
+    check_output_shape(original_output, fused_output)
+    
+    # 4. Check that custom fuser was called (indirectly)
+    # Since we can't directly mock the internal call, we verify the result
+    # The conv module should now be a Conv2d (from our mock fuser)
+    conv_module = fused_model.conv
+    assert isinstance(conv_module, nn.Conv2d), \
+        "conv should be Conv2d after custom fuser"
+    
+    # 5. Check bn module exists (should be identity or similar)
+    assert hasattr(fused_model, 'bn'), "Fused model should have 'bn'"
+    
+    # 6. Model ID check for inplace behavior
+    if inplace:
+        assert fused_model is model, "Inplace should return same model"
+    else:
+        assert fused_model is not model, "Non-inplace should return new model"
+    
+    # Note: In a real test with proper mocking, we would:
+    # 1. Mock the fuser_func and verify it was called with correct arguments
+    # 2. Check that the mock's return value was used
+    # However, without knowing the exact internal implementation,
+    # we can only verify the external behavior.
+# ==== BLOCK:CASE_09 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup for G2 group
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

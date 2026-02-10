@@ -1,0 +1,182 @@
+=== Run Tests ===
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_________ test_sample_from_datasets_v2_basic[2-weights0-42-20-False] __________
+
+datasets_count = 2, weights = [0.5, 0.5], seed = 42, dataset_size = 20
+stop_on_empty = False
+
+    @pytest.mark.parametrize(
+        "datasets_count,weights,seed,dataset_size,stop_on_empty",
+        [
+            (2, [0.5, 0.5], 42, 20, False),
+        ]
+    )
+    def test_sample_from_datasets_v2_basic(
+        datasets_count, weights, seed, dataset_size, stop_on_empty
+    ):
+        """Test basic sampling functionality of sample_from_datasets_v2."""
+        # Create datasets with offset values to distinguish them
+        datasets = []
+        for i in range(datasets_count):
+            offset = i * 100  # Different offset for each dataset
+            dataset = tf.data.Dataset.range(offset, offset + dataset_size)
+            datasets.append(dataset)
+    
+        # Apply sample_from_datasets_v2 with deprecation warning capture
+        with capture_deprecation_warnings() as w:
+            result_dataset = interleave_ops.sample_from_datasets_v2(
+                datasets=datasets,
+                weights=weights,
+                seed=seed,
+                stop_on_empty_dataset=stop_on_empty
+            )
+    
+            # Verify deprecation warning is raised
+>           assert len(w) > 0, "Deprecation warning should be raised"
+E           AssertionError: Deprecation warning should be raised
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py:74: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 17:35:58.115438: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:deprecation.py:337 From D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.interleave_ops\tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py:66: sample_from_datasets_v2 (from tensorflow.python.data.experimental.ops.interleave_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.data.Dataset.sample_from_datasets(...)`.
+__________ test_choose_from_datasets_v2_basic[3-sequential-15-False] __________
+
+datasets_count = 3, choice_pattern = 'sequential', dataset_size = 15
+stop_on_empty = False
+
+    @pytest.mark.parametrize(
+        "datasets_count,choice_pattern,dataset_size,stop_on_empty",
+        [
+            (3, "sequential", 15, False),
+        ]
+    )
+    def test_choose_from_datasets_v2_basic(
+        datasets_count, choice_pattern, dataset_size, stop_on_empty
+    ):
+        """Test basic selection functionality of choose_from_datasets_v2."""
+        # Create datasets with offset values to distinguish them
+        datasets = []
+        for i in range(datasets_count):
+            offset = i * 100  # Different offset for each dataset
+            dataset = tf.data.Dataset.range(offset, offset + dataset_size)
+            datasets.append(dataset)
+    
+        # Create choice dataset based on pattern
+        if choice_pattern == "sequential":
+            # Sequential pattern: 0, 1, 2, 0, 1, 2, ...
+            choice_values = list(range(datasets_count)) * (dataset_size // datasets_count + 1)
+            choice_dataset = tf.data.Dataset.from_tensor_slices(choice_values[:dataset_size])
+        elif choice_pattern == "random":
+            # Random pattern (fixed seed for reproducibility)
+            tf.random.set_seed(42)
+            choice_dataset = tf.data.Dataset.random(
+                seed=42
+            ).map(lambda x: tf.cast(x * datasets_count, tf.int64))
+        else:
+            # Single choice pattern
+            choice_dataset = tf.data.Dataset.from_tensors(0).repeat(dataset_size)
+    
+        # Apply choose_from_datasets_v2 with deprecation warning capture
+        with capture_deprecation_warnings() as w:
+>           result_dataset = interleave_ops.choose_from_datasets_v2(
+                datasets=datasets,
+                choice_dataset=choice_dataset,
+                stop_on_empty_dataset=stop_on_empty
+            )
+
+tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py:160: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\deprecation.py:344: in new_func
+    return func(*args, **kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\interleave_ops.py:220: in choose_from_datasets_v2
+    return dataset_ops.Dataset.choose_from_datasets(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+datasets = [<RangeDataset element_spec=TensorSpec(shape=(), dtype=tf.int64, name=None)>, <RangeDataset element_spec=TensorSpec(shape=(), dtype=tf.int64, name=None)>, <RangeDataset element_spec=TensorSpec(shape=(), dtype=tf.int64, name=None)>]
+choice_dataset = <TensorSliceDataset element_spec=TensorSpec(shape=(), dtype=tf.int32, name=None)>
+stop_on_empty_dataset = False
+
+    @staticmethod
+    def choose_from_datasets(datasets,
+                             choice_dataset,
+                             stop_on_empty_dataset=True):
+      """Creates a dataset that deterministically chooses elements from `datasets`.
+    
+      For example, given the following datasets:
+    
+      ```python
+      datasets = [tf.data.Dataset.from_tensors("foo").repeat(),
+                  tf.data.Dataset.from_tensors("bar").repeat(),
+                  tf.data.Dataset.from_tensors("baz").repeat()]
+    
+      # Define a dataset containing `[0, 1, 2, 0, 1, 2, 0, 1, 2]`.
+      choice_dataset = tf.data.Dataset.range(3).repeat(3)
+    
+      result = tf.data.Dataset.choose_from_datasets(datasets, choice_dataset)
+      ```
+    
+      The elements of `result` will be:
+    
+      ```
+      "foo", "bar", "baz", "foo", "bar", "baz", "foo", "bar", "baz"
+      ```
+    
+      Args:
+        datasets: A non-empty list of `tf.data.Dataset` objects with compatible
+          structure.
+        choice_dataset: A `tf.data.Dataset` of scalar `tf.int64` tensors between
+          `0` and `len(datasets) - 1`.
+        stop_on_empty_dataset: If `True`, selection stops if it encounters an
+          empty dataset. If `False`, it skips empty datasets. It is recommended to
+          set it to `True`. Otherwise, the selected elements start off as the user
+          intends, but may change as input datasets become empty. This can be
+          difficult to detect since the dataset starts off looking correct.
+          Defaults to `True`.
+    
+      Returns:
+        A dataset that interleaves elements from `datasets` according to the
+        values of `choice_dataset`.
+    
+      Raises:
+        TypeError: If `datasets` or `choice_dataset` has the wrong type.
+        ValueError: If `datasets` is empty.
+      """
+      if not datasets:
+        raise ValueError("Invalid `datasets`. `datasets` should not be empty.")
+      if not isinstance(choice_dataset, DatasetV2):
+        raise TypeError(f"Invalid `choice_dataset`. `choice_dataset` should be a "
+                        f"`tf.data.Dataset` but is {type(choice_dataset)}.")
+      if not structure.are_compatible(choice_dataset.element_spec,
+                                      tensor_spec.TensorSpec([], dtypes.int64)):
+>       raise TypeError(f"Invalid `choice_dataset`. Elements of `choice_dataset` "
+                        f"must be scalar `tf.int64` tensors but are "
+                        f"{choice_dataset.element_spec}.")
+E       TypeError: Invalid `choice_dataset`. Elements of `choice_dataset` must be scalar `tf.int64` tensors but are TensorSpec(shape=(), dtype=tf.int32, name=None).
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:3440: TypeError
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:deprecation.py:337 From D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.interleave_ops\tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py:160: choose_from_datasets_v2 (from tensorflow.python.data.experimental.ops.interleave_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.data.Dataset.choose_from_datasets(...)` instead. Note that, unlike the experimental endpoint, the non-experimental endpoint sets `stop_on_empty_dataset=True` by default. You should set this argument explicitly in case you would like to match the behavior of the experimental endpoint.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                      Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py      90     53     28      2    36%   17-20, 26-28, 33-36, 78-120, 148-156, 167, 171-202, 223
+---------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                        90     53     28      2    36%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py::test_sample_from_datasets_v2_basic[2-weights0-42-20-False]
+FAILED tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g2.py::test_choose_from_datasets_v2_basic[3-sequential-15-False]
+2 failed in 1.61s
+
+Error: exit 1

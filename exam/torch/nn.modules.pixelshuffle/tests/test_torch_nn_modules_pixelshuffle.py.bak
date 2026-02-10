@@ -1,0 +1,918 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+from torch.nn.modules.pixelshuffle import PixelShuffle, PixelUnshuffle
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+@pytest.fixture
+def set_random_seed():
+    """Set random seed for reproducibility"""
+    torch.manual_seed(42)
+    return 42
+
+def create_test_tensor(shape, dtype=torch.float32, device='cpu'):
+    """Create test tensor with deterministic values"""
+    torch.manual_seed(42)
+    if shape[0] == 0:  # Empty batch
+        return torch.empty(shape, dtype=dtype, device=device)
+    return torch.randn(shape, dtype=dtype, device=device)
+
+def assert_tensor_shapes_equal(actual, expected, msg=""):
+    """Assert tensor shapes match"""
+    assert actual.shape == expected.shape, f"{msg} Shape mismatch: {actual.shape} != {expected.shape}"
+
+def assert_tensor_dtype_preserved(input_tensor, output_tensor, msg=""):
+    """Assert output dtype matches input dtype"""
+    assert output_tensor.dtype == input_tensor.dtype, f"{msg} Dtype mismatch: {output_tensor.dtype} != {input_tensor.dtype}"
+
+def assert_tensor_finite(output_tensor, msg=""):
+    """Assert tensor contains only finite values"""
+    assert torch.isfinite(output_tensor).all(), f"{msg} Tensor contains non-finite values"
+
+# ==== BLOCK:HEADER END ====
+
+class TestPixelShuffle:
+    """Test cases for PixelShuffle module"""
+    
+    # ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("upscale_factor,input_shape,dtype,device", [
+        (2, [1, 16, 4, 4], torch.float32, 'cpu'),
+    ])
+    def test_pixelshuffle_basic_shape_transform(self, upscale_factor, input_shape, dtype, device):
+        """TC-01: PixelShuffle基本形状变换
+        
+        Test basic shape transformation of PixelShuffle.
+        Input shape: (*, C × r², H, W) -> Output shape: (*, C, H × r, W × r)
+        """
+        # Create PixelShuffle module
+        pixel_shuffle = PixelShuffle(upscale_factor)
+        
+        # Create input tensor
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_shuffle(input_tensor)
+        
+        # Calculate expected output shape
+        batch_size = input_shape[0]
+        input_channels = input_shape[1]
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        expected_channels = input_channels // (upscale_factor * upscale_factor)
+        expected_height = height * upscale_factor
+        expected_width = width * upscale_factor
+        expected_shape = (batch_size, expected_channels, expected_height, expected_width)
+        
+        # Weak assertions
+        # 1. Output shape matches expected
+        assert_tensor_shapes_equal(
+            output_tensor, 
+            torch.empty(expected_shape, dtype=dtype, device=device),
+            "Output shape mismatch"
+        )
+        
+        # 2. Dtype preserved
+        assert_tensor_dtype_preserved(
+            input_tensor,
+            output_tensor,
+            "Dtype not preserved"
+        )
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            output_tensor,
+            "Output contains non-finite values"
+        )
+        
+        # Additional verification: manual calculation for specific case
+        if upscale_factor == 2 and input_shape == [1, 16, 4, 4]:
+            # For upscale_factor=2, input (1, 16, 4, 4) -> output (1, 4, 8, 8)
+            assert output_tensor.shape == torch.Size([1, 4, 8, 8])
+            
+            # Verify the transformation logic
+            # Create a test pattern where each channel has unique values
+            test_input = torch.arange(16 * 4 * 4, dtype=dtype, device=device).reshape(1, 16, 4, 4).float()
+            test_output = pixel_shuffle(test_input)
+            
+            # Check that output height and width are doubled
+            assert test_output.shape[2] == 8
+            assert test_output.shape[3] == 8
+            
+            # Check that values are rearranged correctly
+            assert torch.allclose(test_output[0, 0, 0, 0], test_input[0, 0, 0, 0])
+            assert torch.allclose(test_output[0, 0, 0, 1], test_input[0, 1, 0, 0])
+            assert torch.allclose(test_output[0, 0, 1, 0], test_input[0, 2, 0, 0])
+            assert torch.allclose(test_output[0, 0, 1, 1], test_input[0, 3, 0, 0])
+    # ==== BLOCK:CASE_01 END ====
+    
+    # ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("upscale_factor,input_shape,dtype,device", [
+        (1, [2, 4, 8, 8], torch.float32, 'cpu'),
+    ])
+    def test_pixelshuffle_scale_factor_boundary(self, upscale_factor, input_shape, dtype, device):
+        """TC-02: PixelShuffle缩放因子边界
+        
+        Test PixelShuffle with scale factor = 1 (identity transformation).
+        When upscale_factor=1, output should be identical to input.
+        """
+        # Create PixelShuffle module with scale factor 1
+        pixel_shuffle = PixelShuffle(upscale_factor)
+        
+        # Create input tensor
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_shuffle(input_tensor)
+        
+        # Weak assertions
+        # 1. Output shape matches input shape (identity transformation)
+        assert_tensor_shapes_equal(
+            output_tensor,
+            input_tensor,
+            "Output shape should match input shape for upscale_factor=1"
+        )
+        
+        # 2. Input and output should be equal (identity check)
+        # For upscale_factor=1, PixelShuffle should be identity operation
+        assert torch.allclose(
+            output_tensor,
+            input_tensor,
+            rtol=1e-6,
+            atol=1e-6
+        ), "Output should be identical to input for upscale_factor=1"
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            output_tensor,
+            "Output contains non-finite values"
+        )
+        
+        # Additional verification for identity property
+        assert output_tensor.shape == input_tensor.shape
+        
+        # Verify all values are exactly the same
+        assert torch.equal(output_tensor, input_tensor)
+        
+        # Test with different random inputs to ensure it's not a coincidence
+        for _ in range(3):
+            random_input = torch.randn_like(input_tensor)
+            random_output = pixel_shuffle(random_input)
+            assert torch.allclose(random_output, random_input, rtol=1e-6, atol=1e-6)
+    # ==== BLOCK:CASE_02 END ====
+    
+    # ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("upscale_factor,input_shape,dtype,device", [
+        (3, [0, 27, 6, 6], torch.float32, 'cpu'),
+    ])
+    def test_pixelshuffle_different_batch_sizes(self, upscale_factor, input_shape, dtype, device):
+        """TC-03: PixelShuffle不同批次大小
+        
+        Test PixelShuffle with different batch sizes, including empty batch.
+        """
+        # Create PixelShuffle module
+        pixel_shuffle = PixelShuffle(upscale_factor)
+        
+        # Create input tensor (empty batch when batch_size=0)
+        if input_shape[0] == 0:
+            # Empty batch tensor
+            input_tensor = torch.empty(input_shape, dtype=dtype, device=device)
+        else:
+            input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_shuffle(input_tensor)
+        
+        # Calculate expected output shape
+        batch_size = input_shape[0]
+        input_channels = input_shape[1]
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        expected_channels = input_channels // (upscale_factor * upscale_factor)
+        expected_height = height * upscale_factor
+        expected_width = width * upscale_factor
+        expected_shape = (batch_size, expected_channels, expected_height, expected_width)
+        
+        # Weak assertions
+        # 1. Output shape matches expected
+        assert_tensor_shapes_equal(
+            output_tensor, 
+            torch.empty(expected_shape, dtype=dtype, device=device),
+            "Output shape mismatch for empty batch"
+        )
+        
+        # 2. Dtype preserved
+        assert_tensor_dtype_preserved(
+            input_tensor,
+            output_tensor,
+            "Dtype not preserved for empty batch"
+        )
+        
+        # 3. Finite values (skip for empty tensor)
+        if input_tensor.numel() > 0:
+            assert_tensor_finite(
+                output_tensor,
+                "Output contains non-finite values"
+            )
+        
+        # Additional verification for empty batch
+        if batch_size == 0:
+            # Empty batch should produce empty output with correct shape
+            assert output_tensor.numel() == 0
+            assert output_tensor.shape == torch.Size(expected_shape)
+            
+            # Test with non-empty batch for comparison
+            non_empty_shape = [2] + input_shape[1:]  # batch_size=2
+            non_empty_input = create_test_tensor(non_empty_shape, dtype=dtype, device=device)
+            non_empty_output = pixel_shuffle(non_empty_input)
+            
+            # Verify shape transformation works correctly for non-empty batch
+            assert non_empty_output.shape == torch.Size([2, expected_channels, expected_height, expected_width])
+            
+            # Verify each batch element is transformed independently
+            for i in range(2):
+                single_input = non_empty_input[i:i+1]
+                single_output = pixel_shuffle(single_input)
+                assert torch.allclose(
+                    single_output,
+                    non_empty_output[i:i+1],
+                    rtol=1e-6,
+                    atol=1e-6
+                ), f"Batch element {i} not transformed independently"
+    # ==== BLOCK:CASE_03 END ====
+    
+    # ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("upscale_factor,input_shape,dtype,device", [
+        (2, [1, 16, 4, 4], torch.float64, 'cpu'),
+    ])
+    def test_pixelshuffle_different_data_types(self, upscale_factor, input_shape, dtype, device):
+        """TC-04: PixelShuffle不同数据类型
+        
+        Test PixelShuffle with different data types (float64).
+        """
+        # Create PixelShuffle module
+        pixel_shuffle = PixelShuffle(upscale_factor)
+        
+        # Create input tensor with specified dtype
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_shuffle(input_tensor)
+        
+        # Calculate expected output shape
+        batch_size = input_shape[0]
+        input_channels = input_shape[1]
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        expected_channels = input_channels // (upscale_factor * upscale_factor)
+        expected_height = height * upscale_factor
+        expected_width = width * upscale_factor
+        expected_shape = (batch_size, expected_channels, expected_height, expected_width)
+        
+        # Weak assertions
+        # 1. Output shape matches expected
+        assert_tensor_shapes_equal(
+            output_tensor, 
+            torch.empty(expected_shape, dtype=dtype, device=device),
+            "Output shape mismatch for float64 dtype"
+        )
+        
+        # 2. Dtype preserved (float64 should remain float64)
+        assert_tensor_dtype_preserved(
+            input_tensor,
+            output_tensor,
+            "Dtype not preserved for float64"
+        )
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            output_tensor,
+            "Output contains non-finite values for float64"
+        )
+        
+        # Additional verification for float64 precision
+        # Create a test pattern with known values
+        test_input = torch.arange(16 * 4 * 4, dtype=dtype, device=device).reshape(1, 16, 4, 4).double()
+        test_output = pixel_shuffle(test_input)
+        
+        # Verify shape transformation
+        assert test_output.shape == torch.Size([1, 4, 8, 8])
+        
+        # Verify values are rearranged correctly with float64 precision
+        # Check specific positions to ensure transformation is correct
+        assert torch.allclose(
+            test_output[0, 0, 0, 0],
+            torch.tensor(0.0, dtype=dtype),
+            rtol=1e-12,
+            atol=1e-12
+        )
+        
+        assert torch.allclose(
+            test_output[0, 0, 0, 1],
+            torch.tensor(1.0, dtype=dtype),
+            rtol=1e-12,
+            atol=1e-12
+        )
+        
+        assert torch.allclose(
+            test_output[0, 0, 1, 0],
+            torch.tensor(2.0, dtype=dtype),
+            rtol=1e-12,
+            atol=1e-12
+        )
+        
+        # Compare with float32 version to ensure consistency
+        pixel_shuffle_float32 = PixelShuffle(upscale_factor)
+        input_float32 = test_input.float()
+        output_float32 = pixel_shuffle_float32(input_float32)
+        
+        # Values should be consistent up to float32 precision
+        assert torch.allclose(
+            test_output.float(),
+            output_float32,
+            rtol=1e-6,
+            atol=1e-6
+        ), "Float64 and float32 results should be consistent"
+    # ==== BLOCK:CASE_04 END ====
+
+class TestPixelUnshuffle:
+    """Test cases for PixelUnshuffle module"""
+    
+    # ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("downscale_factor,input_shape,dtype,device", [
+        (2, [1, 4, 8, 8], torch.float32, 'cpu'),
+    ])
+    def test_pixelunshuffle_basic_shape_transform(self, downscale_factor, input_shape, dtype, device):
+        """TC-05: PixelUnshuffle基本形状变换
+        
+        Test basic shape transformation of PixelUnshuffle.
+        Input shape: (*, C, H, W) -> Output shape: (*, C × r², H ÷ r, W ÷ r)
+        """
+        # Create PixelUnshuffle module
+        pixel_unshuffle = PixelUnshuffle(downscale_factor)
+        
+        # Create input tensor
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_unshuffle(input_tensor)
+        
+        # Calculate expected output shape
+        batch_size = input_shape[0]
+        input_channels = input_shape[1]
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        expected_channels = input_channels * (downscale_factor * downscale_factor)
+        expected_height = height // downscale_factor
+        expected_width = width // downscale_factor
+        expected_shape = (batch_size, expected_channels, expected_height, expected_width)
+        
+        # Weak assertions
+        # 1. Output shape matches expected
+        assert_tensor_shapes_equal(
+            output_tensor, 
+            torch.empty(expected_shape, dtype=dtype, device=device),
+            "Output shape mismatch for PixelUnshuffle"
+        )
+        
+        # 2. Dtype preserved
+        assert_tensor_dtype_preserved(
+            input_tensor,
+            output_tensor,
+            "Dtype not preserved for PixelUnshuffle"
+        )
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            output_tensor,
+            "Output contains non-finite values for PixelUnshuffle"
+        )
+        
+        # Additional verification: manual calculation for specific case
+        if downscale_factor == 2 and input_shape == [1, 4, 8, 8]:
+            # For downscale_factor=2, input (1, 4, 8, 8) -> output (1, 16, 4, 4)
+            assert output_tensor.shape == torch.Size([1, 16, 4, 4])
+            
+            # Verify the transformation logic
+            # Create a test pattern where each position has unique values
+            test_input = torch.arange(4 * 8 * 8, dtype=dtype, device=device).reshape(1, 4, 8, 8).float()
+            test_output = pixel_unshuffle(test_input)
+            
+            # Check that output height and width are halved
+            assert test_output.shape[2] == 4
+            assert test_output.shape[3] == 4
+            
+            # Check that values are rearranged correctly
+            # For PixelUnshuffle with downscale_factor=2:
+            # output[b, c, h, w] = input[b, c//4, h*2 + (c%4)//2, w*2 + (c%4)%2]
+            
+            # Position (0, 0, 0, 0): should come from input[0, 0, 0, 0] = 0
+            assert torch.allclose(test_output[0, 0, 0, 0], test_input[0, 0, 0, 0])
+            
+            # Position (0, 1, 0, 0): should come from input[0, 0, 0, 1] = 1
+            assert torch.allclose(test_output[0, 1, 0, 0], test_input[0, 0, 0, 1])
+            
+            # Position (0, 2, 0, 0): should come from input[0, 0, 1, 0] = 2
+            assert torch.allclose(test_output[0, 2, 0, 0], test_input[0, 0, 1, 0])
+            
+            # Position (0, 3, 0, 0): should come from input[0, 0, 1, 1] = 3
+            assert torch.allclose(test_output[0, 3, 0, 0], test_input[0, 0, 1, 1])
+            
+            # Position (0, 4, 0, 0): should come from input[0, 1, 0, 0] = 4
+            assert torch.allclose(test_output[0, 4, 0, 0], test_input[0, 1, 0, 0])
+    # ==== BLOCK:CASE_05 END ====
+    
+    # ==== BLOCK:CASE_06 START ====
+    @pytest.mark.parametrize("scale_factor,input_shape,dtype,device", [
+        (2, [2, 4, 6, 6], torch.float32, 'cpu'),
+    ])
+    def test_pixelshuffle_unshuffle_inverse(self, scale_factor, input_shape, dtype, device):
+        """TC-06: PixelShuffle与Unshuffle互逆
+        
+        Test that PixelShuffle and PixelUnshuffle are inverse operations.
+        PixelShuffle ∘ PixelUnshuffle = identity and vice versa.
+        """
+        # Create both modules
+        pixel_shuffle = PixelShuffle(scale_factor)
+        pixel_unshuffle = PixelUnshuffle(scale_factor)
+        
+        # Create input tensor
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Test 1: PixelUnshuffle then PixelShuffle (should return original)
+        # First apply PixelUnshuffle
+        unshuffled = pixel_unshuffle(input_tensor)
+        
+        # Then apply PixelShuffle
+        reconstructed = pixel_shuffle(unshuffled)
+        
+        # Weak assertions for identity after pair
+        # 1. Shape preserved after round-trip
+        assert_tensor_shapes_equal(
+            reconstructed,
+            input_tensor,
+            "Shape not preserved after PixelUnshuffle → PixelShuffle"
+        )
+        
+        # 2. Identity check: should be equal to original input
+        assert torch.allclose(
+            reconstructed,
+            input_tensor,
+            rtol=1e-6,
+            atol=1e-6
+        ), "PixelShuffle ∘ PixelUnshuffle not identity"
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            reconstructed,
+            "Reconstructed tensor contains non-finite values"
+        )
+        
+        # Test 2: PixelShuffle then PixelUnshuffle (on compatible shape)
+        # Create a tensor with shape compatible for PixelShuffle
+        # Need input channels divisible by scale_factor²
+        batch_size = input_shape[0]
+        compatible_channels = 4  # divisible by 4 for scale_factor=2
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        compatible_shape = [batch_size, compatible_channels, height, width]
+        compatible_input = create_test_tensor(compatible_shape, dtype=dtype, device=device)
+        
+        # Apply PixelShuffle
+        shuffled = pixel_shuffle(compatible_input)
+        
+        # Then apply PixelUnshuffle
+        unshuffled2 = pixel_unshuffle(shuffled)
+        
+        # Should return original compatible input
+        assert torch.allclose(
+            unshuffled2,
+            compatible_input,
+            rtol=1e-6,
+            atol=1e-6
+        ), "PixelUnshuffle ∘ PixelShuffle not identity"
+        
+        # Additional verification with different random inputs
+        for _ in range(3):
+            random_input = torch.randn_like(input_tensor)
+            random_unshuffled = pixel_unshuffle(random_input)
+            random_reconstructed = pixel_shuffle(random_unshuffled)
+            
+            assert torch.allclose(
+                random_reconstructed,
+                random_input,
+                rtol=1e-6,
+                atol=1e-6
+            ), f"Random test failed for PixelShuffle ∘ PixelUnshuffle"
+        
+        # Verify the mathematical relationship
+        # For scale_factor=2:
+        # PixelShuffle output shape: (batch, C/4, H*2, W*2)
+        # PixelUnshuffle output shape: (batch, C*4, H/2, W/2)
+        
+        if scale_factor == 2 and input_shape == [2, 4, 6, 6]:
+            # Input shape: (2, 4, 6, 6)
+            unshuffled_shape = pixel_unshuffle(input_tensor).shape
+            assert unshuffled_shape == torch.Size([2, 16, 3, 3])
+            
+            reconstructed_shape = pixel_shuffle(pixel_unshuffle(input_tensor)).shape
+            assert reconstructed_shape == torch.Size([2, 4, 6, 6])
+    # ==== BLOCK:CASE_06 END ====
+    
+    # ==== BLOCK:CASE_07 START ====
+    @pytest.mark.parametrize("downscale_factor,input_shape,dtype,device", [
+        (3, [1, 2, 9, 9], torch.float32, 'cpu'),
+    ])
+    def test_pixelunshuffle_different_devices(self, downscale_factor, input_shape, dtype, device):
+        """TC-07: PixelUnshuffle不同设备
+        
+        Test PixelUnshuffle on CPU device.
+        Note: CUDA testing requires GPU availability, so we test CPU consistency.
+        """
+        # Create PixelUnshuffle module
+        pixel_unshuffle = PixelUnshuffle(downscale_factor)
+        
+        # Create input tensor
+        input_tensor = create_test_tensor(input_shape, dtype=dtype, device=device)
+        
+        # Forward pass
+        output_tensor = pixel_unshuffle(input_tensor)
+        
+        # Calculate expected output shape
+        batch_size = input_shape[0]
+        input_channels = input_shape[1]
+        height = input_shape[2]
+        width = input_shape[3]
+        
+        expected_channels = input_channels * (downscale_factor * downscale_factor)
+        expected_height = height // downscale_factor
+        expected_width = width // downscale_factor
+        expected_shape = (batch_size, expected_channels, expected_height, expected_width)
+        
+        # Weak assertions
+        # 1. Output shape matches expected
+        assert_tensor_shapes_equal(
+            output_tensor, 
+            torch.empty(expected_shape, dtype=dtype, device=device),
+            "Output shape mismatch for PixelUnshuffle on CPU"
+        )
+        
+        # 2. Dtype preserved
+        assert_tensor_dtype_preserved(
+            input_tensor,
+            output_tensor,
+            "Dtype not preserved for PixelUnshuffle on CPU"
+        )
+        
+        # 3. Finite values
+        assert_tensor_finite(
+            output_tensor,
+            "Output contains non-finite values for PixelUnshuffle on CPU"
+        )
+        
+        # Additional verification for specific case
+        if downscale_factor == 3 and input_shape == [1, 2, 9, 9]:
+            # For downscale_factor=3, input (1, 2, 9, 9) -> output (1, 18, 3, 3)
+            assert output_tensor.shape == torch.Size([1, 18, 3, 3])
+            
+            # Verify the transformation is invertible
+            pixel_shuffle = PixelShuffle(downscale_factor)
+            reconstructed = pixel_shuffle(output_tensor)
+            
+            # Should get back original input
+            assert torch.allclose(
+                reconstructed,
+                input_tensor,
+                rtol=1e-6,
+                atol=1e-6
+            ), "PixelShuffle ∘ PixelUnshuffle not identity for downscale_factor=3"
+            
+            # Test with a simple pattern
+            test_input = torch.arange(2 * 9 * 9, dtype=dtype, device=device).reshape(1, 2, 9, 9).float()
+            test_output = pixel_unshuffle(test_input)
+            
+            # Verify shape
+            assert test_output.shape == torch.Size([1, 18, 3, 3])
+            
+            # Verify values are rearranged correctly
+            # Check a few positions
+            assert torch.allclose(test_output[0, 0, 0, 0], test_input[0, 0, 0, 0])
+            assert torch.allclose(test_output[0, 1, 0, 0], test_input[0, 0, 0, 1])
+            assert torch.allclose(test_output[0, 2, 0, 0], test_input[0, 0, 0, 2])
+            
+        # Note: For CUDA testing, we would need GPU availability
+        # This test verifies CPU functionality as specified in requirements
+    # ==== BLOCK:CASE_07 END ====
+    
+    # ==== BLOCK:CASE_08 START ====
+    # PixelUnshuffle边界整除 (DEFERRED - placeholder only)
+    # TC-08: PixelUnshuffle边界整除
+    # Parameters: downscale_factor=4, input_shape=[1, 3, 16, 16], dtype=float32, device=cpu
+    # Assertions (weak): output_shape, dtype_preserved, finite_values
+    # ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and edge case tests
+
+def test_pixelshuffle_invalid_upscale_factor():
+    """Test PixelShuffle with invalid upscale factor"""
+    with pytest.raises(ValueError):
+        PixelShuffle(0)
+    
+    with pytest.raises(ValueError):
+        PixelShuffle(-1)
+
+def test_pixelshuffle_invalid_input_channels():
+    """Test PixelShuffle with input channels not divisible by r²"""
+    pixel_shuffle = PixelShuffle(2)
+    # Input channels = 15, not divisible by 4
+    input_tensor = torch.randn(1, 15, 4, 4)
+    with pytest.raises(RuntimeError):
+        pixel_shuffle(input_tensor)
+
+def test_pixelunshuffle_invalid_downscale_factor():
+    """Test PixelUnshuffle with invalid downscale factor"""
+    with pytest.raises(ValueError):
+        PixelUnshuffle(0)
+    
+    with pytest.raises(ValueError):
+        PixelUnshuffle(-1)
+
+def test_pixelunshuffle_invalid_input_dimensions():
+    """Test PixelUnshuffle with input dimensions not divisible by r"""
+    pixel_unshuffle = PixelUnshuffle(2)
+    # Input height/width = 5, not divisible by 2
+    input_tensor = torch.randn(1, 4, 5, 5)
+    with pytest.raises(RuntimeError):
+        pixel_unshuffle(input_tensor)
+
+def test_pixelshuffle_minimum_dimensions():
+    """Test PixelShuffle with minimum required dimensions"""
+    pixel_shuffle = PixelShuffle(2)
+    # 4D tensor (minimum)
+    input_tensor = torch.randn(1, 4, 2, 2)
+    output = pixel_shuffle(input_tensor)
+    assert output.dim() == 4
+    
+    # 5D tensor (batch + 4D)
+    input_tensor_5d = torch.randn(2, 1, 4, 4, 4)
+    output_5d = pixel_shuffle(input_tensor_5d)
+    assert output_5d.dim() == 5
+
+def test_pixelunshuffle_minimum_dimensions():
+    """Test PixelUnshuffle with minimum required dimensions"""
+    pixel_unshuffle = PixelUnshuffle(2)
+    # 4D tensor (minimum)
+    input_tensor = torch.randn(1, 1, 4, 4)
+    output = pixel_unshuffle(input_tensor)
+    assert output.dim() == 4
+    
+    # 5D tensor (batch + 4D)
+    input_tensor_5d = torch.randn(2, 1, 4, 4, 4)
+    output_5d = pixel_unshuffle(input_tensor_5d)
+    assert output_5d.dim() == 5
+
+# Strong assertion tests for final round
+def test_pixelshuffle_exact_values_verification():
+    """Strong assertion: Verify exact values for PixelShuffle transformation"""
+    pixel_shuffle = PixelShuffle(2)
+    
+    # Create a test pattern with known values
+    # Input shape: (1, 16, 4, 4)
+    test_input = torch.arange(256, dtype=torch.float32).reshape(1, 16, 4, 4)
+    
+    # Apply PixelShuffle
+    test_output = pixel_shuffle(test_input)
+    
+    # Expected output shape: (1, 4, 8, 8)
+    assert test_output.shape == torch.Size([1, 4, 8, 8])
+    
+    # Verify exact transformation pattern
+    # For PixelShuffle with upscale_factor=2:
+    # output[b, c, h, w] = input[b, c*4 + (h%2)*2 + (w%2), h//2, w//2]
+    
+    # Test specific positions
+    # Position (0, 0, 0, 0): should come from input[0, 0, 0, 0] = 0
+    assert torch.allclose(test_output[0, 0, 0, 0], torch.tensor(0.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 0, 0, 1): should come from input[0, 1, 0, 0] = 1
+    assert torch.allclose(test_output[0, 0, 0, 1], torch.tensor(1.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 0, 1, 0): should come from input[0, 2, 0, 0] = 2
+    assert torch.allclose(test_output[0, 0, 1, 0], torch.tensor(2.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 0, 1, 1): should come from input[0, 3, 0, 0] = 3
+    assert torch.allclose(test_output[0, 0, 1, 1], torch.tensor(3.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 1, 0, 0): should come from input[0, 4, 0, 0] = 4
+    assert torch.allclose(test_output[0, 1, 0, 0], torch.tensor(4.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 3, 7, 7): should come from input[0, 15, 3, 3] = 255
+    assert torch.allclose(test_output[0, 3, 7, 7], torch.tensor(255.0), rtol=1e-7, atol=1e-7)
+
+def test_pixelshuffle_gradient_correctness():
+    """Strong assertion: Verify gradient correctness for PixelShuffle"""
+    pixel_shuffle = PixelShuffle(2)
+    
+    # Test 1: Simple gradient flow
+    input_tensor = torch.randn(1, 16, 4, 4, requires_grad=True)
+    output = pixel_shuffle(input_tensor)
+    
+    # Use sum loss
+    loss = output.sum()
+    loss.backward()
+    
+    # Check gradient exists and has correct shape
+    assert input_tensor.grad is not None
+    assert input_tensor.grad.shape == input_tensor.shape
+    
+    # Check gradient is finite
+    assert torch.isfinite(input_tensor.grad).all()
+    
+    # Test 2: Gradient with L2 loss
+    input_tensor2 = torch.randn(1, 16, 4, 4, requires_grad=True)
+    output2 = pixel_shuffle(input_tensor2)
+    
+    l2_loss = (output2 ** 2).sum()
+    l2_loss.backward()
+    
+    assert input_tensor2.grad is not None
+    assert input_tensor2.grad.shape == input_tensor2.shape
+    assert torch.isfinite(input_tensor2.grad).all()
+    
+    # Test 3: Gradient consistency check
+    # The gradient should be consistent across different batch elements
+    input_tensor3 = torch.randn(2, 16, 4, 4, requires_grad=True)
+    output3 = pixel_shuffle(input_tensor3)
+    
+    # Use a loss that depends on all elements
+    loss3 = output3.norm()
+    loss3.backward()
+    
+    assert input_tensor3.grad is not None
+    assert input_tensor3.grad.shape == input_tensor3.shape
+    
+    # Check that gradient is not all zeros (unless input is special)
+    if not torch.allclose(input_tensor3, torch.zeros_like(input_tensor3), rtol=1e-6, atol=1e-6):
+        assert not torch.allclose(
+            input_tensor3.grad,
+            torch.zeros_like(input_tensor3.grad),
+            rtol=1e-6,
+            atol=1e-6
+        )
+
+def test_pixelunshuffle_exact_values_verification():
+    """Strong assertion: Verify exact values for PixelUnshuffle transformation"""
+    pixel_unshuffle = PixelUnshuffle(2)
+    
+    # Create a test pattern with known values
+    # Input shape: (1, 4, 8, 8)
+    test_input = torch.arange(256, dtype=torch.float32).reshape(1, 4, 8, 8)
+    
+    # Apply PixelUnshuffle
+    test_output = pixel_unshuffle(test_input)
+    
+    # Expected output shape: (1, 16, 4, 4)
+    assert test_output.shape == torch.Size([1, 16, 4, 4])
+    
+    # Verify exact transformation pattern
+    # For PixelUnshuffle with downscale_factor=2:
+    # output[b, c, h, w] = input[b, c//4, h*2 + (c%4)//2, w*2 + (c%4)%2]
+    
+    # Test specific positions
+    # Position (0, 0, 0, 0): should come from input[0, 0, 0, 0] = 0
+    assert torch.allclose(test_output[0, 0, 0, 0], torch.tensor(0.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 1, 0, 0): should come from input[0, 0, 0, 1] = 1
+    assert torch.allclose(test_output[0, 1, 0, 0], torch.tensor(1.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 2, 0, 0): should come from input[0, 0, 1, 0] = 2
+    assert torch.allclose(test_output[0, 2, 0, 0], torch.tensor(2.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 3, 0, 0): should come from input[0, 0, 1, 1] = 3
+    assert torch.allclose(test_output[0, 3, 0, 0], torch.tensor(3.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 4, 0, 0): should come from input[0, 1, 0, 0] = 4
+    assert torch.allclose(test_output[0, 4, 0, 0], torch.tensor(4.0), rtol=1e-7, atol=1e-7)
+    
+    # Position (0, 15, 3, 3): should come from input[0, 3, 7, 7] = 255
+    assert torch.allclose(test_output[0, 15, 3, 3], torch.tensor(255.0), rtol=1e-7, atol=1e-7)
+
+def test_pixelunshuffle_gradient_correctness():
+    """Strong assertion: Verify gradient correctness for PixelUnshuffle"""
+    pixel_unshuffle = PixelUnshuffle(2)
+    
+    # Test gradient flow
+    input_tensor = torch.randn(1, 4, 8, 8, requires_grad=True)
+    output = pixel_unshuffle(input_tensor)
+    
+    # Use sum loss
+    loss = output.sum()
+    loss.backward()
+    
+    # Check gradient exists and has correct shape
+    assert input_tensor.grad is not None
+    assert input_tensor.grad.shape == input_tensor.shape
+    
+    # Check gradient is finite
+    assert torch.isfinite(input_tensor.grad).all()
+    
+    # Test with different loss functions
+    input_tensor2 = torch.randn(1, 4, 8, 8, requires_grad=True)
+    output2 = pixel_unshuffle(input_tensor2)
+    
+    # Use mean squared error loss
+    target = torch.randn_like(output2)
+    mse_loss = ((output2 - target) ** 2).mean()
+    mse_loss.backward()
+    
+    assert input_tensor2.grad is not None
+    assert input_tensor2.grad.shape == input_tensor2.shape
+    assert torch.isfinite(input_tensor2.grad).all()
+
+def test_pixelshuffle_unshuffle_inverse_strong():
+    """Strong assertion: Verify PixelShuffle and PixelUnshuffle are exact inverses"""
+    # Test with different scale factors
+    for scale_factor in [2, 3, 4]:
+        pixel_shuffle = PixelShuffle(scale_factor)
+        pixel_unshuffle = PixelUnshuffle(scale_factor)
+        
+        # Create random input
+        input_tensor = torch.randn(2, 3 * scale_factor * scale_factor, 12, 12)
+        
+        # Test PixelUnshuffle then PixelShuffle
+        unshuffled = pixel_unshuffle(input_tensor)
+        reconstructed = pixel_shuffle(unshuffled)
+        
+        # Should be exactly equal (within numerical precision)
+        assert torch.allclose(
+            input_tensor,
+            reconstructed,
+            rtol=1e-7,
+            atol=1e-7
+        ), f"PixelShuffle ∘ PixelUnshuffle not identity for scale_factor={scale_factor}"
+        
+        # Test PixelShuffle then PixelUnshuffle (on compatible shape)
+        input_tensor2 = torch.randn(2, 3, 12 * scale_factor, 12 * scale_factor)
+        shuffled = pixel_shuffle(input_tensor2)
+        unshuffled2 = pixel_unshuffle(shuffled)
+        
+        assert torch.allclose(
+            input_tensor2,
+            unshuffled2,
+            rtol=1e-7,
+            atol=1e-7
+        ), f"PixelUnshuffle ∘ PixelShuffle not identity for scale_factor={scale_factor}"
+
+def test_pixelshuffle_batch_independence_strong():
+    """Strong assertion: Verify batch independence for PixelShuffle"""
+    pixel_shuffle = PixelShuffle(2)
+    
+    # Create batch of inputs
+    batch_size = 4
+    input_tensor = torch.randn(batch_size, 16, 4, 4)
+    
+    # Process entire batch
+    batch_output = pixel_shuffle(input_tensor)
+    
+    # Process each sample individually
+    for i in range(batch_size):
+        single_input = input_tensor[i:i+1]
+        single_output = pixel_shuffle(single_input)
+        
+        # Should match the corresponding batch output
+        assert torch.allclose(
+            single_output,
+            batch_output[i:i+1],
+            rtol=1e-7,
+            atol=1e-7
+        ), f"Batch sample {i} not independent"
+
+def test_pixelunshuffle_device_consistency_strong():
+    """Strong assertion: Verify PixelUnshuffle produces consistent results on CPU"""
+    pixel_unshuffle = PixelUnshuffle(2)
+    
+    # Create input tensor
+    input_tensor = torch.randn(1, 4, 8, 8)
+    
+    # Apply PixelUnshuffle
+    output = pixel_unshuffle(input_tensor)
+    
+    # Verify shape transformation
+    assert output.shape == torch.Size([1, 16, 4, 4])
+    
+    # Verify dtype preservation
+    assert output.dtype == input_tensor.dtype
+    
+    # Verify finite values
+    assert torch.isfinite(output).all()
+    
+    # Note: CUDA testing would require GPU availability
+    # This test verifies CPU consistency as a strong assertion
+# ==== BLOCK:FOOTER END ====

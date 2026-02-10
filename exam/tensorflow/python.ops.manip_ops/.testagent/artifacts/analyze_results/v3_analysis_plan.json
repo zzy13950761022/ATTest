@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_boundary_conditions_empty_scalar[input_shape1-input_dtype1-0-0-标量张量滚动无变化]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "create_test_tensor函数无法处理标量形状[]，np.random.randn(*[])返回标量float而非数组"
+    },
+    {
+      "test": "test_type_validation_error_handling[input_shape0-input_dtype0-invalid-0-非int类型shift引发异常]",
+      "block_id": "CASE_05",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "期望捕获TypeError/ValueError，但实际抛出InvalidArgumentError，需要调整异常类型检查"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

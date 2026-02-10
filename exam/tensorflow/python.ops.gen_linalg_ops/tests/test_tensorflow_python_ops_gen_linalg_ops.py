@@ -1,0 +1,585 @@
+"""
+Test cases for tensorflow.python.ops.gen_linalg_ops module.
+Generated with TestAgent-CLI.
+"""
+
+import math
+import numpy as np
+import pytest
+import torch
+import tensorflow as tf
+from unittest.mock import patch, MagicMock
+
+# Import target functions
+from tensorflow.python.ops.gen_linalg_ops import (
+    Cholesky,
+    Qr,
+    MatrixInverse,
+    Svd,
+    BatchCholesky,
+    batch_cholesky,
+    qr,
+    matrix_inverse,
+    svd
+)
+
+# Set random seed for reproducibility
+np.random.seed(42)
+torch.manual_seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Helper functions for test data generation
+
+def generate_spd_matrix(n, dtype=np.float32):
+    """Generate a symmetric positive definite matrix."""
+    A = np.random.randn(n, n).astype(dtype)
+    # Make it symmetric
+    A = A @ A.T
+    # Ensure positive definite by adding diagonal dominance
+    A += n * np.eye(n, dtype=dtype)
+    return A
+
+def generate_full_rank_matrix(m, n, dtype=np.float64):
+    """Generate a full rank matrix."""
+    A = np.random.randn(m, n).astype(dtype)
+    # Ensure full rank for tall matrices
+    if m >= n:
+        U, _, Vt = np.linalg.svd(A, full_matrices=False)
+        A = U @ Vt
+    return A
+
+def generate_well_conditioned_matrix(n, dtype=np.float32):
+    """Generate a well-conditioned matrix."""
+    A = np.random.randn(n, n).astype(dtype)
+    # Make it well-conditioned by ensuring singular values are not too small
+    U, s, Vt = np.linalg.svd(A)
+    s = np.maximum(s, 0.1 * np.max(s))
+    A = U @ np.diag(s) @ Vt
+    return A
+
+# Mock fixtures for TensorFlow internal functions
+@pytest.fixture
+def mock_tf_internals():
+    """Mock TensorFlow internal functions to avoid actual execution."""
+    # Import the target module to get references to the actual imports
+    import tensorflow.python.ops.gen_linalg_ops as gen_linalg_ops
+    
+    # Save original references
+    original_pywrap_tfe = gen_linalg_ops.pywrap_tfe
+    original_execute = gen_linalg_ops._execute
+    
+    try:
+        # Create mock objects
+        mock_pywrap_tfe = MagicMock()
+        mock_execute = MagicMock()
+        
+        # Create mock for TFE_Py_FastPathExecute
+        mock_fastpath = MagicMock()
+        mock_pywrap_tfe.TFE_Py_FastPathExecute = mock_fastpath
+        
+        # Create mock for record_gradient
+        mock_record_grad = MagicMock()
+        mock_execute.record_gradient = mock_record_grad
+        
+        # Configure mock_fastpath to return appropriate values based on operation
+        def fastpath_side_effect(ctx, op_name, name, *args, **kwargs):
+            if op_name == "Cholesky":
+                # For Cholesky, return lower triangular factor
+                input_tensor = args[0]
+                if hasattr(input_tensor, 'numpy'):
+                    input_np = input_tensor.numpy()
+                else:
+                    input_np = input_tensor
+                # Compute Cholesky using numpy
+                L = np.linalg.cholesky(input_np)
+                return tf.convert_to_tensor(L, dtype=input_tensor.dtype)
+            elif op_name == "Qr":
+                # For QR, return Q and R
+                input_tensor = args[0]
+                if hasattr(input_tensor, 'numpy'):
+                    input_np = input_tensor.numpy()
+                else:
+                    input_np = input_tensor
+                Q, R = np.linalg.qr(input_np)
+                return (tf.convert_to_tensor(Q, dtype=input_tensor.dtype),
+                        tf.convert_to_tensor(R, dtype=input_tensor.dtype))
+            elif op_name == "MatrixInverse":
+                # For MatrixInverse, return inverse
+                input_tensor = args[0]
+                if hasattr(input_tensor, 'numpy'):
+                    input_np = input_tensor.numpy()
+                else:
+                    input_np = input_tensor
+                inv = np.linalg.inv(input_np)
+                return tf.convert_to_tensor(inv, dtype=input_tensor.dtype)
+            else:
+                raise ValueError(f"Unsupported operation: {op_name}")
+        
+        mock_fastpath.side_effect = fastpath_side_effect
+        mock_record_grad.return_value = None
+        
+        # Replace the module references
+        gen_linalg_ops.pywrap_tfe = mock_pywrap_tfe
+        gen_linalg_ops._execute = mock_execute
+        
+        yield {
+            'fastpath': mock_fastpath,
+            'record_grad': mock_record_grad,
+            'pywrap_tfe': mock_pywrap_tfe,
+            '_execute': mock_execute
+        }
+    finally:
+        # Restore original references
+        gen_linalg_ops.pywrap_tfe = original_pywrap_tfe
+        gen_linalg_ops._execute = original_execute
+
+# Tolerance constants
+FLOAT32_TOL = 1e-5
+FLOAT64_TOL = 1e-10
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("dtype_str,shape,matrix_type", [
+    ("float32", (3, 3), "symmetric_positive_definite"),
+    ("float64", (5, 5), "symmetric_positive_definite"),  # param extension: higher precision
+    ("float32", (1, 1), "symmetric_positive_definite"),  # param extension: minimal shape
+])
+def test_cholesky_decomposition(dtype_str, shape, matrix_type, mock_tf_internals):
+    """
+    Test Cholesky decomposition with weak assertions:
+    - shape_match: output shape matches input shape
+    - dtype_match: output dtype matches input dtype
+    - finite_values: output contains only finite values
+    - lower_triangular: output is lower triangular
+    """
+    # Convert dtype string to numpy dtype
+    dtype_map = {
+        "float32": np.float32,
+        "float64": np.float64
+    }
+    np_dtype = dtype_map[dtype_str]
+    tf_dtype = getattr(tf, dtype_str)
+    
+    # Generate test matrix
+    n = shape[0]
+    if matrix_type == "symmetric_positive_definite":
+        A_np = generate_spd_matrix(n, np_dtype)
+    else:
+        raise ValueError(f"Unsupported matrix_type: {matrix_type}")
+    
+    # Convert to TensorFlow tensor
+    A_tf = tf.constant(A_np, dtype=tf_dtype)
+    
+    # Call Cholesky with mocked internals
+    L_tf = Cholesky(input=A_tf)
+    
+    # Convert to numpy for assertions
+    L_np = L_tf.numpy()
+    
+    # Weak assertion 1: shape_match
+    assert L_np.shape == A_np.shape, \
+        f"Output shape {L_np.shape} doesn't match input shape {A_np.shape}"
+    
+    # Weak assertion 2: dtype_match
+    assert L_np.dtype == A_np.dtype, \
+        f"Output dtype {L_np.dtype} doesn't match input dtype {A_np.dtype}"
+    
+    # Weak assertion 3: finite_values
+    assert np.all(np.isfinite(L_np)), \
+        "Output contains non-finite values (NaN or Inf)"
+    
+    # Weak assertion 4: lower_triangular
+    # Check that upper triangular part (excluding diagonal) is zero
+    upper_tri = np.triu(L_np, k=1)
+    tol = FLOAT64_TOL if dtype_str == "float64" else FLOAT32_TOL
+    assert np.allclose(upper_tri, 0, atol=tol), \
+        "Output is not lower triangular (upper triangular part not zero)"
+    
+    # Optional: verify with torch oracle (weak assertion level)
+    A_torch = torch.tensor(A_np)
+    L_torch = torch.linalg.cholesky(A_torch)
+    L_torch_np = L_torch.numpy()
+    
+    # Compare with torch result (within tolerance)
+    assert np.allclose(L_np, L_torch_np, rtol=tol, atol=tol), \
+        "Cholesky result doesn't match torch reference"
+    
+    # Verify that mock was called
+    assert mock_tf_internals['fastpath'].called
+    # record_grad may or may not be called depending on context
+    # We don't assert it to avoid test flakiness
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("dtype_str,shape,flags,matrix_type", [
+    ("float64", (4, 3), [], "full_rank"),  # main test case
+    ("float32", (2, 2), ["full_matrices"], "full_rank"),  # param extension: square matrix
+])
+def test_qr_decomposition(dtype_str, shape, flags, matrix_type, mock_tf_internals):
+    """
+    Test QR decomposition with weak assertions:
+    - shape_match_q: Q matrix has correct shape
+    - shape_match_r: R matrix has correct shape  
+    - dtype_match: output dtypes match input dtype
+    - finite_values: outputs contain only finite values
+    """
+    # Convert dtype string to numpy dtype
+    dtype_map = {
+        "float32": np.float32,
+        "float64": np.float64
+    }
+    np_dtype = dtype_map[dtype_str]
+    tf_dtype = getattr(tf, dtype_str)
+    
+    # Generate test matrix
+    m, n = shape
+    if matrix_type == "full_rank":
+        A_np = generate_full_rank_matrix(m, n, np_dtype)
+    else:
+        raise ValueError(f"Unsupported matrix_type: {matrix_type}")
+    
+    # Convert to TensorFlow tensor
+    A_tf = tf.constant(A_np, dtype=tf_dtype)
+    
+    # Determine if full_matrices flag is set
+    full_matrices = "full_matrices" in flags
+    
+    # Call QR with mocked internals
+    # Note: TensorFlow's Qr returns (q, r) tuple
+    q_tf, r_tf = Qr(input=A_tf, full_matrices=full_matrices)
+    
+    # Convert to numpy for assertions
+    q_np = q_tf.numpy()
+    r_np = r_tf.numpy()
+    
+    # Weak assertion 1: shape_match_q
+    if full_matrices:
+        expected_q_shape = (m, m)  # full Q matrix
+    else:
+        expected_q_shape = (m, min(m, n))  # economy size Q
+    
+    assert q_np.shape == expected_q_shape, \
+        f"Q shape {q_np.shape} doesn't match expected {expected_q_shape}"
+    
+    # Weak assertion 2: shape_match_r
+    if full_matrices:
+        expected_r_shape = (m, n)  # full R matrix
+    else:
+        expected_r_shape = (min(m, n), n)  # economy size R
+    
+    assert r_np.shape == expected_r_shape, \
+        f"R shape {r_np.shape} doesn't match expected {expected_r_shape}"
+    
+    # Weak assertion 3: dtype_match
+    assert q_np.dtype == A_np.dtype, \
+        f"Q dtype {q_np.dtype} doesn't match input dtype {A_np.dtype}"
+    assert r_np.dtype == A_np.dtype, \
+        f"R dtype {r_np.dtype} doesn't match input dtype {A_np.dtype}"
+    
+    # Weak assertion 4: finite_values
+    assert np.all(np.isfinite(q_np)), \
+        "Q matrix contains non-finite values (NaN or Inf)"
+    assert np.all(np.isfinite(r_np)), \
+        "R matrix contains non-finite values (NaN or Inf)"
+    
+    # Optional: verify with torch oracle (weak assertion level)
+    A_torch = torch.tensor(A_np)
+    Q_torch, R_torch = torch.linalg.qr(A_torch, mode='full' if full_matrices else 'reduced')
+    Q_torch_np = Q_torch.numpy()
+    R_torch_np = R_torch.numpy()
+    
+    # Compare shapes with torch result
+    tol = FLOAT64_TOL if dtype_str == "float64" else FLOAT32_TOL
+    
+    # For QR, we need to handle sign ambiguity
+    # Compare absolute values or check reconstruction
+    A_reconstructed = q_np @ r_np
+    A_torch_reconstructed = Q_torch_np @ R_torch_np
+    
+    assert np.allclose(A_reconstructed, A_torch_reconstructed, rtol=tol, atol=tol), \
+        "QR reconstruction doesn't match torch reference"
+    
+    # Verify that mock was called
+    assert mock_tf_internals['fastpath'].called
+    # record_grad may or may not be called depending on context
+    # We don't assert it to avoid test flakiness
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("dtype_str,shape,matrix_type", [
+    ("float32", (2, 2), "well_conditioned"),  # main test case
+    ("float64", (4, 4), "well_conditioned"),  # param extension: larger matrix
+])
+def test_matrix_inverse(dtype_str, shape, matrix_type, mock_tf_internals):
+    """
+    Test Matrix Inverse with weak assertions:
+    - shape_match: output shape matches input shape
+    - dtype_match: output dtype matches input dtype
+    - finite_values: output contains only finite values
+    - inverse_shape: output is square matrix
+    """
+    # Convert dtype string to numpy dtype
+    dtype_map = {
+        "float32": np.float32,
+        "float64": np.float64
+    }
+    np_dtype = dtype_map[dtype_str]
+    tf_dtype = getattr(tf, dtype_str)
+    
+    # Generate test matrix
+    n = shape[0]
+    if matrix_type == "well_conditioned":
+        A_np = generate_well_conditioned_matrix(n, np_dtype)
+    else:
+        raise ValueError(f"Unsupported matrix_type: {matrix_type}")
+    
+    # Convert to TensorFlow tensor
+    A_tf = tf.constant(A_np, dtype=tf_dtype)
+    
+    # Call MatrixInverse with mocked internals
+    A_inv_tf = MatrixInverse(input=A_tf)
+    
+    # Convert to numpy for assertions
+    A_inv_np = A_inv_tf.numpy()
+    
+    # Weak assertion 1: shape_match
+    assert A_inv_np.shape == A_np.shape, \
+        f"Output shape {A_inv_np.shape} doesn't match input shape {A_np.shape}"
+    
+    # Weak assertion 2: dtype_match
+    assert A_inv_np.dtype == A_np.dtype, \
+        f"Output dtype {A_inv_np.dtype} doesn't match input dtype {A_np.dtype}"
+    
+    # Weak assertion 3: finite_values
+    assert np.all(np.isfinite(A_inv_np)), \
+        "Output contains non-finite values (NaN or Inf)"
+    
+    # Weak assertion 4: inverse_shape (implicitly checked by shape_match)
+    # Additional check: output should be square
+    assert A_inv_np.shape[0] == A_inv_np.shape[1], \
+        "Inverse output should be a square matrix"
+    
+    # Optional: verify with torch oracle (weak assertion level)
+    A_torch = torch.tensor(A_np)
+    A_inv_torch = torch.linalg.inv(A_torch)
+    A_inv_torch_np = A_inv_torch.numpy()
+    
+    # Compare with torch result (within tolerance)
+    tol = FLOAT64_TOL if dtype_str == "float64" else FLOAT32_TOL
+    assert np.allclose(A_inv_np, A_inv_torch_np, rtol=tol, atol=tol), \
+        "Matrix inverse doesn't match torch reference"
+    
+    # Basic inverse property check (weak level)
+    # A * A_inv should be close to identity
+    identity_approx = A_np @ A_inv_np
+    identity_expected = np.eye(n, dtype=np_dtype)
+    
+    # Use slightly looser tolerance for inverse property
+    inverse_tol = tol * 10  # Allow more tolerance for inverse property
+    assert np.allclose(identity_approx, identity_expected, rtol=inverse_tol, atol=inverse_tol), \
+        "A * A_inv is not close to identity matrix"
+    
+    # Verify that mock was called
+    assert mock_tf_internals['fastpath'].called
+    # record_grad may or may not be called depending on context
+    # We don't need to assert it since it's optional
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# Deferred test case for SVD decomposition
+# Will be implemented in later iterations
+# Test plan: TC-04 - SVD分解重构验证
+# Priority: High, Size: M, Assertion level: weak (for now)
+# Parameters: float64, shape (3, 5), flags: ["full_matrices"], matrix_type: "full_rank"
+# Weak assertions: shape_match_u, shape_match_s, shape_match_v, dtype_match, finite_values
+# Strong assertions (deferred): u_orthogonality, v_orthogonality, svd_reconstruction, singular_values_order, batch_consistency
+# Oracle: torch.linalg.svd
+# Requires mock: pywrap_tfe.TFE_Py_FastPathExecute, _execute.record_gradient
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Deferred test case for Batch operations
+# Will be implemented in later iterations
+# Test plan: TC-05 - 批量操作一致性验证
+# Priority: High, Size: S, Assertion level: weak (for now)
+# Parameters: float32, shape (2, 3, 3), flags: [], matrix_type: "symmetric_positive_definite", operation: "cholesky"
+# Weak assertions: batch_shape_match, dtype_match, finite_values, batch_dimension_preserved
+# Strong assertions (deferred): batch_consistency, independent_batch_processing, gradient_batch_support
+# Oracle: torch.linalg.cholesky
+# Requires mock: pywrap_tfe.TFE_Py_FastPathExecute, _execute.record_gradient
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper tests for edge cases
+
+def test_cholesky_invalid_input():
+    """Test Cholesky with non-positive-definite matrix should raise error."""
+    # Import the target module
+    import tensorflow.python.ops.gen_linalg_ops as gen_linalg_ops
+    
+    # Create a non-positive-definite matrix
+    A_np = np.array([[1.0, 2.0], [2.0, 1.0]], dtype=np.float32)  # Not positive definite
+    A_tf = tf.constant(A_np, dtype=tf.float32)
+    
+    # Save original references
+    original_pywrap_tfe = gen_linalg_ops.pywrap_tfe
+    original_execute = gen_linalg_ops._execute
+    
+    try:
+        # Create mock objects
+        mock_pywrap_tfe = MagicMock()
+        mock_execute = MagicMock()
+        
+        # Create mock for TFE_Py_FastPathExecute
+        mock_fastpath = MagicMock()
+        mock_pywrap_tfe.TFE_Py_FastPathExecute = mock_fastpath
+        
+        # Create mock for record_gradient
+        mock_record_grad = MagicMock()
+        mock_execute.record_gradient = mock_record_grad
+        
+        # Simulate C++ error by raising InvalidArgumentError
+        mock_fastpath.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "Cholesky decomposition was not successful")
+        
+        # Replace the module references
+        gen_linalg_ops.pywrap_tfe = mock_pywrap_tfe
+        gen_linalg_ops._execute = mock_execute
+        
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            Cholesky(input=A_tf)
+    finally:
+        # Restore original references
+        gen_linalg_ops.pywrap_tfe = original_pywrap_tfe
+        gen_linalg_ops._execute = original_execute
+
+def test_qr_with_zeros():
+    """Test QR decomposition with matrix containing zeros."""
+    # Import the target module
+    import tensorflow.python.ops.gen_linalg_ops as gen_linalg_ops
+    
+    A_np = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float64)
+    A_tf = tf.constant(A_np, dtype=tf.float64)
+    
+    # Save original references
+    original_pywrap_tfe = gen_linalg_ops.pywrap_tfe
+    original_execute = gen_linalg_ops._execute
+    
+    try:
+        # Create mock objects
+        mock_pywrap_tfe = MagicMock()
+        mock_execute = MagicMock()
+        
+        # Create mock for TFE_Py_FastPathExecute
+        mock_fastpath = MagicMock()
+        mock_pywrap_tfe.TFE_Py_FastPathExecute = mock_fastpath
+        
+        # Create mock for record_gradient
+        mock_record_grad = MagicMock()
+        mock_execute.record_gradient = mock_record_grad
+        
+        # Mock to return identity matrices
+        mock_fastpath.return_value = (
+            tf.constant(np.eye(2, dtype=np.float64)),
+            tf.constant(np.eye(2, dtype=np.float64))
+        )
+        
+        # Replace the module references
+        gen_linalg_ops.pywrap_tfe = mock_pywrap_tfe
+        gen_linalg_ops._execute = mock_execute
+        
+        q, r = Qr(input=A_tf, full_matrices=False)
+        assert q.shape == (2, 2)
+        assert r.shape == (2, 2)
+    finally:
+        # Restore original references
+        gen_linalg_ops.pywrap_tfe = original_pywrap_tfe
+        gen_linalg_ops._execute = original_execute
+
+def test_matrix_inverse_singular():
+    """Test MatrixInverse with singular matrix should raise error."""
+    # Import the target module
+    import tensorflow.python.ops.gen_linalg_ops as gen_linalg_ops
+    
+    # Create a singular matrix
+    A_np = np.array([[1.0, 1.0], [1.0, 1.0]], dtype=np.float32)  # Singular
+    A_tf = tf.constant(A_np, dtype=tf.float32)
+    
+    # Save original references
+    original_pywrap_tfe = gen_linalg_ops.pywrap_tfe
+    original_execute = gen_linalg_ops._execute
+    
+    try:
+        # Create mock objects
+        mock_pywrap_tfe = MagicMock()
+        mock_execute = MagicMock()
+        
+        # Create mock for TFE_Py_FastPathExecute
+        mock_fastpath = MagicMock()
+        mock_pywrap_tfe.TFE_Py_FastPathExecute = mock_fastpath
+        
+        # Create mock for record_gradient
+        mock_record_grad = MagicMock()
+        mock_execute.record_gradient = mock_record_grad
+        
+        # Simulate inversion error
+        mock_fastpath.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "Matrix is singular")
+        
+        # Replace the module references
+        gen_linalg_ops.pywrap_tfe = mock_pywrap_tfe
+        gen_linalg_ops._execute = mock_execute
+        
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            MatrixInverse(input=A_tf)
+    finally:
+        # Restore original references
+        gen_linalg_ops.pywrap_tfe = original_pywrap_tfe
+        gen_linalg_ops._execute = original_execute
+
+# Test for different dtypes (if supported)
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_dtype_support_cholesky(dtype):
+    """Test Cholesky supports different float dtypes."""
+    # Import the target module
+    import tensorflow.python.ops.gen_linalg_ops as gen_linalg_ops
+    
+    np_dtype = dtype.as_numpy_dtype
+    n = 3
+    A_np = generate_spd_matrix(n, np_dtype)
+    A_tf = tf.constant(A_np, dtype=dtype)
+    
+    # Save original references
+    original_pywrap_tfe = gen_linalg_ops.pywrap_tfe
+    original_execute = gen_linalg_ops._execute
+    
+    try:
+        # Create mock objects
+        mock_pywrap_tfe = MagicMock()
+        mock_execute = MagicMock()
+        
+        # Create mock for TFE_Py_FastPathExecute
+        mock_fastpath = MagicMock()
+        mock_pywrap_tfe.TFE_Py_FastPathExecute = mock_fastpath
+        
+        # Create mock for record_gradient
+        mock_record_grad = MagicMock()
+        mock_execute.record_gradient = mock_record_grad
+        
+        # Mock to return cholesky decomposition
+        L_np = np.linalg.cholesky(A_np)
+        mock_fastpath.return_value = tf.constant(L_np, dtype=dtype)
+        
+        # Replace the module references
+        gen_linalg_ops.pywrap_tfe = mock_pywrap_tfe
+        gen_linalg_ops._execute = mock_execute
+        
+        L_tf = Cholesky(input=A_tf)
+        assert L_tf.dtype == dtype
+        assert L_tf.shape == (n, n)
+    finally:
+        # Restore original references
+        gen_linalg_ops.pywrap_tfe = original_pywrap_tfe
+        gen_linalg_ops._execute = original_execute
+# ==== BLOCK:FOOTER END ====

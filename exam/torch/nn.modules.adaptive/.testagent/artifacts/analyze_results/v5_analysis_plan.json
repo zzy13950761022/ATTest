@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_log_prob[12-80-cutoffs0-4.0-False-2-dtype0-cpu]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "create_adaptive_softmax函数不支持dtype参数，需要修复函数签名或调用方式"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_invalid_parameters_g2",
+      "block_id": "FOOTER",
+      "error_type": "ZeroDivisionError",
+      "action": "adjust_assertion",
+      "note": "div_value=0.0时在__init__中导致除以零错误，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

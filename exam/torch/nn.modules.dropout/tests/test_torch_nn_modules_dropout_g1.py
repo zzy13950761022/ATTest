@@ -1,0 +1,429 @@
+import torch
+import torch.nn as nn
+import pytest
+import numpy as np
+from typing import Tuple, Dict, Any
+
+# ==== BLOCK:HEADER START ====
+
+
+def set_random_seed(seed: int = 42):
+    """Set random seeds for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+
+def create_test_tensor(shape: Tuple[int, ...], dtype: torch.dtype = torch.float32) -> torch.Tensor:
+    """Create a test tensor with given shape and dtype."""
+    return torch.randn(*shape, dtype=dtype)
+
+
+def assert_tensor_properties(output: torch.Tensor, expected_shape: Tuple[int, ...], 
+                           expected_dtype: torch.dtype, test_name: str = ""):
+    """Assert basic tensor properties."""
+    assert output.shape == expected_shape, f"{test_name}: Shape mismatch: {output.shape} != {expected_shape}"
+    assert output.dtype == expected_dtype, f"{test_name}: Dtype mismatch: {output.dtype} != {expected_dtype}"
+    assert not torch.any(torch.isnan(output)), f"{test_name}: Output contains NaN values"
+
+
+def approx_equal(a: torch.Tensor, b: torch.Tensor, tol: float = 1e-6) -> bool:
+    """Check if two tensors are approximately equal within tolerance."""
+    return torch.allclose(a, b, rtol=tol, atol=tol)
+
+
+@pytest.fixture(scope="function")
+def fixed_seed():
+    """Fixture to set fixed random seed for each test."""
+    set_random_seed(42)
+    yield
+    # Reset seed after test
+    torch.manual_seed(torch.initial_seed())
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+    ("Dropout", 0.5, False, (2, 3, 4), torch.float32, "cpu"),
+])
+def test_dropout_train_eval_mode_switching(class_name, p, inplace, shape, dtype, device):
+    """
+    TC-01: Dropout训练评估模式切换
+    Test that Dropout behaves correctly in training vs evaluation mode.
+    """
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test input
+    input_tensor = create_test_tensor(shape, dtype)
+    
+    # Instantiate the dropout module
+    if class_name == "Dropout":
+        dropout = nn.Dropout(p=p, inplace=inplace)
+    else:
+        raise ValueError(f"Unsupported class: {class_name}")
+    
+    # Test 1: Training mode (default)
+    dropout.train()
+    output_train = dropout(input_tensor.clone())
+    
+    # Weak assertions for training mode
+    assert_tensor_properties(output_train, shape, dtype, "Training mode")
+    
+    # Check that output is not identical to input (due to dropout)
+    assert not approx_equal(output_train, input_tensor), \
+        "In training mode, output should differ from input due to dropout"
+    
+    # Check no NaN values
+    assert not torch.any(torch.isnan(output_train)), "Output contains NaN values"
+    
+    # Test 2: Evaluation mode
+    dropout.eval()
+    output_eval = dropout(input_tensor.clone())
+    
+    # Weak assertions for evaluation mode
+    assert_tensor_properties(output_eval, shape, dtype, "Evaluation mode")
+    
+    # In evaluation mode, output should equal input (identity function)
+    assert approx_equal(output_eval, input_tensor), \
+        "In evaluation mode, output should equal input (identity function)"
+    
+    # Test 3: Verify mode switching works
+    dropout.train()
+    output_train2 = dropout(input_tensor.clone())
+    assert not approx_equal(output_train2, input_tensor), \
+        "After switching back to train mode, output should differ from input"
+    
+    # Test 4: Verify non-inplace operation doesn't modify input
+    if not inplace:
+        input_copy = input_tensor.clone()
+        _ = dropout(input_copy)
+        assert approx_equal(input_copy, input_tensor), \
+            "Non-inplace operation should not modify input tensor"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+    ("Dropout1d", 0.3, False, (4, 8, 16), torch.float32, "cpu"),
+])
+def test_dropout1d_shape_constraints(class_name, p, inplace, shape, dtype, device):
+    """
+    TC-02: Dropout1d形状约束验证
+    Test that Dropout1d preserves channel dimensions and handles shape constraints.
+    """
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test input
+    input_tensor = create_test_tensor(shape, dtype)
+    
+    # Instantiate the dropout module
+    if class_name == "Dropout1d":
+        dropout = nn.Dropout1d(p=p, inplace=inplace)
+    else:
+        raise ValueError(f"Unsupported class: {class_name}")
+    
+    # Test in training mode
+    dropout.train()
+    output = dropout(input_tensor.clone())
+    
+    # Weak assertions
+    assert_tensor_properties(output, shape, dtype, "Dropout1d training mode")
+    
+    # Check that channel dimension is preserved
+    # For Dropout1d, the channel dimension is dimension 1 (for batched input)
+    # or dimension 0 (for unbatched input)
+    assert output.shape[1] == input_tensor.shape[1], \
+        f"Channel dimension not preserved: {output.shape[1]} != {input_tensor.shape[1]}"
+    
+    # Check no NaN values
+    assert not torch.any(torch.isnan(output)), "Output contains NaN values"
+    
+    # Test that spatial dimensions are preserved
+    assert output.shape[2] == input_tensor.shape[2], \
+        f"Spatial dimension not preserved: {output.shape[2]} != {input_tensor.shape[2]}"
+    
+    # Test evaluation mode
+    dropout.eval()
+    output_eval = dropout(input_tensor.clone())
+    
+    # In evaluation mode, output should equal input
+    assert approx_equal(output_eval, input_tensor), \
+        "In evaluation mode, Dropout1d should be identity function"
+    
+    # Test with different batch sizes
+    batch_sizes = [1, 2, 8]
+    for batch_size in batch_sizes:
+        test_shape = (batch_size, shape[1], shape[2])
+        test_input = create_test_tensor(test_shape, dtype)
+        
+        dropout.train()
+        test_output = dropout(test_input.clone())
+        
+        assert test_output.shape == test_shape, \
+            f"Shape mismatch for batch size {batch_size}: {test_output.shape} != {test_shape}"
+        
+        # Check channel dimension preserved
+        assert test_output.shape[1] == test_input.shape[1], \
+            f"Channel dimension not preserved for batch size {batch_size}"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+    ("AlphaDropout", 0.2, False, (3, 5, 7), torch.float32, "cpu"),
+])
+def test_alphadropout_statistical_properties(class_name, p, inplace, shape, dtype, device):
+    """
+    TC-03: AlphaDropout统计特性
+    Test that AlphaDropout maintains zero mean and unit variance properties.
+    """
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test input with specific distribution for AlphaDropout
+    # AlphaDropout is designed to work with SELU activation, which expects
+    # inputs with zero mean and unit variance
+    input_tensor = torch.randn(*shape, dtype=dtype)
+    
+    # Instantiate the dropout module
+    if class_name == "AlphaDropout":
+        dropout = nn.AlphaDropout(p=p, inplace=inplace)
+    else:
+        raise ValueError(f"Unsupported class: {class_name}")
+    
+    # Test in training mode
+    dropout.train()
+    output = dropout(input_tensor.clone())
+    
+    # Weak assertions
+    assert_tensor_properties(output, shape, dtype, "AlphaDropout training mode")
+    
+    # Check no NaN values
+    assert not torch.any(torch.isnan(output)), "Output contains NaN values"
+    
+    # Weak assertion: approximate zero mean
+    # AlphaDropout should maintain approximately zero mean
+    mean_val = output.mean().item()
+    assert abs(mean_val) < 0.1, f"Mean should be near zero, got {mean_val}"
+    
+    # Weak assertion: approximate unit variance
+    # AlphaDropout should maintain approximately unit variance
+    var_val = output.var().item()
+    assert 0.8 < var_val < 1.2, f"Variance should be near 1, got {var_val}"
+    
+    # Test evaluation mode
+    dropout.eval()
+    output_eval = dropout(input_tensor.clone())
+    
+    # In evaluation mode, AlphaDropout should be identity function
+    assert approx_equal(output_eval, input_tensor), \
+        "In evaluation mode, AlphaDropout should be identity function"
+    
+    # Test statistical properties with multiple samples
+    # Run dropout multiple times to check statistical properties
+    n_samples = 10
+    means = []
+    variances = []
+    
+    for i in range(n_samples):
+        set_random_seed(42 + i)  # Different seed for each sample
+        sample_input = torch.randn(*shape, dtype=dtype)
+        dropout.train()
+        sample_output = dropout(sample_input)
+        
+        means.append(sample_output.mean().item())
+        variances.append(sample_output.var().item())
+    
+    # Check that means are approximately zero across samples
+    avg_mean = np.mean(means)
+    assert abs(avg_mean) < 0.05, f"Average mean across samples should be near zero, got {avg_mean}"
+    
+    # Check that variances are approximately unit across samples
+    avg_var = np.mean(variances)
+    assert 0.9 < avg_var < 1.1, f"Average variance across samples should be near 1, got {avg_var}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("class_name,p,inplace,shape,dtype,device", [
+    ("Dropout", 0.0, False, (2, 2), torch.float32, "cpu"),
+    ("Dropout", 1.0, False, (2, 2), torch.float32, "cpu"),
+])
+def test_parameter_boundary_values(class_name, p, inplace, shape, dtype, device):
+    """
+    TC-04: 参数边界值验证
+    Test boundary values for dropout probability p (0 and 1).
+    """
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create test input
+    input_tensor = create_test_tensor(shape, dtype)
+    
+    # Instantiate the dropout module
+    if class_name == "Dropout":
+        dropout = nn.Dropout(p=p, inplace=inplace)
+    else:
+        raise ValueError(f"Unsupported class: {class_name}")
+    
+    # Test in training mode
+    dropout.train()
+    output = dropout(input_tensor.clone())
+    
+    # Weak assertions
+    assert_tensor_properties(output, shape, dtype, f"Dropout p={p}")
+    
+    # Check no NaN values
+    assert not torch.any(torch.isnan(output)), "Output contains NaN values"
+    
+    # Test specific boundary cases
+    if p == 0.0:
+        # When p=0, no dropout should occur even in training mode
+        assert approx_equal(output, input_tensor), \
+            "With p=0, output should equal input even in training mode"
+        
+        # Also test evaluation mode for consistency
+        dropout.eval()
+        output_eval = dropout(input_tensor.clone())
+        assert approx_equal(output_eval, input_tensor), \
+            "With p=0, evaluation mode should also give identity"
+            
+    elif p == 1.0:
+        # When p=1, all elements should be zero in training mode
+        # Note: Dropout scales by 1/(1-p), but when p=1, this is undefined
+        # In practice, PyTorch's dropout handles this edge case
+        zero_tensor = torch.zeros_like(input_tensor)
+        
+        # Check if output is all zeros (or very close to zero due to numerical precision)
+        max_abs = output.abs().max().item()
+        assert max_abs < 1e-6, f"With p=1, output should be all zeros, max abs value: {max_abs}"
+        
+        # Test evaluation mode
+        dropout.eval()
+        output_eval = dropout(input_tensor.clone())
+        # In evaluation mode, should be identity regardless of p
+        assert approx_equal(output_eval, input_tensor), \
+            "In evaluation mode with p=1, should still be identity function"
+    
+    # Test mode switching consistency
+    dropout.train()
+    output_train_again = dropout(input_tensor.clone())
+    
+    if p == 0.0:
+        assert approx_equal(output_train_again, input_tensor), \
+            "After mode switching with p=0, should still be identity in train mode"
+    elif p == 1.0:
+        max_abs_again = output_train_again.abs().max().item()
+        assert max_abs_again < 1e-6, \
+            f"After mode switching with p=1, should still be all zeros, max abs: {max_abs_again}"
+    
+    # Test with different shapes
+    test_shapes = [(1, 1), (3, 4, 5), (2, 3, 4, 5)]
+    for test_shape in test_shapes:
+        test_input = create_test_tensor(test_shape, dtype)
+        dropout = nn.Dropout(p=p, inplace=inplace)
+        dropout.train()
+        test_output = dropout(test_input)
+        
+        assert test_output.shape == test_shape, \
+            f"Shape mismatch for shape {test_shape}: {test_output.shape} != {test_shape}"
+        
+        if p == 0.0:
+            assert approx_equal(test_output, test_input), \
+                f"With p=0 and shape {test_shape}, should be identity"
+        elif p == 1.0:
+            max_abs_shape = test_output.abs().max().item()
+            assert max_abs_shape < 1e-6, \
+                f"With p=1 and shape {test_shape}, should be all zeros, max abs: {max_abs_shape}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Placeholder for CASE_05: Deferred test case
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: Deferred test case
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Placeholder for CASE_07: Deferred test case
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Placeholder for CASE_08: Deferred test case
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Placeholder for CASE_09: Deferred test case
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# Placeholder for CASE_10: Deferred test case
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+def test_dropout_invalid_probability():
+    """Test that invalid probability values raise ValueError."""
+    # Test p < 0
+    with pytest.raises(ValueError, match="dropout probability has to be between 0 and 1"):
+        nn.Dropout(p=-0.1)
+    
+    # Test p > 1
+    with pytest.raises(ValueError, match="dropout probability has to be between 0 and 1"):
+        nn.Dropout(p=1.1)
+    
+    # Test with other dropout classes
+    with pytest.raises(ValueError, match="dropout probability has to be between 0 and 1"):
+        nn.Dropout1d(p=-0.5)
+    
+    with pytest.raises(ValueError, match="dropout probability has to be between 0 and 1"):
+        nn.AlphaDropout(p=2.0)
+
+
+def test_dropout_dtype_support():
+    """Test dropout with different dtypes."""
+    shapes = [(2, 3, 4), (5, 6)]
+    dtypes = [torch.float32, torch.float64]
+    
+    for shape in shapes:
+        for dtype in dtypes:
+            # Test Dropout
+            input_tensor = create_test_tensor(shape, dtype)
+            dropout = nn.Dropout(p=0.3)
+            
+            dropout.train()
+            output = dropout(input_tensor.clone())
+            assert output.dtype == dtype, f"Dropout dtype mismatch: {output.dtype} != {dtype}"
+            
+            dropout.eval()
+            output_eval = dropout(input_tensor.clone())
+            assert approx_equal(output_eval, input_tensor), \
+                f"Dropout eval mode failed for dtype {dtype}"
+
+
+def test_dropout_deterministic_with_seed():
+    """Test that dropout produces deterministic results with fixed seed."""
+    shape = (3, 4, 5)
+    dtype = torch.float32
+    
+    # First run with seed 42
+    set_random_seed(42)
+    input1 = create_test_tensor(shape, dtype)
+    dropout1 = nn.Dropout(p=0.5)
+    dropout1.train()
+    output1 = dropout1(input1)
+    
+    # Second run with same seed
+    set_random_seed(42)
+    input2 = create_test_tensor(shape, dtype)
+    dropout2 = nn.Dropout(p=0.5)
+    dropout2.train()
+    output2 = dropout2(input2)
+    
+    # Results should be identical with same seed
+    assert approx_equal(output1, output2), \
+        "Dropout should be deterministic with fixed random seed"
+
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

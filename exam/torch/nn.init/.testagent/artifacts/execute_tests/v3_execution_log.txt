@@ -1,0 +1,38 @@
+=== Run Tests ===
+...F..                                                                   [100%]
+=================================== FAILURES ===================================
+_____________________________ test_invalid_inputs ______________________________
+
+    def test_invalid_inputs() -> None:
+        """测试非法输入场景"""
+    
+        # 测试 eye_ 的非法维度
+        tensor_1d = torch.empty(3)
+        with pytest.raises(ValueError, match="Only tensors with 2 dimensions are supported"):
+            init.eye_(tensor_1d)
+    
+        # 测试 dirac_ 的非法维度
+        tensor_2d = torch.empty(3, 3)
+        with pytest.raises(ValueError, match="Only tensors with 3, 4, or 5 dimensions are supported"):
+            init.dirac_(tensor_2d)
+    
+        # 测试 sparse_ 的非法稀疏度
+        tensor = torch.empty(4, 4)
+>       with pytest.raises(RuntimeError):
+E       Failed: DID NOT RAISE <class 'RuntimeError'>
+
+tests/test_torch_nn_init_g3.py:513: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+tests/test_torch_nn_init_g3.py     267     81     84     21    66%   20, 38, 59->exit, 90->141, 141->exit, 158->exit, 188->237, 216->228, 237->310, 252->292, 274-288, 292->302, 302->310, 310->exit, 349-366, 389-426, 429->471, 452->455, 460-468, 473-480, 485-492, 558-580
+----------------------------------------------------------------------------
+TOTAL                              267     81     84     21    66%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_init_g3.py::test_invalid_inputs - Failed: DID NOT ...
+1 failed, 5 passed in 0.61s
+
+Error: exit 1

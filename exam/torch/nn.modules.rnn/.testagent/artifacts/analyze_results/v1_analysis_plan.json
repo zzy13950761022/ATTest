@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_rnn_forward_shape[RNN_TANH-20-40-2-True-False-float64-4-8]",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "双精度类型不匹配：输入为float64但RNN内部权重为float32"
+    },
+    {
+      "test": "test_rnn_invalid_mode",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息不匹配：期望'Unrecognized RNN mode'但实际为'Unknown nonlinearity'"
+    },
+    {
+      "test": "test_rnn_zero_sequence_length",
+      "block_id": "FOOTER",
+      "error_type": "RuntimeError",
+      "action": "mark_xfail",
+      "note": "PyTorch RNN不支持零长度序列，应标记为预期失败"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

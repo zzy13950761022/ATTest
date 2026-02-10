@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 29,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_int64",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "需要添加int64边界测试以覆盖缺失的代码路径"
+    },
+    {
+      "test": "coverage_gap_empty_int64",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "需要添加空segment_ids的int64测试以覆盖缺失代码"
+    },
+    {
+      "test": "coverage_gap_error_handling",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "需要添加更多错误输入测试以覆盖异常处理代码"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

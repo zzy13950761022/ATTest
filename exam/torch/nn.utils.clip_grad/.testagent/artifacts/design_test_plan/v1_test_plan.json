@@ -1,0 +1,279 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.utils.clip_grad",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_utils_clip_grad.py",
+    "all_pattern": "tests/test_torch_nn_utils_clip_grad_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_utils_clip_grad_g1.py",
+      "G2": "tests/test_torch_nn_utils_clip_grad_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "clip_grad_norm_ 核心功能",
+      "entrypoints": ["clip_grad_norm_"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试梯度范数裁剪的基本功能与边界"
+    },
+    {
+      "group_id": "G2",
+      "title": "clip_grad_value_ 与弃用函数",
+      "entrypoints": ["clip_grad_value_", "clip_grad_norm"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试梯度值裁剪与弃用函数行为"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "clip_grad_norm_ 基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3],
+          "num_params": 3,
+          "max_norm": 1.0,
+          "norm_type": 2.0,
+          "error_if_nonfinite": false
+        }
+      ],
+      "asserts": {
+        "weak": ["total_norm_shape", "total_norm_dtype", "gradients_modified", "norm_within_limit"],
+        "strong": ["exact_norm_value", "gradient_scale_factor", "relative_error_1e-5"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "clip_grad_norm_ 多范数类型",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 4],
+          "num_params": 2,
+          "max_norm": 2.0,
+          "norm_type": 1.0,
+          "error_if_nonfinite": false
+        },
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 4],
+          "num_params": 2,
+          "max_norm": 2.0,
+          "norm_type": "inf",
+          "error_if_nonfinite": false
+        }
+      ],
+      "asserts": {
+        "weak": ["total_norm_shape", "norm_type_applied", "gradients_modified"],
+        "strong": ["norm_type_correctness", "inf_norm_special_case"]
+      },
+      "oracle": "torch.norm",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "clip_grad_value_ 基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3],
+          "num_params": 3,
+          "clip_value": 0.5
+        }
+      ],
+      "asserts": {
+        "weak": ["gradients_clamped", "no_return_value", "clamp_range_correct"],
+        "strong": ["exact_clamp_values", "edge_cases_handled"]
+      },
+      "oracle": "torch.clamp",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "clip_grad_norm 弃用警告",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "num_params": 1,
+          "max_norm": 1.0,
+          "norm_type": 2.0,
+          "error_if_nonfinite": false
+        }
+      ],
+      "asserts": {
+        "weak": ["deprecation_warning", "function_works", "same_as_norm_"],
+        "strong": ["warning_message_contains", "exact_forwarding"]
+      },
+      "oracle": "clip_grad_norm_",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true,
+      "mock_targets": ["warnings.warn"]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "非有限梯度处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "num_params": 2,
+          "max_norm": 1.0,
+          "norm_type": 2.0,
+          "error_if_nonfinite": true,
+          "gradient_contains_nan": true
+        },
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "num_params": 2,
+          "max_norm": 1.0,
+          "norm_type": 2.0,
+          "error_if_nonfinite": false,
+          "gradient_contains_inf": true
+        }
+      ],
+      "asserts": {
+        "weak": ["error_raised_when_required", "no_error_when_disabled", "gradients_unchanged_on_error"],
+        "strong": ["error_type_correct", "error_message_contains", "nan_inf_propagation"]
+      },
+      "oracle": "manual_validation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [4, 4],
+        "num_params": 2,
+        "max_norm": 0.1,
+        "norm_type": 2.0,
+        "error_if_nonfinite": false
+      },
+      "note": "高精度数据类型扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cuda",
+        "shape": [2, 3],
+        "num_params": 3,
+        "max_norm": 1.0,
+        "norm_type": 2.0,
+        "error_if_nonfinite": false
+      },
+      "note": "CUDA设备扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [3, 3, 3],
+        "num_params": 2,
+        "clip_value": 0.1
+      },
+      "note": "高维张量与高精度"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cuda",
+        "shape": [2, 3],
+        "num_params": 3,
+        "clip_value": 0.5
+      },
+      "note": "CUDA设备扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

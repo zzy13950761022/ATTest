@@ -1,0 +1,63 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 0,
+  "errors": 21,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestParseExampleV2::test_basic_functionality[FixedLenFeature-dtype0-shape0-1]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.ops.parsing_ops.gen_parsing_ops不存在"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeCSV::test_basic_csv_parsing[record_defaults0-,-True-]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.ops.parsing_ops.gen_parsing_ops不存在"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeRaw::test_basic_raw_decoding[out_type0-True-None]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.ops.parsing_ops.gen_parsing_ops不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestParseExampleV2::test_var_len_feature[VarLenFeature-dtype0-shape0-3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestParseExampleV2::test_sparse_feature[SparseFeature-dtype0-shape0-2]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeCSV::test_tab_delimited_csv[record_defaults0-\\t-False-NA]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeCSV::test_quote_handling",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeRaw::test_big_endian_fixed_length[out_type0-False-8]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeRaw::test_multiple_bytes_strings",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_parsing_ops.py::TestDecodeRaw::test_various_data_types[out_type0-True]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

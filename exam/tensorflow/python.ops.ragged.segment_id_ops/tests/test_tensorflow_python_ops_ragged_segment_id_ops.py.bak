@@ -1,0 +1,787 @@
+"""
+Unit tests for tensorflow.python.ops.ragged.segment_id_ops module.
+"""
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.ops.ragged import segment_id_ops
+
+# ==== BLOCK:HEADER START ====
+"""
+Unit tests for tensorflow.python.ops.ragged.segment_id_ops module.
+"""
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.ops.ragged import segment_id_ops
+
+# Test fixtures and helper functions
+@pytest.fixture
+def tf_session():
+    """Create and yield a TensorFlow session for testing."""
+    # Use eager execution mode for TensorFlow 2.x compatibility
+    # In eager mode, we don't need to manage sessions explicitly
+    # But we still need to ensure proper cleanup
+    yield None  # Return None since we're using eager execution
+    # No need to reset default graph in eager mode
+
+def assert_tensor_equal(tensor1, tensor2, msg=None):
+    """Assert that two tensors are equal."""
+    if isinstance(tensor1, tf.Tensor):
+        tensor1 = tensor1.numpy()
+    if isinstance(tensor2, tf.Tensor):
+        tensor2 = tensor2.numpy()
+    # Handle None message properly
+    if msg is None:
+        np.testing.assert_array_equal(tensor1, tensor2)
+    else:
+        np.testing.assert_array_equal(tensor1, tensor2, err_msg=msg)
+
+def assert_tensor_shape(tensor, expected_shape, msg=None):
+    """Assert that a tensor has the expected shape."""
+    if isinstance(tensor, tf.Tensor):
+        actual_shape = tensor.shape.as_list()
+    else:
+        actual_shape = list(tensor.shape)
+    assert actual_shape == list(expected_shape), \
+        f"Shape mismatch: expected {expected_shape}, got {actual_shape}. {msg or ''}"
+
+def assert_tensor_dtype(tensor, expected_dtype, msg=None):
+    """Assert that a tensor has the expected dtype."""
+    if isinstance(tensor, tf.Tensor):
+        actual_dtype = tensor.dtype
+    else:
+        actual_dtype = tensor.dtype
+    assert actual_dtype == expected_dtype, \
+        f"Dtype mismatch: expected {expected_dtype}, got {actual_dtype}. {msg or ''}"
+
+# Test helper functions to improve coverage
+def test_helper_functions():
+    """Test the helper assertion functions."""
+    # Test assert_tensor_equal with tf.Tensor
+    tensor1 = tf.constant([1, 2, 3], dtype=tf.int32)
+    tensor2 = tf.constant([1, 2, 3], dtype=tf.int32)
+    assert_tensor_equal(tensor1, tensor2, "Tensors should be equal")
+    
+    # Test assert_tensor_equal with numpy arrays
+    array1 = np.array([1, 2, 3], dtype=np.int32)
+    array2 = np.array([1, 2, 3], dtype=np.int32)
+    assert_tensor_equal(array1, array2, "Arrays should be equal")
+    
+    # Test assert_tensor_equal with mixed types
+    assert_tensor_equal(tensor1, array1, "Tensor and array should be equal")
+    
+    # Test assert_tensor_shape with tf.Tensor
+    tensor = tf.constant([[1, 2], [3, 4]], dtype=tf.int32)
+    assert_tensor_shape(tensor, [2, 2], "Tensor should have shape [2, 2]")
+    
+    # Test assert_tensor_shape with numpy array
+    array = np.array([[1, 2], [3, 4]], dtype=np.int32)
+    assert_tensor_shape(array, [2, 2], "Array should have shape [2, 2]")
+    
+    # Test assert_tensor_dtype with tf.Tensor
+    tensor_int32 = tf.constant([1, 2, 3], dtype=tf.int32)
+    assert_tensor_dtype(tensor_int32, tf.int32, "Tensor should have dtype int32")
+    
+    tensor_int64 = tf.constant([1, 2, 3], dtype=tf.int64)
+    assert_tensor_dtype(tensor_int64, tf.int64, "Tensor should have dtype int64")
+    
+    # Test assert_tensor_dtype with numpy array
+    array_int32 = np.array([1, 2, 3], dtype=np.int32)
+    assert_tensor_dtype(array_int32, np.int32, "Array should have dtype int32")
+    
+    array_int64 = np.array([1, 2, 3], dtype=np.int64)
+    assert_tensor_dtype(array_int64, np.int64, "Array should have dtype int64")
+    
+    # Test error cases (these should raise AssertionError)
+    with pytest.raises(AssertionError):
+        assert_tensor_equal(tf.constant([1, 2]), tf.constant([1, 3]))
+    
+    with pytest.raises(AssertionError):
+        assert_tensor_shape(tf.constant([1, 2, 3]), [2, 2])
+    
+    with pytest.raises(AssertionError):
+        assert_tensor_dtype(tf.constant([1, 2], dtype=tf.int32), tf.int64)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# TC-01: row_splits_to_segment_ids 基本正向转换
+@pytest.mark.parametrize("splits,dtype,out_type,name", [
+    # Base case from test_plan.json
+    ([0, 3, 3, 5, 6, 9], tf.int32, None, None),
+    # Parameter extensions
+    ([0, 0, 0, 5], tf.int32, None, None),  # Zero-length segments
+    ([0, 5], tf.int32, None, None),  # Single segment
+])
+def test_row_splits_to_segment_ids_basic(splits, dtype, out_type, name):
+    """Test basic forward conversion of row_splits_to_segment_ids."""
+    # Convert input to tensor
+    splits_tensor = tf.constant(splits, dtype=dtype)
+    
+    # Call the function (eager execution)
+    result = segment_id_ops.row_splits_to_segment_ids(
+        splits_tensor, 
+        name=name, 
+        out_type=out_type
+    )
+    
+    # Get numpy array (eager execution)
+    result_np = result.numpy()
+    
+    # Weak assertions (shape, dtype, values_equal, basic_property)
+    # 1. Shape assertion
+    expected_shape = [splits[-1]]  # shape=[splits[-1]]
+    assert_tensor_shape(result_np, expected_shape, 
+                       f"Result shape should be {expected_shape}")
+    
+    # 2. Dtype assertion
+    expected_dtype = out_type if out_type is not None else dtype
+    assert_tensor_dtype(result, expected_dtype,
+                       f"Result dtype should be {expected_dtype}")
+    
+    # 3. Values equal assertion - verify the conversion logic
+    # For the base case [0, 3, 3, 5, 6, 9], expected result is [0, 0, 0, 2, 2, 3, 4, 4, 4]
+    if splits == [0, 3, 3, 5, 6, 9]:
+        expected_result = [0, 0, 0, 2, 2, 3, 4, 4, 4]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result values don't match expected conversion")
+    
+    # 4. Basic property assertion: each segment_id i should appear row_lengths[i] times
+    row_lengths = [splits[i+1] - splits[i] for i in range(len(splits)-1)]
+    for i, length in enumerate(row_lengths):
+        count = np.sum(result_np == i)
+        assert count == length, \
+            f"Segment {i} should appear {length} times, but appears {count} times"
+    
+    # 5. Strong assertion: inverse operation (weak version for now)
+    # Test that segment_ids_to_row_splits can recover the original splits
+    segment_ids_tensor = tf.constant(result_np, dtype=expected_dtype)
+    recovered_splits = segment_id_ops.segment_ids_to_row_splits(
+        segment_ids_tensor,
+        out_type=expected_dtype,
+        name=name
+    )
+    recovered_splits_np = recovered_splits.numpy()
+    
+    # Verify the recovered splits match the original
+    assert_tensor_equal(recovered_splits_np, splits,
+                       f"Inverse operation failed for splits={splits}")
+    
+    # 6. Strong assertion: type preservation
+    # Verify that the operation preserves type information correctly
+    if out_type is not None:
+        # When out_type is specified, result should have that type
+        assert result.dtype == out_type, \
+            f"Result dtype should be {out_type} when out_type is specified, got {result.dtype}"
+    else:
+        # When out_type is None, result should have the same dtype as input
+        assert result.dtype == dtype, \
+            f"Result dtype should match input dtype {dtype} when out_type is None, got {result.dtype}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# TC-02: segment_ids_to_row_splits 基本正向转换
+@pytest.mark.parametrize("segment_ids,dtype,num_segments,out_type,name", [
+    # Base case from test_plan.json
+    ([0, 0, 0, 2, 2, 3, 4, 4, 4], tf.int32, None, None, None),
+    # Parameter extensions
+    ([0, 0, 0, 0], tf.int32, None, None, None),  # Single segment ID
+    ([0, 0, 2, 2, 5, 5], tf.int32, 6, None, None),  # Non-contiguous with explicit num_segments
+    # Edge case: empty segment_ids with num_segments=None
+    ([], tf.int32, None, None, None),
+])
+def test_segment_ids_to_row_splits_basic(segment_ids, dtype, num_segments, out_type, name):
+    """Test basic forward conversion of segment_ids_to_row_splits."""
+    # Convert input to tensor
+    segment_ids_tensor = tf.constant(segment_ids, dtype=dtype)
+    
+    # Call the function (eager execution)
+    result = segment_id_ops.segment_ids_to_row_splits(
+        segment_ids_tensor,
+        num_segments=num_segments,
+        out_type=out_type,
+        name=name
+    )
+    
+    # Get numpy array (eager execution)
+    result_np = result.numpy()
+    
+    # Weak assertions (shape, dtype, values_equal, basic_property)
+    # 1. Shape assertion
+    if num_segments is None:
+        expected_num_segments = max(segment_ids) + 1 if segment_ids else 0
+    else:
+        expected_num_segments = num_segments
+    expected_shape = [expected_num_segments + 1]
+    assert_tensor_shape(result_np, expected_shape,
+                       f"Result shape should be {expected_shape}")
+    
+    # 2. Dtype assertion
+    expected_dtype = out_type if out_type is not None else dtype
+    assert_tensor_dtype(result, expected_dtype,
+                       f"Result dtype should be {expected_dtype}")
+    
+    # 3. Values equal assertion - verify the conversion logic
+    # For the base case [0, 0, 0, 2, 2, 3, 4, 4, 4], expected result is [0, 3, 3, 5, 6, 9]
+    if segment_ids == [0, 0, 0, 2, 2, 3, 4, 4, 4] and num_segments is None:
+        expected_result = [0, 3, 3, 5, 6, 9]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result values don't match expected conversion")
+    
+    # 4. Basic property assertion: splits[0] must be 0 and splits must be non-decreasing
+    assert result_np[0] == 0, "splits[0] must be 0"
+    for i in range(len(result_np) - 1):
+        assert result_np[i] <= result_np[i + 1], \
+            f"splits must be non-decreasing, but {result_np[i]} > {result_np[i + 1]}"
+    
+    # Additional basic property: the cumulative sum of segment counts should match
+    if num_segments is None:
+        actual_num_segments = max(segment_ids) + 1 if segment_ids else 0
+    else:
+        actual_num_segments = num_segments
+    
+    # Count occurrences of each segment id
+    segment_counts = np.zeros(actual_num_segments, dtype=np.int32)
+    for seg_id in segment_ids:
+        segment_counts[seg_id] += 1
+    
+    # Verify that splits[i+1] - splits[i] equals segment_counts[i]
+    for i in range(actual_num_segments):
+        expected_count = segment_counts[i]
+        actual_count = result_np[i + 1] - result_np[i]
+        assert actual_count == expected_count, \
+            f"Segment {i}: expected count {expected_count}, got {actual_count}"
+    
+    # 5. Edge case specific assertions
+    if segment_ids == [] and num_segments is None:
+        # Empty segment_ids should produce [0]
+        assert list(result_np) == [0], f"Empty segment_ids should produce [0], got {result_np}"
+        # Verify roundtrip: row_splits_to_segment_ids([0]) should produce []
+        splits_tensor = tf.constant([0], dtype=dtype)
+        roundtrip_segment_ids = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+        roundtrip_segment_ids_np = roundtrip_segment_ids.numpy()
+        assert len(roundtrip_segment_ids_np) == 0, \
+            f"Roundtrip of empty segment_ids should produce empty array, got {roundtrip_segment_ids_np}"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: 逆操作验证 - 互为逆函数
+@pytest.mark.parametrize("splits,dtype", [
+    # Base case from test_plan.json
+    ([0, 3, 3, 5, 6, 9], tf.int32),
+])
+def test_inverse_operations(splits, dtype):
+    """Test that row_splits_to_segment_ids and segment_ids_to_row_splits are inverse operations."""
+    # Convert input to tensor
+    splits_tensor = tf.constant(splits, dtype=dtype)
+    
+    # Forward operation: splits -> segment_ids (eager execution)
+    segment_ids = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+    segment_ids_np = segment_ids.numpy()
+    
+    # Inverse operation: segment_ids -> splits (eager execution)
+    recovered_splits = segment_id_ops.segment_ids_to_row_splits(segment_ids)
+    recovered_splits_np = recovered_splits.numpy()
+    
+    # Weak assertions (inverse_weak, roundtrip_consistency)
+    # 1. Inverse weak assertion: recovered splits should match original splits
+    assert_tensor_equal(recovered_splits_np, splits,
+                       "Recovered splits don't match original after roundtrip")
+    
+    # 2. Roundtrip consistency assertion: do the reverse roundtrip too
+    # Start with segment_ids and go through both operations
+    segment_ids_tensor = tf.constant(segment_ids_np, dtype=dtype)
+    
+    # segment_ids -> splits
+    splits_from_segment_ids = segment_id_ops.segment_ids_to_row_splits(segment_ids_tensor)
+    splits_from_segment_ids_np = splits_from_segment_ids.numpy()
+    
+    # splits -> segment_ids again
+    segment_ids_roundtrip = segment_id_ops.row_splits_to_segment_ids(splits_from_segment_ids)
+    segment_ids_roundtrip_np = segment_ids_roundtrip.numpy()
+    
+    # Verify both roundtrips are consistent
+    assert_tensor_equal(segment_ids_roundtrip_np, segment_ids_np,
+                       "Segment IDs don't match after full roundtrip")
+    
+    # Additional consistency check: the composition should be identity
+    # For any valid splits, segment_ids_to_row_splits(row_splits_to_segment_ids(splits)) == splits
+    assert_tensor_equal(recovered_splits_np, splits,
+                       "Composition of operations should be identity on splits")
+    
+    # Also check the other composition: for segment_ids generated from splits,
+    # row_splits_to_segment_ids(segment_ids_to_row_splits(segment_ids)) should equal segment_ids
+    # (This is already tested above with segment_ids_roundtrip_np)
+    
+    # Verify that the operations preserve the essential information
+    # The total number of elements should be preserved
+    total_elements_original = splits[-1]
+    total_elements_recovered = recovered_splits_np[-1]
+    assert total_elements_original == total_elements_recovered, \
+        f"Total elements not preserved: original {total_elements_original}, recovered {total_elements_recovered}"
+    
+    # Verify that the number of segments is preserved
+    num_segments_original = len(splits) - 1
+    num_segments_recovered = len(recovered_splits_np) - 1
+    assert num_segments_original == num_segments_recovered, \
+        f"Number of segments not preserved: original {num_segments_original}, recovered {num_segments_recovered}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: 数据类型边界 - int64 支持
+@pytest.mark.parametrize("splits,dtype,out_type,name", [
+    # Base case from test_plan.json
+    ([0, 3, 3, 5, 6, 9], tf.int64, None, None),
+    # Parameter extension: out_type参数覆盖默认类型
+    ([0, 3, 3, 5, 6, 9], tf.int32, tf.int64, None),
+    # Large integer boundary test (接近int64边界)
+    ([0, 1000, 2000, 3000], tf.int64, None, None),
+    # Additional test cases for better coverage
+    ([0, 5, 10, 15], tf.int64, None, None),  # Simple case with int64
+    ([0, 0, 5, 5], tf.int64, None, None),  # Zero-length segments with int64
+    ([0, 100], tf.int64, None, None),  # Single segment with int64
+    ([0, 3, 3, 5, 6, 9], tf.int64, tf.int32, None),  # int64 to int32 conversion
+])
+def test_int64_support(splits, dtype, out_type, name):
+    """Test int64 data type support for row_splits_to_segment_ids."""
+    # Convert input to tensor
+    splits_tensor = tf.constant(splits, dtype=dtype)
+    
+    # Call the function (eager execution)
+    result = segment_id_ops.row_splits_to_segment_ids(
+        splits_tensor, 
+        name=name, 
+        out_type=out_type
+    )
+    
+    # Get numpy array (eager execution)
+    result_np = result.numpy()
+    
+    # Weak assertions (dtype, values_equal, type_consistency)
+    # 1. Dtype assertion
+    expected_dtype = out_type if out_type is not None else dtype
+    assert_tensor_dtype(result, expected_dtype,
+                       f"Result dtype should be {expected_dtype}")
+    
+    # 2. Values equal assertion
+    # For the base case [0, 3, 3, 5, 6, 9], expected result is [0, 0, 0, 2, 2, 3, 4, 4, 4]
+    if splits == [0, 3, 3, 5, 6, 9]:
+        expected_result = [0, 0, 0, 2, 2, 3, 4, 4, 4]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result values don't match expected conversion")
+    
+    # 3. Type consistency assertion
+    # Verify that the operation works correctly with int64
+    row_lengths = [splits[i+1] - splits[i] for i in range(len(splits)-1)]
+    for i, length in enumerate(row_lengths):
+        count = np.sum(result_np == i)
+        assert count == length, \
+            f"Segment {i} should appear {length} times, but appears {count} times"
+    
+    # 4. Test segment_ids_to_row_splits with int64
+    # Convert the result back using segment_ids_to_row_splits
+    segment_ids_tensor = tf.constant(result_np, dtype=expected_dtype)
+    recovered_splits = segment_id_ops.segment_ids_to_row_splits(
+        segment_ids_tensor,
+        out_type=expected_dtype,
+        name=name
+    )
+    recovered_splits_np = recovered_splits.numpy()
+    
+    # Verify roundtrip consistency
+    # Special handling for zero-length segments: segment_ids_to_row_splits only
+    # includes segments that actually appear in segment_ids
+    if splits == [0, 0, 5, 5]:
+        # Original splits: [0, 0, 5, 5] has 3 segments: segment0 (len0), segment1 (len5), segment2 (len0)
+        # segment_ids will be [1, 1, 1, 1, 1] (only segment1 appears)
+        # recovered_splits will be [0, 0, 5] (only segments 0 and 1)
+        # This is expected behavior - segment_ids_to_row_splits doesn't know about empty segments
+        expected_recovered = [0, 0, 5]
+        assert_tensor_equal(recovered_splits_np, expected_recovered,
+                           f"Roundtrip failed for zero-length segments case")
+    else:
+        # For other cases, roundtrip should recover original splits
+        assert_tensor_equal(recovered_splits_np, splits,
+                           f"Roundtrip failed for dtype={dtype}, out_type={out_type}")
+    
+    # 5. Strong assertion: test with very large integers (接近int64边界)
+    # This is a weak assertion for now, but can be strengthened in final round
+    if splits == [0, 1000, 2000, 3000]:
+        # Verify the result has the correct shape
+        assert result_np.shape == (3000,), f"Expected shape (3000,), got {result_np.shape}"
+        # Verify segment distribution
+        # Segment 0: indices 0-999
+        # Segment 1: indices 1000-1999  
+        # Segment 2: indices 2000-2999
+        assert np.all(result_np[:1000] == 0), "First 1000 elements should be segment 0"
+        assert np.all(result_np[1000:2000] == 1), "Elements 1000-1999 should be segment 1"
+        assert np.all(result_np[2000:] == 2), "Elements 2000-2999 should be segment 2"
+    
+    # 6. Additional coverage: test segment_ids_to_row_splits with int64 directly
+    # Create segment_ids and test segment_ids_to_row_splits
+    if splits == [0, 5, 10, 15]:
+        # Create segment_ids: [0,0,0,0,0,1,1,1,1,1,2,2,2,2,2]
+        segment_ids = np.concatenate([
+            np.zeros(5, dtype=np.int64),
+            np.ones(5, dtype=np.int64),
+            np.full(5, 2, dtype=np.int64)
+        ])
+        segment_ids_tensor = tf.constant(segment_ids, dtype=tf.int64)
+        splits_result = segment_id_ops.segment_ids_to_row_splits(
+            segment_ids_tensor,
+            out_type=tf.int64,
+            name=name
+        )
+        splits_result_np = splits_result.numpy()
+        expected_splits = [0, 5, 10, 15]
+        assert_tensor_equal(splits_result_np, expected_splits,
+                           "segment_ids_to_row_splits failed for int64 input")
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: 空/零长度边界处理
+@pytest.mark.parametrize("test_type,splits,segment_ids,dtype", [
+    # Test empty splits: splits = [0]
+    ("empty_splits", [0], None, tf.int32),
+    # Test empty segment_ids: segment_ids = []
+    ("empty_segment_ids", None, [], tf.int32),
+    # Test zero-length segments: splits = [0, 0, 0, 5]
+    ("zero_length_segments", [0, 0, 0, 5], None, tf.int32),
+    # Additional test cases for better coverage
+    ("single_element_splits", [0, 1], None, tf.int32),  # Single element
+    ("single_segment_ids", None, [0], tf.int32),  # Single segment ID
+    ("all_zero_segment_ids", None, [0, 0, 0, 0], tf.int32),  # All same segment IDs
+    ("empty_splits_int64", [0], None, tf.int64),  # Empty splits with int64
+    ("empty_segment_ids_int64", None, [], tf.int64),  # Empty segment_ids with int64
+])
+def test_empty_and_zero_length_boundaries(test_type, splits, segment_ids, dtype):
+    """Test empty and zero-length boundary cases."""
+    
+    if test_type == "empty_splits":
+        # Test empty splits: splits = [0]
+        splits_tensor = tf.constant(splits, dtype=dtype)
+        result = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+        result_np = result.numpy()
+        
+        # Weak assertions (shape, dtype, empty_output)
+        # 1. Shape assertion: should be empty array since splits[-1] = 0
+        expected_shape = [0]
+        assert_tensor_shape(result_np, expected_shape,
+                           f"Result shape should be {expected_shape} for empty splits")
+        
+        # 2. Dtype assertion
+        assert_tensor_dtype(result, dtype,
+                           f"Result dtype should be {dtype}")
+        
+        # 3. Empty output assertion
+        assert len(result_np) == 0, "Result should be empty array"
+        
+        # Test roundtrip
+        recovered_splits = segment_id_ops.segment_ids_to_row_splits(result)
+        recovered_splits_np = recovered_splits.numpy()
+        assert_tensor_equal(recovered_splits_np, splits,
+                           "Roundtrip failed for empty splits")
+    
+    elif test_type == "empty_segment_ids":
+        # Test empty segment_ids: segment_ids = []
+        segment_ids_tensor = tf.constant(segment_ids, dtype=dtype)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids_tensor)
+        result_np = result.numpy()
+        
+        # Weak assertions (shape, dtype, empty_output)
+        # 1. Shape assertion: should be [0] since num_segments = 0
+        expected_shape = [1]  # [num_segments + 1] where num_segments = 0
+        assert_tensor_shape(result_np, expected_shape,
+                           f"Result shape should be {expected_shape} for empty segment_ids")
+        
+        # 2. Dtype assertion
+        assert_tensor_dtype(result, dtype,
+                           f"Result dtype should be {dtype}")
+        
+        # 3. Value assertion: should be [0]
+        expected_result = [0]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result should be [0] for empty segment_ids")
+        
+        # Test roundtrip
+        recovered_segment_ids = segment_id_ops.row_splits_to_segment_ids(result)
+        recovered_segment_ids_np = recovered_segment_ids.numpy()
+        assert_tensor_equal(recovered_segment_ids_np, segment_ids,
+                           "Roundtrip failed for empty segment_ids")
+    
+    elif test_type == "zero_length_segments":
+        # Test zero-length segments: splits = [0, 0, 0, 5]
+        splits_tensor = tf.constant(splits, dtype=dtype)
+        result = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+        result_np = result.numpy()
+        
+        # Weak assertions (shape, dtype, basic_property)
+        # 1. Shape assertion
+        expected_shape = [splits[-1]]  # shape=[5]
+        assert_tensor_shape(result_np, expected_shape,
+                           f"Result shape should be {expected_shape}")
+        
+        # 2. Dtype assertion
+        assert_tensor_dtype(result, dtype,
+                           f"Result dtype should be {dtype}")
+        
+        # 3. Basic property assertion
+        # splits = [0, 0, 0, 5] means:
+        # - segment 0: length 0 (splits[1]-splits[0] = 0)
+        # - segment 1: length 0 (splits[2]-splits[1] = 0)
+        # - segment 2: length 5 (splits[3]-splits[2] = 5)
+        # So result should be [2, 2, 2, 2, 2]
+        expected_result = [2, 2, 2, 2, 2]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result doesn't match expected for zero-length segments")
+        
+        # Verify segment counts
+        row_lengths = [splits[i+1] - splits[i] for i in range(len(splits)-1)]
+        for i, length in enumerate(row_lengths):
+            count = np.sum(result_np == i)
+            assert count == length, \
+                f"Segment {i} should appear {length} times, but appears {count} times"
+        
+        # Test roundtrip
+        recovered_splits = segment_id_ops.segment_ids_to_row_splits(result)
+        recovered_splits_np = recovered_splits.numpy()
+        assert_tensor_equal(recovered_splits_np, splits,
+                           "Roundtrip failed for zero-length segments")
+    
+    elif test_type == "single_element_splits":
+        # Test single element: splits = [0, 1]
+        splits_tensor = tf.constant(splits, dtype=dtype)
+        result = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+        result_np = result.numpy()
+        
+        # Should produce [0]
+        expected_result = [0]
+        assert_tensor_equal(result_np, expected_result,
+                           "Single element splits should produce [0]")
+        
+        # Test roundtrip
+        recovered_splits = segment_id_ops.segment_ids_to_row_splits(result)
+        recovered_splits_np = recovered_splits.numpy()
+        assert_tensor_equal(recovered_splits_np, splits,
+                           "Roundtrip failed for single element splits")
+    
+    elif test_type == "single_segment_ids":
+        # Test single segment ID: segment_ids = [0]
+        segment_ids_tensor = tf.constant(segment_ids, dtype=dtype)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids_tensor)
+        result_np = result.numpy()
+        
+        # Should produce [0, 1]
+        expected_result = [0, 1]
+        assert_tensor_equal(result_np, expected_result,
+                           "Single segment ID should produce [0, 1]")
+        
+        # Test roundtrip
+        recovered_segment_ids = segment_id_ops.row_splits_to_segment_ids(result)
+        recovered_segment_ids_np = recovered_segment_ids.numpy()
+        assert_tensor_equal(recovered_segment_ids_np, segment_ids,
+                           "Roundtrip failed for single segment ID")
+    
+    elif test_type == "all_zero_segment_ids":
+        # Test all zero segment IDs: segment_ids = [0, 0, 0, 0]
+        segment_ids_tensor = tf.constant(segment_ids, dtype=dtype)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids_tensor)
+        result_np = result.numpy()
+        
+        # Should produce [0, 4]
+        expected_result = [0, 4]
+        assert_tensor_equal(result_np, expected_result,
+                           "All zero segment IDs should produce [0, 4]")
+        
+        # Test roundtrip
+        recovered_segment_ids = segment_id_ops.row_splits_to_segment_ids(result)
+        recovered_segment_ids_np = recovered_segment_ids.numpy()
+        assert_tensor_equal(recovered_segment_ids_np, segment_ids,
+                           "Roundtrip failed for all zero segment IDs")
+    
+    elif test_type == "empty_splits_int64":
+        # Test empty splits with int64: splits = [0]
+        splits_tensor = tf.constant(splits, dtype=dtype)
+        result = segment_id_ops.row_splits_to_segment_ids(splits_tensor)
+        result_np = result.numpy()
+        
+        # Should produce empty array with int64 dtype
+        assert len(result_np) == 0, "Result should be empty array"
+        assert_tensor_dtype(result, dtype,
+                           f"Result dtype should be {dtype}")
+        
+        # Test roundtrip
+        recovered_splits = segment_id_ops.segment_ids_to_row_splits(result)
+        recovered_splits_np = recovered_splits.numpy()
+        assert_tensor_equal(recovered_splits_np, splits,
+                           "Roundtrip failed for empty splits with int64")
+    
+    elif test_type == "empty_segment_ids_int64":
+        # Test empty segment_ids with int64: segment_ids = []
+        segment_ids_tensor = tf.constant(segment_ids, dtype=dtype)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids_tensor)
+        result_np = result.numpy()
+        
+        # Should produce [0] with int64 dtype
+        expected_result = [0]
+        assert_tensor_equal(result_np, expected_result,
+                           "Result should be [0] for empty segment_ids with int64")
+        assert_tensor_dtype(result, dtype,
+                           f"Result dtype should be {dtype}")
+        
+        # Test roundtrip
+        recovered_segment_ids = segment_id_ops.row_splits_to_segment_ids(result)
+        recovered_segment_ids_np = recovered_segment_ids.numpy()
+        assert_tensor_equal(recovered_segment_ids_np, segment_ids,
+                           "Roundtrip failed for empty segment_ids with int64")
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and cleanup
+
+def test_invalid_inputs():
+    """Test error handling for invalid inputs."""
+    # Test 1: non-1D splits should raise error
+    with pytest.raises(ValueError):
+        splits = tf.constant([[0, 3], [3, 5]], dtype=tf.int32)
+        result = segment_id_ops.row_splits_to_segment_ids(splits)
+        # Trigger evaluation in eager mode
+        _ = result.numpy()
+    
+    # Test 2: empty splits array should raise error
+    with pytest.raises(ValueError):
+        splits = tf.constant([], dtype=tf.int32)
+        result = segment_id_ops.row_splits_to_segment_ids(splits)
+        _ = result.numpy()
+    
+    # Test 3: non-integer dtype should raise error
+    with pytest.raises(ValueError):
+        splits = tf.constant([0, 3, 5], dtype=tf.float32)
+        result = segment_id_ops.row_splits_to_segment_ids(splits)
+        _ = result.numpy()
+    
+    # Test 4: segment_ids non-1D should raise error
+    with pytest.raises(ValueError):
+        segment_ids = tf.constant([[0, 0], [1, 1]], dtype=tf.int32)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids)
+        _ = result.numpy()
+    
+    # Test 5: splits with negative values should work (but may produce unexpected results)
+    # This is actually allowed by the implementation
+    splits = tf.constant([0, -2, 3], dtype=tf.int32)
+    result = segment_id_ops.row_splits_to_segment_ids(splits)
+    result_np = result.numpy()
+    # The function will compute row_lengths = splits[1:] - splits[:-1] = [-2, 5]
+    # This will produce negative row_lengths which may cause issues in repeat()
+    # But the function doesn't validate that splits are non-decreasing
+    
+    # Test 6: splits not starting with 0 should raise error
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        splits = tf.constant([1, 3, 5], dtype=tf.int32)
+        result = segment_id_ops.row_splits_to_segment_ids(splits)
+        _ = result.numpy()
+    
+    # Test 7: unsorted splits should raise error
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        splits = tf.constant([0, 5, 3], dtype=tf.int32)
+        result = segment_id_ops.row_splits_to_segment_ids(splits)
+        _ = result.numpy()
+
+def test_name_parameter():
+    """Test that name parameter works correctly."""
+    splits = tf.constant([0, 3, 5], dtype=tf.int32)
+    
+    # Test with name parameter (eager execution)
+    result = segment_id_ops.row_splits_to_segment_ids(splits, name="test_conversion")
+    result_np = result.numpy()
+    
+    # Should not raise any error
+    assert result_np.shape == (5,)
+    assert list(result_np) == [0, 0, 0, 1, 1]
+    
+    # Test segment_ids_to_row_splits with name
+    segment_ids = tf.constant([0, 0, 0, 1, 1], dtype=tf.int32)
+    result2 = segment_id_ops.segment_ids_to_row_splits(segment_ids, name="test_splits_conversion")
+    result2_np = result2.numpy()
+    
+    assert result2_np.shape == (3,)
+    assert list(result2_np) == [0, 3, 5]
+
+def test_num_segments_parameter():
+    """Test num_segments parameter for segment_ids_to_row_splits."""
+    # Test with explicit num_segments larger than max(segment_ids)
+    segment_ids = tf.constant([0, 0, 2, 2], dtype=tf.int32)
+    result = segment_id_ops.segment_ids_to_row_splits(segment_ids, num_segments=5)
+    result_np = result.numpy()
+    
+    # Should produce [0, 2, 2, 4, 4, 4] (5 segments + 1)
+    expected_result = [0, 2, 2, 4, 4, 4]
+    assert_tensor_equal(result_np, expected_result,
+                       "num_segments=5 should produce correct splits")
+    
+    # Test with num_segments smaller than max(segment_ids) - should raise error
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        segment_ids = tf.constant([0, 0, 2, 2], dtype=tf.int32)
+        result = segment_id_ops.segment_ids_to_row_splits(segment_ids, num_segments=1)
+        _ = result.numpy()
+    
+    # Test with num_segments equal to max(segment_ids) + 1
+    segment_ids = tf.constant([0, 0, 1, 1, 2, 2], dtype=tf.int32)
+    result = segment_id_ops.segment_ids_to_row_splits(segment_ids, num_segments=3)
+    result_np = result.numpy()
+    expected_result = [0, 2, 4, 6]
+    assert_tensor_equal(result_np, expected_result,
+                       "num_segments=3 should produce correct splits")
+
+def test_out_type_parameter():
+    """Test out_type parameter for both functions."""
+    # Test row_splits_to_segment_ids with out_type
+    splits = tf.constant([0, 3, 5], dtype=tf.int32)
+    
+    # Convert int32 to int64
+    result = segment_id_ops.row_splits_to_segment_ids(splits, out_type=tf.int64)
+    assert_tensor_dtype(result, tf.int64, "out_type=tf.int64 should produce int64 output")
+    result_np = result.numpy()
+    expected_result = [0, 0, 0, 1, 1]
+    assert_tensor_equal(result_np, expected_result,
+                       "Values should be correct after type conversion")
+    
+    # Test segment_ids_to_row_splits with out_type
+    segment_ids = tf.constant([0, 0, 0, 1, 1], dtype=tf.int32)
+    result = segment_id_ops.segment_ids_to_row_splits(segment_ids, out_type=tf.int64)
+    assert_tensor_dtype(result, tf.int64, "out_type=tf.int64 should produce int64 output")
+    result_np = result.numpy()
+    expected_result = [0, 3, 5]
+    assert_tensor_equal(result_np, expected_result,
+                       "Values should be correct after type conversion")
+    
+    # Test with same dtype (no conversion)
+    result = segment_id_ops.row_splits_to_segment_ids(splits, out_type=tf.int32)
+    assert_tensor_dtype(result, tf.int32, "out_type=tf.int32 should produce int32 output")
+
+def test_large_integers():
+    """Test with large integer values."""
+    # Test with values near int32 boundary
+    splits = tf.constant([0, 1000000, 2000000], dtype=tf.int32)
+    result = segment_id_ops.row_splits_to_segment_ids(splits)
+    result_np = result.numpy()
+    
+    assert result_np.shape == (2000000,), f"Expected shape (2000000,), got {result_np.shape}"
+    # Check first and last elements
+    assert result_np[0] == 0, "First element should be 0"
+    assert result_np[999999] == 0, "Element 999999 should be 0"
+    assert result_np[1000000] == 1, "Element 1000000 should be 1"
+    assert result_np[1999999] == 1, "Element 1999999 should be 1"
+    
+    # Test roundtrip with large integers
+    recovered_splits = segment_id_ops.segment_ids_to_row_splits(result)
+    recovered_splits_np = recovered_splits.numpy()
+    assert_tensor_equal(recovered_splits_np, [0, 1000000, 2000000],
+                       "Roundtrip failed for large integers")
+
+# Cleanup and teardown - no longer needed in eager mode
+def teardown_module():
+    """Clean up TensorFlow graph after tests."""
+    # No need to reset default graph in eager execution mode
+    pass
+# ==== BLOCK:FOOTER END ====

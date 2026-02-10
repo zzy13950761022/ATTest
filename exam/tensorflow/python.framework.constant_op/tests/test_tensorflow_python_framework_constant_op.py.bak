@@ -1,0 +1,674 @@
+"""
+Test cases for tensorflow.python.framework.constant_op module.
+Generated according to test plan specification.
+"""
+
+import math
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import constant_op
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for tensorflow.python.framework.constant_op module.
+Generated according to test plan specification.
+"""
+
+import math
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import constant_op
+
+# Test configuration
+RTOL = 1e-6  # Relative tolerance for float comparisons
+ATOL = 1e-6  # Absolute tolerance for float comparisons
+
+# Helper functions
+def assert_tensor_properties(tensor, expected_shape, expected_dtype, expected_value=None):
+    """Assert basic tensor properties (weak assertions)."""
+    # Shape assertion
+    assert tensor.shape == expected_shape, f"Expected shape {expected_shape}, got {tensor.shape}"
+    
+    # Dtype assertion
+    assert tensor.dtype == expected_dtype, f"Expected dtype {expected_dtype}, got {tensor.dtype}"
+    
+    # Tensor type assertion
+    assert isinstance(tensor, tf.Tensor), f"Expected tf.Tensor, got {type(tensor)}"
+    
+    # Value match assertion (if expected_value provided)
+    if expected_value is not None:
+        if tensor.dtype.is_floating:
+            np.testing.assert_allclose(
+                tensor.numpy(), 
+                expected_value, 
+                rtol=RTOL, 
+                atol=ATOL,
+                err_msg=f"Value mismatch for dtype {tensor.dtype}"
+            )
+        else:
+            np.testing.assert_array_equal(
+                tensor.numpy(),
+                expected_value,
+                err_msg=f"Value mismatch for dtype {tensor.dtype}"
+            )
+    
+    return True
+
+def get_expected_dtype(value, specified_dtype=None):
+    """Get expected dtype based on value and specified dtype."""
+    if specified_dtype is not None:
+        return tf.dtypes.as_dtype(specified_dtype)
+    
+    # Infer from Python type
+    if isinstance(value, (int, np.integer)):
+        # Check if it's a numpy integer type
+        if isinstance(value, np.integer):
+            # For numpy integers, preserve the numpy dtype
+            return tf.dtypes.as_dtype(value.dtype)
+        return tf.int32
+    elif isinstance(value, (float, np.floating)):
+        # Check if it's a numpy float type
+        if isinstance(value, np.floating):
+            # For numpy floats, preserve the numpy dtype
+            return tf.dtypes.as_dtype(value.dtype)
+        return tf.float32
+    elif isinstance(value, (list, tuple)):
+        # Check first element for lists/tuples
+        if len(value) > 0:
+            return get_expected_dtype(value[0])
+        else:
+            return tf.float32  # Default for empty sequences
+    elif isinstance(value, np.ndarray):
+        # For numpy arrays, use the array's dtype
+        return tf.dtypes.as_dtype(value.dtype)
+    elif isinstance(value, bool):
+        return tf.bool
+    elif isinstance(value, str):
+        return tf.string
+    else:
+        # Default fallback for other types
+        return tf.float32
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+def test_constant_basic_scalar_and_list():
+    """Test basic scalar and list creation (CASE_01)."""
+    
+    # Test 1: Integer scalar
+    tensor1 = constant_op.constant(42)
+    assert_tensor_properties(
+        tensor=tensor1,
+        expected_shape=(),
+        expected_dtype=tf.int32,
+        expected_value=42
+    )
+    
+    # Test 2: List of integers
+    tensor2 = constant_op.constant([1, 2, 3, 4])
+    assert_tensor_properties(
+        tensor=tensor2,
+        expected_shape=(4,),
+        expected_dtype=tf.int32,
+        expected_value=[1, 2, 3, 4]
+    )
+    
+    # Test 3: Float scalar
+    tensor3 = constant_op.constant(3.14)
+    assert_tensor_properties(
+        tensor=tensor3,
+        expected_shape=(),
+        expected_dtype=tf.float32,
+        expected_value=3.14
+    )
+    
+    # Test 4: List of floats
+    tensor4 = constant_op.constant([1.1, 2.2, 3.3])
+    assert_tensor_properties(
+        tensor=tensor4,
+        expected_shape=(3,),
+        expected_dtype=tf.float32,
+        expected_value=[1.1, 2.2, 3.3]
+    )
+    
+    # Test 5: Empty list
+    tensor5 = constant_op.constant([])
+    assert_tensor_properties(
+        tensor=tensor5,
+        expected_shape=(0,),
+        expected_dtype=tf.float32,
+        expected_value=[]
+    )
+    
+    # Test 6: Nested list (2D)
+    tensor6 = constant_op.constant([[1, 2], [3, 4]])
+    assert_tensor_properties(
+        tensor=tensor6,
+        expected_shape=(2, 2),
+        expected_dtype=tf.int32,
+        expected_value=[[1, 2], [3, 4]]
+    )
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("value, dtype_str, expected_dtype, expected_value", [
+    # Test 1: Float scalar with explicit float32 dtype
+    (3.14, "float32", tf.float32, 3.14),
+    
+    # Test 2: List of integers with explicit int64 dtype
+    ([1, 2, 3], "int64", tf.int64, [1, 2, 3]),
+    
+    # Test 3: Integer scalar with float32 dtype (type conversion)
+    (42, "float32", tf.float32, 42.0),
+    
+    # Test 4: Float list with float64 dtype (higher precision)
+    ([1.5, 2.5, 3.5], "float64", tf.float64, [1.5, 2.5, 3.5]),
+    
+    # Test 5: Integer list with int16 dtype (lower precision)
+    ([100, 200, 300], "int16", tf.int16, [100, 200, 300]),
+    
+    # Test 6: Boolean values
+    ([True, False, True], "bool", tf.bool, [True, False, True]),
+    
+    # Test 7: String values (coverage gap)
+    ("hello", "string", tf.string, b"hello"),
+    
+    # Test 8: Complex numbers
+    (1 + 2j, "complex64", tf.complex64, 1 + 2j),
+    
+    # Test 9: Numpy integer with dtype inference
+    (np.int32(5), None, tf.int32, 5),
+    
+    # Test 10: Numpy float with dtype inference
+    (np.float64(3.14), None, tf.float64, 3.14),
+])
+def test_constant_dtype_specification_and_inference(value, dtype_str, expected_dtype, expected_value):
+    """Test dtype explicit specification and inference (CASE_02)."""
+    
+    # Convert dtype string to tf.DType if provided
+    dtype = tf.dtypes.as_dtype(dtype_str) if dtype_str else None
+    
+    # Create constant tensor
+    tensor = constant_op.constant(value, dtype=dtype)
+    
+    # Get expected shape
+    if isinstance(value, (list, tuple, np.ndarray)):
+        expected_shape = np.array(value).shape
+    else:
+        expected_shape = ()
+    
+    # Assert tensor properties
+    assert_tensor_properties(
+        tensor=tensor,
+        expected_shape=expected_shape,
+        expected_dtype=expected_dtype,
+        expected_value=expected_value
+    )
+    
+    # Additional test: dtype inference when not specified
+    if dtype_str is None:
+        inferred_tensor = constant_op.constant(value)
+        expected_inferred_dtype = get_expected_dtype(value)
+        assert inferred_tensor.dtype == expected_inferred_dtype, \
+            f"Dtype inference failed: expected {expected_inferred_dtype}, got {inferred_tensor.dtype}"
+    
+    # Test type promotion: when value type doesn't match specified dtype
+    if dtype_str is not None and isinstance(value, (int, float)):
+        # The value should be converted to the specified dtype
+        tensor_np = tensor.numpy()
+        if expected_dtype.is_floating:
+            assert isinstance(tensor_np, (float, np.floating)), \
+                f"Expected float type for {expected_dtype}, got {type(tensor_np)}"
+        elif expected_dtype.is_integer:
+            assert isinstance(tensor_np, (int, np.integer)), \
+                f"Expected integer type for {expected_dtype}, got {type(tensor_np)}"
+        elif expected_dtype == tf.bool:
+            assert isinstance(tensor_np, (bool, np.bool_)), \
+                f"Expected bool type for {expected_dtype}, got {type(tensor_np)}"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("value, dtype_str, verify_shape, expected_shape, expected_value", [
+    # Test 1: Integer scalar with verify_shape=False
+    (100, None, False, (), 100),
+    
+    # Test 2: 2D list with verify_shape=False
+    ([[1, 2], [3, 4]], None, False, (2, 2), [[1, 2], [3, 4]]),
+    
+    # Test 3: Float scalar with explicit dtype
+    (3.14, "float64", False, (), 3.14),
+    
+    # Test 4: 1D list with explicit int32 dtype
+    ([10, 20, 30], "int32", False, (3,), [10, 20, 30]),
+    
+    # Test 5: Empty list
+    ([], None, False, (0,), []),
+    
+    # Test 6: 3D nested list
+    ([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], None, False, (2, 2, 2), 
+     [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),
+])
+def test_constant_v1_basic_functionality(value, dtype_str, verify_shape, expected_shape, expected_value):
+    """Test constant_v1 basic functionality (CASE_03)."""
+    
+    # Convert dtype string to tf.DType if provided
+    dtype = tf.dtypes.as_dtype(dtype_str) if dtype_str else None
+    
+    # Create constant tensor using constant_v1
+    tensor = constant_op.constant_v1(
+        value=value,
+        dtype=dtype,
+        verify_shape=verify_shape
+    )
+    
+    # Determine expected dtype
+    if dtype is not None:
+        expected_dtype = dtype
+    else:
+        expected_dtype = get_expected_dtype(value)
+    
+    # Assert tensor properties
+    assert_tensor_properties(
+        tensor=tensor,
+        expected_shape=expected_shape,
+        expected_dtype=expected_dtype,
+        expected_value=expected_value
+    )
+    
+    # Verify that constant_v1 produces same result as constant for basic cases
+    # (when verify_shape=False and no shape parameter)
+    if not verify_shape:
+        constant_tensor = constant_op.constant(value, dtype=dtype)
+        # Compare values
+        if tensor.dtype.is_floating:
+            np.testing.assert_allclose(
+                tensor.numpy(),
+                constant_tensor.numpy(),
+                rtol=RTOL,
+                atol=ATOL
+            )
+        else:
+            np.testing.assert_array_equal(
+                tensor.numpy(),
+                constant_tensor.numpy()
+            )
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+def test_constant_v1_verify_shape_parameter():
+    """Test verify_shape parameter validation (CASE_04)."""
+    
+    # Test 1: verify_shape=True with matching shape
+    tensor1 = constant_op.constant_v1(
+        value=[1, 2, 3],
+        shape=[3],
+        verify_shape=True
+    )
+    assert_tensor_properties(
+        tensor=tensor1,
+        expected_shape=(3,),
+        expected_dtype=tf.int32,
+        expected_value=[1, 2, 3]
+    )
+    
+    # Test 2: verify_shape=False with matching shape (should work)
+    tensor2 = constant_op.constant_v1(
+        value=[[1, 2], [3, 4]],
+        shape=[2, 2],
+        verify_shape=False
+    )
+    assert_tensor_properties(
+        tensor=tensor2,
+        expected_shape=(2, 2),
+        expected_dtype=tf.int32,
+        expected_value=[[1, 2], [3, 4]]
+    )
+    
+    # Test 3: verify_shape=True with mismatching shape (should raise error)
+    with pytest.raises((ValueError, TypeError)) as exc_info:
+        constant_op.constant_v1(
+            value=[1, 2, 3],
+            shape=[4],  # Shape doesn't match value length
+            verify_shape=True
+        )
+    # Verify error message contains shape information
+    error_msg = str(exc_info.value).lower()
+    assert any(keyword in error_msg for keyword in ['shape', 'size', 'dimension', 'length'])
+    
+    # Test 4: verify_shape=False with mismatching shape - constant_v1 does NOT support broadcasting
+    # constant_v1 has allow_broadcast=False, so it should raise an error when shape doesn't match
+    with pytest.raises(TypeError) as exc_info:
+        constant_op.constant_v1(
+            value=[1, 2],
+            shape=[3],  # Shape has 3 elements, value has 2 elements
+            verify_shape=False
+        )
+    # Verify error message indicates shape mismatch
+    error_msg = str(exc_info.value).lower()
+    assert any(keyword in error_msg for keyword in ['shape', 'elements', 'mismatch', 'unsupported'])
+    
+    # Test 5: verify_shape=True with scalar value and scalar shape
+    tensor5 = constant_op.constant_v1(
+        value=42,
+        shape=[],
+        verify_shape=True
+    )
+    assert_tensor_properties(
+        tensor=tensor5,
+        expected_shape=(),
+        expected_dtype=tf.int32,
+        expected_value=42
+    )
+    
+    # Test 6: verify_shape=True with 2D value and 2D shape
+    tensor6 = constant_op.constant_v1(
+        value=[[1, 2, 3], [4, 5, 6]],
+        shape=[2, 3],
+        verify_shape=True
+    )
+    assert_tensor_properties(
+        tensor=tensor6,
+        expected_shape=(2, 3),
+        expected_dtype=tf.int32,
+        expected_value=[[1, 2, 3], [4, 5, 6]]
+    )
+    
+    # Test 7: Edge case - empty list with verify_shape=True
+    tensor7 = constant_op.constant_v1(
+        value=[],
+        shape=[0],
+        verify_shape=True
+    )
+    assert_tensor_properties(
+        tensor=tensor7,
+        expected_shape=(0,),
+        expected_dtype=tf.float32,
+        expected_value=[]
+    )
+    
+    # Test 8: verify_shape=False with scalar value and non-scalar shape (should work with filling)
+    # This should work because scalar can be broadcast to fill the shape
+    tensor8 = constant_op.constant_v1(
+        value=7,
+        shape=[2, 3],
+        verify_shape=False
+    )
+    assert_tensor_properties(
+        tensor=tensor8,
+        expected_shape=(2, 3),
+        expected_dtype=tf.int32,
+        expected_value=[[7, 7, 7], [7, 7, 7]]
+    )
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.skip(reason="Deferred test case - shape 重塑和广播")
+def test_constant_shape_reshape_and_broadcast():
+    """Test shape reshaping and broadcasting (CASE_05 - deferred)."""
+    # This test case is deferred and will be implemented in later iterations
+    pass
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+@pytest.mark.skip(reason="Deferred test case")
+def test_deferred_case_06():
+    """Deferred test case placeholder (CASE_06)."""
+    pass
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+@pytest.mark.skip(reason="Deferred test case")
+def test_deferred_case_07():
+    """Deferred test case placeholder (CASE_07)."""
+    pass
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+@pytest.mark.skip(reason="Deferred test case")
+def test_deferred_case_08():
+    """Deferred test case placeholder (CASE_08)."""
+    pass
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases for edge scenarios
+
+def test_constant_with_numpy_array():
+    """Test constant creation with numpy arrays."""
+    # 1D numpy array
+    arr1d = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    tensor1 = constant_op.constant(arr1d)
+    assert_tensor_properties(
+        tensor=tensor1,
+        expected_shape=(3,),
+        expected_dtype=tf.float32,
+        expected_value=[1.0, 2.0, 3.0]
+    )
+    
+    # 2D numpy array with different dtype
+    arr2d = np.array([[1, 2], [3, 4]], dtype=np.int64)
+    tensor2 = constant_op.constant(arr2d)
+    assert_tensor_properties(
+        tensor=tensor2,
+        expected_shape=(2, 2),
+        expected_dtype=tf.int64,
+        expected_value=[[1, 2], [3, 4]]
+    )
+    
+    # Numpy array with explicit dtype override
+    arr_float = np.array([1.5, 2.5], dtype=np.float64)
+    tensor3 = constant_op.constant(arr_float, dtype=tf.float32)
+    assert_tensor_properties(
+        tensor=tensor3,
+        expected_shape=(2,),
+        expected_dtype=tf.float32,
+        expected_value=[1.5, 2.5]
+    )
+    
+    # Numpy array with complex dtype (coverage gap)
+    arr_complex = np.array([1 + 2j, 3 + 4j], dtype=np.complex64)
+    tensor4 = constant_op.constant(arr_complex)
+    assert_tensor_properties(
+        tensor=tensor4,
+        expected_shape=(2,),
+        expected_dtype=tf.complex64,
+        expected_value=[1 + 2j, 3 + 4j]
+    )
+    
+    # Numpy array with bool dtype (coverage gap)
+    arr_bool = np.array([True, False, True], dtype=np.bool_)
+    tensor5 = constant_op.constant(arr_bool)
+    assert_tensor_properties(
+        tensor=tensor5,
+        expected_shape=(3,),
+        expected_dtype=tf.bool,
+        expected_value=[True, False, True]
+    )
+    
+    # Numpy array with string dtype (coverage gap)
+    arr_string = np.array(["hello", "world"], dtype=np.str_)
+    tensor6 = constant_op.constant(arr_string)
+    assert_tensor_properties(
+        tensor=tensor6,
+        expected_shape=(2,),
+        expected_dtype=tf.string,
+        expected_value=[b"hello", b"world"]
+    )
+    
+    # Numpy array with uint8 dtype (coverage gap)
+    arr_uint8 = np.array([1, 2, 3], dtype=np.uint8)
+    tensor7 = constant_op.constant(arr_uint8)
+    assert_tensor_properties(
+        tensor=tensor7,
+        expected_shape=(3,),
+        expected_dtype=tf.uint8,
+        expected_value=[1, 2, 3]
+    )
+    
+    # Numpy array with int16 dtype (coverage gap)
+    arr_int16 = np.array([100, 200], dtype=np.int16)
+    tensor8 = constant_op.constant(arr_int16)
+    assert_tensor_properties(
+        tensor=tensor8,
+        expected_shape=(2,),
+        expected_dtype=tf.int16,
+        expected_value=[100, 200]
+    )
+
+def test_constant_name_parameter():
+    """Test name parameter functionality."""
+    # Test with custom name
+    tensor = constant_op.constant(42, name="MyConstant")
+    assert isinstance(tensor, tf.Tensor)
+    
+    # Note: In eager mode, the name might not be directly accessible
+    # but the function should accept the parameter without error
+
+def test_constant_error_cases():
+    """Test error cases for constant creation."""
+    # Test with invalid shape parameter (negative dimension)
+    with pytest.raises((ValueError, TypeError)) as exc_info:
+        constant_op.constant([1, 2, 3], shape=[-1, 2])
+    # Actual error message is "Dimension -1 must be >= 0"
+    error_msg = str(exc_info.value).lower()
+    assert any(keyword in error_msg for keyword in ['dimension', 'must', '>=', '0', 'negative'])
+    
+    # Test with incompatible shape and value (shape requires more elements than value provides)
+    # This should raise an error because we need 4 elements but only have 3
+    with pytest.raises((ValueError, TypeError)) as exc_info:
+        constant_op.constant([1, 2, 3], shape=[2, 2])  # Needs 4 elements, only 3 provided
+    
+    # Test with invalid dtype
+    with pytest.raises(TypeError) as exc_info:
+        constant_op.constant([1, 2, 3], dtype="invalid_dtype")
+    
+    # Test with shape that has wrong number of dimensions - TensorFlow allows reshaping!
+    # constant([[1,2],[3,4]], shape=[4]) is valid - it reshapes 2x2 matrix to 1x4 vector
+    tensor = constant_op.constant([[1, 2], [3, 4]], shape=[4])
+    assert_tensor_properties(
+        tensor=tensor,
+        expected_shape=(4,),
+        expected_dtype=tf.int32,
+        expected_value=[1, 2, 3, 4]
+    )
+    
+    # Test with non-integer shape dimensions
+    with pytest.raises(TypeError) as exc_info:
+        constant_op.constant([1, 2, 3], shape=[2.5, 2])
+    
+    # Additional error case: shape with zero total elements but value has elements
+    with pytest.raises((ValueError, TypeError)) as exc_info:
+        constant_op.constant([1, 2, 3], shape=[0, 2])  # 0 total elements, but value has 3
+    
+    # Test with shape that has fewer total elements than value
+    with pytest.raises((ValueError, TypeError)) as exc_info:
+        constant_op.constant([1, 2, 3, 4, 5, 6], shape=[2, 2])  # Only 4 elements needed, but value has 6
+
+def test_constant_reshape_capabilities():
+    """Test constant's ability to reshape values."""
+    # Test 1: Reshape 2D to 1D
+    tensor1 = constant_op.constant([[1, 2], [3, 4]], shape=[4])
+    assert_tensor_properties(
+        tensor=tensor1,
+        expected_shape=(4,),
+        expected_dtype=tf.int32,
+        expected_value=[1, 2, 3, 4]
+    )
+    
+    # Test 2: Reshape 1D to 2D
+    tensor2 = constant_op.constant([1, 2, 3, 4, 5, 6], shape=[2, 3])
+    assert_tensor_properties(
+        tensor=tensor2,
+        expected_shape=(2, 3),
+        expected_dtype=tf.int32,
+        expected_value=[[1, 2, 3], [4, 5, 6]]
+    )
+    
+    # Test 3: Reshape scalar to multi-dimensional
+    tensor3 = constant_op.constant(5, shape=[2, 2, 2])
+    assert_tensor_properties(
+        tensor=tensor3,
+        expected_shape=(2, 2, 2),
+        expected_dtype=tf.int32,
+        expected_value=[[[5, 5], [5, 5]], [[5, 5], [5, 5]]]
+    )
+    
+    # Test 4: Reshape with explicit dimensions (replacing -1 test)
+    # Instead of using -1, we test reshaping with explicit dimensions
+    tensor4 = constant_op.constant([1, 2, 3, 4, 5, 6], shape=[3, 2])
+    assert_tensor_properties(
+        tensor=tensor4,
+        expected_shape=(3, 2),
+        expected_dtype=tf.int32,
+        expected_value=[[1, 2], [3, 4], [5, 6]]
+    )
+    
+    # Test 5: Reshape with broadcasting
+    tensor5 = constant_op.constant(7, shape=[1, 4, 3])
+    assert_tensor_properties(
+        tensor=tensor5,
+        expected_shape=(1, 4, 3),
+        expected_dtype=tf.int32,
+        expected_value=[[[7, 7, 7], [7, 7, 7], [7, 7, 7], [7, 7, 7]]]
+    )
+
+def test_constant_with_empty_values():
+    """Test constant creation with empty values."""
+    # Empty list creates 0-dimensional tensor with shape (0,)
+    tensor1 = constant_op.constant([])
+    assert_tensor_properties(
+        tensor=tensor1,
+        expected_shape=(0,),
+        expected_dtype=tf.float32,  # Default dtype for empty list
+        expected_value=[]
+    )
+    
+    # Empty list with explicit dtype
+    tensor2 = constant_op.constant([], dtype=tf.int32)
+    assert_tensor_properties(
+        tensor=tensor2,
+        expected_shape=(0,),
+        expected_dtype=tf.int32,
+        expected_value=[]
+    )
+    
+    # Empty numpy array
+    tensor3 = constant_op.constant(np.array([]))
+    assert_tensor_properties(
+        tensor=tensor3,
+        expected_shape=(0,),
+        expected_dtype=tf.float64,  # numpy default dtype
+        expected_value=[]
+    )
+
+def test_constant_with_special_numpy_dtypes():
+    """Test constant with special numpy dtypes (coverage gap)."""
+    # Test with numpy datetime64
+    arr_datetime = np.array(['2023-01-01', '2023-01-02'], dtype='datetime64[s]')
+    tensor1 = constant_op.constant(arr_datetime)
+    # TensorFlow converts datetime64 to int64
+    assert tensor1.dtype == tf.int64
+    assert tensor1.shape == (2,)
+    
+    # Test with numpy timedelta64
+    arr_timedelta = np.array([1, 2, 3], dtype='timedelta64[s]')
+    tensor2 = constant_op.constant(arr_timedelta)
+    # TensorFlow converts timedelta64 to int64
+    assert tensor2.dtype == tf.int64
+    assert tensor2.shape == (3,)
+    
+    # Test with numpy object dtype (should raise error or convert)
+    arr_object = np.array([1, 'hello', 3.14], dtype=object)
+    with pytest.raises((TypeError, ValueError)) as exc_info:
+        constant_op.constant(arr_object)
+    # Should complain about unsupported dtype
+
+# Cleanup and teardown if needed
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_tensorflow_sessions():
+    """Cleanup TensorFlow sessions after tests."""
+    yield
+    # Clear any cached graphs or sessions
+    tf.compat.v1.reset_default_graph()
+# ==== BLOCK:FOOTER END ====

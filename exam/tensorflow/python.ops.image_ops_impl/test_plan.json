@@ -1,0 +1,230 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.image_ops_impl",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_image_ops_impl.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_image_ops_impl.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "adjust_brightness 基本亮度调整",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "adjust_brightness",
+          "dtype": "float32",
+          "shape": [32, 32, 3],
+          "delta": 0.2,
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "brightness_correctness", "range_check"]
+      },
+      "oracle": "手动计算亮度调整",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "random_flip_left_right 随机水平翻转",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "random_flip_left_right",
+          "dtype": "uint8",
+          "shape": [4, 64, 64, 3],
+          "seed": 42,
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["flip_correctness", "seed_consistency", "randomness_check"]
+      },
+      "oracle": "手动翻转验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "central_crop 中心裁剪",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "central_crop",
+          "dtype": "float32",
+          "shape": [128, 128, 3],
+          "central_fraction": 0.5,
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["crop_correctness", "center_alignment", "content_preservation"]
+      },
+      "oracle": "手动计算裁剪区域",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "rgb_to_yuv 颜色空间转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "rgb_to_yuv",
+          "dtype": "float32",
+          "shape": [16, 16, 3],
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["color_conversion_accuracy", "roundtrip_consistency", "range_check"]
+      },
+      "oracle": "标准YUV转换公式",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "non_max_suppression 边界框筛选",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "non_max_suppression",
+          "boxes_shape": [10, 4],
+          "scores_shape": [10],
+          "max_output_size": 5,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype", "finite", "basic_property"],
+        "strong": ["nms_correctness", "iou_threshold", "score_ordering"]
+      },
+      "oracle": "手动NMS算法",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "adjust_brightness",
+        "dtype": "uint8",
+        "shape": [64, 64, 3],
+        "delta": -0.1,
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：不同数据类型和负delta值"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "adjust_brightness",
+        "dtype": "float32",
+        "shape": [1, 32, 32, 3],
+        "delta": 0.5,
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：批量图像处理"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "random_flip_left_right",
+        "dtype": "float32",
+        "shape": [32, 32, 1],
+        "seed": null,
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：灰度图像和None种子"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "central_crop",
+        "dtype": "float32",
+        "shape": [100, 150, 3],
+        "central_fraction": 0.8,
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：非正方形图像和大裁剪比例"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "rgb_to_yuv",
+        "dtype": "uint8",
+        "shape": [4, 48, 48, 3],
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：批量uint8图像"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

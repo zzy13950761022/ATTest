@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_sparse_ops.py::test_invalid_input_validation[unsorted_indices-indices0-values0-shape0-float32-InvalidArgumentError-indices are not sorted]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息不匹配：期望'indices are not sorted'，实际'indices[1] = [0,0] is out of order...'"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_sparse_ops.py::test_invalid_input_validation[duplicate_indices-indices1-values1-shape1-float32-InvalidArgumentError-indices are not sorted]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息不匹配：期望'indices are not sorted'，实际'indices[1] = [0,0] is repeated'"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败集合完全重复：两个测试用例在CASE_05中持续失败，错误消息验证不匹配"
+}

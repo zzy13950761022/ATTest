@@ -1,0 +1,212 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.autograph.utils.ag_logging",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_autograph_utils_ag_logging.py",
+    "all_pattern": "tests/test_tensorflow_python_autograph_utils_ag_logging_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_autograph_utils_ag_logging_g1.py",
+      "G2": "tests/test_tensorflow_python_autograph_utils_ag_logging_g2.py",
+      "G3": "tests/test_tensorflow_python_autograph_utils_ag_logging_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "详细级别控制函数族",
+      "entrypoints": ["set_verbosity", "get_verbosity", "has_verbosity"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试详细级别设置、获取和检查功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "日志输出函数族",
+      "entrypoints": ["error", "log", "warning"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试不同级别的日志输出功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "调试跟踪函数族",
+      "entrypoints": ["trace"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_08"],
+      "note": "测试调试跟踪和交互模式输出"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "详细级别基本设置与获取",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "level": 0,
+          "alsologtostdout": false,
+          "env_var": null
+        },
+        {
+          "level": 1,
+          "alsologtostdout": false,
+          "env_var": null
+        }
+      ],
+      "asserts": {
+        "weak": ["get_verbosity_returns_set_value", "has_verbosity_consistent"],
+        "strong": ["state_isolation", "no_side_effects"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "环境变量优先级验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "env_level": 3,
+          "set_level": 1,
+          "alsologtostdout": false
+        }
+      ],
+      "asserts": {
+        "weak": ["env_var_overrides_default", "set_verbosity_overrides_env"],
+        "strong": ["env_var_parsing_edge_cases", "invalid_env_var_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "日志输出级别控制",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "verbosity_level": 2,
+          "log_level": 1,
+          "msg": "test message",
+          "should_output": true
+        },
+        {
+          "verbosity_level": 0,
+          "log_level": 1,
+          "msg": "test message",
+          "should_output": false
+        }
+      ],
+      "asserts": {
+        "weak": ["log_output_when_level_met", "no_output_when_level_not_met"],
+        "strong": ["output_format_correct", "kwargs_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "trace函数基本输出",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "args": ["test_arg"],
+          "interactive_mode": false,
+          "alsologtostdout": false
+        }
+      ],
+      "asserts": {
+        "weak": ["trace_calls_logging", "args_passed_correctly"],
+        "strong": ["stdout_output_when_enabled", "interactive_mode_detection"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "level": 5,
+        "alsologtostdout": true,
+        "env_var": "2"
+      },
+      "note": "高详细级别和stdout输出组合"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "level": -1,
+        "alsologtostdout": false,
+        "env_var": null
+      },
+      "note": "负详细级别边界测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "verbosity_level": 3,
+        "log_level": 3,
+        "msg": "formatted %s",
+        "should_output": true,
+        "format_args": ["test"]
+      },
+      "note": "格式化消息和参数传递"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

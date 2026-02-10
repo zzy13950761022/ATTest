@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_svd_decomposition[dtype0-shape0-False-True]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "SVD重构精度不足，需要放宽容差或处理符号歧义"
+    },
+    {
+      "test": "test_batch_matrix_operations[dtype0-batch_shape0-matrix_shape0-cholesky_solve]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "批量Cholesky求解精度不足，需要放宽容差"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

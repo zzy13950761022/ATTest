@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 44,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_parameter_exclusivity",
+      "block_id": "CASE_09",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "PyTorch 实际行为：允许同时指定 size 和 scale_factor，但优先使用 size。测试期望抛出 ValueError，但实际不会抛出。"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_invalid_mode_parameter",
+      "block_id": "CASE_10",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "测试期望 mode=None 时抛出 TypeError，但 PyTorch 的 Upsample 类允许 mode=None（使用默认值 'nearest'）。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

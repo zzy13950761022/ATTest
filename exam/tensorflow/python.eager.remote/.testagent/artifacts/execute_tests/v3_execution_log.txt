@@ -1,0 +1,171 @@
+=== Run Tests ===
+FFFF...                                                                  [100%]
+================================== FAILURES ===================================
+______________________ test_connect_to_remote_host_basic ______________________
+
+mock_pywrap_tfe = {'pick_port': <unittest.mock._patch object at 0x00000181BAE2C8B0>, 'set_server_def': <MagicMock name='TFE_ContextSetServerDef' id='1656697654816'>, 'update_server_def': <MagicMock name='TFE_ContextUpdateServerDef' id='1656697653184'>}
+mock_context = <MagicMock id='1656697833744'>
+
+    def test_connect_to_remote_host_basic(mock_pywrap_tfe, mock_context):
+        """Test basic functionality of connect_to_remote_host (TC-01)."""
+        # Arrange
+        remote_host = "localhost:12345"
+        job_name = "worker"
+    
+        # Act - Use the mock_context fixture which provides proper config
+        remote.connect_to_remote_host(remote_host, job_name)
+    
+        # Assert (weak assertions)
+        # 1. No exception raised
+        # 2. Mock was called
+        # 3. Context was updated
+        mock_set_server_def = mock_pywrap_tfe['set_server_def']
+>       assert mock_set_server_def.called, "TFE_ContextSetServerDef should be called"
+E       AssertionError: TFE_ContextSetServerDef should be called
+E       assert False
+E        +  where False = <MagicMock name='TFE_ContextSetServerDef' id='1656697654816'>.called
+
+tests\test_tensorflow_python_eager_remote.py:115: AssertionError
+________________ test_connect_to_remote_host_default_job_name _________________
+
+mock_pywrap_tfe = {'pick_port': <unittest.mock._patch object at 0x00000181BAFE1A90>, 'set_server_def': <MagicMock name='TFE_ContextSetServerDef' id='1656697870080'>, 'update_server_def': <MagicMock name='TFE_ContextUpdateServerDef' id='1656699321360'>}
+mock_context = <MagicMock id='1656699624224'>
+
+    def test_connect_to_remote_host_default_job_name(mock_pywrap_tfe, mock_context):
+        """Test default parameter values for connect_to_remote_host (TC-02)."""
+        # Arrange
+        remote_host = "127.0.0.1:8080"
+    
+        # Act - call with only remote_host, using default job_name
+        remote.connect_to_remote_host(remote_host)
+    
+        # Assert (weak assertions)
+        # 1. No exception raised
+        # 2. Default job_name should be used
+        # 3. Mock was called once
+        mock_set_server_def = mock_pywrap_tfe['set_server_def']
+    
+>       assert mock_set_server_def.called, "TFE_ContextSetServerDef should be called"
+E       AssertionError: TFE_ContextSetServerDef should be called
+E       assert False
+E        +  where False = <MagicMock name='TFE_ContextSetServerDef' id='1656697870080'>.called
+
+tests\test_tensorflow_python_eager_remote.py:147: AssertionError
+_________________ test_connect_to_cluster_eager_mode_required _________________
+
+mock_pywrap_tfe = {'pick_port': <unittest.mock._patch object at 0x00000181BAE3C730>, 'set_server_def': <MagicMock name='TFE_ContextSetServerDef' id='1656697886512'>, 'update_server_def': <MagicMock name='TFE_ContextUpdateServerDef' id='1656697870992'>}
+
+    def test_connect_to_cluster_eager_mode_required(mock_pywrap_tfe):
+        """Test that connect_to_cluster requires eager mode (TC-03)."""
+        # Arrange
+        # Create a proper mock ClusterSpec with real ClusterDef
+        cluster_spec = create_mock_cluster_spec({"worker": ["localhost:2222"]})
+    
+        # Mock context.context() to return a proper mock with real config
+        config_proto = config_pb2.ConfigProto()
+        mock_ctx = mock.MagicMock()
+        mock_ctx.configure_mock(config=config_proto)
+        mock_ctx.coordination_service = None
+    
+        # Test 1: Non-eager mode should raise ValueError
+        with mock.patch.object(context, 'executing_eagerly', return_value=False):
+            with mock.patch.object(context, 'context', return_value=mock_ctx):
+                with mock.patch.object(context, 'get_server_def', return_value=None):
+                    # Act & Assert
+                    with pytest.raises(ValueError) as exc_info:
+                        remote.connect_to_cluster(cluster_spec, job_name="localhost", task_index=0)
+    
+                    # Verify the error message
+                    error_msg = str(exc_info.value)
+                    assert "eager mode" in error_msg.lower(), "Error should mention eager mode requirement"
+    
+                    # Verify that pywrap_tfe functions were NOT called
+                    mock_set_server_def = mock_pywrap_tfe['set_server_def']
+                    assert not mock_set_server_def.called, "Should not call server functions in non-eager mode"
+    
+        # Test 2: Should work in eager mode
+        with mock.patch.object(context, 'executing_eagerly', return_value=True):
+            with mock.patch.object(context, 'context', return_value=mock_ctx):
+                with mock.patch.object(context, 'get_server_def', return_value=None):
+                    # This should not raise an exception
+                    remote.connect_to_cluster(cluster_spec, job_name="localhost", task_index=0)
+>                   assert mock_pywrap_tfe['set_server_def'].called, "Should call server functions in eager mode"
+E                   AssertionError: Should call server functions in eager mode
+E                   assert False
+E                    +  where False = <MagicMock name='TFE_ContextSetServerDef' id='1656697886512'>.called
+
+tests\test_tensorflow_python_eager_remote.py:201: AssertionError
+____________ test_connect_to_remote_host_multiple_calls_overwrite _____________
+
+mock_pywrap_tfe = {'pick_port': <unittest.mock._patch object at 0x00000181BB00CF40>, 'set_server_def': <MagicMock name='TFE_ContextSetServerDef' id='1656699436864'>, 'update_server_def': <MagicMock name='TFE_ContextUpdateServerDef' id='1656699769088'>}
+mock_context = <MagicMock id='1656699801552'>
+
+    def test_connect_to_remote_host_multiple_calls_overwrite(mock_pywrap_tfe, mock_context):
+        """Test that multiple calls to connect_to_remote_host overwrite previous config (TC-04)."""
+        # Arrange
+        first_host = "host1:1111"
+        second_host = "host2:2222"
+        job_name = "worker"
+    
+        # Mock get_server_def to simulate existing server configuration
+        # First call: no existing server def
+        # Second call: simulate existing server def to trigger update
+        server_def_calls = []
+    
+        def mock_get_server_def():
+            if len(server_def_calls) == 0:
+                # First call - no server def
+                return None
+            else:
+                # Second call - return a mock server def to trigger update
+                mock_server_def = mock.MagicMock(spec=ServerDef)
+                mock_server_def.job_name = "localhost"
+                mock_server_def.task_index = 0
+                mock_server_def.cluster = cluster_pb2.ClusterDef()
+                return mock_server_def
+    
+        with mock.patch.object(context, 'get_server_def', side_effect=mock_get_server_def):
+            # Act - First call
+            remote.connect_to_remote_host(first_host, job_name)
+            server_def_calls.append(1)
+    
+            # Get initial call count
+            initial_set_calls = mock_pywrap_tfe['set_server_def'].call_count
+            initial_update_calls = mock_pywrap_tfe['update_server_def'].call_count
+    
+            # Act - Second call (should overwrite)
+            remote.connect_to_remote_host(second_host, job_name)
+            server_def_calls.append(2)
+    
+            # Assert (weak assertions)
+            # 1. No exception raised
+            # 2. Mock was called at least twice
+            # 3. Update may be called for the second invocation if server def changed
+    
+            mock_set_server_def = mock_pywrap_tfe['set_server_def']
+            mock_update_server_def = mock_pywrap_tfe['update_server_def']
+    
+            # First call should use set_server_def
+>           assert mock_set_server_def.call_count >= 1, "set_server_def should be called at least once"
+E           AssertionError: set_server_def should be called at least once
+E           assert 0 >= 1
+E            +  where 0 = <MagicMock name='TFE_ContextSetServerDef' id='1656699436864'>.call_count
+
+tests\test_tensorflow_python_eager_remote.py:260: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                           Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_eager_remote.py     160     37     16      1    74%   59-63, 77-79, 93-96, 118-128, 148-162, 204-208, 263-272
+------------------------------------------------------------------------------------------
+TOTAL                                            160     37     16      1    74%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_eager_remote.py::test_connect_to_remote_host_basic
+FAILED tests\test_tensorflow_python_eager_remote.py::test_connect_to_remote_host_default_job_name
+FAILED tests\test_tensorflow_python_eager_remote.py::test_connect_to_cluster_eager_mode_required
+FAILED tests\test_tensorflow_python_eager_remote.py::test_connect_to_remote_host_multiple_calls_overwrite
+4 failed, 3 passed in 1.63s
+
+Error: exit 1

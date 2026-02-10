@@ -1,0 +1,289 @@
+{
+  "plan_version": 2,
+  "target": "torch._lowrank",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_lowrank.py",
+    "all_pattern": "tests/test_torch_lowrank_*.py",
+    "groups": {
+      "G1": "tests/test_torch_lowrank_g1.py",
+      "G2": "tests/test_torch_lowrank_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心函数族 - svd_lowrank",
+      "entrypoints": ["svd_lowrank"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_04"],
+      "note": "测试SVD低秩分解的核心功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "辅助函数族 - get_approximate_basis 和 pca_lowrank",
+      "entrypoints": ["get_approximate_basis", "pca_lowrank"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试近似基和PCA低秩分解"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "svd_lowrank 基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 3],
+          "q": 2,
+          "niter": 2,
+          "M": null,
+          "flags": ["normal"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "orthogonality", "singular_values_order"]
+      },
+      "oracle": "torch.linalg.svd",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "svd_lowrank 边界条件测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [4, 4],
+          "q": 4,
+          "niter": 0,
+          "M": null,
+          "flags": ["full_rank"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "orthogonality", "reconstruction_error"]
+      },
+      "oracle": "torch.linalg.svd",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "get_approximate_basis 基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [6, 4],
+          "q": 3,
+          "niter": 2,
+          "M": null,
+          "flags": ["normal"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "orthogonality_weak"],
+        "strong": ["orthogonality", "basis_quality"]
+      },
+      "oracle": "torch.linalg.qr",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "svd_lowrank 随机性控制",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 3],
+          "q": 2,
+          "niter": 2,
+          "M": null,
+          "flags": ["random_seed"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "reproducibility"],
+        "strong": ["approx_equal", "deterministic"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "pca_lowrank 中心化测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [5, 3],
+          "q": 2,
+          "center": true,
+          "niter": 2,
+          "flags": ["centered"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "centering_effect"],
+        "strong": ["approx_equal", "orthogonality", "pca_property"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "pca_lowrank 稀疏矩阵支持",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 3],
+          "q": 2,
+          "center": true,
+          "niter": 2,
+          "flags": ["sparse"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "sparse_compatibility"],
+        "strong": ["approx_equal", "dense_consistency"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [8, 5],
+        "q": 3,
+        "niter": 2,
+        "M": null,
+        "flags": ["larger_shape"]
+      },
+      "note": "作为参数扩展：更大形状测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [3, 7],
+        "q": 2,
+        "niter": 2,
+        "M": null,
+        "flags": ["tall_matrix"]
+      },
+      "note": "作为参数扩展：高矩阵测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Low",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [1, 1],
+        "q": 1,
+        "niter": 0,
+        "M": null,
+        "flags": ["minimal"]
+      },
+      "note": "作为参数扩展：最小形状测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [5, 3],
+        "q": 2,
+        "niter": 1,
+        "M": null,
+        "flags": ["different_niter"]
+      },
+      "note": "作为参数扩展：不同迭代次数"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_06"]
+}

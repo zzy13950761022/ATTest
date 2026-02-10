@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 3,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap",
+      "block_id": "CASE_05",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "LSTM投影功能约束检查未实现，覆盖率67%需要提升"
+    },
+    {
+      "test": "coverage_gap",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "高级边界条件测试未实现"
+    },
+    {
+      "test": "coverage_gap",
+      "block_id": "CASE_08",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "高级边界条件测试未实现"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

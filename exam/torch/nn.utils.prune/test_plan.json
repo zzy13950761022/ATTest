@@ -1,0 +1,431 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.utils.prune",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_utils_prune.py",
+    "all_pattern": "tests/test_torch_nn_utils_prune_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_utils_prune_basic.py",
+      "G2": "tests/test_torch_nn_utils_prune_structured.py",
+      "G3": "tests/test_torch_nn_utils_prune_advanced.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础剪枝函数",
+      "entrypoints": ["random_unstructured", "l1_unstructured", "identity"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_04", "CASE_05"],
+      "note": "测试非结构化剪枝基本功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "结构化剪枝",
+      "entrypoints": ["random_structured", "ln_structured"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试结构化剪枝和通道维度"
+    },
+    {
+      "group_id": "G3",
+      "title": "高级功能",
+      "entrypoints": ["global_unstructured", "BasePruningMethod", "remove"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试全局剪枝、基类和移除功能"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "随机非结构化剪枝基础",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 0.3,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 3],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_shape", "mask_dtype", "mask_values", "module_modified", "buffer_added"],
+        "strong": ["exact_prune_count", "mask_independence", "random_seed_reproducible"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.rand", "torch.Tensor.__getitem__"]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "L1非结构化剪枝验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "Conv2d",
+          "param_name": "weight",
+          "amount": 5,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [16, 3, 3, 3],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_shape", "mask_dtype", "prune_count_correct", "module_modified", "l1_order"],
+        "strong": ["exact_l1_order", "importance_score_consistency", "gradient_zero"]
+      },
+      "oracle": "torch.norm",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.norm", "torch.Tensor.__getitem__"]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "结构化剪枝通道选择",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 2,
+          "dim": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 6],
+          "flags": ["structured"]
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_shape", "channel_pruned", "dim_respected", "module_modified", "buffer_stored"],
+        "strong": ["exact_channel_mask", "norm_calculation", "cross_channel_independence"]
+      },
+      "oracle": "manual_structured_calc",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.norm", "torch.rand", "torch.Tensor.__getitem__"]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "边界条件amount=0",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 3],
+          "flags": ["boundary"]
+        }
+      ],
+      "asserts": {
+        "weak": ["no_pruning", "mask_all_ones", "module_unchanged", "state_present"],
+        "strong": ["exact_no_change", "hook_registered", "buffer_empty_mask"]
+      },
+      "oracle": "identity_check",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "边界条件amount=全部参数",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 1.0,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "flags": ["boundary", "full_prune"]
+        }
+      ],
+      "asserts": {
+        "weak": ["full_pruning", "mask_all_zeros", "module_zeroed", "state_present"],
+        "strong": ["exact_all_zero", "hook_registered", "buffer_full_mask"]
+      },
+      "oracle": "zero_check",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "L2结构化剪枝",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "Conv2d",
+          "param_name": "weight",
+          "amount": 3,
+          "dim": 1,
+          "n": 2,
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [8, 4, 3, 3],
+          "flags": ["ln_structured"]
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_shape", "channel_pruned", "l2_order", "module_modified", "norm_type"],
+        "strong": ["exact_l2_order", "norm_calculation_accuracy", "channel_independence"]
+      },
+      "oracle": "torch.norm",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.norm", "torch.Tensor.__getitem__"]
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "自定义重要性分数",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 0.4,
+          "importance_scores": "custom",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 5],
+          "flags": ["importance_scores"]
+        }
+      ],
+      "asserts": {
+        "weak": ["mask_shape", "custom_order", "score_respected", "module_modified", "buffer_stored"],
+        "strong": ["exact_custom_order", "score_consistency", "gradient_preserved"]
+      },
+      "oracle": "manual_importance",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "全局剪枝基础",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "parameters": "multiple",
+          "amount": 10,
+          "pruning_method": "L1Unstructured",
+          "dtype": "float32",
+          "device": "cpu",
+          "shapes": [[3, 4], [4, 2]],
+          "flags": ["global"]
+        }
+      ],
+      "asserts": {
+        "weak": ["global_mask_shapes", "total_prune_count", "cross_param_consistency", "modules_modified", "buffers_added"],
+        "strong": ["exact_global_distribution", "importance_normalization", "parameter_independence"]
+      },
+      "oracle": "global_calculation",
+      "assertion_level": "weak",
+      "size": "L",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.norm", "torch.Tensor.__getitem__", "torch.cat"]
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "剪枝移除功能",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "Linear",
+          "param_name": "weight",
+          "amount": 0.3,
+          "action": "remove",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 4],
+          "flags": ["remove_test"]
+        }
+      ],
+      "asserts": {
+        "weak": ["pruning_applied", "buffers_cleaned", "hooks_removed", "effect_preserved", "state_clean"],
+        "strong": ["exact_buffer_removal", "hook_cleanup", "parameter_permanence"]
+      },
+      "oracle": "state_check",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "BasePruningMethod抽象类",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "test_type": "abstract",
+          "methods": ["apply", "compute_mask", "remove"],
+          "dtype": "float32",
+          "device": "cpu",
+          "flags": ["abstract_class"]
+        }
+      ],
+      "asserts": {
+        "weak": ["class_instantiable", "method_existence", "interface_contract", "hook_registration", "buffer_management"],
+        "strong": ["abstract_enforcement", "method_signatures", "error_handling", "inheritance_chain"]
+      },
+      "oracle": "abc_check",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "module_type": "Linear",
+        "param_name": "weight",
+        "amount": 0.5,
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [10, 5],
+        "flags": ["large_shape"]
+      },
+      "note": "作为参数扩展：不同dtype和形状"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "module_type": "Linear",
+        "param_name": "bias",
+        "amount": 2,
+        "dtype": "float32",
+        "device": "cuda",
+        "shape": [5],
+        "flags": ["bias_param", "cuda_device"]
+      },
+      "note": "作为参数扩展：bias参数和CUDA设备"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "module_type": "Conv2d",
+        "param_name": "weight",
+        "amount": 0.2,
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [32, 16, 3, 3],
+        "flags": ["conv_large"]
+      },
+      "note": "作为参数扩展：卷积层大形状"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "module_type": "Linear",
+        "param_name": "weight",
+        "amount": 3,
+        "dim": 1,
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [6, 8],
+        "flags": ["structured", "dim1"]
+      },
+      "note": "作为参数扩展：不同dim维度"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Medium",
+      "params": {
+        "parameters": "three_modules",
+        "amount": 0.3,
+        "pruning_method": "RandomUnstructured",
+        "dtype": "float32",
+        "device": "cpu",
+        "shapes": [[2, 3], [3, 2], [2, 2]],
+        "flags": ["global", "float_amount"]
+      },
+      "note": "作为参数扩展：三个模块和浮点amount"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_08"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_06", "CASE_07", "CASE_09", "CASE_10"]
+}

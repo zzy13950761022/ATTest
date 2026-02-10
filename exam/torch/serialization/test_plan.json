@@ -1,0 +1,252 @@
+{
+  "plan_version": 2,
+  "target": "torch.serialization",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_serialization.py",
+    "all_pattern": "tests/test_torch_serialization_*.py",
+    "groups": {
+      "G1": "tests/test_torch_serialization_basic.py",
+      "G2": "tests/test_torch_serialization_advanced.py",
+      "G3": "tests/test_torch_serialization_edge.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础保存加载功能",
+      "entrypoints": ["torch.save", "torch.load"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试基本张量保存加载流程"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级功能与设备映射",
+      "entrypoints": ["torch.load(map_location)", "weights_only"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试设备映射、安全模式、文件格式"
+    },
+    {
+      "group_id": "G3",
+      "title": "边界与异常处理",
+      "entrypoints": ["错误处理", "边界值"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_08", "CASE_09"],
+      "note": "测试异常场景和边界条件"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本张量保存加载",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3],
+          "file_type": "path",
+          "use_new_zipfile": true
+        }
+      ],
+      "asserts": {
+        "weak": ["文件存在", "张量形状", "张量类型", "数值近似"],
+        "strong": ["存储共享关系", "元数据完整", "文件格式正确"]
+      },
+      "oracle": "torch.allclose(loaded, original, rtol=1e-7)",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "内存文件对象支持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "int64",
+          "device": "cpu",
+          "shape": [5],
+          "file_type": "BytesIO",
+          "use_new_zipfile": true
+        }
+      ],
+      "asserts": {
+        "weak": ["张量形状", "张量类型", "数值相等", "文件对象方法"],
+        "strong": ["缓冲区位置", "内存效率", "无文件泄漏"]
+      },
+      "oracle": "torch.equal(loaded, original)",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "设备映射功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "src_device": "cpu",
+          "target_device": "cpu",
+          "shape": [3, 3],
+          "map_location_type": "string"
+        }
+      ],
+      "asserts": {
+        "weak": ["目标设备", "张量形状", "数值近似"],
+        "strong": ["设备映射正确性", "跨设备一致性", "内存分配"]
+      },
+      "oracle": "loaded.device == torch.device('cpu')",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["torch.cuda.is_available"]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "weights_only安全模式",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "obj_type": "tensor",
+          "weights_only": true,
+          "should_succeed": true,
+          "shape": [2, 2]
+        }
+      ],
+      "asserts": {
+        "weak": ["加载成功", "张量类型", "形状正确"],
+        "strong": ["安全限制", "类型验证", "异常防护"]
+      },
+      "oracle": "isinstance(loaded, torch.Tensor)",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "存储共享关系保持",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "structure_type": "shared_storage",
+          "shape": [4, 4],
+          "file_type": "path"
+        }
+      ],
+      "asserts": {
+        "weak": ["加载成功", "对象结构"],
+        "strong": ["存储共享", "内存地址", "引用关系"]
+      },
+      "oracle": "loaded[0].storage().data_ptr() == loaded[1].storage().data_ptr()",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [10, 10],
+        "file_type": "path",
+        "use_new_zipfile": false
+      },
+      "note": "大尺寸张量和旧zip格式"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "dtype": "int8",
+        "device": "cpu",
+        "shape": [1, 2, 3, 4],
+        "file_type": "path",
+        "use_new_zipfile": true
+      },
+      "note": "多维张量和整数类型"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "src_device": "cpu",
+        "target_device": "cuda:0",
+        "shape": [2, 2],
+        "map_location_type": "torch.device"
+      },
+      "note": "GPU设备映射（需要mock CUDA）"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "obj_type": "unsafe_object",
+        "weights_only": true,
+        "should_succeed": false,
+        "shape": null
+      },
+      "note": "不安全对象在weights_only模式下应失败"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_09"]
+}

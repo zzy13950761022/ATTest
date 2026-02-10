@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_checkpoint_rng_state_management[random_operation-input_shape0-float32-cpu-True-True]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "set_rng_state未被调用，RNG状态恢复逻辑可能有问题"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

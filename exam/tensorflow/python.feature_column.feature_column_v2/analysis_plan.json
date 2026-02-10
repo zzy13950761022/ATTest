@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 13,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_categorical_column_with_vocabulary_list_basic_creation[category-vocabulary_list1-dtype1-None-2-False]",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "TensorFlow检查default_value != -1就报错，即使default_value=None。需要调整测试逻辑以匹配实际行为。"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[department-16-mean-True]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "embedding_column未对无效combiner值引发ValueError，需要调整测试或检查实际验证逻辑。"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[product-32-sqrtn-False]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "与上一个失败相同，都是无效combiner验证问题。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

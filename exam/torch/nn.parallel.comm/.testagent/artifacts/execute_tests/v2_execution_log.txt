@@ -1,0 +1,93 @@
+=== Run Tests ===
+ssF                                                                      [100%]
+=================================== FAILURES ===================================
+_______ TestReduceAddFunctions.test_reduce_add_shape_mismatch_exception ________
+
+self = <test_torch_nn_parallel_comm_reduce.TestReduceAddFunctions object at 0x11f8a7730>
+cuda_devices = [device(type='cpu'), device(type='cpu'), device(type='cpu')]
+random_tensor = <function random_tensor.<locals>._create at 0x11fa16680>
+
+    def test_reduce_add_shape_mismatch_exception(self, cuda_devices, random_tensor):
+        """TC-06: reduce_add形状不匹配异常
+    
+        测试当输入张量形状不匹配时抛出RuntimeError异常
+        """
+        # 检查CUDA可用性，如果不可用则使用CPU回退
+        if not torch.cuda.is_available():
+            # CPU回退测试
+            devices = ["cpu", "cpu"]
+            destination = "cpu"
+        else:
+            # 跳过如果设备不足
+            if len(cuda_devices) < 2:
+                pytest.skip(f"Need at least 2 CUDA devices, got {len(cuda_devices)}")
+            devices = ["cuda:0", "cuda:1"]
+            destination = "cuda:0"
+    
+        # 创建形状不匹配的张量列表
+        # 第一个张量形状为 (2, 3)，第二个为 (3, 4)
+        inputs = []
+    
+        # 第一个张量：形状 (2, 3)
+        shape1 = (2, 3)
+        tensor1 = random_tensor(shape1, dtype=torch.float32, device=devices[0])
+        inputs.append(tensor1)
+    
+        # 第二个张量：形状 (3, 4) - 与第一个不匹配
+        shape2 = (3, 4)
+        tensor2 = random_tensor(shape2, dtype=torch.float32, device=devices[1])
+        inputs.append(tensor2)
+    
+        # 验证当形状不匹配时抛出RuntimeError异常
+        with pytest.raises(RuntimeError) as exc_info:
+>           comm.reduce_add(inputs, destination=destination)
+
+tests/test_torch_nn_parallel_comm_reduce.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/parallel/comm.py:76: in reduce_add
+    destination = _get_device_index(destination, optional=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+device = device(type='cpu'), optional = True, allow_cpu = False
+
+    def _get_device_index(
+        device: Any, optional: bool = False, allow_cpu: bool = False
+    ) -> int:
+        r"""Gets the device index from :attr:`device`, which can be a torch.device
+        object, a Python integer, or ``None``.
+    
+        If :attr:`device` is a torch.device object, returns the device index if it
+        has index. Note that for a device without a specified index,
+        i.e., ``torch.device('xxx')``, this will return the current default
+        device of that type if :attr:`optional` is ``True``. If :attr:`allow_cpu` is ``True``,
+        CPU devices will be accepted and ``-1`` will be returned in this case.
+    
+        If :attr:`device` is a Python integer, it is returned as is.
+    
+        If :attr:`device` is ``None``, this will return the current default
+        device of the supported runtime platform if :attr:`optional` is ``True``.
+        i.e., the current default CUDA device will be returned if CUDA runtime is supported.
+        """
+        if isinstance(device, str):
+            device = torch.device(device)
+        device_idx: Optional[int] = None
+        if isinstance(device, torch.device):
+            if not allow_cpu and device.type == "cpu":
+>               raise ValueError("Expected a non cpu device, but got: {}".format(device))
+E               ValueError: Expected a non cpu device, but got: cpu
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_utils.py:614: ValueError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                          Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------
+tests/test_torch_nn_parallel_comm_reduce.py      80     37     22      6    48%   13, 19, 29-34, 70-114, 131-134, 156-170, 182
+-----------------------------------------------------------------------------------------
+TOTAL                                            80     37     22      6    48%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_parallel_comm_reduce.py::TestReduceAddFunctions::test_reduce_add_shape_mismatch_exception
+1 failed, 2 skipped in 0.54s
+
+Error: exit 1

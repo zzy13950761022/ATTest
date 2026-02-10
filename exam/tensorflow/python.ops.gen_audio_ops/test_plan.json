@@ -1,0 +1,233 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_audio_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_audio_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_audio_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "audio_spectrogram基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "audio_spectrogram",
+          "input_shape": [16000, 1],
+          "window_size": 512,
+          "stride": 256,
+          "magnitude_squared": false,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "energy_conservation", "symmetry"]
+      },
+      "oracle": "手动计算验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "decode_wav/encode_wav往返一致性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "audio_shape": [44100, 2],
+          "sample_rate": 44100,
+          "desired_channels": -1,
+          "desired_samples": -1,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "roundtrip_error", "sample_rate_match"]
+      },
+      "oracle": "往返一致性验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "mfcc特征提取正确性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "mfcc",
+          "spectrogram_shape": [100, 257],
+          "sample_rate": 16000,
+          "upper_frequency_limit": 4000,
+          "lower_frequency_limit": 20,
+          "filterbank_channel_count": 40,
+          "dct_coefficient_count": 13,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "mfcc_properties", "parameter_sensitivity"]
+      },
+      "oracle": "参考实现验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "音频数据边界值处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "audio_spectrogram",
+          "input_shape": [0, 1],
+          "window_size": 256,
+          "stride": 128,
+          "magnitude_squared": false,
+          "dtype": "float32",
+          "test_type": "empty_input"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "exception_handling"],
+        "strong": ["error_message", "graceful_degradation"]
+      },
+      "oracle": "异常处理验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "数据类型和形状错误处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "audio_spectrogram",
+          "input_shape": [16000, 1],
+          "window_size": 512,
+          "stride": 256,
+          "magnitude_squared": false,
+          "dtype": "float64",
+          "test_type": "wrong_dtype"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_handling", "error_type"],
+        "strong": ["error_message", "parameter_validation"]
+      },
+      "oracle": "类型检查验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "audio_spectrogram",
+        "input_shape": [32000, 2],
+        "window_size": 1024,
+        "stride": 512,
+        "magnitude_squared": true,
+        "dtype": "float32"
+      },
+      "note": "多通道音频和平方幅度测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "audio_spectrogram",
+        "input_shape": [8000, 1],
+        "window_size": 256,
+        "stride": 128,
+        "magnitude_squared": false,
+        "dtype": "float32",
+        "window_size_type": "non_power_of_two"
+      },
+      "note": "非2的幂窗口大小测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "audio_shape": [22050, 1],
+        "sample_rate": 22050,
+        "desired_channels": 2,
+        "desired_samples": 11025,
+        "dtype": "float32"
+      },
+      "note": "指定通道数和样本数测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "mfcc",
+        "spectrogram_shape": [50, 129],
+        "sample_rate": 8000,
+        "upper_frequency_limit": 2000,
+        "lower_frequency_limit": 100,
+        "filterbank_channel_count": 20,
+        "dct_coefficient_count": 20,
+        "dtype": "float32"
+      },
+      "note": "不同MFCC参数配置测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

@@ -1,0 +1,51 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 7,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_assert_basic_functionality[condition_shape0-data_shapes0-3-True]",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "tf.function不能返回Operation对象，需要调整返回类型或使用不同的测试策略"
+    },
+    {
+      "test": "test_audio_summary_basic_functionality[tensor_shape0-1-44100.0-3-test_audio]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "期望callable但得到EagerTensor，需要调整断言逻辑以适应tf.function的行为"
+    },
+    {
+      "test": "test_print_basic_functionality[input_shape0-data_shapes0-Test message-10-3-dtype0]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Print操作需要字符串参数而不是tensor，需要调整参数传递方式"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_audio_summary_basic_functionality[tensor_shape1-2-22050.0-1-audio_3d]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_image_summary_basic_functionality[tensor_shape0-3-3-test_image-dtype0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_image_summary_basic_functionality[tensor_shape1-1-1-grayscale-dtype1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_timestamp_basic_functionality",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

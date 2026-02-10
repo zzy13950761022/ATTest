@@ -1,0 +1,573 @@
+import pytest
+import torch
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+import pytest
+import torch
+import numpy as np
+from unittest.mock import patch, MagicMock, call
+from typing import List, Tuple
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+
+# Note: We don't skip tests globally because some tests (like CASE_06)
+# specifically test CUDA unavailable scenarios
+# Individual tests will handle CUDA availability as needed
+
+class TestTorchCudaRandomG1:
+    """Test class for torch.cuda.random single device state management functions.
+    
+    This class tests the following functions:
+    - get_rng_state: Get random number generator state for a single device
+    - set_rng_state: Set random number generator state for a single device
+    - manual_seed: Set seed for current GPU
+    - seed: Set random seed for current GPU
+    - initial_seed: Get initial seed value for current GPU
+    
+    Test group: G1 (Single device state management)
+    """
+    
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Setup and teardown for each test."""
+        # Save original CUDA RNG state to restore after test
+        if torch.cuda.is_available():
+            self.original_states = torch.cuda.get_rng_state_all()
+        yield
+        # Restore original CUDA RNG state
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(self.original_states)
+    
+    @pytest.fixture
+    def mock_cuda_available(self):
+        """Mock CUDA availability for tests that need to simulate CUDA unavailable."""
+        with patch('torch.cuda.is_available', return_value=False):
+            yield
+    
+    @pytest.fixture
+    def mock_device_count(self):
+        """Mock device count for tests."""
+        with patch('torch.cuda.device_count', return_value=2):
+            yield
+    
+    @pytest.fixture
+    def mock_current_device(self):
+        """Mock current device for tests."""
+        with patch('torch.cuda.current_device', return_value=0):
+            yield
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("device,state_type,seed,test_scenario", [
+        (0, "valid_byte_tensor", 42, "basic_flow"),
+    ])
+    def test_single_device_state_get_set(self, device, state_type, seed, test_scenario):
+        """Test single device state get and set operations.
+        
+        TC-01: 单设备状态获取与设置
+        Priority: High
+        Assertion level: weak
+        
+        Test scenarios:
+        - basic_flow: Basic get/set flow with valid ByteTensor state
+        
+        Weak assertions:
+        - state_shape_consistent: State tensor shape should be consistent
+        - state_type_byte_tensor: State should be ByteTensor type
+        - seed_set_correctly: Seed should be set correctly
+        - no_exception: No exceptions should be raised
+        """
+        # Skip if CUDA not available
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for testing")
+        
+        # Generate a valid ByteTensor state (simulating actual state)
+        # In real scenario, this would come from get_rng_state
+        state_size = 100  # Arbitrary size for test state
+        test_state = torch.ByteTensor(state_size).random_(0, 256)
+        
+        # Test 1: Get current state
+        original_state = torch.cuda.get_rng_state(device=device)
+        
+        # Weak assertion: state_type_byte_tensor
+        assert isinstance(original_state, torch.Tensor), "State should be a Tensor"
+        assert original_state.dtype == torch.uint8, f"State should be ByteTensor, got {original_state.dtype}"
+        
+        # Weak assertion: state_shape_consistent
+        assert original_state.dim() == 1, "State should be 1-dimensional"
+        assert original_state.numel() > 0, "State should not be empty"
+        
+        # Test 2: Set new state
+        torch.cuda.set_rng_state(test_state, device=device)
+        
+        # Test 3: Verify state was set by getting it back
+        retrieved_state = torch.cuda.get_rng_state(device=device)
+        
+        # Weak assertion: state_shape_consistent (retrieved state)
+        assert retrieved_state.shape == test_state.shape, \
+            f"Retrieved state shape {retrieved_state.shape} should match test state shape {test_state.shape}"
+        
+        # Test 4: Set manual seed
+        torch.cuda.manual_seed(seed)
+        
+        # Weak assertion: seed_set_correctly
+        # Verify seed affects random generation by checking initial_seed
+        # Note: initial_seed returns the seed used to initialize the generator
+        initial_seed_value = torch.cuda.initial_seed()
+        # We can't directly assert the seed value, but we can verify the function doesn't crash
+        
+        # Weak assertion: no_exception
+        # If we reached here without exceptions, test passes
+        
+        # Additional verification: Generate random numbers after seed set
+        # This ensures the seed actually affects random generation
+        rand1 = torch.cuda.FloatTensor(10).normal_()
+        torch.cuda.manual_seed(seed)  # Reset to same seed
+        rand2 = torch.cuda.FloatTensor(10).normal_()
+        
+        # With same seed, random numbers should be identical
+        assert torch.allclose(rand1, rand2), \
+            "Random numbers should be identical with same seed"
+        
+        # Test 5: Test with device as string
+        torch.cuda.set_rng_state(test_state, device="cuda")
+        retrieved_state_str = torch.cuda.get_rng_state(device="cuda")
+        assert retrieved_state_str.shape == test_state.shape, \
+            "String device identifier should work"
+        
+        # Test 6: Test with default device (no parameter)
+        torch.cuda.set_rng_state(test_state)
+        retrieved_state_default = torch.cuda.get_rng_state()
+        assert retrieved_state_default.shape == test_state.shape, \
+            "Default device should work"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("device,seed_values,test_scenario", [
+        ("cuda", [0, 42, 123456], "seed_operations"),
+    ])
+    def test_seed_setting_and_querying(self, device, seed_values, test_scenario):
+        """Test seed setting and querying operations.
+        
+        TC-02: 种子设置与查询
+        Priority: High
+        Assertion level: weak
+        
+        Test scenarios:
+        - seed_operations: Basic seed setting and querying operations
+        
+        Weak assertions:
+        - seed_set_success: Seed should be set successfully
+        - initial_seed_returns_correct: initial_seed should return correct value
+        - no_exception: No exceptions should be raised
+        - cuda_initialized: CUDA should be initialized after operations
+        """
+        # Skip if CUDA not available
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for testing")
+        
+        for seed in seed_values:
+            # Test 1: Set manual seed
+            torch.cuda.manual_seed(seed)
+            
+            # Weak assertion: seed_set_success
+            # Verify by checking that random generation is deterministic with same seed
+            
+            # Generate random numbers with this seed
+            torch.cuda.manual_seed(seed)
+            random_seq1 = []
+            for _ in range(3):
+                random_seq1.append(torch.cuda.FloatTensor(5).normal_().cpu().numpy())
+            
+            # Reset and generate again with same seed
+            torch.cuda.manual_seed(seed)
+            random_seq2 = []
+            for _ in range(3):
+                random_seq2.append(torch.cuda.FloatTensor(5).normal_().cpu().numpy())
+            
+            # Verify sequences are identical
+            for r1, r2 in zip(random_seq1, random_seq2):
+                assert np.allclose(r1, r2), \
+                    f"Random sequences should be identical with seed {seed}"
+            
+            # Test 2: Test seed() function (sets random seed)
+            torch.cuda.seed()
+            # No direct assertion, just verify it doesn't crash
+            
+            # Test 3: Test initial_seed()
+            # Note: initial_seed returns the seed used to initialize the generator
+            # We'll set a known seed and verify initial_seed doesn't crash
+            torch.cuda.manual_seed(seed)
+            initial_seed_val = torch.cuda.initial_seed()
+            
+            # Weak assertion: initial_seed_returns_correct
+            # We can't assert exact value, but we can verify it's an integer
+            assert isinstance(initial_seed_val, int), \
+                f"initial_seed should return int, got {type(initial_seed_val)}"
+            
+            # Test 4: Test with device parameter for manual_seed
+            # Note: manual_seed doesn't accept device parameter in current PyTorch
+            # But we test the basic functionality
+            
+            # Test 5: Verify CUDA is initialized (implicitly by get_rng_state)
+            state = torch.cuda.get_rng_state(device=device)
+            assert state is not None, "CUDA should be initialized"
+            assert isinstance(state, torch.Tensor), "State should be a Tensor"
+            
+            # Weak assertion: cuda_initialized
+            # If we got here, CUDA is initialized
+            
+            # Test 6: Test seed persistence across multiple calls
+            torch.cuda.manual_seed(seed)
+            first_random = torch.cuda.FloatTensor(10).normal_()
+            
+            # Do some other operations
+            _ = torch.cuda.get_rng_state()
+            
+            # Set same seed again
+            torch.cuda.manual_seed(seed)
+            second_random = torch.cuda.FloatTensor(10).normal_()
+            
+            # Random numbers should be identical
+            assert torch.allclose(first_random, second_random), \
+                f"Random numbers should be identical with seed {seed} persistence"
+        
+        # Test 7: Test edge case seed 0
+        torch.cuda.manual_seed(0)
+        zero_seed_random = torch.cuda.FloatTensor(5).normal_()
+        assert zero_seed_random.shape == (5,), "Should generate random numbers with seed 0"
+        
+        # Test 8: Test that different seeds produce different sequences
+        torch.cuda.manual_seed(42)
+        seq_seed42 = torch.cuda.FloatTensor(20).normal_()
+        
+        torch.cuda.manual_seed(43)
+        seq_seed43 = torch.cuda.FloatTensor(20).normal_()
+        
+        # They should be different (very low probability of collision)
+        assert not torch.allclose(seq_seed42, seq_seed43, rtol=1e-5), \
+            "Different seeds should produce different random sequences"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.skip(reason="G2 test - will be implemented in separate file")
+    @pytest.mark.parametrize("device_count,state_type,seed,test_scenario", [
+        (2, "valid_byte_tensor_list", 42, "multi_device_basic"),
+    ])
+    def test_multi_device_state_batch_management(self, device_count, state_type, seed, test_scenario):
+        """Test multi-device state batch management operations.
+        
+        TC-03: 多设备状态批量管理
+        Priority: High
+        Assertion level: weak
+        Group: G2 (Multi-device state management)
+        
+        Note: This test belongs to G2 group and will be implemented in 
+        tests/test_torch_cuda_random_g2.py
+        
+        Weak assertions (for reference):
+        - list_length_matches_device_count: List length should match device count
+        - each_state_is_byte_tensor: Each state should be ByteTensor type
+        - no_exception: No exceptions should be raised
+        - all_devices_processed: All devices should be processed
+        """
+        pytest.skip("This test belongs to G2 group and will be implemented in separate file")
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.skip(reason="G2 test - will be implemented in separate file")
+    @pytest.mark.parametrize("invalid_device,invalid_state_type,test_scenario", [
+        (-1, "float_tensor", "error_handling"),
+    ])
+    def test_invalid_device_index_exception_handling(self, invalid_device, invalid_state_type, test_scenario):
+        """Test invalid device index exception handling.
+        
+        TC-04: 无效设备索引异常处理
+        Priority: High
+        Assertion level: weak
+        Group: G2 (Multi-device state management)
+        
+        Note: This test belongs to G2 group and will be implemented in 
+        tests/test_torch_cuda_random_g2.py
+        
+        Weak assertions (for reference):
+        - exception_raised: Exception should be raised
+        - exception_type_correct: Exception type should be correct
+        - error_message_contains_device: Error message should contain device info
+        - no_side_effects: No side effects should occur
+        """
+        pytest.skip("This test belongs to G2 group and will be implemented in separate file")
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("invalid_state_types,device,test_scenario", [
+        (["float32", "int64", "bool"], 0, "type_validation"),
+    ])
+    def test_non_byte_tensor_state_type_checking(self, invalid_state_types, device, test_scenario):
+        """Test non-ByteTensor state type checking.
+        
+        TC-05: 非ByteTensor状态类型检查
+        Priority: Medium
+        Assertion level: weak
+        
+        Test scenarios:
+        - type_validation: Validation of state tensor types
+        
+        Weak assertions:
+        - exception_raised_for_wrong_type: Exception should be raised for wrong type
+        - exception_type_correct: Exception type should be correct
+        - error_message_mentions_byte_tensor: Error message should mention ByteTensor
+        """
+        # Skip if CUDA not available
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for testing")
+        
+        # Map string types to actual tensor types
+        type_map = {
+            "float32": torch.float32,
+            "int64": torch.int64,
+            "bool": torch.bool
+        }
+        
+        for type_str in invalid_state_types:
+            dtype = type_map[type_str]
+            
+            # Create tensor with wrong dtype
+            if dtype == torch.bool:
+                wrong_state = torch.BoolTensor(100).random_(0, 2)
+            else:
+                wrong_state = torch.randn(100, dtype=dtype)
+            
+            # Test set_rng_state with wrong dtype
+            with pytest.raises(RuntimeError) as exc_info:
+                torch.cuda.set_rng_state(wrong_state, device=device)
+            
+            # Weak assertion: exception_raised_for_wrong_type
+            assert exc_info.value is not None, \
+                f"Should raise exception for {type_str} tensor"
+            
+            # Weak assertion: exception_type_correct
+            assert isinstance(exc_info.value, RuntimeError), \
+                f"Should raise RuntimeError for {type_str}, got {type(exc_info.value)}"
+            
+            # Weak assertion: error_message_mentions_byte_tensor
+            error_msg = str(exc_info.value).lower()
+            assert any(keyword in error_msg for keyword in ["byte", "dtype", "type", "uint8"]), \
+                f"Error message for {type_str} should mention ByteTensor/dtype, got: {error_msg}"
+        
+        # Also test with valid ByteTensor to ensure it works
+        valid_state = torch.ByteTensor(100).random_(0, 256)
+        torch.cuda.set_rng_state(valid_state, device=device)
+        
+        # Verify it was set correctly
+        retrieved_state = torch.cuda.get_rng_state(device=device)
+        assert torch.equal(retrieved_state, valid_state), \
+            "Valid ByteTensor state should be preserved"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+    @pytest.mark.parametrize("cuda_available,device,test_scenario", [
+        (False, "cuda", "cuda_unavailable"),
+    ])
+    def test_cuda_unavailable_scenario_handling(self, cuda_available, device, test_scenario):
+        """Test CUDA unavailable scenario handling.
+        
+        TC-06: CUDA不可用场景处理
+        Priority: Medium
+        Assertion level: weak
+        
+        Test scenarios:
+        - cuda_unavailable: Handling when CUDA is not available
+        
+        Weak assertions:
+        - no_exception_on_cuda_unavailable: No exceptions on CUDA unavailable for safe functions
+        - function_returns_none_or_default: Functions return None or default when CUDA unavailable
+        - no_cuda_initialization: CUDA should not be initialized
+        """
+        # Mock CUDA availability
+        with patch('torch.cuda.is_available', return_value=cuda_available):
+            # Test 1: manual_seed should be silently ignored when CUDA not available
+            # According to docstring: "It's safe to call this function if CUDA is not available;
+            # in that case, it is silently ignored."
+            torch.cuda.manual_seed(42)
+            # No exception expected
+            
+            # Test 2: seed should be silently ignored when CUDA not available
+            # According to docstring: "It's safe to call this function if CUDA is not available;
+            # in that case, it is silently ignored."
+            torch.cuda.seed()
+            # No exception expected
+            
+            # Test 3: get_rng_state should raise AssertionError when CUDA not available
+            # This function calls _lazy_init() which raises AssertionError when
+            # torch is not compiled with CUDA enabled
+            with pytest.raises(AssertionError) as exc_info:
+                torch.cuda.get_rng_state(device=device)
+            
+            error_msg = str(exc_info.value).lower()
+            # The actual error message is "Torch not compiled with CUDA enabled"
+            assert "torch not compiled with cuda enabled" in error_msg, \
+                f"Error message should mention 'Torch not compiled with CUDA enabled', got: {error_msg}"
+            
+            # Test 4: set_rng_state should NOT raise exception when CUDA not available
+            # This function uses _lazy_call() which queues the call instead of executing immediately
+            test_state = torch.ByteTensor(100).random_(0, 256)
+            # Should not raise any exception
+            torch.cuda.set_rng_state(test_state, device=device)
+            
+            # Test 5: initial_seed should raise AssertionError when CUDA not available
+            # This function calls _lazy_init() which raises AssertionError when
+            # torch is not compiled with CUDA enabled
+            with pytest.raises(AssertionError) as exc_info3:
+                torch.cuda.initial_seed()
+            
+            error_msg3 = str(exc_info3.value).lower()
+            assert "torch not compiled with cuda enabled" in error_msg3, \
+                f"Error message should mention 'Torch not compiled with CUDA enabled', got: {error_msg3}"
+            
+            # Test 6: Verify functions don't have side effects when CUDA unavailable
+            # We can't easily test CUDA initialization, but we can verify
+            # that the mock is being used correctly
+            
+            # Test 7: Test with different device formats when CUDA unavailable
+            with pytest.raises(AssertionError):
+                torch.cuda.get_rng_state(device=0)
+            
+            with pytest.raises(AssertionError):
+                torch.cuda.get_rng_state(device="cuda")
+            
+            # Test 8: Test extreme seeds when CUDA unavailable
+            for seed in [0, -1, 2147483647]:
+                torch.cuda.manual_seed(seed)  # Should not crash
+            
+            # Test 9: Test seed_all functions (for completeness)
+            torch.cuda.manual_seed_all(42)  # Should not crash
+            torch.cuda.seed_all()  # Should not crash
+            
+            # Weak assertion: no_exception_on_cuda_unavailable
+            # If we reached here without exceptions for manual_seed, seed, and set_rng_state, test passes
+            
+            # Note: For get_rng_state and initial_seed,
+            # AssertionError is expected when CUDA is not available
+            # For set_rng_state, no exception is expected (calls are queued)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Test case: Empty state list handling (DEFERRED - G2)
+# TC-07: 空状态列表处理
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Test case: Extreme seed value boundary testing (DEFERRED)
+# TC-08: 极端种子值边界测试
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+    # Helper methods for test assertions
+    
+    def _assert_state_is_valid_byte_tensor(self, state: torch.Tensor) -> None:
+        """Assert that a state tensor is a valid ByteTensor.
+        
+        Args:
+            state: Tensor to validate
+        
+        Raises:
+            AssertionError: If state is not a valid ByteTensor
+        """
+        assert isinstance(state, torch.Tensor), "State must be a Tensor"
+        assert state.dtype == torch.uint8, f"State must be ByteTensor, got {state.dtype}"
+        assert state.dim() == 1, "State must be 1-dimensional"
+        assert state.is_contiguous(), "State must be contiguous in memory"
+    
+    def _generate_test_state(self, size: int = 100) -> torch.Tensor:
+        """Generate a test ByteTensor state for testing.
+        
+        Args:
+            size: Size of the state tensor
+        
+        Returns:
+            ByteTensor of specified size with random values
+        """
+        return torch.ByteTensor(size).random_(0, 256)
+    
+    def _verify_state_preservation(self, original_state: torch.Tensor, 
+                                  device: int = 0) -> None:
+        """Verify that a state can be preserved through get/set operations.
+        
+        Args:
+            original_state: Original state to preserve
+            device: Device to test on
+        """
+        # Set the state
+        torch.cuda.set_rng_state(original_state, device=device)
+        
+        # Get it back
+        retrieved_state = torch.cuda.get_rng_state(device=device)
+        
+        # Verify preservation
+        assert retrieved_state.shape == original_state.shape, \
+            f"Shape mismatch: {retrieved_state.shape} vs {original_state.shape}"
+        
+        # For ByteTensor, we can compare exact values
+        assert torch.equal(retrieved_state, original_state), \
+            "State values should be preserved exactly"
+    
+    def _verify_seed_affects_randomness(self, seed1: int, seed2: int) -> None:
+        """Verify that different seeds produce different random sequences.
+        
+        Args:
+            seed1: First seed value
+            seed2: Second seed value (different from seed1)
+        """
+        # Set first seed and generate sequence
+        torch.cuda.manual_seed(seed1)
+        seq1 = torch.cuda.FloatTensor(50).normal_()
+        
+        # Set second seed and generate sequence
+        torch.cuda.manual_seed(seed2)
+        seq2 = torch.cuda.FloatTensor(50).normal_()
+        
+        # They should be different (extremely low probability of collision)
+        assert not torch.allclose(seq1, seq2, rtol=1e-7, atol=1e-7), \
+            f"Seeds {seed1} and {seed2} should produce different sequences"
+
+
+# Additional test functions that don't fit in the class
+def test_module_import():
+    """Test that torch.cuda.random module can be imported and has expected functions."""
+    import torch.cuda.random as cuda_random
+    
+    # Check that all expected functions are available
+    expected_functions = [
+        'get_rng_state', 'get_rng_state_all',
+        'set_rng_state', 'set_rng_state_all',
+        'manual_seed', 'manual_seed_all',
+        'seed', 'seed_all', 'initial_seed'
+    ]
+    
+    for func_name in expected_functions:
+        assert hasattr(cuda_random, func_name), \
+            f"torch.cuda.random should have function {func_name}"
+        func = getattr(cuda_random, func_name)
+        assert callable(func), f"{func_name} should be callable"
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_cuda_initialization_by_random():
+    """Test that CUDA gets initialized by random functions."""
+    # This test verifies the warning in the docstring that
+    # get_rng_state and initial_seed eagerly initialize CUDA
+    
+    # Note: We can't easily test this without mocking, but we can
+    # at least verify the functions work when CUDA is available
+    if torch.cuda.is_available():
+        # These should work without explicit CUDA initialization
+        state = torch.cuda.get_rng_state()
+        assert isinstance(state, torch.Tensor)
+        
+        seed_val = torch.cuda.initial_seed()
+        assert isinstance(seed_val, int)
+# ==== BLOCK:FOOTER END ====

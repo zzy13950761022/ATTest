@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 15,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape0-3-value_range0]",
+      "block_id": "CASE_02",
+      "error_type": "UnimplementedError",
+      "action": "fix_dependency",
+      "note": "image_summary的bad_color参数类型问题，需要深入研究TensorFlow内部实现"
+    },
+    {
+      "test": "TestLoggingOps.test_print_v2_output_stream_switching[info-log_info-tf.compat.v1.logging.info]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "print_v2使用tf.compat.v1.logging.info作为输出流时，mock未正确捕获调用"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape1-1-value_range1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape2-4-value_range2]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

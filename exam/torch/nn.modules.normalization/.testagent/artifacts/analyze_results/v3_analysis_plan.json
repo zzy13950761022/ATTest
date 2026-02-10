@@ -1,0 +1,25 @@
+{
+  "status": "成功",
+  "passed": 4,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "TC-05",
+      "reason": "测试全部通过，覆盖率84%，建议添加deferred测试用例以改进覆盖率"
+    },
+    {
+      "test": "TC-06", 
+      "reason": "测试全部通过，覆盖率84%，建议添加deferred测试用例以改进覆盖率"
+    },
+    {
+      "test": "TC-07",
+      "reason": "测试全部通过，覆盖率84%，建议添加deferred测试用例以改进覆盖率"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

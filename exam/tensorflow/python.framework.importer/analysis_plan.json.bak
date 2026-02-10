@@ -1,0 +1,29 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_graphdef_import",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "TensorFlow 2.x 模块路径错误：tensorflow.python.client.pywrap_tf_session 不可访问，需要更新 patch 路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_import_with_input_map",
+      "reason": "错误类型重复，跳过该块（与 CASE_01 相同的 AttributeError）"
+    },
+    {
+      "test": "test_import_with_return_elements",
+      "reason": "错误类型重复，跳过该块（与 CASE_01 相同的 AttributeError）"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

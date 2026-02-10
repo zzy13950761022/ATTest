@@ -1,0 +1,537 @@
+"""Test cases for tensorflow.python.util.compat module."""
+
+import pytest
+import codecs
+from pathlib import Path
+from unittest import mock
+from tensorflow.python.util import compat
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+
+@pytest.fixture
+def fixed_random_seed():
+    """Fix random seed for reproducible tests."""
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    return 42
+
+def assert_bytes_equal(actual, expected):
+    """Helper to assert bytes equality with informative message."""
+    assert isinstance(actual, bytes), f"Expected bytes, got {type(actual)}"
+    assert actual == expected, f"Bytes mismatch: {actual!r} != {expected!r}"
+
+def assert_text_equal(actual, expected):
+    """Helper to assert text equality with informative message."""
+    assert isinstance(actual, str), f"Expected str, got {type(actual)}"
+    assert actual == expected, f"Text mismatch: {actual!r} != {expected!r}"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# Test case for as_bytes function
+@pytest.mark.parametrize(
+    "input_value,encoding,expected",
+    [
+        # Basic string conversion (from test_plan.json)
+        ("hello world", "utf-8", b"hello world"),
+        # Parameter extensions from test_plan.json
+        ("", "utf-8", b""),
+        # Strong assertion test cases
+        ("hello world", "ascii", b"hello world"),  # ASCII encoding
+        ("hello world", "latin-1", b"hello world"),  # Latin-1 encoding
+        ("特殊字符", "utf-8", "特殊字符".encode("utf-8")),  # Unicode characters
+        ("a" * 1000, "utf-8", ("a" * 1000).encode("utf-8")),  # Long string
+        # Bytearray test - as_bytes supports bytearray
+        (bytearray(b"test data"), "ascii", b"test data"),
+    ],
+    ids=["basic_string", "empty_string", 
+         "ascii_encoding", "latin1_encoding", "unicode_chars", "long_string", "bytearray_input"]
+)
+def test_as_bytes_basic_conversion(input_value, encoding, expected):
+    """Test as_bytes function with various input types."""
+    # Weak assertions: output type and value equality
+    result = compat.as_bytes(input_value, encoding=encoding)
+    
+    # Assertion 1: Output type should be bytes
+    assert isinstance(result, bytes), f"Expected bytes, got {type(result)}"
+    
+    # Assertion 2: Value should match expected
+    assert result == expected, f"Expected {expected!r}, got {result!r}"
+    
+    # Assertion 3: Encoding correctness (indirectly verified by successful conversion)
+    # The function validates encoding internally via codecs.lookup
+    
+    # Strong assertions (performance, memory, edge cases)
+    # Assertion 4: Performance boundary - large input
+    if isinstance(input_value, str) and len(input_value) > 100:
+        # Large strings should still work
+        assert len(result) == len(expected), \
+            f"Large input length mismatch: {len(result)} != {len(expected)}"
+    
+    # Assertion 5: Memory usage - verify no memory corruption
+    # Check that the result is a proper bytes object
+    assert hasattr(result, 'decode'), "Result should be a proper bytes object"
+    
+    # Assertion 6: Edge cases - empty string
+    if input_value == "":
+        assert result == b"", "Empty string should produce empty bytes"
+        assert len(result) == 0, "Empty bytes should have zero length"
+    
+    # Assertion 7: Edge cases - Unicode characters
+    if isinstance(input_value, str) and "特殊字符" in input_value:
+        # Verify the encoding round-trip
+        decoded = result.decode(encoding)
+        assert decoded == input_value, \
+            f"Round-trip failed: {decoded!r} != {input_value!r}"
+    
+    # Assertion 8: Bytearray input handling
+    if isinstance(input_value, bytearray):
+        # Bytearray should be converted to bytes
+        assert result == bytes(input_value), \
+            f"Bytearray conversion mismatch: {result!r} != {bytes(input_value)!r}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# Test case for as_text function
+@pytest.mark.parametrize(
+    "input_value,encoding,expected",
+    [
+        # Basic bytes decoding (from test_plan.json)
+        (b"hello world", "utf-8", "hello world"),
+        # Parameter extensions from test_plan.json
+        (b"", "utf-8", ""),
+        ("特殊字符".encode("utf-8"), "utf-8", "特殊字符"),
+        # Strong assertion test cases
+        (b"hello world", "ascii", "hello world"),  # ASCII decoding
+        (b"hello world", "latin-1", "hello world"),  # Latin-1 decoding
+        ("emoji 😀".encode("utf-8"), "utf-8", "emoji 😀"),  # Emoji characters
+        (b"a" * 1000, "utf-8", "a" * 1000),  # Long bytes
+    ],
+    ids=["basic_bytes", "empty_bytes", "unicode_chars", 
+         "ascii_decoding", "latin1_decoding", "emoji_chars", "long_bytes"]
+)
+def test_as_text_basic_decoding(input_value, encoding, expected):
+    """Test as_text function with various input types."""
+    # Weak assertions: output type and value equality
+    result = compat.as_text(input_value, encoding=encoding)
+    
+    # Assertion 1: Output type should be str
+    assert isinstance(result, str), f"Expected str, got {type(result)}"
+    
+    # Assertion 2: Value should match expected
+    assert result == expected, f"Expected {expected!r}, got {result!r}"
+    
+    # Assertion 3: Decoding correctness (indirectly verified by successful conversion)
+    # The function validates encoding internally via codecs.lookup
+    
+    # Strong assertions (Unicode handling, error recovery, performance)
+    # Assertion 4: Unicode handling - emoji and special characters
+    if "😀" in expected or "特殊字符" in expected:
+        # Verify proper Unicode handling
+        assert len(result) == len(expected), \
+            f"Unicode length mismatch: {len(result)} != {len(expected)}"
+        # Check character by character for short strings
+        if len(result) < 20:
+            for i, (r_char, e_char) in enumerate(zip(result, expected)):
+                assert r_char == e_char, \
+                    f"Character mismatch at position {i}: {r_char!r} != {e_char!r}"
+    
+    # Assertion 5: Error recovery - test with replacement character handling
+    # Create bytes that might need error handling
+    if encoding == "utf-8" and isinstance(input_value, bytes):
+        # Test that valid UTF-8 is decoded correctly
+        try:
+            # This should work for valid UTF-8
+            decoded = input_value.decode(encoding, errors='strict')
+            assert result == decoded, \
+                f"Decoding mismatch: {result!r} != {decoded!r}"
+        except UnicodeDecodeError:
+            # If strict decoding fails, the function might use a different error handler
+            # Just verify we got a string result
+            assert isinstance(result, str)
+    
+    # Assertion 6: Performance - large input handling
+    if len(input_value) > 100:
+        # Large inputs should still work
+        assert len(result) == len(expected), \
+            f"Large input length mismatch: {len(result)} != {len(expected)}"
+        # Performance check: ensure it's not too slow (indirect)
+        import time
+        start_time = time.time()
+        for _ in range(10):
+            compat.as_text(input_value, encoding=encoding)
+        end_time = time.time()
+        # Should complete in reasonable time (less than 0.1 seconds for 10 iterations)
+        assert end_time - start_time < 0.1, \
+            f"Performance issue: took {end_time - start_time:.3f} seconds"
+    
+    # Assertion 7: Empty input handling
+    if input_value == b"":
+        assert result == "", "Empty input should produce empty string"
+        assert len(result) == 0, "Empty string should have zero length"
+    
+    # Assertion 8: Test that bytearray raises TypeError
+    # as_text does not support bytearray
+    with pytest.raises(TypeError):
+        compat.as_text(bytearray(b"test"), encoding=encoding)
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# Test case for invalid encoding triggering LookupError
+@pytest.mark.parametrize(
+    "function_name,input_value,encoding,test_description",
+    [
+        # Test as_bytes with invalid encoding (from test_plan.json)
+        ("as_bytes", "test", "invalid-encoding", "as_bytes with invalid encoding"),
+        # Parameter extension: test as_text with invalid encoding
+        ("as_text", "test", "invalid-encoding", "as_text with invalid encoding"),
+        # Strong assertion test cases
+        ("as_bytes", "test", "not-a-real-encoding-123", "as_bytes with fake encoding"),
+        ("as_text", "test", "not-a-real-encoding-123", "as_text with fake encoding"),
+        ("as_bytes", "特殊字符", "invalid-encoding", "as_bytes Unicode with invalid encoding"),
+        ("as_text", b"test", "invalid-encoding", "as_text bytes with invalid encoding"),
+        ("as_bytes", "", "invalid-encoding", "as_bytes empty string with invalid encoding"),
+        ("as_text", b"", "invalid-encoding", "as_text empty bytes with invalid encoding"),
+    ],
+    ids=["as_bytes_invalid", "as_text_invalid", 
+         "as_bytes_fake", "as_text_fake", 
+         "as_bytes_unicode", "as_text_bytes",
+         "as_bytes_empty", "as_text_empty"]
+)
+def test_invalid_encoding_lookuperror(function_name, input_value, encoding, test_description):
+    """Test that invalid encoding raises LookupError."""
+    # Get the function to test
+    if function_name == "as_bytes":
+        func = compat.as_bytes
+    else:
+        func = compat.as_text
+    
+    # Weak assertions: exception type and function call
+    with pytest.raises(LookupError) as exc_info:
+        func(input_value, encoding=encoding)
+    
+    # Assertion 1: Exception type should be LookupError
+    assert exc_info.type is LookupError
+    
+    # Assertion 2: Exception message should indicate encoding issue
+    # Note: The actual message may vary, but we can assert it's not empty
+    assert str(exc_info.value), "Exception message should not be empty"
+    
+    # Assertion 3: Verify the function was called with correct arguments
+    # This is implicit in the pytest.raises context
+    
+    # Strong assertions (exception details, error context, recovery path)
+    # Assertion 4: Exception details - check error message content
+    error_msg = str(exc_info.value).lower()
+    # The error message should mention encoding or codec
+    assert any(keyword in error_msg for keyword in 
+               ["encoding", "codec", "decode", "encode"]), \
+        f"Error message should mention encoding/codec: {error_msg}"
+    
+    # Assertion 5: Error context - verify the invalid encoding is mentioned
+    # The invalid encoding name might appear in the error message
+    # Note: Some implementations might not include the exact encoding name
+    
+    # Assertion 6: Recovery path - test that valid encoding still works
+    # After testing invalid encoding, verify that valid encoding works
+    if function_name == "as_bytes":
+        # Test with valid encoding
+        valid_result = compat.as_bytes(input_value, encoding="utf-8")
+        assert isinstance(valid_result, bytes), \
+            f"Valid encoding should work: got {type(valid_result)}"
+    else:
+        # Test with valid encoding
+        if isinstance(input_value, bytes):
+            valid_result = compat.as_text(input_value, encoding="utf-8")
+            assert isinstance(valid_result, str), \
+                f"Valid encoding should work: got {type(valid_result)}"
+    
+    # Assertion 7: Exception consistency - same encoding should raise same error type
+    # Test that codecs.lookup raises the same error
+    import codecs
+    with pytest.raises(LookupError) as codec_exc_info:
+        codecs.lookup(encoding)
+    
+    # Both should raise LookupError
+    assert exc_info.type == codec_exc_info.type, \
+        f"Error type mismatch: {exc_info.type} != {codec_exc_info.type}"
+    
+    # Assertion 8: Input type handling - different input types with invalid encoding
+    # The function should validate encoding before processing input
+    # So even empty input should raise LookupError for invalid encoding
+    if input_value == "" or input_value == b"":
+        # Empty input with invalid encoding should still raise LookupError
+        assert exc_info.type is LookupError, \
+            f"Empty input with invalid encoding should raise LookupError, got {exc_info.type}"
+    
+    # Assertion 9: Unicode input handling
+    if "特殊字符" in str(input_value):
+        # Unicode input with invalid encoding should raise LookupError
+        # The encoding validation happens before string processing
+        assert exc_info.type is LookupError, \
+            f"Unicode input with invalid encoding should raise LookupError, got {exc_info.type}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# Test case for path_to_str function
+@pytest.mark.parametrize(
+    "path_input,expected_str",
+    [
+        # Basic PathLike object conversion (from test_plan.json)
+        (Path("/tmp/test"), "/tmp/test"),
+        # Additional test cases for path_to_str
+        ("/tmp/test", "/tmp/test"),  # String input should be returned as-is
+        (Path("./test"), "test"),  # Relative path normalization
+        (Path("../parent/test"), "../parent/test"),  # Parent directory
+        # Strong assertion test cases
+        (Path("C:\\Windows\\System32"), "C:\\Windows\\System32"),  # Windows path
+        (Path("/home/user/文档"), "/home/user/文档"),  # Unicode path
+        (Path("/tmp/test with spaces"), "/tmp/test with spaces"),  # Path with spaces
+    ],
+    ids=["path_object", "string_input", "relative_path", "parent_path", 
+         "windows_path", "unicode_path", "path_with_spaces"]
+)
+def test_path_to_str_conversion(path_input, expected_str):
+    """Test path_to_str function with various path-like inputs."""
+    # Weak assertions: output type and value equality
+    result = compat.path_to_str(path_input)
+    
+    # Assertion 1: Output type should be str
+    assert isinstance(result, str), f"Expected str, got {type(result)}"
+    
+    # Assertion 2: Value should match expected (path normalization may vary)
+    # Note: Path normalization behavior may differ by platform
+    # We'll check that it's a string representation of the path
+    assert result == str(path_input) or result == expected_str, \
+        f"Expected path string representation, got {result!r}"
+    
+    # Assertion 3: Path normalization (basic check)
+    # The function should handle PathLike objects via __fspath__
+    if hasattr(path_input, '__fspath__'):
+        # For Path objects, result should be the string representation
+        assert result == str(path_input), \
+            f"Path object should convert to its string representation: {result!r} != {str(path_input)!r}"
+    
+    # Strong assertions (cross-platform and special chars)
+    # Assertion 4: Cross-platform compatibility
+    # The function should handle both forward and backward slashes appropriately
+    if isinstance(path_input, str) and '\\' in path_input:
+        # Windows-style path should be preserved
+        assert '\\' in result or '/' in result, \
+            f"Path separators should be preserved: {result!r}"
+    
+    # Assertion 5: Special characters handling
+    # Unicode characters should be preserved
+    if "文档" in str(path_input):
+        assert "文档" in result, f"Unicode characters should be preserved: {result!r}"
+    
+    # Assertion 6: Spaces in path
+    if "with spaces" in str(path_input):
+        assert "with spaces" in result, f"Spaces in path should be preserved: {result!r}"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Test case for as_str_any function
+@pytest.mark.parametrize(
+    "input_value,expected_str",
+    [
+        # Basic integer conversion (from test_plan.json)
+        (123, "123"),
+        # Additional test cases for as_str_any
+        (45.67, "45.67"),  # Float conversion
+        (True, "True"),  # Boolean conversion
+        (None, "None"),  # None conversion
+        ([1, 2, 3], "[1, 2, 3]"),  # List conversion
+        ({"key": "value"}, "{'key': 'value'}"),  # Dict conversion
+        (b"bytes input", "bytes input"),  # Bytes conversion (uses as_str)
+        # Strong assertion test cases
+        ((1, 2, 3), "(1, 2, 3)"),  # Tuple conversion
+        (set([1, 2, 3]), "{1, 2, 3}"),  # Set conversion
+        (complex(1, 2), "(1+2j)"),  # Complex number conversion
+        (bytearray(b"test"), "test"),  # Bytearray conversion
+        (memoryview(b"test"), "test"),  # Memoryview conversion
+    ],
+    ids=["integer", "float", "boolean", "none", "list", "dict", "bytes",
+         "tuple", "set", "complex", "bytearray", "memoryview"]
+)
+def test_as_str_any_conversion(input_value, expected_str):
+    """Test as_str_any function with various convertible objects."""
+    # Weak assertions: output type and value equality
+    result = compat.as_str_any(input_value)
+    
+    # Assertion 1: Output type should be str
+    assert isinstance(result, str), f"Expected str, got {type(result)}"
+    
+    # Assertion 2: Value should match expected
+    # Note: For complex objects like dict, the string representation may vary
+    # (e.g., key order, single vs double quotes). We'll use a flexible check.
+    if isinstance(input_value, bytes):
+        # Bytes should be decoded using as_str (utf-8 by default)
+        expected = input_value.decode('utf-8')
+        assert result == expected, f"Expected {expected!r}, got {result!r}"
+    elif isinstance(input_value, (bytearray, memoryview)):
+        # Bytearray and memoryview should be converted like bytes
+        expected = bytes(input_value).decode('utf-8')
+        assert result == expected, f"Expected {expected!r}, got {result!r}"
+    else:
+        # Other types should use str() conversion
+        expected = str(input_value)
+        assert result == expected, f"Expected {expected!r}, got {result!r}"
+    
+    # Assertion 3: Conversion correctness
+    # Verify that the function handles bytes specially
+    if isinstance(input_value, bytes):
+        # as_str_any should call as_str for bytes
+        expected_from_as_str = compat.as_str(input_value)
+        assert result == expected_from_as_str, \
+            f"as_str_any should match as_str for bytes: {result!r} != {expected_from_as_str!r}"
+    elif isinstance(input_value, (bytearray, memoryview)):
+        # Bytearray and memoryview should also work with as_str
+        expected_from_as_str = compat.as_str(bytes(input_value))
+        assert result == expected_from_as_str, \
+            f"as_str_any should match as_str for bytearray/memoryview: {result!r} != {expected_from_as_str!r}"
+    else:
+        # For non-bytes, should match str() conversion
+        expected_from_str = str(input_value)
+        assert result == expected_from_str, \
+            f"as_str_any should match str() for non-bytes: {result!r} != {expected_from_str!r}"
+    
+    # Strong assertions (complex types and custom objects)
+    # Assertion 4: Complex types handling
+    if isinstance(input_value, complex):
+        # Complex numbers should be converted correctly
+        # The exact format may vary, but it should be a valid string representation
+        assert "j" in result or "J" in result, \
+            f"Complex number should contain 'j': {result!r}"
+        # Try to parse it back as a complex number
+        try:
+            parsed = complex(result.replace('(', '').replace(')', ''))
+            # Allow for small floating point differences
+            assert abs(parsed.real - input_value.real) < 1e-10
+            assert abs(parsed.imag - input_value.imag) < 1e-10
+        except ValueError:
+            # If parsing fails, at least verify it's a reasonable string
+            assert str(input_value.real) in result
+            assert str(input_value.imag) in result
+    
+    # Assertion 5: Collections handling
+    if isinstance(input_value, (list, tuple, set, dict)):
+        # Collections should produce non-empty strings
+        assert len(result) > 0, f"Collection should produce non-empty string: {result!r}"
+        # Should contain representation of elements
+        if isinstance(input_value, (list, tuple, set)):
+            for elem in input_value:
+                assert str(elem) in result, f"Element {elem} not in result: {result!r}"
+    
+    # Assertion 6: Performance/recursion depth (indirect test)
+    # Test that nested structures don't cause recursion issues
+    if isinstance(input_value, dict):
+        # Dict with nested structure
+        nested_dict = {"outer": {"inner": "value"}}
+        nested_result = compat.as_str_any(nested_dict)
+        assert isinstance(nested_result, str)
+        assert len(nested_result) > 0
+        # Should contain key strings
+        assert "outer" in nested_result
+        assert "inner" in nested_result
+        assert "value" in nested_result
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and cleanup
+
+def test_as_bytes_type_error():
+    """Test as_bytes raises TypeError for non-string types."""
+    with pytest.raises(TypeError) as exc_info:
+        compat.as_bytes(123)  # Integer is not a valid input
+    
+    assert "Expected binary or unicode string" in str(exc_info.value)
+
+def test_as_text_type_error():
+    """Test as_text raises TypeError for non-string types."""
+    with pytest.raises(TypeError) as exc_info:
+        compat.as_text(123)  # Integer is not a valid input
+    
+    assert "Expected binary or unicode string" in str(exc_info.value)
+
+def test_as_str_alias():
+    """Test as_str is an alias for as_text."""
+    # Verify as_str produces same result as as_text
+    test_input = b"test"
+    result_as_str = compat.as_str(test_input)
+    result_as_text = compat.as_text(test_input)
+    
+    assert result_as_str == result_as_text
+    assert isinstance(result_as_str, str)
+    assert isinstance(result_as_text, str)
+
+def test_type_collections():
+    """Test type collection constants."""
+    # Test bytes_or_text_types
+    assert isinstance(compat.bytes_or_text_types, tuple)
+    assert bytes in compat.bytes_or_text_types
+    # _six.text_type is str in Python 3
+    assert str in compat.bytes_or_text_types
+    
+    # Test integral_types
+    assert isinstance(compat.integral_types, tuple)
+    import numbers
+    assert numbers.Integral in compat.integral_types
+    import numpy as np
+    assert np.integer in compat.integral_types
+    
+    # Test real_types
+    assert isinstance(compat.real_types, tuple)
+    assert numbers.Real in compat.real_types
+    assert np.integer in compat.real_types
+    assert np.floating in compat.real_types
+    
+    # Test complex_types
+    assert isinstance(compat.complex_types, tuple)
+    assert numbers.Complex in compat.complex_types
+    assert np.number in compat.complex_types
+    
+    # Verify that common types are correctly categorized
+    assert isinstance(42, compat.integral_types)
+    assert isinstance(3.14, compat.real_types)
+    assert isinstance(1 + 2j, compat.complex_types)
+    assert isinstance(b"bytes", compat.bytes_or_text_types)
+    assert isinstance("text", compat.bytes_or_text_types)
+
+def test_path_to_bytes():
+    """Test path_to_bytes function."""
+    # Test with string path
+    result = compat.path_to_bytes("/tmp/test")
+    assert isinstance(result, bytes)
+    assert result == b"/tmp/test"
+    
+    # Test with Path object
+    result = compat.path_to_bytes(Path("/tmp/test"))
+    assert isinstance(result, bytes)
+    assert result == b"/tmp/test"
+    
+    # Test with relative path - Path objects normalize "./test" to "test"
+    # This is the expected behavior of Path.__fspath__()
+    result = compat.path_to_bytes(Path("./test"))
+    assert isinstance(result, bytes)
+    # Path("./test").__fspath__() returns "test", not "./test"
+    assert result == b"test"
+    
+    # Test with parent directory path
+    result = compat.path_to_bytes(Path("../parent/test"))
+    assert isinstance(result, bytes)
+    assert result == b"../parent/test"
+    
+    # Test with string containing "./" prefix
+    result = compat.path_to_bytes("./test")
+    assert isinstance(result, bytes)
+    assert result == b"./test"
+
+# Cleanup and teardown if needed
+def teardown_module():
+    """Cleanup after all tests."""
+    # No specific cleanup needed for this module
+    pass
+# ==== BLOCK:FOOTER END ====

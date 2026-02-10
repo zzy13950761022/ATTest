@@ -1,0 +1,99 @@
+=== Run Tests ===
+...F.F......F..                                                          [100%]
+=================================== FAILURES ===================================
+_ TestEmbedding.test_embedding_max_norm_constraint[10-3-None-1.0-2.0-False-input_shape0-dtype0-cpu] _
+
+self = <test_torch_nn_modules_sparse_embedding.TestEmbedding object at 0x13d5a61d0>
+set_random_seed = 42, num_embeddings = 10, embedding_dim = 3, padding_idx = None
+max_norm = 1.0, norm_type = 2.0, sparse = False, input_shape = (5,)
+dtype = torch.int64, device = 'cpu'
+
+    @pytest.mark.parametrize("num_embeddings,embedding_dim,padding_idx,max_norm,norm_type,sparse,input_shape,dtype,device", [
+        (10, 3, None, 1.0, 2.0, False, (5,), torch.long, "cpu"),
+    ])
+    def test_embedding_max_norm_constraint(self, set_random_seed, num_embeddings, embedding_dim,
+                                          padding_idx, max_norm, norm_type, sparse, input_shape, dtype, device):
+        """TC-05: Embedding max_norm 约束"""
+        # Create Embedding module with max_norm constraint
+        embedding = Embedding(
+            num_embeddings=num_embeddings,
+            embedding_dim=embedding_dim,
+            padding_idx=padding_idx,
+            max_norm=max_norm,
+            norm_type=norm_type,
+            sparse=sparse
+        )
+    
+        # Create test input
+        indices = torch.randint(0, num_embeddings, input_shape, dtype=dtype, device=device)
+    
+        # Forward pass
+        output = embedding(indices)
+    
+        # Weak assertions
+        # 1. Shape assertion
+        expected_shape = input_shape + (embedding_dim,)
+        assert output.shape == expected_shape, \
+            f"Output shape mismatch: {output.shape} != {expected_shape}"
+    
+        # 2. Dtype assertion
+        assert output.dtype == torch.float32, \
+            f"Output dtype should be float32, got {output.dtype}"
+    
+        # 3. Norm constraint assertion
+        # Check that the weight matrix has been normalized (in-place modification)
+        # Get the weight after forward pass (it may have been modified)
+        weight_after = embedding.weight.detach().clone()
+    
+        # Compute norms of each embedding vector
+        weight_norms = torch.norm(weight_after, p=norm_type, dim=1)
+    
+        # All norms should be <= max_norm (with some tolerance)
+        # Note: max_norm constraint is applied in-place during forward pass
+>       assert (weight_norms <= max_norm * 1.01).all(), \
+            f"Weight norms exceed max_norm: max {weight_norms.max().item()} > {max_norm}"
+E       AssertionError: Weight norms exceed max_norm: max 2.5477540493011475 > 1.0
+E       assert tensor(False)
+E        +  where tensor(False) = <built-in method all of Tensor object at 0x13d6e74c0>()
+E        +    where <built-in method all of Tensor object at 0x13d6e74c0> = tensor([1.0000, 2.5333, 1.7727, 1.0000, 1.0000, 1.6503, 1.7609, 0.9880, 2.0473,\n        2.5478]) <= (1.0 * 1.01).all
+
+tests/test_torch_nn_modules_sparse_embedding.py:263: AssertionError
+______________________ test_embedding_invalid_parameters _______________________
+
+    def test_embedding_invalid_parameters():
+        """Test invalid parameter combinations"""
+        # Test 1: num_embeddings <= 0 should raise RuntimeError (not ValueError)
+        # Embedding constructor doesn't validate num_embeddings directly,
+        # but creating weight tensor with invalid dimensions will fail
+>       with pytest.raises((RuntimeError, ValueError)) as exc_info:
+E       Failed: DID NOT RAISE any of (<class 'RuntimeError'>, <class 'ValueError'>)
+
+tests/test_torch_nn_modules_sparse_embedding.py:312: Failed
+_____________________ test_embeddingbag_invalid_parameters _____________________
+
+    def test_embeddingbag_invalid_parameters():
+        """Test invalid parameter combinations for EmbeddingBag"""
+        # Test 1: num_embeddings <= 0 should raise RuntimeError (not ValueError)
+        # EmbeddingBag constructor doesn't validate num_embeddings directly,
+        # but creating weight tensor with invalid dimensions will fail
+>       with pytest.raises((RuntimeError, ValueError)) as exc_info:
+E       Failed: DID NOT RAISE any of (<class 'RuntimeError'>, <class 'ValueError'>)
+
+tests/test_torch_nn_modules_sparse_embeddingbag.py:243: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_sparse_embedding.py        164     39     30      9    71%   19-32, 36-42, 109->exit, 145->149, 165->172, 175, 176->183, 186->201, 192->201, 195->194, 214->exit, 272-289, 315-348
+tests/test_torch_nn_modules_sparse_embeddingbag.py     144     31      6      1    77%   19-29, 33-39, 100->108, 246-278
+------------------------------------------------------------------------------------------------
+TOTAL                                                  308     70     36     10    74%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_sparse_embedding.py::TestEmbedding::test_embedding_max_norm_constraint[10-3-None-1.0-2.0-False-input_shape0-dtype0-cpu]
+FAILED tests/test_torch_nn_modules_sparse_embedding.py::test_embedding_invalid_parameters
+FAILED tests/test_torch_nn_modules_sparse_embeddingbag.py::test_embeddingbag_invalid_parameters
+3 failed, 12 passed in 0.89s
+
+Error: exit 1

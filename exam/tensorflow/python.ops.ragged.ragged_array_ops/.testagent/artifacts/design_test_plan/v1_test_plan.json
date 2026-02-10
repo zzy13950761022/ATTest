@@ -1,0 +1,227 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.ragged.ragged_array_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_ragged_ragged_array_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_ragged_ragged_array_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "boolean_mask 基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "boolean_mask",
+          "data_type": "RaggedTensor",
+          "data_shape": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+          "mask_type": "RaggedTensor",
+          "mask_shape": [[true, false, true], [false, false, false], [true, false, false]],
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_preserved", "values_correct", "no_exception"],
+        "strong": ["exact_values", "memory_layout", "gradient_check"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "tile 复制功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "tile",
+          "input_type": "RaggedTensor",
+          "input_shape": [[1, 2], [3]],
+          "multiples": [3, 2],
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_preserved", "repetition_correct", "no_exception"],
+        "strong": ["exact_repetition", "memory_efficiency", "gradient_check"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "expand_dims 维度扩展",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "expand_dims",
+          "input_type": "RaggedTensor",
+          "input_shape": [[1, 2], [3]],
+          "axis": 0,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["rank_increased", "dtype_preserved", "values_preserved", "no_exception"],
+        "strong": ["exact_shape", "axis_validation", "gradient_check"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "size 和 rank 计算",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "size",
+          "input_type": "RaggedTensor",
+          "input_shape": [[1, 2, 3], [4, 5], [6]],
+          "out_type": "tf.int32",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["correct_count", "dtype_match", "scalar_output", "no_exception"],
+        "strong": ["exact_value", "type_conversion", "edge_cases"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "混合类型操作",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "boolean_mask",
+          "data_type": "Tensor",
+          "data_shape": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+          "mask_type": "RaggedTensor",
+          "mask_shape": [[true, false, true], [false, false, false], [true, false, false]],
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["type_conversion", "shape_match", "values_correct", "no_exception"],
+        "strong": ["exact_conversion", "performance_check", "gradient_check"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.ragged.ragged_tensor.RaggedTensor",
+        "tensorflow.python.ops.ragged.ragged_tensor.convert_to_tensor_or_ragged_tensor",
+        "tensorflow.python.ops.ragged.ragged_tensor.is_ragged"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "boolean_mask",
+        "data_type": "RaggedTensor",
+        "data_shape": [],
+        "mask_type": "RaggedTensor",
+        "mask_shape": [],
+        "name": null
+      },
+      "note": "空 RaggedTensor 边界情况"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "boolean_mask",
+        "data_type": "RaggedTensor",
+        "data_shape": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        "mask_type": "RaggedTensor",
+        "mask_shape": [[true, true, true], [true, true, true], [true, true, true]],
+        "name": null
+      },
+      "note": "全 True mask 边界情况"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "tile",
+        "input_type": "RaggedTensor",
+        "input_shape": [],
+        "multiples": [1, 1],
+        "name": null
+      },
+      "note": "空 RaggedTensor 复制"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "expand_dims",
+        "input_type": "RaggedTensor",
+        "input_shape": [],
+        "axis": -1,
+        "name": null
+      },
+      "note": "空 RaggedTensor 维度扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "rank",
+        "input_type": "RaggedTensor",
+        "input_shape": [],
+        "name": null
+      },
+      "note": "空 RaggedTensor 秩计算"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

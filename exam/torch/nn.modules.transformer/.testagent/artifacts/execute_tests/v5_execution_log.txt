@@ -1,0 +1,20 @@
+=== Run Tests ===
+......................                                                   [100%]
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.transformer/tests/test_torch_nn_modules_transformer_g3.py::test_transformer_mask_handling_basic[dtype1-cpu-2-8-1-byte-src_shape1-mask_shape1]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/functional.py:5060: UserWarning: Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead.
+    warnings.warn("Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_transformer_g1.py     117     15     16      3    79%   20, 25, 35-46, 128, 531-535
+tests/test_torch_nn_modules_transformer_g2.py     163     11     10      1    88%   20, 25, 35-46
+tests/test_torch_nn_modules_transformer_g3.py      83     27     20      3    63%   20, 25, 35-46, 118, 266-308
+-------------------------------------------------------------------------------------------
+TOTAL                                             363     53     46      7    79%
+Coverage XML written to file coverage.xml
+22 passed, 1 warning in 0.84s
