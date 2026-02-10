@@ -29,7 +29,7 @@
 
 ```bash
 # 开始批量测试（默认5 epochs）
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py
 
 # 简化版本（如果已设置PATH或别名）
 python batch_test_torch.py
@@ -56,7 +56,7 @@ python batch_test_torch.py
 
 完整列表运行:
 ```bash
-/opt/anaconda3/envs/testagent-experiment/bin/python -c "
+/opt/anaconda3/envs/attest-experiment/bin/python -c "
 import xml.etree.ElementTree as ET
 tree = ET.parse('artifact/rundefinitions/pynguinml-torch.xml')
 for i, m in enumerate(tree.findall('.//module'), 1):
@@ -75,7 +75,7 @@ exam/torch/
 ├── batch_test_report.md       # 测试报告
 └── torch/
     ├── _linalg_utils/         # 模块1
-    │   ├── .testagent/
+    │   ├── .attest/
     │   │   ├── artifacts/
     │   │   └── state.json
     │   ├── tests/
@@ -133,24 +133,24 @@ with open('exam/torch/batch_test_state.json') as f:
 ./run_batch_test.sh
 
 # 或
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py
 ```
 
 ### 从特定位置开始
 
 ```bash
 # 从第10个模块开始（索引从0开始）
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --start 9
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --start 9
 
 # 从第25个模块开始
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --start 24
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --start 24
 ```
 
 ### 重新开始
 
 ```bash
 # 清除进度，从头开始
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --reset
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --reset
 ```
 
 ---
@@ -168,7 +168,7 @@ with open('exam/torch/batch_test_state.json') as f:
 ### 方法2: 直接命令
 
 ```bash
-/opt/anaconda3/envs/testagent-experiment/bin/python -m testagent_cli.cli run \
+/opt/anaconda3/envs/attest-experiment/bin/python -m attest_cli.cli run \
   -f torch.mean \
   --workspace ./exam/torch/torch/mean \
   --mode full-auto \
@@ -211,17 +211,17 @@ cat exam/torch/torch/_linalg_utils/analysis.md
 
 ```bash
 # 使用3个epoch（更快）
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --epoch 3
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --epoch 3
 
 # 使用10个epoch（更彻底）
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --epoch 10
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --epoch 10
 ```
 
 ### 指定工作目录
 
 ```bash
 # 使用不同的工作目录
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py \
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py \
   --workspace ./my_custom_workspace
 ```
 
@@ -229,7 +229,7 @@ cat exam/torch/torch/_linalg_utils/analysis.md
 
 ```bash
 # 使用nohup
-nohup /opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py > batch.out 2>&1 &
+nohup /opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py > batch.out 2>&1 &
 
 # 查看输出
 tail -f batch.out
@@ -263,7 +263,7 @@ tail -f batch.out
 
 ```bash
 # 验证环境
-/opt/anaconda3/envs/testagent-experiment/bin/python -c "
+/opt/anaconda3/envs/attest-experiment/bin/python -c "
 import torch
 import tensorflow as tf
 print('OK')
@@ -304,7 +304,7 @@ timeout=3600  # 改为更大的值，如7200（2小时）
 
 ```bash
 # 查看批量测试帮助
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --help
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --help
 
 # 查看启动器选项
 ./run_batch_test.sh
@@ -334,7 +334,7 @@ cat exam/torch/batch_test_report.md
 ./start_experiment_env.sh
 
 # 7. 重新开始
-/opt/anaconda3/envs/testagent-experiment/bin/python batch_test_torch.py --reset
+/opt/anaconda3/envs/attest-experiment/bin/python batch_test_torch.py --reset
 ```
 
 ---

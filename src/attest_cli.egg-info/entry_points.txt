@@ -1,0 +1,2 @@
+[console_scripts]
+attest = attest_cli.cli:app

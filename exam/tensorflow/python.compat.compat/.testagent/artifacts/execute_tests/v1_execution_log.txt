@@ -1,7 +1,0 @@
-=== Run Tests ===
-
-no tests ran in 0.00s
-ERROR: file or directory not found: tests/test_tensorflow_python_compat_compat_g1.py
-
-
-Error: exit 4

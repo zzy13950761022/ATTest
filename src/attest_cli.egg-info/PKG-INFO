@@ -1,3 +1,16 @@
+Metadata-Version: 2.4
+Name: attest-cli
+Version: 0.1.0
+Summary: A controllable CLI agent for C operator test generation
+Author: ATTest Authors
+Requires-Python: <3.11,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: typer<0.13,>=0.9.0
+Requires-Dist: click<8.1,>=8.0.0
+Requires-Dist: openai<2,>=1.0.0
+Requires-Dist: requests<3,>=2.31.0
+Requires-Dist: rich<14,>=13.7.0
+
 # ATTest-CLI
 
 一个可控的 CLI Agent，用于在固定的、人工批准的工作流下为 Python 算子/API（PyTorch、TensorFlow 等）生成和运行测试用例。

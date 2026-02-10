@@ -4,34 +4,34 @@
 
 ```bash
 # 默认交互模式（聊天）
-testagent [--workspace DIR] [--auto-approve]
+attest [--workspace DIR] [--auto-approve]
 
 # 聊天模式（显式）
-testagent chat [--workspace DIR] [--auto-approve]
+attest chat [--workspace DIR] [--auto-approve]
 
 # 工作流模式（交互式）- 短参数形式
-testagent run -f package.module:function [--workspace DIR] [--project-root DIR]
+attest run -f package.module:function [--workspace DIR] [--project-root DIR]
 
 # 工作流模式（交互式）- 长参数形式
-testagent run --func package.module:function [--workspace DIR]
+attest run --func package.module:function [--workspace DIR]
 
 # 工作流模式（全自动）
-testagent run -f package.module:function --mode full-auto
+attest run -f package.module:function --mode full-auto
 
 # 全自动 + 多轮迭代（如 3 轮）
-testagent run -f package.module:function --mode full-auto --epoch 3
+attest run -f package.module:function --mode full-auto --epoch 3
 
 # 恢复中断的工作流
-testagent run -f package.module:function --resume
+attest run -f package.module:function --resume
 
 # 配置管理
-testagent config list
-testagent config set KEY VALUE
-testagent config get KEY
+attest config list
+attest config set KEY VALUE
+attest config get KEY
 
 # 会话管理
-testagent sessions list
-testagent sessions clear <session_id>
+attest sessions list
+attest sessions clear <session_id>
 ```
 
 ## 📝 Workflow 交互命令
@@ -52,7 +52,7 @@ testagent sessions clear <session_id>
 
 ## 🔧 配置自定义构建命令
 
-编辑 `~/.testagent_cli/config.json`：
+编辑 `~/.attest_cli/config.json`：
 
 ```json
 {
@@ -101,7 +101,7 @@ testagent sessions clear <session_id>
 
 ```
 workspace/
-├── .testagent/
+├── .attest/
 │   ├── state.json                    # 工作流状态
 │   ├── artifacts/                    # 各阶段产物（带版本控制）
 │   │   ├── understand_function/
@@ -121,25 +121,25 @@ workspace/
 ### 修改 Stage Prompt
 
 ```bash
-vi src/testagent_cli/workflow/stages/requirements.py
+vi src/attest_cli/workflow/stages/requirements.py
 ```
 
 编辑 `_get_prompt_template()` 方法。
 
 ### 添加新 Tool
 
-1. 在 `src/testagent_cli/tools/builtin.py` 添加类
-2. 在 `src/testagent_cli/tools/runner.py` 注册
+1. 在 `src/attest_cli/tools/builtin.py` 添加类
+2. 在 `src/attest_cli/tools/runner.py` 注册
 3. 在 Stage 的 `tools` 列表中使用
 
 ### 调试
 
 ```bash
 # 查看状态
-cat workspace/.testagent/state.json
+cat workspace/.attest/state.json
 
 # 查看产物
-ls workspace/.testagent/artifacts/
+ls workspace/.attest/artifacts/
 
 # 单元测试
 pytest test_workflow_e2e.py -q
@@ -151,17 +151,17 @@ pytest test_smoke.py -q
 ### 标准使用
 
 ```bash
-testagent run -f torch.nn.functional.relu --workspace ~/my-proj
+attest run -f torch.nn.functional.relu --workspace ~/my-proj
 ```
 
 ### 覆盖自定义 pytest 命令
 
 ```bash
 # 1. 配置
-testagent config set commands.run_test "PYTHONPATH={project_root}:$PYTHONPATH pytest -q {test_file_path} -k gpu"
+attest config set commands.run_test "PYTHONPATH={project_root}:$PYTHONPATH pytest -q {test_file_path} -k gpu"
 
 # 2. 运行
-testagent run -f torch.add --mode full-auto
+attest run -f torch.add --mode full-auto
 ```
 
 ### 中途修改需求

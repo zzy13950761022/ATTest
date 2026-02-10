@@ -1,1 +1,0 @@
-test_tensorflow_python_ops_image_ops_impl.py
