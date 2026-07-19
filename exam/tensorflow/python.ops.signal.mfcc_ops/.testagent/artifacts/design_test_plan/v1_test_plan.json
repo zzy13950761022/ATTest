@@ -1,0 +1,223 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.signal.mfcc_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_signal_mfcc_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_signal_mfcc_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [2, 40],
+          "num_mel_bins": 40,
+          "batch_size": 2,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "basic_property"],
+        "strong": ["approx_equal_ref", "dct_orthogonality", "htk_scaling"]
+      },
+      "oracle": "numpy_dct_implementation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "数据类型验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "shape": [1, 20],
+          "num_mel_bins": 20,
+          "batch_size": 1,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "precision_check"],
+        "strong": ["approx_equal_ref", "relative_error", "absolute_error"]
+      },
+      "oracle": "numpy_dct_implementation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "边界条件验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [3, 1],
+          "num_mel_bins": 1,
+          "batch_size": 3,
+          "flags": ["min_bins"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "min_bins_valid"],
+        "strong": ["approx_equal_ref", "scaling_factor"]
+      },
+      "oracle": "numpy_dct_implementation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "错误处理验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [2, 0],
+          "num_mel_bins": 0,
+          "batch_size": 2,
+          "flags": ["invalid_bins"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "error_message"],
+        "strong": ["exception_context", "error_details"]
+      },
+      "oracle": "expected_exception",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "梯度计算验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [2, 13],
+          "num_mel_bins": 13,
+          "batch_size": 2,
+          "flags": ["gradient_check"]
+        }
+      ],
+      "asserts": {
+        "weak": ["gradient_exists", "gradient_shape", "gradient_finite"],
+        "strong": ["gradient_accuracy", "gradient_stability"]
+      },
+      "oracle": "tensorflow_gradient_checker",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.signal.dct_ops.dct",
+        "tensorflow.python.ops.math_ops.rsqrt",
+        "tensorflow.python.ops.array_ops.shape"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [4, 80],
+        "num_mel_bins": 80,
+        "batch_size": 4,
+        "flags": ["large_bins"]
+      },
+      "note": "作为参数扩展：float64数据类型和大num_mel_bins"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "shape": [2, 3, 5, 13],
+        "num_mel_bins": 13,
+        "batch_size": 2,
+        "flags": ["high_dim"]
+      },
+      "note": "作为参数扩展：高维输入形状保持"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "shape": [1, 1024],
+        "num_mel_bins": 1024,
+        "batch_size": 1,
+        "flags": ["extreme_bins"]
+      },
+      "note": "作为参数扩展：极端num_mel_bins大小"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [1, 1],
+        "num_mel_bins": 1,
+        "batch_size": 1,
+        "flags": ["min_bins", "float64"]
+      },
+      "note": "作为参数扩展：float64最小num_mel_bins"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_fft_ops.py::test_edge_case_handling[dtype1-shape1-None]",
+      "block_id": "CASE_05",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "create_test_tensor方法无法处理空shape（标量张量），np.random.randn(*)返回标量float而非数组"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

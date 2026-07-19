@@ -1,0 +1,47 @@
+{
+  "status": "成功",
+  "passed": 7,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::TestTorchCudaRandomG2::test_multi_device_state_batch_management",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：CUDA不可用场景未充分测试，需要添加mock测试"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::TestTorchCudaRandomG2::test_invalid_device_index_exception_handling",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：CUDA不可用时的异常处理未测试"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::TestTorchCudaRandomG2::test_empty_state_list_handling",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：CUDA不可用时的空状态列表处理未测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::TestTorchCudaRandomG2::test_extreme_seed_value_boundary_test",
+      "reason": "覆盖率缺口，但优先级较低，先处理高优先级块"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::test_g2_module_functions_exist",
+      "reason": "HEADER块，将在后续迭代中处理"
+    },
+    {
+      "test": "tests/test_torch_cuda_random_g2.py::test_multi_device_consistency",
+      "reason": "FOOTER块，将在后续迭代中处理"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

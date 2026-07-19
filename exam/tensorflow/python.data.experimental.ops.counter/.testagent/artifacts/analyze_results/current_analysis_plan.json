@@ -1,0 +1,27 @@
+{
+  "status": "成功",
+  "passed": 8,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensorflow_python_data_experimental_ops_counter_g1.py::TestCounterV2G1::_get_first_n_elements",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "Helper方法未被测试覆盖，需要添加测试用例调用此方法"
+    },
+    {
+      "test": "test_tensorflow_python_data_experimental_ops_counter_g1.py::test_counter_independent_instances",
+      "block_id": "FOOTER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "测试中的断言行未被覆盖，需要增强测试或添加相关测试"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

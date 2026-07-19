@@ -1,0 +1,395 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.parallel.comm",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_parallel_comm.py",
+    "all_pattern": "tests/test_torch_nn_parallel_comm_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_parallel_comm_broadcast.py",
+      "G2": "tests/test_torch_nn_parallel_comm_reduce.py",
+      "G3": "tests/test_torch_nn_parallel_comm_scatter_gather.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "广播函数族",
+      "entrypoints": ["broadcast", "broadcast_coalesced"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试单GPU到多GPU的广播功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "归约函数族",
+      "entrypoints": ["reduce_add", "reduce_add_coalesced"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试多GPU张量归约求和"
+    },
+    {
+      "group_id": "G3",
+      "title": "分散聚集函数族",
+      "entrypoints": ["scatter", "gather"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试张量分散-聚集往返操作"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "broadcast基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cuda:0",
+          "shape": [4, 8],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "device", "data_equality"],
+        "strong": ["approx_equal", "memory_alignment", "gradient_check"]
+      },
+      "oracle": "手动验证广播数据一致性",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "broadcast参数冲突异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cuda:0",
+          "shape": [2, 3],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "out_tensors": ["cuda:0", "cuda:1"],
+          "flags": ["conflict_params"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_code", "stack_trace"]
+      },
+      "oracle": "ValueError异常",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "broadcast_coalesced合并广播",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cuda:0",
+          "shapes": [[2, 3], [4, 5]],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "buffer_size": 10485760,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "device", "data_equality"],
+        "strong": ["approx_equal", "buffer_usage", "performance_check"]
+      },
+      "oracle": "手动验证合并广播数据一致性",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "broadcast_coalesced设备一致性检查",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "devices": ["cuda:0", "cuda:1"],
+          "shapes": [[2, 3], [4, 5]],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "flags": ["mixed_devices"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_code", "device_validation"]
+      },
+      "oracle": "RuntimeError异常",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "reduce_add基本归约",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "devices": ["cuda:0", "cuda:1"],
+          "shape": [3, 4],
+          "destination": "cuda:0",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "device", "sum_correctness"],
+        "strong": ["approx_equal", "gradient_check", "memory_optimization"]
+      },
+      "oracle": "torch.sum手动计算验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "reduce_add形状不匹配异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "devices": ["cuda:0", "cuda:1"],
+          "shapes": [[2, 3], [3, 4]],
+          "destination": "cuda:0",
+          "flags": ["shape_mismatch"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_code", "shape_validation"]
+      },
+      "oracle": "RuntimeError异常",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "reduce_add_coalesced合并归约",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "devices": ["cuda:0", "cuda:1"],
+          "shapes": [[[2, 3], [4, 5]], [[2, 3], [4, 5]]],
+          "destination": "cuda:0",
+          "buffer_size": 10485760,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "device", "sum_correctness"],
+        "strong": ["approx_equal", "buffer_usage", "performance_check"]
+      },
+      "oracle": "逐组torch.sum手动计算验证",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "scatter_gather往返完整性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cuda:0",
+          "shape": [8, 6],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "dim": 0,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "device", "data_integrity"],
+        "strong": ["approx_equal", "dimension_check", "memory_consistency"]
+      },
+      "oracle": "原始张量与聚集后张量比较",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "scatter参数冲突异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cuda:0",
+          "shape": [6, 4],
+          "target_devices": ["cuda:0", "cuda:1"],
+          "out_tensors": ["cuda:0", "cuda:1"],
+          "dim": 0,
+          "flags": ["conflict_params"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_code", "parameter_validation"]
+      },
+      "oracle": "ValueError异常",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "gather参数互斥检查",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "devices": ["cuda:0", "cuda:1"],
+          "shape": [3, 4],
+          "destination": "cuda:0",
+          "out_tensor": "cuda:0",
+          "dim": 0,
+          "flags": ["mutually_exclusive"]
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_type", "exception_message"],
+        "strong": ["error_code", "parameter_validation"]
+      },
+      "oracle": "ValueError异常",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cuda:0",
+        "shape": [10, 10],
+        "target_devices": ["cuda:0", "cuda:1", "cuda:2"],
+        "flags": []
+      },
+      "note": "扩展数据类型和设备数量"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "dtype": "complex64",
+        "device": "cuda:0",
+        "shape": [2, 2],
+        "target_devices": ["cuda:0", "cuda:1"],
+        "flags": ["complex"]
+      },
+      "note": "复数张量支持"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "devices": ["cuda:0", "cuda:1", "cuda:2"],
+        "shape": [5, 5],
+        "destination": "cuda:1",
+        "flags": []
+      },
+      "note": "扩展数据类型、设备数量和目标设备"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cuda:0",
+        "shape": [12, 8],
+        "target_devices": ["cuda:0", "cuda:1", "cuda:2"],
+        "dim": 1,
+        "flags": []
+      },
+      "note": "扩展数据类型、设备数量和维度"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_08"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_09", "CASE_10"]
+}

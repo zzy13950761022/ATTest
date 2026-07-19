@@ -1,0 +1,185 @@
+=== Run Tests ===
+..F.F.F                                                                  [100%]
+=================================== FAILURES ===================================
+__________________ test_pad_unpad_roundtrip[False-cpu-dtype0] __________________
+
+dtype = torch.float32, device = 'cpu', batch_first = False
+
+    @pytest.mark.parametrize("dtype", [torch.float32])
+    @pytest.mark.parametrize("device", ["cpu"])
+    @pytest.mark.parametrize("batch_first", [False, True])
+    def test_pad_unpad_roundtrip(
+        dtype: torch.dtype,
+        device: str,
+        batch_first: bool
+    ):
+        """TC-08: pad_sequence和unpad_sequence往返测试"""
+        # Test parameters
+        num_sequences = 4
+        max_len = 6
+        feature_dim = 2
+        padding_value = -1.0
+    
+        # Generate test data
+        sequences = generate_sequence_list(
+            num_sequences=num_sequences,
+            max_len=max_len,
+            feature_dim=feature_dim,
+            dtype=dtype,
+            device=device
+        )
+    
+        # Get lengths for verification
+        lengths = torch.tensor([seq.size(0) for seq in sequences], dtype=torch.int64, device=device)
+    
+        # Step 1: Pad the sequences
+        padded = rnn_utils.pad_sequence(
+            sequences,
+            batch_first=batch_first,
+            padding_value=padding_value
+        )
+    
+        # Step 2: Unpad them back
+        unpadded_sequences = rnn_utils.unpad_sequence(
+            padded,
+            lengths,
+            batch_first=batch_first
+        )
+    
+        # Weak assertions (epoch 1)
+        # 1. roundtrip_consistency: Unpadded sequences should match original
+        assert len(unpadded_sequences) == len(sequences), \
+            f"Expected {len(sequences)} sequences, got {len(unpadded_sequences)}"
+    
+        for i, (original, unpadded) in enumerate(zip(sequences, unpadded_sequences)):
+            # Check shape
+            assert unpadded.shape == original.shape, \
+                f"Sequence {i}: Expected shape {original.shape}, got {unpadded.shape}"
+    
+            # Check data (within tolerance)
+            assert torch.allclose(original, unpadded, rtol=1e-6, atol=1e-6), \
+                f"Sequence {i}: Data mismatch after roundtrip"
+    
+        # 2. padding_correctness: Verify padding was applied correctly
+        actual_max_len = max(lengths).item()
+    
+        if batch_first:
+            expected_shape = (num_sequences, actual_max_len, feature_dim)
+        else:
+            expected_shape = (actual_max_len, num_sequences, feature_dim)
+    
+>       assert padded.shape == expected_shape, \
+            f"Expected padded shape {expected_shape}, got {padded.shape}"
+E       AssertionError: Expected padded shape (5, 4, 2), got torch.Size([4, 5, 2])
+E       assert torch.Size([4, 5, 2]) == (5, 4, 2)
+E         
+E         At index 0 diff: 4 != 5
+E         Use -v to get more diff
+
+tests/test_torch_nn_utils_rnn_pad_unpad.py:317: AssertionError
+______________ TestPadUnpadFunctions.test_pad_sequence_empty_list ______________
+
+    @staticmethod
+    def test_pad_sequence_empty_list():
+        """Test pad_sequence with empty list."""
+        with pytest.raises(ValueError):
+>           rnn_utils.pad_sequence([], batch_first=False)
+
+tests/test_torch_nn_utils_rnn_pad_unpad.py:366: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+sequences = (), batch_first = False, padding_value = 0.0
+
+    def pad_sequence(
+        sequences: Union[Tensor, List[Tensor]],
+        batch_first: bool = False,
+        padding_value: float = 0.0,
+    ) -> Tensor:
+        r"""Pad a list of variable length Tensors with ``padding_value``
+    
+        ``pad_sequence`` stacks a list of Tensors along a new dimension,
+        and pads them to equal length. For example, if the input is list of
+        sequences with size ``L x *`` and if batch_first is False, and ``T x B x *``
+        otherwise.
+    
+        `B` is batch size. It is equal to the number of elements in ``sequences``.
+        `T` is length of the longest sequence.
+        `L` is length of the sequence.
+        `*` is any number of trailing dimensions, including none.
+    
+        Example:
+            >>> from torch.nn.utils.rnn import pad_sequence
+            >>> a = torch.ones(25, 300)
+            >>> b = torch.ones(22, 300)
+            >>> c = torch.ones(15, 300)
+            >>> pad_sequence([a, b, c]).size()
+            torch.Size([25, 3, 300])
+    
+        Note:
+            This function returns a Tensor of size ``T x B x *`` or ``B x T x *``
+            where `T` is the length of the longest sequence. This function assumes
+            trailing dimensions and type of all the Tensors in sequences are same.
+    
+        Args:
+            sequences (list[Tensor]): list of variable length sequences.
+            batch_first (bool, optional): output will be in ``B x T x *`` if True, or in
+                ``T x B x *`` otherwise. Default: False.
+            padding_value (float, optional): value for padded elements. Default: 0.
+    
+        Returns:
+            Tensor of size ``T x B x *`` if :attr:`batch_first` is ``False``.
+            Tensor of size ``B x T x *`` otherwise
+        """
+    
+        if not (torch.jit.is_tracing() or torch.jit.is_scripting()):
+            # JIT doesn't support `Iterable`
+            if not isinstance(sequences, Iterable):
+                msg = ('pad_sequence: Expected iterable for input sequences, but got arg of type: '
+                       f'{type(sequences)}')
+                raise RuntimeError(msg)
+    
+            # In JIT context this leads to,
+            # RuntimeError: cannot statically infer the expected size of a list in this context
+            sequences = tuple(sequences)
+        else:
+            # For JIT, we only support Union[Tensor, Tuple[Tensor]]
+            if isinstance(sequences, torch.Tensor):
+                sequences = sequences.unbind(0)
+    
+        # assuming trailing dimensions and type of all the Tensors
+        # in sequences are same and fetching those from sequences[0]
+>       return torch._C._nn.pad_sequence(sequences, batch_first, padding_value)
+E       RuntimeError: received an empty list of sequences
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/rnn.py:398: RuntimeError
+__________ TestPadUnpadFunctions.test_unpad_sequence_length_mismatch ___________
+
+    @staticmethod
+    def test_unpad_sequence_length_mismatch():
+        """Test unpad_sequence with incorrect lengths."""
+        # Create a padded tensor
+        padded = torch.randn(10, 3, 5)  # max_len=10, batch_size=3, feature_dim=5
+    
+        # Create lengths that are too long
+        lengths = torch.tensor([12, 8, 9])  # First length > max_len
+    
+>       with pytest.raises(RuntimeError):
+E       Failed: DID NOT RAISE <class 'RuntimeError'>
+
+tests/test_torch_nn_utils_rnn_pad_unpad.py:387: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/test_torch_nn_utils_rnn_pad_unpad.py     156     22     44      5    84%   42-54, 60, 65, 111, 124-127, 150-151, 327-328, 393-394
+----------------------------------------------------------------------------------------
+TOTAL                                          156     22     44      5    84%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_rnn_pad_unpad.py::test_pad_unpad_roundtrip[False-cpu-dtype0]
+FAILED tests/test_torch_nn_utils_rnn_pad_unpad.py::TestPadUnpadFunctions::test_pad_sequence_empty_list
+FAILED tests/test_torch_nn_utils_rnn_pad_unpad.py::TestPadUnpadFunctions::test_unpad_sequence_length_mismatch
+3 failed, 4 passed in 0.60s
+
+Error: exit 1

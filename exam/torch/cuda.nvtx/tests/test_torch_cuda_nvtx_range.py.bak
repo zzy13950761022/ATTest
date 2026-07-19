@@ -1,0 +1,152 @@
+import pytest
+import torch.cuda.nvtx as nvtx
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+import pytest
+import torch.cuda.nvtx as nvtx
+from unittest.mock import patch, MagicMock
+
+class TestNVTXRangeFunctions:
+    """Test cross-thread range management functions: range_start and range_end."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self):
+        """Setup mock for _nvtx module to avoid CUDA dependency.
+        
+        Includes markA mock for tests in FOOTER block that need it.
+        """
+        self.mock_nvtx = MagicMock()
+        self.mock_nvtx.rangeStartA = MagicMock()
+        self.mock_nvtx.rangeEnd = MagicMock()
+        self.mock_nvtx.markA = MagicMock()  # Added for FOOTER tests
+        
+        with patch('torch.cuda.nvtx._nvtx', self.mock_nvtx):
+            yield
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("msg,use_ascii", [
+        ("cross_thread_range", True),
+        ("multiple_ranges", True),
+    ])
+    def test_cross_thread_range_handles(self, msg, use_ascii):
+        """Test cross-thread range handle management with various parameters.
+        
+        Weak assertions:
+        - range_start_returns_int: range_start should return an integer (handle)
+        - range_end_no_exception: range_end should execute without exception
+        - handle_valid: handle should be a valid integer
+        - no_exception: no exceptions should be raised
+        """
+        # Setup mock return value for rangeStartA
+        test_handle = 12345
+        self.mock_nvtx.rangeStartA.return_value = test_handle
+        
+        # Test range_start
+        handle = nvtx.range_start(msg)
+        
+        # Weak assertion: range_start returns int
+        assert isinstance(handle, int), f"range_start should return int, got {type(handle)}"
+        
+        # Weak assertion: handle is valid (non-negative)
+        assert handle >= 0, f"Handle should be non-negative, got {handle}"
+        
+        # Verify mock was called with correct arguments
+        self.mock_nvtx.rangeStartA.assert_called_once_with(msg)
+        
+        # Test range_end with the handle
+        nvtx.range_end(handle)
+        
+        # Weak assertion: range_end executes without exception
+        # (If we get here, this assertion passes)
+        
+        # Verify mock was called with correct handle
+        self.mock_nvtx.rangeEnd.assert_called_once_with(handle)
+        
+        # Test multiple ranges scenario (from param_extensions)
+        if msg == "multiple_ranges":
+            handles = []
+            for i in range(5):
+                self.mock_nvtx.rangeStartA.return_value = test_handle + i
+                handle_i = nvtx.range_start(f"{msg}_{i}")
+                handles.append(handle_i)
+                assert isinstance(handle_i, int)
+                assert handle_i >= 0
+            
+            # Verify all handles are unique (weak assertion for uniqueness)
+            assert len(set(handles)) == len(handles), "All handles should be unique"
+            
+            # End all ranges
+            for handle_i in handles:
+                nvtx.range_end(handle_i)
+            
+            # Verify correct number of calls
+            assert self.mock_nvtx.rangeStartA.call_count == 6  # 1 initial + 5 in loop
+            assert self.mock_nvtx.rangeEnd.call_count == 6     # 1 initial + 5 in loop
+        else:
+            # Reset mocks for next test iteration
+            self.mock_nvtx.rangeStartA.reset_mock()
+            self.mock_nvtx.rangeEnd.reset_mock()
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_06 START ====
+    # Placeholder for CASE_06: (deferred test case)
+    # This test case is deferred to later iterations
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+    def test_range_end_with_invalid_handle(self):
+        """Test range_end with invalid handle (should still execute without error in mock)."""
+        # Test with various invalid handles
+        invalid_handles = [-1, 999999, 0]
+        
+        for handle in invalid_handles:
+            # Reset mock
+            self.mock_nvtx.rangeEnd.reset_mock()
+            
+            # Call range_end - should not raise exception even with invalid handle
+            nvtx.range_end(handle)
+            
+            # Verify mock was called with the handle
+            self.mock_nvtx.rangeEnd.assert_called_once_with(handle)
+    
+    def test_mark_return_value_coverage(self):
+        """Test mark function to cover both None and int return value branches.
+        
+        This test addresses the coverage gap identified in the analysis plan.
+        """
+        # First test with None return value
+        self.mock_nvtx.markA.return_value = None
+        result_none = nvtx.mark("test_none")
+        
+        # Assert returns None or int (covers None branch)
+        assert result_none is None or isinstance(result_none, int)
+        self.mock_nvtx.markA.assert_called_with("test_none")
+        
+        # Reset mock and test with int return value
+        self.mock_nvtx.markA.reset_mock()
+        self.mock_nvtx.markA.return_value = 42
+        result_int = nvtx.mark("test_int")
+        
+        # Assert returns None or int (covers int branch)
+        assert result_int is None or isinstance(result_int, int)
+        # Specifically verify it's an int
+        assert isinstance(result_int, int), f"Expected int, got {type(result_int)}"
+        assert result_int == 42, f"Expected 42, got {result_int}"
+        self.mock_nvtx.markA.assert_called_with("test_int")
+        
+        # Test with empty string and int return
+        self.mock_nvtx.markA.reset_mock()
+        self.mock_nvtx.markA.return_value = 0
+        result_empty = nvtx.mark("")
+        
+        # Assert returns None or int (covers int branch with empty string)
+        assert result_empty is None or isinstance(result_empty, int)
+        assert isinstance(result_empty, int), f"Expected int for empty string, got {type(result_empty)}"
+        self.mock_nvtx.markA.assert_called_with("")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

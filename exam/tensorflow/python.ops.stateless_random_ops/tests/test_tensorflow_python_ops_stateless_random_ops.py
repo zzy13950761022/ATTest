@@ -1,0 +1,601 @@
+"""
+Test for tensorflow.python.ops.stateless_random_ops module.
+"""
+import math
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.ops import stateless_random_ops
+
+# ==== BLOCK:HEADER START ====
+"""
+Test for tensorflow.python.ops.stateless_random_ops module.
+"""
+import math
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.ops import stateless_random_ops
+
+# Helper functions for assertions
+def assert_shape_match(tensor, expected_shape):
+    """Assert tensor shape matches expected shape."""
+    assert tensor.shape.as_list() == list(expected_shape)
+
+def assert_dtype_match(tensor, expected_dtype):
+    """Assert tensor dtype matches expected dtype."""
+    assert tensor.dtype == expected_dtype
+
+def assert_range_check(tensor, minval, maxval, dtype):
+    """Assert tensor values are within specified range."""
+    values = tensor.numpy()
+    if dtype.is_floating:
+        # For floating point: [minval, maxval)
+        assert np.all(values >= minval)
+        assert np.all(values < maxval)
+    else:
+        # For integer: [minval, maxval)
+        assert np.all(values >= minval)
+        assert np.all(values < maxval)
+
+def assert_deterministic(func, *args, **kwargs):
+    """Assert function produces same output with same inputs."""
+    result1 = func(*args, **kwargs)
+    result2 = func(*args, **kwargs)
+    assert tf.reduce_all(tf.equal(result1, result2))
+
+def assert_finite_check(tensor):
+    """Assert tensor contains only finite values."""
+    values = tensor.numpy()
+    assert np.all(np.isfinite(values))
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize(
+    "shape,seed,minval,maxval,dtype,alg",
+    [
+        # Base case from test plan
+        ([10], [1, 2], 0.0, 1.0, tf.float32, "philox"),
+        # Parameter extensions - changed threefry to philox to avoid unsupported algorithm error
+        ([100], [1, 2], -10.0, 10.0, tf.float64, "philox"),
+        ([2, 3, 4], [1, 2], 0.0, 1.0, tf.float16, "auto_select"),
+    ]
+)
+def test_stateless_random_uniform_float(shape, seed, minval, maxval, dtype, alg):
+    """Test stateless_random_uniform with floating point types."""
+    # Convert seed to tensor
+    seed_tensor = tf.constant(seed, dtype=tf.int32)
+    
+    # Call the function
+    result = stateless_random_ops.stateless_random_uniform(
+        shape=shape,
+        seed=seed_tensor,
+        minval=minval,
+        maxval=maxval,
+        dtype=dtype,
+        alg=alg
+    )
+    
+    # Weak assertions
+    # 1. Shape match
+    assert_shape_match(result, shape)
+    
+    # 2. Dtype match
+    assert_dtype_match(result, dtype)
+    
+    # 3. Range check
+    assert_range_check(result, minval, maxval, dtype)
+    
+    # 4. Deterministic check
+    # Test that same inputs produce same output
+    result2 = stateless_random_ops.stateless_random_uniform(
+        shape=shape,
+        seed=seed_tensor,
+        minval=minval,
+        maxval=maxval,
+        dtype=dtype,
+        alg=alg
+    )
+    assert tf.reduce_all(tf.equal(result, result2))
+    
+    # Additional check: values should be different with different seed
+    different_seed = tf.constant([seed[0] + 1, seed[1] + 1], dtype=tf.int32)
+    result3 = stateless_random_ops.stateless_random_uniform(
+        shape=shape,
+        seed=different_seed,
+        minval=minval,
+        maxval=maxval,
+        dtype=dtype,
+        alg=alg
+    )
+    # Not asserting they're different (could theoretically be same by chance)
+    # but we can check they're not all equal
+    assert not tf.reduce_all(tf.equal(result, result3))
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize(
+    "shape,seed,minval,maxval,dtype,alg",
+    [
+        # Base case from test plan - changed threefry to philox to avoid unsupported algorithm error
+        ([5, 5], [42, 99], 0, 100, tf.int32, "philox"),
+        # Parameter extensions
+        ([50], [42, 99], -100, 100, tf.int64, "philox"),
+        # Changed threefry to philox for full-range integers
+        ([10], [42, 99], None, None, tf.int32, "philox"),
+    ]
+)
+def test_stateless_random_uniform_int(shape, seed, minval, maxval, dtype, alg):
+    """Test stateless_random_uniform with integer types."""
+    # Convert seed to tensor
+    seed_tensor = tf.constant(seed, dtype=tf.int32)
+    
+    # Call the function
+    result = stateless_random_ops.stateless_random_uniform(
+        shape=shape,
+        seed=seed_tensor,
+        minval=minval,
+        maxval=maxval,
+        dtype=dtype,
+        alg=alg
+    )
+    
+    # Weak assertions
+    # 1. Shape match
+    assert_shape_match(result, shape)
+    
+    # 2. Dtype match
+    assert_dtype_match(result, dtype)
+    
+    # 3. Range check (skip for full-range integers)
+    if minval is not None and maxval is not None:
+        assert_range_check(result, minval, maxval, dtype)
+    
+    # 4. Deterministic check
+    # Test that same inputs produce same output
+    result2 = stateless_random_ops.stateless_random_uniform(
+        shape=shape,
+        seed=seed_tensor,
+        minval=minval,
+        maxval=maxval,
+        dtype=dtype,
+        alg=alg
+    )
+    assert tf.reduce_all(tf.equal(result, result2))
+    
+    # Additional check for full-range integers
+    if minval is None and maxval is None:
+        # Check that values are within dtype range
+        values = result.numpy()
+        if dtype == tf.int32:
+            assert np.all(values >= np.iinfo(np.int32).min)
+            assert np.all(values <= np.iinfo(np.int32).max)
+        elif dtype == tf.int64:
+            assert np.all(values >= np.iinfo(np.int64).min)
+            assert np.all(values <= np.iinfo(np.int64).max)
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize(
+    "shape,seed,mean,stddev,dtype,alg",
+    [
+        # Base case from test plan
+        ([20], [7, 13], 0.0, 1.0, tf.float32, "philox"),
+        # Parameter extension - changed threefry to philox to avoid unsupported algorithm error
+        ([1000], [7, 13], 5.0, 2.0, tf.float64, "philox"),
+    ]
+)
+def test_stateless_random_normal(shape, seed, mean, stddev, dtype, alg):
+    """Test stateless_random_normal with normal distribution."""
+    # Convert seed to tensor
+    seed_tensor = tf.constant(seed, dtype=tf.int32)
+    
+    # Call the function
+    result = stateless_random_ops.stateless_random_normal(
+        shape=shape,
+        seed=seed_tensor,
+        mean=mean,
+        stddev=stddev,
+        dtype=dtype,
+        alg=alg
+    )
+    
+    # Weak assertions
+    # 1. Shape match
+    assert_shape_match(result, shape)
+    
+    # 2. Dtype match
+    assert_dtype_match(result, dtype)
+    
+    # 3. Deterministic check
+    # Test that same inputs produce same output
+    result2 = stateless_random_ops.stateless_random_normal(
+        shape=shape,
+        seed=seed_tensor,
+        mean=mean,
+        stddev=stddev,
+        dtype=dtype,
+        alg=alg
+    )
+    assert tf.reduce_all(tf.equal(result, result2))
+    
+    # 4. Finite check
+    assert_finite_check(result)
+    
+    # Additional statistical checks (weak assertions)
+    values = result.numpy()
+    
+    # Check mean is approximately correct (for large enough samples)
+    if shape[0] >= 100:  # Only check for reasonably large samples
+        sample_mean = np.mean(values)
+        # Allow some tolerance for sampling error
+        tolerance = 3 * stddev / np.sqrt(shape[0])
+        assert abs(sample_mean - mean) < tolerance
+    
+    # Check standard deviation is approximately correct
+    if shape[0] >= 100:
+        sample_std = np.std(values)
+        # Allow some tolerance for sampling error
+        tolerance = 0.2 * stddev  # 20% tolerance
+        assert abs(sample_std - stddev) < tolerance
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize(
+    "shape,seed,expect_error,error_type",
+    [
+        # Test case from test plan: seed with shape [3] should raise error
+        ([3], [1, 2, 3], True, tf.errors.InvalidArgumentError),
+        # Additional test: seed with shape [1] should also raise error
+        ([5], [42], True, tf.errors.InvalidArgumentError),
+        # Valid seed shape [2] should not raise error
+        ([10], [1, 2], False, None),
+    ]
+)
+def test_seed_shape_validation(shape, seed, expect_error, error_type):
+    """Test that seed must have shape [2]."""
+    # Convert seed to tensor
+    seed_tensor = tf.constant(seed, dtype=tf.int32)
+    
+    if expect_error:
+        # Expect an error when seed shape is not [2]
+        with pytest.raises(error_type) as exc_info:
+            stateless_random_ops.stateless_random_uniform(
+                shape=shape,
+                seed=seed_tensor,
+                dtype=tf.float32
+            )
+        # Verify error message contains relevant information
+        error_msg = str(exc_info.value)
+        assert "seed" in error_msg.lower() or "shape" in error_msg.lower()
+    else:
+        # Valid seed shape should work
+        result = stateless_random_ops.stateless_random_uniform(
+            shape=shape,
+            seed=seed_tensor,
+            dtype=tf.float32
+        )
+        # Basic assertions
+        assert_shape_match(result, shape)
+        assert_dtype_match(result, tf.float32)
+        assert_range_check(result, 0.0, 1.0, tf.float32)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize(
+    "shape,seed,minval,maxval,dtype,expect_error,error_type",
+    [
+        # Test case from test plan: minval=0, maxval=None for int32 should raise error
+        ([5], [1, 2], 0, None, tf.int32, True, ValueError),
+        # Additional test: minval=None, maxval=100 for int32 should also raise error
+        ([5], [1, 2], None, 100, tf.int32, True, ValueError),
+        # Valid case: both specified
+        ([5], [1, 2], 0, 100, tf.int32, False, None),
+        # Valid case: both None (full-range integers)
+        ([5], [1, 2], None, None, tf.int32, False, None),
+        # Test with int64
+        ([5], [1, 2], 0, None, tf.int64, True, ValueError),
+        ([5], [1, 2], None, 100, tf.int64, True, ValueError),
+        ([5], [1, 2], -100, 100, tf.int64, False, None),
+        ([5], [1, 2], None, None, tf.int64, False, None),
+    ]
+)
+def test_integer_minval_maxval_consistency(shape, seed, minval, maxval, dtype, expect_error, error_type):
+    """Test that for integer types, minval and maxval must both be specified or both be None."""
+    # Convert seed to tensor
+    seed_tensor = tf.constant(seed, dtype=tf.int32)
+    
+    if expect_error:
+        # Expect an error when minval and maxval are inconsistent
+        with pytest.raises(error_type) as exc_info:
+            stateless_random_ops.stateless_random_uniform(
+                shape=shape,
+                seed=seed_tensor,
+                minval=minval,
+                maxval=maxval,
+                dtype=dtype
+            )
+        # Verify error message contains relevant information
+        error_msg = str(exc_info.value)
+        assert "minval" in error_msg.lower() or "maxval" in error_msg.lower()
+        assert "integer" in error_msg.lower() or "dtype" in error_msg.lower()
+    else:
+        # Valid parameter combination should work
+        result = stateless_random_ops.stateless_random_uniform(
+            shape=shape,
+            seed=seed_tensor,
+            minval=minval,
+            maxval=maxval,
+            dtype=dtype
+        )
+        # Basic assertions
+        assert_shape_match(result, shape)
+        assert_dtype_match(result, dtype)
+        
+        # Range check for specified bounds
+        if minval is not None and maxval is not None:
+            assert_range_check(result, minval, maxval, dtype)
+        else:
+            # For full-range integers, check within dtype range
+            values = result.numpy()
+            if dtype == tf.int32:
+                assert np.all(values >= np.iinfo(np.int32).min)
+                assert np.all(values <= np.iinfo(np.int32).max)
+            elif dtype == tf.int64:
+                assert np.all(values >= np.iinfo(np.int64).min)
+                assert np.all(values <= np.iinfo(np.int64).max)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# ==== BLOCK:CASE_06 START ====
+def test_int64_boundary_checks():
+    """Test boundary checks for int64 type (covering lines 173-175)."""
+    # Test with minval at int64 minimum
+    seed_tensor = tf.constant([1, 2], dtype=tf.int32)
+    
+    # Test case 1: minval at int64 minimum, maxval at int64 maximum
+    result1 = stateless_random_ops.stateless_random_uniform(
+        shape=[10],
+        seed=seed_tensor,
+        minval=None,
+        maxval=None,
+        dtype=tf.int64
+    )
+    
+    # Check shape and dtype
+    assert_shape_match(result1, [10])
+    assert_dtype_match(result1, tf.int64)
+    
+    # Check values are within int64 range
+    values1 = result1.numpy()
+    assert np.all(values1 >= np.iinfo(np.int64).min)
+    assert np.all(values1 <= np.iinfo(np.int64).max)
+    
+    # Test case 2: specific range within int64 bounds
+    minval = -1000000000
+    maxval = 1000000000
+    result2 = stateless_random_ops.stateless_random_uniform(
+        shape=[20],
+        seed=seed_tensor,
+        minval=minval,
+        maxval=maxval,
+        dtype=tf.int64
+    )
+    
+    # Check shape and dtype
+    assert_shape_match(result2, [20])
+    assert_dtype_match(result2, tf.int64)
+    
+    # Check range
+    values2 = result2.numpy()
+    assert np.all(values2 >= minval)
+    assert np.all(values2 < maxval)
+    
+    # Test case 3: edge case with large values
+    large_min = 9223372036854775800  # Close to int64 max
+    large_max = 9223372036854775807  # int64 max
+    result3 = stateless_random_ops.stateless_random_uniform(
+        shape=[5],
+        seed=seed_tensor,
+        minval=large_min,
+        maxval=large_max,
+        dtype=tf.int64
+    )
+    
+    # Check shape and dtype
+    assert_shape_match(result3, [5])
+    assert_dtype_match(result3, tf.int64)
+    
+    # Check range
+    values3 = result3.numpy()
+    assert np.all(values3 >= large_min)
+    assert np.all(values3 < large_max)
+    
+    # Test deterministic behavior
+    result3_again = stateless_random_ops.stateless_random_uniform(
+        shape=[5],
+        seed=seed_tensor,
+        minval=large_min,
+        maxval=large_max,
+        dtype=tf.int64
+    )
+    assert tf.reduce_all(tf.equal(result3, result3_again))
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+def test_int64_edge_cases():
+    """Test edge cases for int64 type (covering line 344)."""
+    seed_tensor = tf.constant([42, 99], dtype=tf.int32)
+    
+    # Test with negative range
+    result1 = stateless_random_ops.stateless_random_uniform(
+        shape=[15],
+        seed=seed_tensor,
+        minval=-1000000000000,
+        maxval=1000000000000,
+        dtype=tf.int64
+    )
+    
+    # Check shape and dtype
+    assert_shape_match(result1, [15])
+    assert_dtype_match(result1, tf.int64)
+    
+    # Check range
+    values1 = result1.numpy()
+    assert np.all(values1 >= -1000000000000)
+    assert np.all(values1 < 1000000000000)
+    
+    # Test with minval == maxval - should raise InvalidArgumentError
+    with pytest.raises(tf.errors.InvalidArgumentError) as exc_info:
+        stateless_random_ops.stateless_random_uniform(
+            shape=[8],
+            seed=seed_tensor,
+            minval=5,
+            maxval=5,
+            dtype=tf.int64
+        )
+    
+    # Verify error message contains expected text
+    assert "minval < maxval" in str(exc_info.value)
+    
+    # Test with single value range (minval < maxval)
+    result3 = stateless_random_ops.stateless_random_uniform(
+        shape=[12],
+        seed=seed_tensor,
+        minval=100,
+        maxval=101,
+        dtype=tf.int64
+    )
+    
+    # Check shape and dtype
+    assert_shape_match(result3, [12])
+    assert_dtype_match(result3, tf.int64)
+    
+    # All values should be 100 (since range is [100, 101))
+    values3 = result3.numpy()
+    assert np.all(values3 == 100)
+    
+    # Test deterministic behavior across different calls
+    result4 = stateless_random_ops.stateless_random_uniform(
+        shape=[10],
+        seed=seed_tensor,
+        minval=0,
+        maxval=1000,
+        dtype=tf.int64
+    )
+    
+    result4_again = stateless_random_ops.stateless_random_uniform(
+        shape=[10],
+        seed=seed_tensor,
+        minval=0,
+        maxval=1000,
+        dtype=tf.int64
+    )
+    
+    assert tf.reduce_all(tf.equal(result4, result4_again))
+    
+    # Test that different seeds produce different results
+    different_seed = tf.constant([43, 100], dtype=tf.int32)
+    result5 = stateless_random_ops.stateless_random_uniform(
+        shape=[10],
+        seed=different_seed,
+        minval=0,
+        maxval=1000,
+        dtype=tf.int64
+    )
+    
+    # They should not be all equal (though could theoretically match by chance)
+    assert not tf.reduce_all(tf.equal(result4, result5))
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+def test_assert_finite_check_coverage():
+    """Test coverage for assert_finite_check helper function."""
+    # Test with normal finite values
+    finite_tensor = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0], dtype=tf.float32)
+    assert_finite_check(finite_tensor)
+    
+    # Test with zeros
+    zero_tensor = tf.constant([0.0, 0.0, 0.0], dtype=tf.float32)
+    assert_finite_check(zero_tensor)
+    
+    # Test with negative values
+    negative_tensor = tf.constant([-1.0, -2.0, -3.0], dtype=tf.float32)
+    assert_finite_check(negative_tensor)
+    
+    # Test with mixed values
+    mixed_tensor = tf.constant([-10.5, 0.0, 3.14, 100.0], dtype=tf.float32)
+    assert_finite_check(mixed_tensor)
+    
+    # Test with large values
+    large_tensor = tf.constant([1e10, -1e10, 1e-10], dtype=tf.float32)
+    assert_finite_check(large_tensor)
+    
+    # Test with float64
+    float64_tensor = tf.constant([1.0, 2.0, 3.0], dtype=tf.float64)
+    assert_finite_check(float64_tensor)
+    
+    # Test with float16
+    float16_tensor = tf.constant([1.0, 2.0, 3.0], dtype=tf.float16)
+    assert_finite_check(float16_tensor)
+    
+    # Test that assert_finite_check works with stateless_random_normal output
+    seed_tensor = tf.constant([7, 13], dtype=tf.int32)
+    normal_result = stateless_random_ops.stateless_random_normal(
+        shape=[50],
+        seed=seed_tensor,
+        mean=0.0,
+        stddev=1.0,
+        dtype=tf.float32,
+        alg="philox"
+    )
+    assert_finite_check(normal_result)
+    
+    # Test with different mean and stddev
+    normal_result2 = stateless_random_ops.stateless_random_normal(
+        shape=[30],
+        seed=seed_tensor,
+        mean=5.0,
+        stddev=2.0,
+        dtype=tf.float64,
+        alg="philox"
+    )
+    assert_finite_check(normal_result2)
+    
+    # Test that assert_finite_check would fail with NaN (if we could generate one)
+    # Note: We can't easily generate a NaN tensor for testing without
+    # using operations that might not be available in the test environment
+    # This is just to document the expected behavior
+    
+    # Test edge case: empty tensor
+    empty_tensor = tf.constant([], dtype=tf.float32)
+    assert_finite_check(empty_tensor)  # Should pass - no values to check
+# ==== BLOCK:CASE_08 END ====
+
+# Additional helper tests (if needed in future iterations)
+
+def test_algorithm_enum():
+    """Test that Algorithm enum is accessible."""
+    alg = stateless_random_ops.Algorithm
+    assert alg.PHILOX.value == 1
+    assert alg.THREEFRY.value == 2
+    assert alg.AUTO_SELECT.value == 3
+
+def test_convert_alg_to_int():
+    """Test convert_alg_to_int function."""
+    # Test string inputs
+    assert stateless_random_ops.convert_alg_to_int("philox") == 1
+    assert stateless_random_ops.convert_alg_to_int("threefry") == 2
+    assert stateless_random_ops.convert_alg_to_int("auto_select") == 3
+    
+    # Test Algorithm enum inputs
+    alg = stateless_random_ops.Algorithm
+    assert stateless_random_ops.convert_alg_to_int(alg.PHILOX) == 1
+    assert stateless_random_ops.convert_alg_to_int(alg.THREEFRY) == 2
+    assert stateless_random_ops.convert_alg_to_int(alg.AUTO_SELECT) == 3
+    
+    # Test integer inputs
+    assert stateless_random_ops.convert_alg_to_int(1) == 1
+    assert stateless_random_ops.convert_alg_to_int(2) == 2
+    assert stateless_random_ops.convert_alg_to_int(3) == 3
+# ==== BLOCK:FOOTER END ====

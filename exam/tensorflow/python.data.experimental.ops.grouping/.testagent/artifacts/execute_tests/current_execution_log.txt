@@ -1,0 +1,85 @@
+=== Run Tests ===
+..F.                                                                     [100%]
+================================== FAILURES ===================================
+_ test_bucket_by_sequence_length_parameter_validation[non_increasing_boundaries-ValueError] _
+
+invalid_scenario = 'non_increasing_boundaries'
+expected_exception = <class 'ValueError'>
+
+    @pytest.mark.parametrize("invalid_scenario, expected_exception", [
+        ("mismatched_batch_sizes", ValueError),  # bucket_batch_sizes length mismatch
+        ("non_increasing_boundaries", ValueError),  # Non-increasing bucket boundaries
+    ])
+    def test_bucket_by_sequence_length_parameter_validation(invalid_scenario, expected_exception):
+        """Test parameter validation and exception handling for bucket_by_sequence_length."""
+    
+        # Create a simple dataset
+        dataset = create_variable_length_sequences(10, max_length=10)
+    
+        if invalid_scenario == "mismatched_batch_sizes":
+            # bucket_batch_sizes length doesn't match bucket_boundaries + 1
+            bucket_boundaries = [5, 10]
+            bucket_batch_sizes = [2, 2]  # Should be length 3 (2 boundaries + 1)
+    
+            # Weak assertion 1: exception_raised
+            # Note: The exception might be raised immediately when creating the transform function
+            # or when applying it to the dataset. We need to catch it at the right place.
+            try:
+                # First, try creating the transform function
+                transform_fn = bucket_by_sequence_length(
+                    element_length_func=element_length_func,
+                    bucket_boundaries=bucket_boundaries,
+                    bucket_batch_sizes=bucket_batch_sizes
+                )
+                # If creation succeeds, try applying it
+                _ = transform_fn(dataset)
+                # If we get here, no exception was raised
+                pytest.fail(f"Expected {expected_exception} for mismatched batch sizes")
+            except Exception as e:
+                # Weak assertion 2: exception_type
+                # Check if it's the expected exception type or a subclass
+                assert isinstance(e, expected_exception), \
+                    f"Expected {expected_exception} or subclass, got {type(e).__name__}: {e}"
+    
+                # Weak assertion 3: error_message_contains
+                error_msg = str(e).lower()
+                # Check for relevant error indicators
+                # The error message should mention something about length, size, or boundaries
+                relevant_keywords = ['length', 'size', 'boundary', 'batch', 'match', 'must']
+                assert any(keyword in error_msg for keyword in relevant_keywords), \
+                    f"Error message should mention one of {relevant_keywords}, got: {error_msg}"
+    
+        elif invalid_scenario == "non_increasing_boundaries":
+            # bucket_boundaries is not strictly increasing
+            bucket_boundaries = [10, 5, 15]  # Not increasing: 10 > 5
+            bucket_batch_sizes = [2, 2, 2, 2]  # Length 4 for 3 boundaries
+    
+            # Weak assertion 1: exception_raised
+            try:
+                # Try creating the transform function
+                transform_fn = bucket_by_sequence_length(
+                    element_length_func=element_length_func,
+                    bucket_boundaries=bucket_boundaries,
+                    bucket_batch_sizes=bucket_batch_sizes
+                )
+                # If creation succeeds, try applying it
+                _ = transform_fn(dataset)
+                # If we get here, no exception was raised
+>               pytest.fail(f"Expected {expected_exception} for non-increasing boundaries")
+E               Failed: Expected <class 'ValueError'> for non-increasing boundaries
+
+tests\test_tensorflow_python_data_experimental_ops_grouping_g2.py:222: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_grouping_g2.py     149     37     42      3    72%   41-45, 56-59, 63-70, 78-87, 191, 226-238, 254-255, 298->297, 360-361, 376-377
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 149     37     42      3    72%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_grouping_g2.py::test_bucket_by_sequence_length_parameter_validation[non_increasing_boundaries-ValueError]
+1 failed, 3 passed in 1.77s
+
+Error: exit 1

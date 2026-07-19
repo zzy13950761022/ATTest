@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_adaptive_g1.py::test_adaptive_softmax_forward_basic[20-200-cutoffs1-2.0-True-4-dtype1-cpu]",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "数据类型不匹配：当使用torch.float64时，模型权重可能是float32。需要在create_adaptive_softmax中正确传递dtype参数"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_adaptive_g2.py::test_adaptive_softmax_invalid_parameters_g2",
+      "block_id": "FOOTER",
+      "error_type": "ZeroDivisionError",
+      "action": "rewrite_block",
+      "note": "div_value=0.0导致除以零错误。测试期望捕获ValueError，但实际在构造函数中发生ZeroDivisionError。需要调整测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

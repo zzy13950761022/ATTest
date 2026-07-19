@@ -1,0 +1,63 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 10,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLoggingOps.test_print_v2_basic_functionality[test_input0-[1 2 3 ... 4 5]]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "print_v2输出未正确捕获，需要修复mock_stdout的捕获机制"
+    },
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape0-3-value_range0]",
+      "block_id": "CASE_02",
+      "error_type": "UnimplementedError",
+      "action": "fix_dependency",
+      "note": "image_summary的bad_color参数类型问题，需要调整参数传递方式"
+    },
+    {
+      "test": "TestLoggingOps.test_print_v2_output_stream_switching[log:info-log_info-logging.info]",
+      "block_id": "CASE_05",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "print_v2不支持'log:info'输出流，需要修改测试逻辑或使用支持的输出流"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLoggingOps.test_print_v2_basic_functionality[test_input1-test [1. 2.]]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoggingOps.test_print_v2_basic_functionality[test_input2-{'key': 'value', 'tensor': 42}]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape1-1-value_range1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoggingOps.test_image_summary_4d_tensor_processing[shape2-4-value_range2]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoggingOps.test_scalar_summary_single_and_multiple_tags[tags2-values2-mixed_types]",
+      "reason": "AssertionError形状不匹配问题，与上一轮类似但需要不同修复"
+    },
+    {
+      "test": "TestLoggingOps.test_print_v2_output_stream_switching[output_stream0-stderr-sys.stderr]",
+      "reason": "AssertionError输出捕获问题，与CASE_01类似但涉及不同输出流"
+    },
+    {
+      "test": "TestLoggingOps.test_print_v2_output_stream_switching[output_stream1-stdout-sys.stdout]",
+      "reason": "AssertionError输出捕获问题，与CASE_01类似但涉及不同输出流"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

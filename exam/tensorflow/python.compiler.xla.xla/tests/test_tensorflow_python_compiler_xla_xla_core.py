@@ -1,0 +1,228 @@
+# ==== BLOCK:HEADER START ====
+"""
+测试 tensorflow.python.compiler.xla.xla 模块的核心编译功能
+"""
+import math
+import pytest
+import numpy as np
+import tensorflow as tf
+from tensorflow.python.compiler.xla import xla
+
+# 设置随机种子以确保可重复性
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# 浮点比较容差
+RTOL = 1e-6
+ATOL = 1e-8
+
+# 辅助函数
+def create_test_tensor(shape, dtype=np.float32):
+    """创建测试张量"""
+    if dtype == np.float32 or dtype == np.float64:
+        data = np.random.randn(*shape).astype(dtype)
+    elif dtype == np.int32:
+        data = np.random.randint(-10, 10, size=shape, dtype=dtype)
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+    return tf.convert_to_tensor(data, dtype=dtype)
+
+def assert_tensors_equal(t1, t2, rtol=RTOL, atol=ATOL):
+    """断言两个张量相等（考虑容差）"""
+    if isinstance(t1, tf.Tensor) and isinstance(t2, tf.Tensor):
+        np.testing.assert_allclose(t1.numpy(), t2.numpy(), rtol=rtol, atol=atol)
+    elif isinstance(t1, (list, tuple)) and isinstance(t2, (list, tuple)):
+        assert len(t1) == len(t2)
+        for a, b in zip(t1, t2):
+            assert_tensors_equal(a, b, rtol, atol)
+    else:
+        assert t1 == t2
+# ==== BLOCK:HEADER END ====
+
+class TestXLACompileCore:
+    """测试 xla.compile 函数的核心功能"""
+    
+    # ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("dtype,shape", [
+        (np.float32, (2, 3)),  # 基础测试用例
+        (np.float64, (5, 5)),  # 扩展数据类型和形状
+        (np.float32, (10, 10)),  # 扩展计算复杂度
+    ])
+    def test_basic_compilation(self, dtype, shape):
+        """测试基本编译功能验证"""
+        # 定义简单的算术计算函数
+        def simple_arithmetic(x, y):
+            return x + y, x * y, x - y
+        
+        # 创建测试输入
+        x = create_test_tensor(shape, dtype)
+        y = create_test_tensor(shape, dtype)
+        
+        # 直接调用计算函数作为基准
+        direct_results = simple_arithmetic(x, y)
+        
+        # 使用 xla.compile 编译计算
+        compiled_result = xla.compile(simple_arithmetic, inputs=[x, y])
+        
+        # 验证输出类型和结构
+        # 根据实际行为，xla.compile 返回列表而不是元组
+        assert isinstance(compiled_result, list), "xla.compile 应该返回列表"
+        assert len(compiled_result) == len(direct_results), "输出数量应该一致"
+        
+        # 验证每个输出
+        for i, (compiled_out, direct_out) in enumerate(zip(compiled_result, direct_results)):
+            # 检查输出形状
+            assert compiled_out.shape == direct_out.shape, f"输出{i}形状不匹配"
+            
+            # 检查输出数据类型
+            assert compiled_out.dtype == direct_out.dtype, f"输出{i}数据类型不匹配"
+            
+            # 检查数值有效性（无NaN/Inf）
+            assert tf.math.reduce_all(tf.math.is_finite(compiled_out)), f"输出{i}包含非有限值"
+            
+            # 基本数值相等性检查（弱断言）
+            np.testing.assert_allclose(
+                compiled_out.numpy(),
+                direct_out.numpy(),
+                rtol=RTOL,
+                atol=ATOL,
+                err_msg=f"输出{i}数值不匹配"
+            )
+        
+        # 验证输出顺序一致性
+        for i in range(len(compiled_result)):
+            assert compiled_result[i].shape == direct_results[i].shape, f"输出{i}形状顺序不一致"
+    # ==== BLOCK:CASE_01 END ====
+    
+    # ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("inputs_type,computation_type", [
+        ("none", "identity"),  # inputs=None
+        ("empty_list", "identity"),  # inputs=[]
+        ("none", "multi_input"),  # 多输入函数的None输入处理
+    ])
+    def test_none_and_empty_inputs(self, inputs_type, computation_type):
+        """测试None与空输入处理"""
+        
+        if computation_type == "identity":
+            # 定义恒等函数
+            def identity(x):
+                return x
+            
+            # 根据输入类型准备输入
+            if inputs_type == "none":
+                # inputs=None 等价于空列表，函数应该接受0个参数
+                def identity_no_args():
+                    return tf.constant(1.0, dtype=np.float32)
+                
+                # 直接调用计算函数作为基准
+                direct_result = identity_no_args()
+                # 使用 xla.compile 编译计算
+                compiled_result = xla.compile(identity_no_args, inputs=None)
+            elif inputs_type == "empty_list":
+                # inputs=[]，函数应该接受0个参数
+                def identity_no_args():
+                    return tf.constant(1.0, dtype=np.float32)
+                
+                # 直接调用计算函数作为基准
+                direct_result = identity_no_args()
+                # 使用 xla.compile 编译计算
+                compiled_result = xla.compile(identity_no_args, inputs=[])
+            else:
+                raise ValueError(f"Unknown inputs_type: {inputs_type}")
+        
+        elif computation_type == "multi_input":
+            # 定义多输入函数
+            def multi_input(x, y):
+                return x + y, x * y
+            
+            # inputs=None 的情况
+            if inputs_type == "none":
+                # 对于多输入函数，inputs=None 意味着没有输入
+                # 但函数需要2个参数，所以我们需要创建一个包装函数
+                def multi_input_wrapper():
+                    # 在函数内部创建测试张量
+                    x = create_test_tensor((2, 2), np.float32)
+                    y = create_test_tensor((2, 2), np.float32)
+                    return multi_input(x, y)
+                
+                # 直接调用计算函数作为基准
+                direct_result = multi_input_wrapper()
+                # 使用 xla.compile 编译计算
+                compiled_result = xla.compile(multi_input_wrapper, inputs=None)
+            else:
+                raise ValueError(f"multi_input only supports inputs_type='none'")
+        
+        else:
+            raise ValueError(f"Unknown computation_type: {computation_type}")
+        
+        # 验证无错误发生
+        assert compiled_result is not None, "编译结果不应为None"
+        
+        # 验证输出一致性
+        # 注意：xla.compile 返回列表，而直接调用可能返回元组或张量
+        if isinstance(direct_result, tuple):
+            # 直接调用返回元组，xla.compile 返回列表
+            assert isinstance(compiled_result, list), "xla.compile 应该返回列表"
+            assert len(direct_result) == len(compiled_result), "输出数量应该一致"
+            for d_out, c_out in zip(direct_result, compiled_result):
+                assert d_out.shape == c_out.shape, "输出形状应该一致"
+                assert d_out.dtype == c_out.dtype, "输出数据类型应该一致"
+                # 数值相等性检查
+                np.testing.assert_allclose(
+                    c_out.numpy(),
+                    d_out.numpy(),
+                    rtol=RTOL,
+                    atol=ATOL
+                )
+        elif isinstance(direct_result, tf.Tensor):
+            # 直接调用返回张量，xla.compile 返回包含该张量的列表
+            assert isinstance(compiled_result, list), "xla.compile 应该返回列表"
+            assert len(compiled_result) == 1, "列表应该只包含一个元素"
+            c_out = compiled_result[0]
+            assert direct_result.shape == c_out.shape, "输出形状应该一致"
+            assert direct_result.dtype == c_out.dtype, "输出数据类型应该一致"
+            # 数值相等性检查
+            np.testing.assert_allclose(
+                c_out.numpy(),
+                direct_result.numpy(),
+                rtol=RTOL,
+                atol=ATOL
+            )
+        
+        # 验证 inputs=None 和 inputs=[] 的等价性（对于identity_no_args）
+        if computation_type == "identity":
+            # 测试两种输入方式的等价性
+            def test_identity():
+                return tf.constant(1.0, dtype=np.float32)
+            
+            result_none = xla.compile(test_identity, inputs=None)
+            result_empty = xla.compile(test_identity, inputs=[])
+            
+            # 两者都应该返回列表
+            assert isinstance(result_none, list), "inputs=None 应该返回列表"
+            assert isinstance(result_empty, list), "inputs=[] 应该返回列表"
+            assert len(result_none) == 1, "列表应该只包含一个元素"
+            assert len(result_empty) == 1, "列表应该只包含一个元素"
+            
+            # 验证数值相等
+            np.testing.assert_allclose(
+                result_none[0].numpy(),
+                result_empty[0].numpy(),
+                rtol=RTOL,
+                atol=ATOL
+            )
+    # ==== BLOCK:CASE_02 END ====
+    
+    # ==== BLOCK:CASE_04 START ====
+    # ==== BLOCK:CASE_04 END ====
+    
+    # ==== BLOCK:CASE_05 START ====
+    # ==== BLOCK:CASE_05 END ====
+    
+    # ==== BLOCK:CASE_06 START ====
+    # ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

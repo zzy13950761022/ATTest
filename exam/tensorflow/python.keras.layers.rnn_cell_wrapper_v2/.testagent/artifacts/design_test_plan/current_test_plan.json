@@ -1,0 +1,437 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.keras.layers.rnn_cell_wrapper_v2",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py",
+    "all_pattern": "tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2_g1.py",
+      "G2": "tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2_g2.py",
+      "G3": "tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "DropoutWrapper核心功能",
+      "entrypoints": ["DropoutWrapper"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试DropoutWrapper基本功能和概率参数"
+    },
+    {
+      "group_id": "G2",
+      "title": "ResidualWrapper与DeviceWrapper",
+      "entrypoints": ["ResidualWrapper", "DeviceWrapper"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试残差连接和设备包装功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "序列化与兼容性",
+      "entrypoints": ["get_config", "from_config"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11"],
+      "note": "测试包装器序列化和与不同RNN cell的兼容性"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "DropoutWrapper基本包装功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "input_keep_prob": 1.0,
+          "output_keep_prob": 1.0,
+          "state_keep_prob": 1.0,
+          "variational_recurrent": false,
+          "dtype": "float32",
+          "batch_size": 2,
+          "time_steps": 3,
+          "input_dim": 4,
+          "units": 5
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_check", "call_method_exists", "output_shape", "state_shape", "no_dropout_when_prob_1"],
+        "strong": ["exact_output_match", "state_consistency", "gradient_check"]
+      },
+      "oracle": "unwrapped_cell",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "DropoutWrapper概率参数边界值",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "input_keep_prob": 0.0,
+          "output_keep_prob": 0.5,
+          "state_keep_prob": 1.0,
+          "variational_recurrent": false,
+          "dtype": "float32",
+          "batch_size": 1,
+          "time_steps": 2,
+          "input_dim": 3,
+          "units": 4
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_check", "call_method_works", "zero_dropout_output", "half_dropout_shape", "no_state_dropout"],
+        "strong": ["dropout_rate_validation", "statistical_test", "seed_reproducibility"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 9,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "ResidualWrapper维度匹配",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "input_dim": 6,
+          "units": 6,
+          "dtype": "float32",
+          "batch_size": 2,
+          "time_steps": 3
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_check", "call_method_works", "output_shape_match", "residual_addition_shape", "no_dimension_mismatch"],
+        "strong": ["exact_residual_calculation", "gradient_flow", "numerical_stability"]
+      },
+      "oracle": "manual_residual_calc",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "DeviceWrapper设备放置",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "device": "/cpu:0",
+          "dtype": "float32",
+          "batch_size": 1,
+          "time_steps": 2,
+          "input_dim": 3,
+          "units": 4
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_check", "call_method_works", "device_attribute_set", "tensors_on_correct_device", "no_device_errors"],
+        "strong": ["exact_device_placement", "multi_device_comparison", "gpu_fallback"]
+      },
+      "oracle": "tf.device_context",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "DropoutWrapper序列化",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "input_keep_prob": 0.7,
+          "output_keep_prob": 0.8,
+          "state_keep_prob": 0.9,
+          "variational_recurrent": true,
+          "dtype": "float32",
+          "units": 5
+        }
+      ],
+      "asserts": {
+        "weak": ["get_config_exists", "config_keys_present", "from_config_works", "reconstructed_instance", "config_values_match"],
+        "strong": ["exact_config_equality", "deep_copy_equivalence", "pickle_support"]
+      },
+      "oracle": "original_instance",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G1",
+      "name": "DropoutWrapper无效参数异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "invalid_param": "input_keep_prob",
+          "invalid_value": 1.5,
+          "expected_error": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type_match", "error_message_contains", "no_side_effects"],
+        "strong": ["exact_error_message", "multiple_invalid_params", "edge_case_validation"]
+      },
+      "oracle": "tf_error_patterns",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "ResidualWrapper维度不匹配异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "input_dim": 4,
+          "units": 6,
+          "expected_error": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type_match", "dimension_mismatch_detected", "construction_fails"],
+        "strong": ["specific_error_message", "multiple_mismatch_scenarios", "graceful_error_handling"]
+      },
+      "oracle": "dimension_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "DeviceWrapper无效设备字符串",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "cell_type": "BasicRNNCell",
+          "invalid_device": "/invalid:device",
+          "expected_error": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type_match", "invalid_device_rejected", "no_partial_construction"],
+        "strong": ["device_string_validation", "platform_specific_errors", "error_recovery"]
+      },
+      "oracle": "tf_device_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "包装器序列化循环测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "wrapper_type": "DropoutWrapper",
+          "cell_type": "BasicRNNCell",
+          "input_keep_prob": 0.6,
+          "output_keep_prob": 0.7,
+          "dtype": "float32",
+          "units": 4
+        }
+      ],
+      "asserts": {
+        "weak": ["config_serializable", "deserialization_works", "reconstructed_callable", "parameter_preservation", "type_consistency"],
+        "strong": ["exact_behavior_preservation", "multiple_serialization_cycles", "cross_version_compatibility"]
+      },
+      "oracle": "original_wrapper",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "与不同RNN cell类型兼容性",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "wrapper_type": "DropoutWrapper",
+          "cell_type": "LSTMCell",
+          "input_keep_prob": 0.8,
+          "dtype": "float32",
+          "units": 4,
+          "input_dim": 4
+        }
+      ],
+      "asserts": {
+        "weak": ["wrapper_construction", "cell_type_accepted", "call_method_works", "output_state_structure", "no_type_errors"],
+        "strong": ["complex_cell_integration", "state_handling", "performance_benchmark", "memory_usage"]
+      },
+      "oracle": "unwrapped_complex_cell",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 95,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "tf.nn API导出验证",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "wrapper_type": "DropoutWrapper",
+          "api_path": "tf.nn.rnn_cell.DropoutWrapper",
+          "expected_attributes": ["__module__", "__name__", "__doc__"]
+        }
+      ],
+      "asserts": {
+        "weak": ["api_accessible", "class_exported", "docstring_present", "signature_match"],
+        "strong": ["full_api_coverage", "backward_compatibility", "deprecation_warnings"]
+      },
+      "oracle": "tf_public_api",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "cell_type": "BasicRNNCell",
+        "input_keep_prob": 0.8,
+        "output_keep_prob": 0.9,
+        "state_keep_prob": 0.7,
+        "variational_recurrent": false,
+        "dtype": "float64",
+        "batch_size": 4,
+        "time_steps": 5,
+        "input_dim": 8,
+        "units": 10
+      },
+      "note": "扩展参数：不同dropout概率、双精度、更大形状"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "cell_type": "BasicRNNCell",
+        "input_keep_prob": 1.0,
+        "output_keep_prob": 0.0,
+        "state_keep_prob": 0.0,
+        "variational_recurrent": false,
+        "dtype": "float32",
+        "batch_size": 3,
+        "time_steps": 1,
+        "input_dim": 5,
+        "units": 5
+      },
+      "note": "扩展参数：不同概率组合、不同批次大小"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "cell_type": "BasicRNNCell",
+        "input_dim": 8,
+        "units": 8,
+        "dtype": "float64",
+        "batch_size": 4,
+        "time_steps": 10
+      },
+      "note": "扩展参数：双精度、更大批次、更长序列"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "cell_type": "BasicRNNCell",
+        "device": "/cpu:0",
+        "dtype": "float64",
+        "batch_size": 2,
+        "time_steps": 4,
+        "input_dim": 6,
+        "units": 8
+      },
+      "note": "扩展参数：双精度、不同形状"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_09"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_10", "CASE_11"]
+}

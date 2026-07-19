@@ -1,0 +1,279 @@
+"""
+Test cases for tensorflow.python.data.experimental.ops.grouping module.
+Group G2: bucket_by_sequence_length sequence bucketing
+"""
+
+import pytest
+import tensorflow as tf
+import numpy as np
+from tensorflow.python.data.experimental.ops.grouping import (
+    bucket_by_sequence_length,
+    group_by_reducer,
+    group_by_window,
+    Reducer
+)
+from tensorflow.python.framework import errors
+import warnings
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions for G2
+
+def create_variable_length_sequences(dataset_size=20, max_length=15):
+    """Create dataset of variable length sequences."""
+    sequences = []
+    for i in range(dataset_size):
+        # Random length between 1 and max_length
+        length = np.random.randint(1, max_length + 1)
+        # Create sequence with values
+        sequence = list(range(i * 10, i * 10 + length))
+        sequences.append(sequence)
+    return tf.data.Dataset.from_generator(
+        lambda: sequences,
+        output_signature=tf.TensorSpec(shape=(None,), dtype=tf.int32)
+    )
+
+def create_fixed_length_sequences(dataset_size=20, length=10):
+    """Create dataset of fixed length sequences."""
+    sequences = []
+    for i in range(dataset_size):
+        sequence = list(range(i * 10, i * 10 + length))
+        sequences.append(sequence)
+    return tf.data.Dataset.from_generator(
+        lambda: sequences,
+        output_signature=tf.TensorSpec(shape=(length,), dtype=tf.int32)
+    )
+
+def element_length_func(elem):
+    """Default element length function - returns length of sequence."""
+    return tf.shape(elem)[0]
+
+def count_batches(dataset):
+    """Count batches in a batched dataset."""
+    count = 0
+    for _ in dataset:
+        count += 1
+    return count
+
+def get_batch_shapes(dataset):
+    """Get shapes of all batches in dataset."""
+    shapes = []
+    for batch in dataset:
+        if hasattr(batch, 'shape'):
+            shapes.append(batch.shape)
+        else:
+            # For nested structures, get shape of first element
+            shapes.append(tf.nest.map_structure(lambda x: x.shape, batch))
+    return shapes
+
+def dataset_to_list(dataset):
+    """Convert dataset to Python list."""
+    return list(dataset.as_numpy_iterator())
+
+def verify_bucket_assignment(sequences, bucket_boundaries, element_length_func):
+    """Verify that sequences are assigned to correct buckets."""
+    bucket_assignments = []
+    for seq in sequences:
+        length = len(seq)
+        bucket_idx = 0
+        for boundary in bucket_boundaries:
+            if length < boundary:
+                break
+            bucket_idx += 1
+        bucket_assignments.append(bucket_idx)
+    return bucket_assignments
+
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: bucket_by_sequence_length 基本分桶
+@pytest.mark.parametrize("bucket_boundaries, bucket_batch_sizes, padding_values, dataset_size", [
+    ([5, 10, 15], [2, 2, 2, 2], None, 20),  # Basic case from test plan
+])
+def test_bucket_by_sequence_length_basic_bucketing(bucket_boundaries, bucket_batch_sizes, padding_values, dataset_size):
+    """Test basic bucketing functionality of bucket_by_sequence_length."""
+    
+    # Create dataset of variable length sequences
+    dataset = create_variable_length_sequences(dataset_size, max_length=20)
+    
+    # Weak assertion 1: returns_callable
+    transform_fn = bucket_by_sequence_length(
+        element_length_func=element_length_func,
+        bucket_boundaries=bucket_boundaries,
+        bucket_batch_sizes=bucket_batch_sizes,
+        padding_values=padding_values
+    )
+    
+    assert callable(transform_fn), "bucket_by_sequence_length should return a callable function"
+    
+    # Apply transformation to dataset
+    transformed_dataset = transform_fn(dataset)
+    
+    # Weak assertion 2: dataset_interface
+    assert hasattr(transformed_dataset, '__iter__'), "Transformed dataset should have iterator interface"
+    assert hasattr(transformed_dataset, 'element_spec'), "Transformed dataset should have element_spec"
+    
+    # Get all batches
+    batches = dataset_to_list(transformed_dataset)
+    
+    # Weak assertion 3: batch_sizes_correct
+    # Check that batch sizes are correct (should be <= bucket_batch_sizes for corresponding bucket)
+    # Note: With drop_remainder=False (default), batches can be smaller than bucket_batch_sizes
+    for batch in batches:
+        batch_size = batch.shape[0]
+        # Batch size should be <= max bucket batch size
+        max_batch_size = max(bucket_batch_sizes)
+        assert batch_size <= max_batch_size, f"Batch size {batch_size} exceeds max allowed {max_batch_size}"
+        # Batch size should be > 0
+        assert batch_size > 0, f"Batch size should be positive, got {batch_size}"
+    
+    # Weak assertion 4: sequences_bucketed
+    # Verify that sequences with similar lengths are batched together
+    # Count total number of sequences processed
+    total_sequences = sum(batch.shape[0] for batch in batches)
+    assert total_sequences <= dataset_size, f"Processed {total_sequences} sequences, expected at most {dataset_size}"
+    
+    # Additional verification: check that batches have consistent shapes within each batch
+    for batch in batches:
+        # All sequences in a batch should have the same length (after padding)
+        assert batch.ndim == 2, f"Batch should be 2D, got shape {batch.shape}"
+        # Sequences in the same batch should have the same padded length
+        if batch.shape[0] > 1:
+            # Check that all rows have same shape (except possibly batch dimension)
+            first_shape = batch[0].shape
+            for i in range(1, batch.shape[0]):
+                assert batch[i].shape == first_shape, \
+                    f"All sequences in batch should have same shape, got {batch[i].shape} vs {first_shape}"
+    
+    # Verify no data loss (all original sequences should appear in output)
+    # This is a weak assertion - we just check we got some output
+    assert len(batches) > 0, "Should get at least one batch"
+    
+    # Verify that transformation doesn't crash and produces valid output
+    # Try to iterate through dataset again to ensure no side effects
+    for _ in transformed_dataset.take(1):
+        pass  # Just ensure we can iterate without error
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: bucket_by_sequence_length 参数验证异常
+@pytest.mark.parametrize("invalid_scenario, expected_exception", [
+    ("mismatched_batch_sizes", ValueError),  # bucket_batch_sizes length mismatch
+    ("non_increasing_boundaries", ValueError),  # Non-increasing bucket boundaries
+])
+def test_bucket_by_sequence_length_parameter_validation(invalid_scenario, expected_exception):
+    """Test parameter validation and exception handling for bucket_by_sequence_length."""
+    
+    # Create a simple dataset
+    dataset = create_variable_length_sequences(10, max_length=10)
+    
+    if invalid_scenario == "mismatched_batch_sizes":
+        # bucket_batch_sizes length doesn't match bucket_boundaries + 1
+        bucket_boundaries = [5, 10]
+        bucket_batch_sizes = [2, 2]  # Should be length 3 (2 boundaries + 1)
+        
+        # Weak assertion 1: exception_raised
+        # Note: The exception might be raised immediately when creating the transform function
+        # or when applying it to the dataset. We need to catch it at the right place.
+        try:
+            # First, try creating the transform function
+            transform_fn = bucket_by_sequence_length(
+                element_length_func=element_length_func,
+                bucket_boundaries=bucket_boundaries,
+                bucket_batch_sizes=bucket_batch_sizes
+            )
+            # If creation succeeds, try applying it
+            _ = transform_fn(dataset)
+            # If we get here, no exception was raised
+            pytest.fail(f"Expected {expected_exception} for mismatched batch sizes")
+        except Exception as e:
+            # Weak assertion 2: exception_type
+            # Check if it's the expected exception type or a subclass
+            assert isinstance(e, expected_exception), \
+                f"Expected {expected_exception} or subclass, got {type(e).__name__}: {e}"
+            
+            # Weak assertion 3: error_message_contains
+            error_msg = str(e).lower()
+            # Check for relevant error indicators
+            # The error message should mention something about length, size, or boundaries
+            relevant_keywords = ['length', 'size', 'boundary', 'batch', 'match', 'must']
+            assert any(keyword in error_msg for keyword in relevant_keywords), \
+                f"Error message should mention one of {relevant_keywords}, got: {error_msg}"
+    
+    elif invalid_scenario == "non_increasing_boundaries":
+        # bucket_boundaries is not strictly increasing
+        bucket_boundaries = [10, 5, 15]  # Not increasing: 10 > 5
+        bucket_batch_sizes = [2, 2, 2, 2]  # Length 4 for 3 boundaries
+        
+        # Weak assertion 1: exception_raised
+        try:
+            # Try creating the transform function
+            transform_fn = bucket_by_sequence_length(
+                element_length_func=element_length_func,
+                bucket_boundaries=bucket_boundaries,
+                bucket_batch_sizes=bucket_batch_sizes
+            )
+            # If creation succeeds, try applying it
+            _ = transform_fn(dataset)
+            # If we get here, no exception was raised
+            pytest.fail(f"Expected {expected_exception} for non-increasing boundaries")
+        except Exception as e:
+            # Weak assertion 2: exception_type
+            # Check if it's the expected exception type or a subclass
+            assert isinstance(e, expected_exception), \
+                f"Expected {expected_exception} or subclass, got {type(e).__name__}: {e}"
+            
+            # Weak assertion 3: error_message_contains
+            error_msg = str(e).lower()
+            # Check for relevant error indicators
+            # The error message should mention something about increasing, strictly, or order
+            relevant_keywords = ['increasing', 'strictly', 'order', 'boundary', 'sorted']
+            assert any(keyword in error_msg for keyword in relevant_keywords), \
+                f"Error message should mention one of {relevant_keywords}, got: {error_msg}"
+    
+    else:
+        pytest.fail(f"Unknown invalid_scenario: {invalid_scenario}")
+    
+    # Additional test: verify that valid parameters don't raise exceptions
+    # Test with valid parameters to ensure our test setup is correct
+    valid_boundaries = [5, 10, 15]
+    valid_batch_sizes = [2, 2, 2, 2]
+    try:
+        transform_fn = bucket_by_sequence_length(
+            element_length_func=element_length_func,
+            bucket_boundaries=valid_boundaries,
+            bucket_batch_sizes=valid_batch_sizes
+        )
+        transformed = transform_fn(dataset)
+        # Should be able to create iterator without error
+        for _ in transformed.take(1):
+            pass
+    except Exception as e:
+        pytest.fail(f"Valid parameters should not raise exception, got: {type(e).__name__}: {e}")
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: bucket_by_sequence_length 填充选项 (DEFERRED)
+# This test case is deferred and will be implemented in later iterations.
+# Placeholder for bucket_by_sequence_length padding options test.
+pass
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: bucket_by_sequence_length 边界序列 (DEFERRED)
+# This test case is deferred and will be implemented in later iterations.
+# Placeholder for bucket_by_sequence_length edge cases test.
+pass
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup for G2
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

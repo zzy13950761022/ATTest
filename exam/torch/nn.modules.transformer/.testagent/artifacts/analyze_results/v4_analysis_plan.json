@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 21,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_transformer_standard_forward[dtype1-cpu-False-8-32-3-3-128-0.1-gelu-src_shape1-tgt_shape1]",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "数据类型不匹配：输入为float64但模型权重为float32，需要确保模型与输入数据类型一致"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

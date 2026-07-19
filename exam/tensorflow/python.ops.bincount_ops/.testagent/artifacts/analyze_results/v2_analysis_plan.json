@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_edge_case_all_negative",
+      "block_id": "FOOTER",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "TensorFlow bincount要求输入必须非负，全负数数组应抛出异常而非返回空数组"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

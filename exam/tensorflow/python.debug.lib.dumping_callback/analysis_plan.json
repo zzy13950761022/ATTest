@@ -1,0 +1,63 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 10,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_enable_disable_flow",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_debug_events_writer fixture设置不正确，导致DebugEventsWriter类未被正确mock"
+    },
+    {
+      "test": "test_invalid_parameters_exception_handling[-NO_TENSOR-ValueError-empty or none]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息断言过于严格，实际错误消息为'Empty or None dump root'，期望包含'empty or none'但大小写不匹配"
+    },
+    {
+      "test": "test_basic_tensor_debug_mode_shape",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "与CASE_01相同的问题根源，都是HEADER中的mock设置问题"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_curt_health_mode",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_concise_health_mode",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_full_health_mode",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_op_regex_filtering",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_tensor_dtype_filtering",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_circular_buffer_functionality[10-small buffer]",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    },
+    {
+      "test": "test_circular_buffer_functionality[0-zero buffer (disabled)]",
+      "reason": "错误类型重复，跳过该块（与HEADER问题相同）"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

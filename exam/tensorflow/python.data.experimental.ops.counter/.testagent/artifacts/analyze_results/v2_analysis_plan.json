@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_counter_g2.py::test_counter_different_dtypes[dtype0-expected_dtype0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "int32元素类型检查失败，as_numpy_iterator()返回numpy.int32而非Python int"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

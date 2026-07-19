@@ -1,0 +1,115 @@
+=== Run Tests ===
+..FFsssssssssssssssss                                                    [100%]
+=================================== FAILURES ===================================
+_________ test_allocator_function_signatures[caching_allocator_alloc] __________
+
+func_name = 'caching_allocator_alloc'
+
+    @pytest.mark.parametrize("func_name", [
+        "caching_allocator_alloc",
+        "caching_allocator_delete",
+    ])
+    def test_allocator_function_signatures(func_name):
+        """测试分配器函数的基本签名"""
+        # 使用mock来模拟CUDA环境，避免实际CUDA初始化
+        with patch('torch.cuda.is_available', return_value=True):
+            # Mock底层C函数以避免CUDA依赖
+>           with patch('torch._C._cuda_cudaCachingAllocator_raw_alloc', return_value=12345) as mock_raw_alloc:
+
+tests/test_torch_cuda_memory_advanced.py:258: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1447: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x1087b11b0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'torch._C' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_C.cpython-310-darwin.so'> does not have the attribute '_cuda_cudaCachingAllocator_raw_alloc'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1420: AttributeError
+_________ test_allocator_function_signatures[caching_allocator_delete] _________
+
+func_name = 'caching_allocator_delete'
+
+    @pytest.mark.parametrize("func_name", [
+        "caching_allocator_alloc",
+        "caching_allocator_delete",
+    ])
+    def test_allocator_function_signatures(func_name):
+        """测试分配器函数的基本签名"""
+        # 使用mock来模拟CUDA环境，避免实际CUDA初始化
+        with patch('torch.cuda.is_available', return_value=True):
+            # Mock底层C函数以避免CUDA依赖
+>           with patch('torch._C._cuda_cudaCachingAllocator_raw_alloc', return_value=12345) as mock_raw_alloc:
+
+tests/test_torch_cuda_memory_advanced.py:258: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1447: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x108799c30>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'torch._C' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_C.cpython-310-darwin.so'> does not have the attribute '_cuda_cudaCachingAllocator_raw_alloc'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1420: AttributeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+test_fix.py                                   13     13      0      0     0%   4-25
+tests/test_torch_cuda_memory_advanced.py     147     35     40      3    71%   26-30, 39-45, 50-54, 86->91, 193-195, 259-274, 283-288, 292
+tests/test_torch_cuda_memory_basic.py        124     94     18      1    22%   26-30, 39-45, 50-54, 73-121, 134-204, 223-240, 252-265, 271-279, 283
+tests/test_torch_cuda_memory_stats.py        188    157     76      1    12%   26-30, 39-45, 50-54, 72-171, 189-306, 326-342, 353-372, 378-386, 390
+--------------------------------------------------------------------------------------
+TOTAL                                        472    299    134      5    32%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_cuda_memory_advanced.py::test_allocator_function_signatures[caching_allocator_alloc]
+FAILED tests/test_torch_cuda_memory_advanced.py::test_allocator_function_signatures[caching_allocator_delete]
+2 failed, 2 passed, 17 skipped in 0.84s
+
+Error: exit 1

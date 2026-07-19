@@ -1,0 +1,232 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_linalg_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_linalg_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_linalg_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "Cholesky分解核心路径",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 3],
+          "flags": [],
+          "matrix_type": "symmetric_positive_definite"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "lower_triangular"],
+        "strong": ["cholesky_reconstruction", "numerical_stability", "batch_consistency"]
+      },
+      "oracle": "torch.linalg.cholesky",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["pywrap_tfe.TFE_Py_FastPathExecute", "_execute.record_gradient"]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "QR分解正交性验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [4, 3],
+          "flags": [],
+          "matrix_type": "full_rank"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match_q", "shape_match_r", "dtype_match", "finite_values"],
+        "strong": ["q_orthogonality", "r_upper_triangular", "qr_reconstruction", "batch_consistency"]
+      },
+      "oracle": "torch.linalg.qr",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["pywrap_tfe.TFE_Py_FastPathExecute", "_execute.record_gradient"]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "矩阵求逆可逆性验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "flags": [],
+          "matrix_type": "well_conditioned"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "inverse_shape"],
+        "strong": ["inverse_property", "identity_reconstruction", "numerical_accuracy", "batch_consistency"]
+      },
+      "oracle": "torch.linalg.inv",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["pywrap_tfe.TFE_Py_FastPathExecute", "_execute.record_gradient"]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "SVD分解重构验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [3, 5],
+          "flags": ["full_matrices"],
+          "matrix_type": "full_rank"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match_u", "shape_match_s", "shape_match_v", "dtype_match", "finite_values"],
+        "strong": ["u_orthogonality", "v_orthogonality", "svd_reconstruction", "singular_values_order", "batch_consistency"]
+      },
+      "oracle": "torch.linalg.svd",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["pywrap_tfe.TFE_Py_FastPathExecute", "_execute.record_gradient"]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "批量操作一致性验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3, 3],
+          "flags": [],
+          "matrix_type": "symmetric_positive_definite",
+          "operation": "cholesky"
+        }
+      ],
+      "asserts": {
+        "weak": ["batch_shape_match", "dtype_match", "finite_values", "batch_dimension_preserved"],
+        "strong": ["batch_consistency", "independent_batch_processing", "gradient_batch_support"]
+      },
+      "oracle": "torch.linalg.cholesky",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": ["pywrap_tfe.TFE_Py_FastPathExecute", "_execute.record_gradient"]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [5, 5],
+        "flags": [],
+        "matrix_type": "symmetric_positive_definite"
+      },
+      "note": "作为参数扩展：更高精度类型"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [1, 1],
+        "flags": [],
+        "matrix_type": "symmetric_positive_definite"
+      },
+      "note": "作为参数扩展：最小形状"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [2, 2],
+        "flags": ["full_matrices"],
+        "matrix_type": "full_rank"
+      },
+      "note": "作为参数扩展：方阵QR分解"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [4, 4],
+        "flags": [],
+        "matrix_type": "well_conditioned"
+      },
+      "note": "作为参数扩展：更大尺寸矩阵"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [2, 2],
+        "flags": [],
+        "matrix_type": "full_rank"
+      },
+      "note": "作为参数扩展：方阵SVD"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

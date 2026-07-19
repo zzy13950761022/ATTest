@@ -1,0 +1,673 @@
+=== Run Tests ===
+FF...FFFFFFFF                                                            [100%]
+================================== FAILURES ===================================
+_______________________ test_basic_enable_disable_flow ________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp77lszp3t'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691907384032'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691907407936'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691907432160'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691907420016'>}
+reset_dumping_state = None
+
+    def test_basic_enable_disable_flow(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-01: 基本启用禁用流程"""
+        # Test enable_dump_debug_info
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="NO_TENSOR",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: enable_returns_writer
+        assert writer is not None, "enable_dump_debug_info should return a writer"
+        assert writer == mock_debug_events_writer, "Should return the mocked DebugEventsWriter instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Weak assertion: directory_created (mocked)
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691907384032'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp77lszp3t', <ANY>)
+kwargs = {}
+msg = "Expected 'mock' to be called once. Called 0 times.\nCalls: [call.__eq__(<MagicMock name='DebugEventsWriter()' id='1691907384032'>)]."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+E           Calls: [call.__eq__(<MagicMock name='DebugEventsWriter()' id='1691907384032'>)].
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+_ test_invalid_parameters_exception_handling[-NO_TENSOR-ValueError-empty or none] _
+
+dump_root = '', tensor_debug_mode = 'NO_TENSOR'
+expected_error_type = <class 'ValueError'>, error_contains = 'empty or none'
+reset_dumping_state = None
+
+    @pytest.mark.parametrize(
+        "dump_root,tensor_debug_mode,expected_error_type,error_contains",
+        [
+            # Test case 1: empty dump_root
+            (
+                "",  # empty dump_root
+                "NO_TENSOR",
+                ValueError,
+                "empty or none"  # Check for empty dump root error
+            ),
+            # Test case 2: invalid tensor_debug_mode
+            (
+                "/tmp/test_dump_2",
+                "INVALID_MODE",  # invalid mode
+                ValueError,
+                "Invalid value in tensor_debug_mode"  # Actual error message from source
+            ),
+        ]
+    )
+    def test_invalid_parameters_exception_handling(
+        dump_root,
+        tensor_debug_mode,
+        expected_error_type,
+        error_contains,
+        reset_dumping_state
+    ):
+        """TC-02: 无效参数异常处理"""
+        # Weak assertion: empty_dump_root_error / invalid_mode_error
+        with pytest.raises(expected_error_type) as exc_info:
+            dumping_callback.enable_dump_debug_info(
+                dump_root=dump_root,
+                tensor_debug_mode=tensor_debug_mode,
+                circular_buffer_size=1000,
+                op_regex=None,
+                tensor_dtypes=None
+            )
+    
+        # Weak assertion: error_message_contains
+        error_msg = str(exc_info.value)
+        # Check if error message contains expected text
+>       assert error_contains in error_msg, \
+            f"Error message should contain '{error_contains}', got: {error_msg}"
+E       AssertionError: Error message should contain 'empty or none', got: Empty or None dump root
+E       assert 'empty or none' in 'Empty or None dump root'
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:148: AssertionError
+_____________________ test_basic_tensor_debug_mode_shape ______________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpktkksn5j'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691926605536'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691925646832'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926600912'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691926731696'>}
+reset_dumping_state = None
+
+    def test_basic_tensor_debug_mode_shape(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-05: 基本张量调试模式 (SHAPE)"""
+        # Enable dumping with SHAPE mode
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="SHAPE",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: shape_mode_enabled
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Create a simple TensorFlow operation to trigger the callback
+        # We'll mock the callback to verify it's called with correct parameters
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Create a mock tensor with shape information
+        mock_tensor = mock.MagicMock()
+        mock_tensor.dtype = tf.float32
+        mock_tensor.shape = tf.TensorShape([2, 3])
+        mock_tensor.numpy.return_value = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+    
+        # Mock op context
+        mock_op = mock.MagicMock()
+        mock_op.type = "MatMul"
+        mock_op.name = "test_matmul"
+    
+        # Call the callback (simulating tensor execution)
+        # Note: In actual usage, TensorFlow calls this automatically
+        try:
+            # The callback might expect specific arguments
+            # We'll just verify it's callable
+            assert callable(callback_func), "Callback should be callable"
+        except Exception as e:
+            # It's okay if it fails with our mock arguments
+            # We're just testing that the callback was registered
+            pass
+    
+        # Weak assertion: file_written (mocked)
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691926605536'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpktkksn5j', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+____________________________ test_curt_health_mode ____________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpn9vmsiyo'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691926433856'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691926392640'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926421120'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691926404784'>}
+reset_dumping_state = None
+
+    def test_curt_health_mode(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-06: 健康检查模式 (CURT_HEALTH)"""
+        # Enable dumping with CURT_HEALTH mode
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="CURT_HEALTH",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: health_mode_enabled
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Weak assertion: float_tensor_processed
+        # CURT_HEALTH mode should process float tensors for health checks
+        # We can't directly test the internal logic without running actual TensorFlow ops,
+        # but we can verify that the mode was accepted and callback registered
+    
+        # Verify writer was created
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:404: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691926433856'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpn9vmsiyo', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+__________________________ test_concise_health_mode ___________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp440__y86'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691925581056'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691926762352'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691907491632'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691926676432'>}
+reset_dumping_state = None
+
+    def test_concise_health_mode(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-07: 详细健康统计 (CONCISE_HEALTH)"""
+        # Enable dumping with CONCISE_HEALTH mode
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="CONCISE_HEALTH",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: concise_mode_enabled
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Weak assertion: statistics_collected
+        # CONCISE_HEALTH mode should collect statistics for float tensors
+        # We can't directly test the internal logic without running actual TensorFlow ops,
+        # but we can verify that the mode was accepted and callback registered
+    
+        # Verify writer was created
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:457: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691925581056'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp440__y86', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+____________________________ test_full_health_mode ____________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp2l3gfjyb'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691926218928'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691907422144'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926609152'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691907426096'>}
+reset_dumping_state = None
+
+    def test_full_health_mode(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-08: 完整健康统计 (FULL_HEALTH)"""
+        # Enable dumping with FULL_HEALTH mode
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="FULL_HEALTH",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: full_mode_enabled
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Weak assertion: complete_stats_collected
+        # FULL_HEALTH mode should collect complete statistics for float tensors
+        # We can't directly test the internal logic without running actual TensorFlow ops,
+        # but we can verify that the mode was accepted and callback registered
+    
+        # Verify writer was created
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:510: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691926218928'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp2l3gfjyb', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+___________________________ test_op_regex_filtering ___________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp95sorxi8'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691926531568'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691926524112'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926348608'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691926285856'>}
+reset_dumping_state = None
+
+    def test_op_regex_filtering(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-09: 操作正则过滤"""
+        # Enable dumping with op_regex filter
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="NO_TENSOR",
+            circular_buffer_size=1000,
+            op_regex="MatMul|Add",  # Filter for MatMul or Add operations
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: regex_filter_applied
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Test that the internal _DumpingCallback was created with correct regex
+        # We can't directly access it, but we can verify the function was called with correct args
+        # by checking that enable succeeded and state was set
+        assert hasattr(dumping_callback._state, 'dumping_callback'), \
+            "Dumping callback state should be set"
+    
+        # Weak assertion: matching_ops_captured
+        # In a real test, we would run actual TensorFlow operations and verify
+        # that only MatMul and Add ops are captured. For now, we verify the
+        # callback registration succeeded with the regex parameter.
+    
+        # Verify writer was created
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:569: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691926531568'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp95sorxi8', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+_________________________ test_tensor_dtype_filtering _________________________
+
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp7mm0di71'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691907252672'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691907432304'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926225008'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691276148160'>}
+reset_dumping_state = None
+
+    def test_tensor_dtype_filtering(
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-10: 张量类型过滤"""
+        # Enable dumping with tensor_dtypes filter
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="NO_TENSOR",
+            circular_buffer_size=1000,
+            op_regex=None,
+            tensor_dtypes=["float32", "float64"]  # Filter for float32 and float64 tensors
+        )
+    
+        # Weak assertion: dtype_filter_applied
+        assert writer is not None, "Should return writer instance"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Test that the internal _DumpingCallback was created with correct dtype filter
+        # We can't directly access it, but we can verify the function was called with correct args
+        # by checking that enable succeeded and state was set
+        assert hasattr(dumping_callback._state, 'dumping_callback'), \
+            "Dumping callback state should be set"
+    
+        # Weak assertion: matching_dtypes_captured
+        # In a real test, we would run actual TensorFlow operations with different dtypes
+        # and verify that only float32 and float64 tensors are captured.
+        # For now, we verify the callback registration succeeded with the dtype parameter.
+    
+        # Verify writer was created
+>       mock_debug_events_writer.assert_called_once_with(temp_dump_dir, mock.ANY)
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:628: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691907252672'>
+args = ('C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmp7mm0di71', <ANY>)
+kwargs = {}, msg = "Expected 'mock' to be called once. Called 0 times."
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to be called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:918: AssertionError
+_____________ test_circular_buffer_functionality[10-small buffer] _____________
+
+circular_buffer_size = 10, description = 'small buffer'
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpm57rng7s'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691925659168'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691926654256'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691926405424'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691926592672'>}
+reset_dumping_state = None
+
+    @pytest.mark.parametrize(
+        "circular_buffer_size,description",
+        [
+            (10, "small buffer"),
+            (0, "zero buffer (disabled)"),
+        ]
+    )
+    def test_circular_buffer_functionality(
+        circular_buffer_size,
+        description,
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-11: 环形缓冲区功能"""
+        # Enable dumping with different buffer sizes
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="NO_TENSOR",
+            circular_buffer_size=circular_buffer_size,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: buffer_works
+        assert writer is not None, f"Should return writer instance for {description}"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Test that the internal _DumpingCallback was created with correct buffer size
+        # We can't directly access it, but we can verify the function was called with correct args
+        # by checking that enable succeeded and state was set
+        assert hasattr(dumping_callback._state, 'dumping_callback'), \
+            f"Dumping callback state should be set for {description}"
+    
+        # Verify writer was created with correct parameters
+>       mock_debug_events_writer.assert_called_once()
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:710: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691925659168'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+________ test_circular_buffer_functionality[0-zero buffer (disabled)] _________
+
+circular_buffer_size = 0, description = 'zero buffer (disabled)'
+temp_dump_dir = 'C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpue5yk1hl'
+mock_debug_events_writer = <MagicMock name='DebugEventsWriter()' id='1691927507872'>
+mock_op_callbacks = {'add_op_callback': <MagicMock name='add_op_callback' id='1691927487152'>, 'remove_function_callback': <MagicMock name...function_callback' id='1691927478768'>, 'remove_op_callback': <MagicMock name='remove_op_callback' id='1691927552544'>}
+reset_dumping_state = None
+
+    @pytest.mark.parametrize(
+        "circular_buffer_size,description",
+        [
+            (10, "small buffer"),
+            (0, "zero buffer (disabled)"),
+        ]
+    )
+    def test_circular_buffer_functionality(
+        circular_buffer_size,
+        description,
+        temp_dump_dir,
+        mock_debug_events_writer,
+        mock_op_callbacks,
+        reset_dumping_state
+    ):
+        """TC-11: 环形缓冲区功能"""
+        # Enable dumping with different buffer sizes
+        writer = dumping_callback.enable_dump_debug_info(
+            dump_root=temp_dump_dir,
+            tensor_debug_mode="NO_TENSOR",
+            circular_buffer_size=circular_buffer_size,
+            op_regex=None,
+            tensor_dtypes=None
+        )
+    
+        # Weak assertion: buffer_works
+        assert writer is not None, f"Should return writer instance for {description}"
+    
+        # Weak assertion: callback_registered
+        mock_op_callbacks['add_op_callback'].assert_called_once()
+    
+        # Get the registered callback
+        callback_func = mock_op_callbacks['add_op_callback'].call_args[0][0]
+    
+        # Verify callback is callable
+        assert callable(callback_func), "Callback should be callable"
+    
+        # Test that the internal _DumpingCallback was created with correct buffer size
+        # We can't directly access it, but we can verify the function was called with correct args
+        # by checking that enable succeeded and state was set
+        assert hasattr(dumping_callback._state, 'dumping_callback'), \
+            f"Dumping callback state should be set for {description}"
+    
+        # Verify writer was created with correct parameters
+>       mock_debug_events_writer.assert_called_once()
+
+tests\test_tensorflow_python_debug_lib_dumping_callback.py:710: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='DebugEventsWriter()' id='1691927507872'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                         Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_debug_lib_dumping_callback.py     203     62      8      3    69%   20->exit, 89-103, 157-160, 349-352, 358-365, 407-418, 460-471, 513-524, 576-583, 632-661, 713-752, 758
+--------------------------------------------------------------------------------------------------------
+TOTAL                                                          203     62      8      3    69%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_basic_enable_disable_flow
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_invalid_parameters_exception_handling[-NO_TENSOR-ValueError-empty or none]
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_basic_tensor_debug_mode_shape
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_curt_health_mode
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_concise_health_mode
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_full_health_mode
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_op_regex_filtering
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_tensor_dtype_filtering
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_circular_buffer_functionality[10-small buffer]
+FAILED tests\test_tensorflow_python_debug_lib_dumping_callback.py::test_circular_buffer_functionality[0-zero buffer (disabled)]
+10 failed, 3 passed in 1.90s
+
+Error: exit 1

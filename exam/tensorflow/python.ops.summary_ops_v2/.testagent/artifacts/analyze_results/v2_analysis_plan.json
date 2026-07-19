@@ -1,0 +1,37 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 5,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_summary_ops_v2.py::test_write_basic_functionality",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径'tensorflow.python.ops.summary_ops_v2._summary_state'不可访问，需要修复fixture中的导入路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_summary_ops_v2.py::test_write_no_default_writer",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_summary_ops_v2.py::test_write_no_step_exception",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_summary_ops_v2.py::test_write_callable_tensor",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_summary_ops_v2.py::test_write_device_enforcement",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

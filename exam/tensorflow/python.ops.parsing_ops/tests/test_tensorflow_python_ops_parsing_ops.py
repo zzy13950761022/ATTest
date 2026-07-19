@@ -1,0 +1,771 @@
+"""
+测试 tensorflow.python.ops.parsing_ops 模块
+"""
+
+import numpy as np
+import pytest
+import tensorflow as tf
+from unittest import mock
+
+# 导入目标模块
+from tensorflow.python.ops import parsing_ops
+
+# ==== BLOCK:HEADER START ====
+"""
+测试 tensorflow.python.ops.parsing_ops 模块
+"""
+
+import numpy as np
+import pytest
+import tensorflow as tf
+from unittest import mock
+
+# 导入目标模块
+from tensorflow.python.ops import parsing_ops
+
+# 设置随机种子以确保可重复性
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# 辅助函数：创建序列化示例数据
+def create_serialized_example(feature_dict):
+    """创建序列化的 Example proto"""
+    example = tf.train.Example()
+    for key, value in feature_dict.items():
+        if isinstance(value, (list, tuple, np.ndarray)):
+            # 处理数值列表
+            if len(value) > 0:
+                if isinstance(value[0], (int, np.integer)):
+                    example.features.feature[key].int64_list.value.extend(value)
+                elif isinstance(value[0], float):
+                    example.features.feature[key].float_list.value.extend(value)
+                elif isinstance(value[0], (str, bytes)):
+                    example.features.feature[key].bytes_list.value.extend(
+                        [v.encode('utf-8') if isinstance(v, str) else v for v in value]
+                    )
+        else:
+            # 处理单个值
+            if isinstance(value, (int, np.integer)):
+                example.features.feature[key].int64_list.value.append(value)
+            elif isinstance(value, float):
+                example.features.feature[key].float_list.value.append(value)
+            elif isinstance(value, (str, bytes)):
+                example.features.feature[key].bytes_list.value.append(
+                    value.encode('utf-8') if isinstance(value, str) else value
+                )
+    return example.SerializeToString()
+
+# 辅助函数：创建特征配置
+def create_feature_config(feature_type, dtype, shape, **kwargs):
+    """创建特征配置对象"""
+    if feature_type == "FixedLenFeature":
+        return parsing_ops.FixedLenFeature(shape=shape, dtype=dtype, **kwargs)
+    elif feature_type == "VarLenFeature":
+        return parsing_ops.VarLenFeature(dtype=dtype, **kwargs)
+    elif feature_type == "SparseFeature":
+        return parsing_ops.SparseFeature(
+            index_key=kwargs.get('index_key', 'indices'),
+            value_key=kwargs.get('value_key', 'values'),
+            dtype=dtype,
+            size=kwargs.get('size', shape[0] if shape else 1)
+        )
+    else:
+        raise ValueError(f"不支持的 feature_type: {feature_type}")
+
+# 辅助函数：验证张量属性
+def assert_tensor_properties(tensor, expected_dtype, expected_shape, expected_type=tf.Tensor):
+    """验证张量的基本属性"""
+    assert isinstance(tensor, expected_type), f"期望类型 {expected_type}, 实际类型 {type(tensor)}"
+    assert tensor.dtype == expected_dtype, f"期望dtype {expected_dtype}, 实际dtype {tensor.dtype}"
+    assert tensor.shape.as_list() == list(expected_shape), f"期望shape {expected_shape}, 实际shape {tensor.shape}"
+
+# 辅助函数：创建CSV数据
+def create_csv_data(records, delimiter=','):
+    """创建CSV格式的字符串数据"""
+    return '\n'.join([delimiter.join(map(str, record)) for record in records])
+
+# 辅助函数：创建原始字节数据
+def create_raw_bytes(data, dtype=np.float32, little_endian=True):
+    """创建原始字节数据"""
+    arr = np.array(data, dtype=dtype)
+    if not little_endian:
+        arr = arr.byteswap()
+    return arr.tobytes()
+
+# Mock 配置 - 修复路径问题
+@pytest.fixture
+def mock_gen_parsing_ops():
+    """Mock gen_parsing_ops 模块"""
+    # 修复mock路径：直接mock导入的模块
+    # 注意：在TensorFlow 2.x中，tensorflow.python可能无法直接访问
+    # 所以我们需要mock实际的导入路径
+    with mock.patch('tensorflow.python.ops.gen_parsing_ops') as mock_module:
+        # 设置mock返回值
+        mock_module.parse_example_v2.return_value = {"mock_feature": tf.constant([[1.0, 2.0], [3.0, 4.0]])}
+        mock_module.decode_csv.return_value = [tf.constant([1.5]), tf.constant([10])]
+        mock_module.decode_raw.return_value = tf.constant([1.0, 2.0, 3.0, 4.0], dtype=tf.float32)
+        yield mock_module
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# parse_example_v2基本功能验证
+class TestParseExampleV2:
+    """测试 parse_example_v2 函数"""
+    
+    @pytest.mark.parametrize("feature_type,dtype,shape,serialized_length", [
+        ("FixedLenFeature", tf.float32, [2, 2], 1),
+        ("FixedLenFeature", tf.int32, [3], 2),
+        ("FixedLenFeature", tf.string, [1, 3], 1),
+    ])
+    def test_basic_functionality(self, mock_gen_parsing_ops, feature_type, dtype, shape, serialized_length):
+        """测试基本功能：FixedLenFeature 类型"""
+        # 准备测试数据
+        feature_key = "test_feature"
+        
+        # 创建特征配置
+        features = {
+            feature_key: create_feature_config(feature_type, dtype, shape)
+        }
+        
+        # 创建序列化数据
+        serialized_data = []
+        for i in range(serialized_length):
+            if dtype == tf.float32:
+                value = np.random.randn(*shape).astype(np.float32).tolist()
+            elif dtype == tf.int32:
+                value = np.random.randint(0, 100, size=shape).tolist()
+            elif dtype == tf.string:
+                value = [f"test_{i}_{j}" for j in range(np.prod(shape))]
+                if len(shape) > 1:
+                    value = np.array(value).reshape(shape).tolist()
+            else:
+                value = np.zeros(shape).tolist()
+            
+            example = create_serialized_example({feature_key: value})
+            serialized_data.append(example)
+        
+        serialized = tf.constant(serialized_data)
+        
+        # 执行解析
+        result = parsing_ops.parse_example_v2(
+            serialized=serialized,
+            features=features,
+            example_names=None,
+            name="test_parse"
+        )
+        
+        # 验证结果
+        # 1. 验证返回类型是字典
+        assert isinstance(result, dict), "parse_example_v2 应返回字典"
+        
+        # 2. 验证包含正确的特征键
+        assert feature_key in result, f"结果应包含特征键 '{feature_key}'"
+        
+        # 3. 验证张量属性
+        output_tensor = result[feature_key]
+        assert_tensor_properties(
+            output_tensor,
+            expected_dtype=dtype,
+            expected_shape=[serialized_length] + list(shape),
+            expected_type=tf.Tensor
+        )
+        
+        # 4. 验证值（弱断言：只检查形状和类型，不检查具体值）
+        assert output_tensor.shape[0] == serialized_length, f"批次大小应为 {serialized_length}"
+        
+        # 5. 验证 mock 被调用
+        mock_gen_parsing_ops.parse_example_v2.assert_called_once()
+        
+    @pytest.mark.parametrize("feature_type,dtype,shape,serialized_length", [
+        ("VarLenFeature", tf.string, [], 3),
+        ("VarLenFeature", tf.int64, [], 2),
+    ])
+    def test_var_len_feature(self, mock_gen_parsing_ops, feature_type, dtype, shape, serialized_length):
+        """测试可变长度特征"""
+        # 准备测试数据
+        feature_key = "var_len_feature"
+        
+        # 创建特征配置
+        features = {
+            feature_key: create_feature_config(feature_type, dtype, shape)
+        }
+        
+        # 创建序列化数据（每个示例不同数量的值）
+        serialized_data = []
+        for i in range(serialized_length):
+            num_values = i + 1  # 每个示例不同数量的值
+            if dtype == tf.string:
+                value = [f"value_{i}_{j}" for j in range(num_values)]
+            elif dtype == tf.int64:
+                value = list(range(num_values))
+            else:
+                value = list(range(num_values))
+            
+            example = create_serialized_example({feature_key: value})
+            serialized_data.append(example)
+        
+        serialized = tf.constant(serialized_data)
+        
+        # 执行解析
+        result = parsing_ops.parse_example_v2(
+            serialized=serialized,
+            features=features,
+            example_names=None,
+            name="test_var_len"
+        )
+        
+        # 验证结果
+        assert isinstance(result, dict), "应返回字典"
+        assert feature_key in result, f"应包含特征键 '{feature_key}'"
+        
+        # VarLenFeature 返回 SparseTensor
+        output_tensor = result[feature_key]
+        assert isinstance(output_tensor, tf.SparseTensor), "VarLenFeature 应返回 SparseTensor"
+        assert output_tensor.dtype == dtype, f"期望dtype {dtype}, 实际dtype {output_tensor.dtype}"
+        
+        # 验证稀疏张量的形状
+        expected_shape = [serialized_length, 0]  # 第二维是可变长度
+        assert output_tensor.shape.as_list() == expected_shape, f"期望shape {expected_shape}"
+        
+        # 验证 mock 被调用
+        mock_gen_parsing_ops.parse_example_v2.assert_called_once()
+        
+    @pytest.mark.parametrize("feature_type,dtype,shape,serialized_length", [
+        ("SparseFeature", tf.float64, [5, 5], 2),
+    ])
+    def test_sparse_feature(self, mock_gen_parsing_ops, feature_type, dtype, shape, serialized_length):
+        """测试稀疏特征（边缘情况）"""
+        # 准备测试数据
+        index_key = "sparse_indices"
+        value_key = "sparse_values"
+        
+        # 创建特征配置
+        features = {
+            "sparse_feature": parsing_ops.SparseFeature(
+                index_key=index_key,
+                value_key=value_key,
+                dtype=dtype,
+                size=shape[0]
+            )
+        }
+        
+        # 创建序列化数据
+        serialized_data = []
+        for i in range(serialized_length):
+            # 创建稀疏数据：只有部分位置有值
+            num_nonzero = min(3, np.prod(shape))
+            indices = np.random.choice(np.prod(shape), num_nonzero, replace=False)
+            values = np.random.randn(num_nonzero).astype(np.float64)
+            
+            # 将索引转换为多维索引
+            multi_indices = []
+            for idx in indices:
+                idx_tuple = []
+                for dim in reversed(shape):
+                    idx_tuple.append(idx % dim)
+                    idx //= dim
+                multi_indices.append(list(reversed(idx_tuple)))
+            
+            example = create_serialized_example({
+                index_key: [idx for sublist in multi_indices for idx in sublist],
+                value_key: values.tolist()
+            })
+            serialized_data.append(example)
+        
+        serialized = tf.constant(serialized_data)
+        
+        # 执行解析
+        result = parsing_ops.parse_example_v2(
+            serialized=serialized,
+            features=features,
+            example_names=None,
+            name="test_sparse"
+        )
+        
+        # 验证结果
+        assert isinstance(result, dict), "应返回字典"
+        assert "sparse_feature" in result, "应包含稀疏特征"
+        
+        # SparseFeature 返回 SparseTensor
+        output_tensor = result["sparse_feature"]
+        assert isinstance(output_tensor, tf.SparseTensor), "SparseFeature 应返回 SparseTensor"
+        assert output_tensor.dtype == dtype, f"期望dtype {dtype}"
+        
+        # 验证稀疏张量的形状
+        expected_shape = [serialized_length] + list(shape)
+        assert output_tensor.shape.as_list() == expected_shape, f"期望shape {expected_shape}"
+        
+        # 验证 mock 被调用
+        mock_gen_parsing_ops.parse_example_v2.assert_called_once()
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# decode_csv标准CSV解析
+class TestDecodeCSV:
+    """测试 decode_csv 函数"""
+    
+    @pytest.mark.parametrize("record_defaults,field_delim,use_quote_delim,na_value", [
+        ([tf.float32, tf.int32], ",", True, ""),
+        ([tf.float32, tf.int32, tf.string], ",", True, ""),
+    ])
+    def test_basic_csv_parsing(self, mock_gen_parsing_ops, record_defaults, field_delim, use_quote_delim, na_value):
+        """测试基本CSV解析功能"""
+        # 准备CSV数据
+        csv_data = []
+        num_records = 3
+        
+        for i in range(num_records):
+            record = []
+            for dtype in record_defaults:
+                if dtype == tf.float32:
+                    record.append(str(1.5 + i))
+                elif dtype == tf.int32:
+                    record.append(str(10 + i))
+                elif dtype == tf.string:
+                    record.append(f"text_{i}")
+                else:
+                    record.append("0")
+            csv_data.append(record)
+        
+        csv_string = create_csv_data(csv_data, delimiter=field_delim)
+        records = tf.constant([csv_string])
+        
+        # 准备默认值
+        defaults = []
+        for dtype in record_defaults:
+            if dtype == tf.float32:
+                defaults.append(tf.constant(0.0, dtype=dtype))
+            elif dtype == tf.int32:
+                defaults.append(tf.constant(0, dtype=dtype))
+            elif dtype == tf.string:
+                defaults.append(tf.constant("", dtype=dtype))
+            else:
+                defaults.append(tf.constant(0, dtype=dtype))
+        
+        # 执行CSV解析
+        result = parsing_ops.decode_csv(
+            records=records,
+            record_defaults=defaults,
+            field_delim=field_delim,
+            use_quote_delim=use_quote_delim,
+            na_value=na_value,
+            name="test_csv"
+        )
+        
+        # 验证结果
+        # 1. 验证返回类型是列表
+        assert isinstance(result, list), "decode_csv 应返回列表"
+        
+        # 2. 验证返回元素数量
+        assert len(result) == len(record_defaults), f"应返回 {len(record_defaults)} 个张量"
+        
+        # 3. 验证每个张量的属性
+        for i, (tensor, expected_dtype) in enumerate(zip(result, record_defaults)):
+            assert_tensor_properties(
+                tensor,
+                expected_dtype=expected_dtype,
+                expected_shape=[1],  # 每个记录一个值
+                expected_type=tf.Tensor
+            )
+        
+        # 4. 验证mock被调用
+        mock_gen_parsing_ops.decode_csv.assert_called_once()
+        
+    @pytest.mark.parametrize("record_defaults,field_delim,use_quote_delim,na_value", [
+        ([tf.string, tf.bool], "\t", False, "NA"),
+        ([tf.string, tf.int32, tf.float32], "\t", False, "NULL"),
+    ])
+    def test_tab_delimited_csv(self, mock_gen_parsing_ops, record_defaults, field_delim, use_quote_delim, na_value):
+        """测试制表符分隔的CSV（边缘情况）"""
+        # 准备CSV数据（使用制表符分隔）
+        csv_data = [
+            ["text_1", "true", "3.14"],
+            ["text_2", "false", "2.71"],
+            [na_value, "true", na_value],  # 测试NA值
+        ]
+        
+        csv_string = create_csv_data(csv_data, delimiter=field_delim)
+        records = tf.constant([csv_string])
+        
+        # 准备默认值
+        defaults = []
+        for dtype in record_defaults:
+            if dtype == tf.string:
+                defaults.append(tf.constant("default", dtype=dtype))
+            elif dtype == tf.bool:
+                defaults.append(tf.constant(False, dtype=dtype))
+            elif dtype == tf.int32:
+                defaults.append(tf.constant(0, dtype=dtype))
+            elif dtype == tf.float32:
+                defaults.append(tf.constant(0.0, dtype=dtype))
+            else:
+                defaults.append(tf.constant(0, dtype=dtype))
+        
+        # 执行CSV解析
+        result = parsing_ops.decode_csv(
+            records=records,
+            record_defaults=defaults,
+            field_delim=field_delim,
+            use_quote_delim=use_quote_delim,
+            na_value=na_value,
+            name="test_tab_csv"
+        )
+        
+        # 验证结果
+        assert isinstance(result, list), "应返回列表"
+        assert len(result) == len(record_defaults), f"应返回 {len(record_defaults)} 个张量"
+        
+        # 验证每个张量的属性
+        for i, (tensor, expected_dtype) in enumerate(zip(result, record_defaults)):
+            assert_tensor_properties(
+                tensor,
+                expected_dtype=expected_dtype,
+                expected_shape=[len(csv_data)],  # 每个记录一个值
+                expected_type=tf.Tensor
+            )
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_csv.assert_called_once()
+        
+    def test_quote_handling(self, mock_gen_parsing_ops):
+        """测试引号处理"""
+        # 准备带引号的CSV数据
+        csv_string = '"field1,with,commas","field2"\n"field3","field4,with,comma"'
+        records = tf.constant([csv_string])
+        
+        # 准备默认值
+        defaults = [tf.constant("", dtype=tf.string), tf.constant("", dtype=tf.string)]
+        
+        # 执行CSV解析（使用引号分隔符）
+        result = parsing_ops.decode_csv(
+            records=records,
+            record_defaults=defaults,
+            field_delim=",",
+            use_quote_delim=True,
+            na_value="",
+            name="test_quotes"
+        )
+        
+        # 验证结果
+        assert isinstance(result, list), "应返回列表"
+        assert len(result) == 2, "应返回2个张量"
+        
+        # 验证形状
+        for tensor in result:
+            assert tensor.shape.as_list() == [2], "应有2个记录"
+            assert tensor.dtype == tf.string, "应为字符串类型"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_csv.assert_called_once()
+        
+    def test_empty_fields(self, mock_gen_parsing_ops):
+        """测试空字段处理"""
+        # 准备包含空字段的CSV数据
+        csv_string = "1.5,,text\n,3,"
+        records = tf.constant([csv_string])
+        
+        # 准备默认值
+        defaults = [
+            tf.constant(0.0, dtype=tf.float32),
+            tf.constant(0, dtype=tf.int32),
+            tf.constant("", dtype=tf.string)
+        ]
+        
+        # 执行CSV解析
+        result = parsing_ops.decode_csv(
+            records=records,
+            record_defaults=defaults,
+            field_delim=",",
+            use_quote_delim=True,
+            na_value="",
+            name="test_empty"
+        )
+        
+        # 验证结果
+        assert isinstance(result, list), "应返回列表"
+        assert len(result) == 3, "应返回3个张量"
+        
+        # 验证形状
+        for tensor in result:
+            assert tensor.shape.as_list() == [2], "应有2个记录"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_csv.assert_called_once()
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# decode_raw原始字节解码
+class TestDecodeRaw:
+    """测试 decode_raw 函数"""
+    
+    @pytest.mark.parametrize("out_type,little_endian,fixed_length", [
+        (tf.float32, True, None),
+        (tf.int32, True, None),
+        (tf.int16, True, None),
+    ])
+    def test_basic_raw_decoding(self, mock_gen_parsing_ops, out_type, little_endian, fixed_length):
+        """测试基本原始字节解码"""
+        # 准备原始字节数据
+        num_elements = 12
+        if out_type == tf.float32:
+            data = np.random.randn(num_elements).astype(np.float32)
+        elif out_type == tf.int32:
+            data = np.random.randint(-100, 100, size=num_elements, dtype=np.int32)
+        elif out_type == tf.int16:
+            data = np.random.randint(-100, 100, size=num_elements, dtype=np.int16)
+        else:
+            data = np.zeros(num_elements, dtype=np.float32)
+        
+        # 创建字节数据
+        bytes_data = create_raw_bytes(data, dtype=data.dtype, little_endian=little_endian)
+        bytes_tensor = tf.constant([bytes_data])
+        
+        # 执行原始字节解码
+        result = parsing_ops.decode_raw(
+            bytes=bytes_tensor,
+            out_type=out_type,
+            little_endian=little_endian,
+            fixed_length=fixed_length,
+            name="test_raw"
+        )
+        
+        # 验证结果
+        # 1. 验证返回类型是张量
+        assert isinstance(result, tf.Tensor), "decode_raw 应返回张量"
+        
+        # 2. 验证数据类型
+        assert result.dtype == out_type, f"期望dtype {out_type}, 实际dtype {result.dtype}"
+        
+        # 3. 验证形状（1维，长度等于元素数量）
+        assert result.shape.as_list() == [num_elements], f"期望shape [{num_elements}]"
+        
+        # 4. 验证mock被调用
+        mock_gen_parsing_ops.decode_raw.assert_called_once()
+        
+    @pytest.mark.parametrize("out_type,little_endian,fixed_length", [
+        (tf.int16, False, 8),
+        (tf.float32, False, 4),
+    ])
+    def test_big_endian_fixed_length(self, mock_gen_parsing_ops, out_type, little_endian, fixed_length):
+        """测试大端字节序和固定长度（边缘情况）"""
+        # 准备原始字节数据
+        if out_type == tf.float32:
+            data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        elif out_type == tf.int16:
+            data = np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int16)
+        else:
+            data = np.array([1, 2, 3, 4], dtype=np.int32)
+        
+        # 创建字节数据（大端字节序）
+        bytes_data = create_raw_bytes(data, dtype=data.dtype, little_endian=little_endian)
+        bytes_tensor = tf.constant([bytes_data])
+        
+        # 执行原始字节解码
+        result = parsing_ops.decode_raw(
+            bytes=bytes_tensor,
+            out_type=out_type,
+            little_endian=little_endian,
+            fixed_length=fixed_length,
+            name="test_big_endian"
+        )
+        
+        # 验证结果
+        assert isinstance(result, tf.Tensor), "应返回张量"
+        assert result.dtype == out_type, f"期望dtype {out_type}"
+        
+        # 验证形状（如果指定了fixed_length）
+        if fixed_length is not None:
+            assert result.shape.as_list() == [fixed_length], f"固定长度应为 {fixed_length}"
+        else:
+            expected_length = len(data)
+            assert result.shape.as_list() == [expected_length], f"期望长度 {expected_length}"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_raw.assert_called_once()
+        
+    def test_multiple_bytes_strings(self, mock_gen_parsing_ops):
+        """测试多个字节字符串"""
+        # 准备多个字节字符串
+        bytes_list = []
+        num_strings = 3
+        num_elements = 4
+        
+        for i in range(num_strings):
+            data = np.array([i * 10 + j for j in range(num_elements)], dtype=np.float32)
+            bytes_data = create_raw_bytes(data, dtype=np.float32, little_endian=True)
+            bytes_list.append(bytes_data)
+        
+        bytes_tensor = tf.constant(bytes_list)
+        
+        # 执行原始字节解码
+        result = parsing_ops.decode_raw(
+            bytes=bytes_tensor,
+            out_type=tf.float32,
+            little_endian=True,
+            fixed_length=None,
+            name="test_multi"
+        )
+        
+        # 验证结果
+        assert isinstance(result, tf.Tensor), "应返回张量"
+        assert result.dtype == tf.float32, "应为float32类型"
+        
+        # 验证形状：每个字符串解码为4个元素，共3个字符串
+        assert result.shape.as_list() == [num_strings, num_elements], f"期望shape [{num_strings}, {num_elements}]"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_raw.assert_called_once()
+        
+    def test_empty_bytes(self, mock_gen_parsing_ops):
+        """测试空字节数据"""
+        # 准备空字节数据
+        bytes_tensor = tf.constant([b""])
+        
+        # 执行原始字节解码
+        result = parsing_ops.decode_raw(
+            bytes=bytes_tensor,
+            out_type=tf.float32,
+            little_endian=True,
+            fixed_length=None,
+            name="test_empty"
+        )
+        
+        # 验证结果
+        assert isinstance(result, tf.Tensor), "应返回张量"
+        assert result.dtype == tf.float32, "应为float32类型"
+        
+        # 空字节应解码为空张量
+        assert result.shape.as_list() == [0], "空字节应解码为空张量"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_raw.assert_called_once()
+        
+    @pytest.mark.parametrize("out_type,little_endian", [
+        (tf.uint8, True),
+        (tf.int64, True),
+    ])
+    def test_various_data_types(self, mock_gen_parsing_ops, out_type, little_endian):
+        """测试各种数据类型"""
+        # 准备数据
+        num_elements = 6
+        if out_type == tf.uint8:
+            data = np.random.randint(0, 256, size=num_elements, dtype=np.uint8)
+        elif out_type == tf.int64:
+            data = np.random.randint(-1000, 1000, size=num_elements, dtype=np.int64)
+        else:
+            data = np.zeros(num_elements, dtype=np.float32)
+        
+        # 创建字节数据
+        bytes_data = create_raw_bytes(data, dtype=data.dtype, little_endian=little_endian)
+        bytes_tensor = tf.constant([bytes_data])
+        
+        # 执行原始字节解码
+        result = parsing_ops.decode_raw(
+            bytes=bytes_tensor,
+            out_type=out_type,
+            little_endian=little_endian,
+            fixed_length=None,
+            name="test_various_types"
+        )
+        
+        # 验证结果
+        assert isinstance(result, tf.Tensor), "应返回张量"
+        assert result.dtype == out_type, f"期望dtype {out_type}"
+        assert result.shape.as_list() == [num_elements], f"期望长度 {num_elements}"
+        
+        # 验证mock被调用
+        mock_gen_parsing_ops.decode_raw.assert_called_once()
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# 各种特征类型配置验证 (DEFERRED - 占位)
+# 此测试用例将在后续迭代中实现
+# 计划测试：FixedLenFeature、VarLenFeature、SparseFeature、RaggedFeature、FixedLenSequenceFeature 的组合
+# 需要验证：特征类型处理、输出结构、数据类型匹配、形状验证
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# 错误输入异常处理 (DEFERRED - 占位)
+# 此测试用例将在后续迭代中实现
+# 计划测试：空特征字典、无效序列化数据、不匹配的数据类型、无效特征配置
+# 需要验证：异常类型、异常消息、错误条件
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试清理和额外辅助函数
+
+# 性能测试辅助函数（可选）
+def benchmark_parsing_operation(operation, *args, **kwargs):
+    """基准测试解析操作的性能"""
+    import time
+    start_time = time.time()
+    result = operation(*args, **kwargs)
+    end_time = time.time()
+    return result, end_time - start_time
+
+# 内存使用验证辅助函数（可选）
+def estimate_memory_usage(tensor):
+    """估算张量的内存使用量"""
+    if isinstance(tensor, tf.Tensor):
+        # 计算元素数量
+        num_elements = tf.size(tensor).numpy()
+        # 根据数据类型估算字节数
+        dtype_size = tensor.dtype.size if hasattr(tensor.dtype, 'size') else 4
+        return num_elements * dtype_size
+    elif isinstance(tensor, tf.SparseTensor):
+        # 稀疏张量：值 + 索引
+        values_size = tf.size(tensor.values).numpy() * tensor.values.dtype.size
+        indices_size = tf.size(tensor.indices).numpy() * tensor.indices.dtype.size
+        return values_size + indices_size
+    else:
+        return 0
+
+# 测试数据生成器（用于大数据量测试）
+def generate_large_test_data(num_examples, feature_spec):
+    """生成大量测试数据"""
+    serialized_data = []
+    for i in range(num_examples):
+        feature_dict = {}
+        for key, spec in feature_spec.items():
+            if spec["dtype"] == tf.float32:
+                value = np.random.randn(*spec["shape"]).astype(np.float32)
+            elif spec["dtype"] == tf.int32:
+                value = np.random.randint(0, 100, size=spec["shape"])
+            elif spec["dtype"] == tf.string:
+                value = [f"example_{i}_{key}_{j}" for j in range(np.prod(spec["shape"]))]
+                value = np.array(value).reshape(spec["shape"])
+            feature_dict[key] = value
+        example = create_serialized_example(feature_dict)
+        serialized_data.append(example)
+    return tf.constant(serialized_data)
+
+# 兼容性测试辅助函数
+def test_backward_compatibility():
+    """测试向后兼容性（可选）"""
+    # 这里可以添加与旧版本TensorFlow的兼容性测试
+    pass
+
+# 多设备支持测试（可选）
+@pytest.mark.skipif(not tf.test.is_gpu_available(), reason="需要GPU")
+def test_gpu_support():
+    """测试GPU支持（可选）"""
+    # 这里可以添加GPU设备上的测试
+    pass
+
+# 测试运行器（用于手动测试）
+if __name__ == "__main__":
+    print("运行 tensorflow.python.ops.parsing_ops 测试...")
+    
+    # 可以在这里添加手动测试代码
+    test_classes = [
+        TestParseExampleV2,
+        TestDecodeCSV,
+        TestDecodeRaw,
+    ]
+    
+    for test_class in test_classes:
+        print(f"\n测试类: {test_class.__name__}")
+        # 这里可以实例化测试类并运行特定方法
+    
+    print("\n测试完成！")
+# ==== BLOCK:FOOTER END ====

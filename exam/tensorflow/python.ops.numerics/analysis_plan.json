@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 13,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_numerics.py::TestVerifyTensorAllFiniteV1::test_v1_calls_v2",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径错误：tensorflow.python在mock时不可访问，需要修复mock路径"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

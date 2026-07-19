@@ -1,0 +1,59 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 9,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_basic",
+      "block_id": "HEADER",
+      "error_type": "FixtureNotFoundError",
+      "action": "rewrite_block",
+      "note": "测试方法定义在类中，但pytest无法识别self作为fixture"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[1-None]",
+      "block_id": "CASE_04",
+      "error_type": "FixtureNotFoundError",
+      "action": "rewrite_block",
+      "note": "测试方法需要从类方法改为独立函数"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_batched_features_dataset_basic",
+      "block_id": "CASE_08",
+      "error_type": "FixtureNotFoundError",
+      "action": "rewrite_block",
+      "note": "deferred测试也需要修复类结构问题"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[32-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[64-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[16-GZIP]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_parameters[16-ZLIB]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_tf_record_dataset_file_pattern_list",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py::test_make_batched_features_dataset_placeholder",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

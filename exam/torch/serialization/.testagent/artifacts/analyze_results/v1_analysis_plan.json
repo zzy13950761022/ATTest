@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_serialization_basic.py::test_corrupted_file",
+      "block_id": "HEADER",
+      "error_type": "NameError",
+      "action": "fix_dependency",
+      "note": "缺少pickle模块导入"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,227 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.signal.spectral_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_signal_spectral_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_signal_spectral_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "STFT正向变换基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "signal_shape": [100],
+          "frame_length": 32,
+          "frame_step": 16,
+          "fft_length": 32,
+          "pad_end": false,
+          "window_fn": "hann_window"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "hermitian_symmetry", "energy_conservation"]
+      },
+      "oracle": "numpy.fft.rfft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "STFT逆向变换基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "complex64",
+          "device": "cpu",
+          "stft_shape": [5, 17],
+          "frame_length": 32,
+          "frame_step": 16,
+          "fft_length": 32,
+          "window_fn": "hann_window"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "real_value"],
+        "strong": ["approx_equal", "reconstruction_accuracy"]
+      },
+      "oracle": "numpy.fft.irfft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "STFT正向+逆向完美重构",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "signal_shape": [100],
+          "frame_length": 32,
+          "frame_step": 16,
+          "fft_length": 32,
+          "pad_end": false,
+          "window_fn": "hann_window"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite", "reconstruction_error"],
+        "strong": ["approx_equal", "perfect_reconstruction", "energy_conservation"]
+      },
+      "oracle": "self_consistency",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "MDCT正向变换基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "signal_shape": [100],
+          "frame_length": 64,
+          "pad_end": false,
+          "window_fn": "vorbis_window",
+          "norm": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal", "orthogonality", "energy_conservation"]
+      },
+      "oracle": "scipy.fft.dct",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "MDCT正向+逆向完美重构",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "signal_shape": [100],
+          "frame_length": 64,
+          "pad_end": false,
+          "window_fn": "vorbis_window",
+          "norm": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite", "reconstruction_error"],
+        "strong": ["approx_equal", "perfect_reconstruction", "orthonormal"]
+      },
+      "oracle": "self_consistency",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "signal_shape": [200],
+        "frame_length": 64,
+        "frame_step": 32,
+        "fft_length": 64,
+        "pad_end": true,
+        "window_fn": "hann_window"
+      },
+      "note": "作为参数扩展：float64数据类型，更大尺寸，pad_end=True"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "signal_shape": [150],
+        "frame_length": 48,
+        "frame_step": 24,
+        "fft_length": 48,
+        "pad_end": false,
+        "window_fn": "hann_window"
+      },
+      "note": "作为参数扩展：不同参数组合的完美重构验证"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "signal_shape": [200],
+        "frame_length": 128,
+        "pad_end": true,
+        "window_fn": "vorbis_window",
+        "norm": "ortho"
+      },
+      "note": "作为参数扩展：float64数据类型，正交归一化，更大尺寸"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_02", "CASE_05"]
+}

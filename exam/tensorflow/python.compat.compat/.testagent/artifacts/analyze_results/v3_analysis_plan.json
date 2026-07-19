@@ -1,0 +1,36 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-13-1-ValueError]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "forward_compatible函数未对无效月份(13)抛出ValueError"
+    },
+    {
+      "test": "tests/test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-2-30-ValueError]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "forward_compatible函数未对无效日期(2月30日)抛出ValueError"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-0-1-ValueError]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-12-0-ValueError]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

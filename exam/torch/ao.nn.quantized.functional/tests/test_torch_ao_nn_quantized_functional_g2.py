@@ -1,0 +1,489 @@
+import math
+import pytest
+import torch
+import torch.nn.functional as F
+from torch.ao.nn.quantized import functional as qF
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+
+def create_quantized_tensor(shape, dtype=torch.quint8, scale=1.0, zero_point=0):
+    """Create a quantized tensor with random data."""
+    # Generate random float data
+    float_data = torch.randn(shape)
+    
+    # Quantize the data
+    if dtype == torch.quint8:
+        # For quint8, clamp to [0, 255] range
+        float_data = float_data.clamp(-2, 2)  # Keep in reasonable range
+        q_data = torch.quantize_per_tensor(
+            float_data, scale=scale, zero_point=zero_point, dtype=dtype
+        )
+    elif dtype == torch.qint8:
+        # For qint8, clamp to [-128, 127] range
+        float_data = float_data.clamp(-2, 2)
+        q_data = torch.quantize_per_tensor(
+            float_data, scale=scale, zero_point=zero_point, dtype=dtype
+        )
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+    
+    return q_data
+
+def create_quantized_weight(shape, dtype=torch.qint8, scale=1.0, zero_point=0):
+    """Create a quantized weight tensor."""
+    return create_quantized_tensor(shape, dtype, scale, zero_point)
+
+def create_quantized_bias(out_channels, weight_scale, input_scale):
+    """Create a float bias tensor for quantized operations."""
+    # Bias in quantized operations is typically float
+    bias = torch.randn(out_channels)
+    # Scale bias appropriately for quantized operations
+    bias = bias * (weight_scale * input_scale)
+    return bias
+
+def assert_quantized_tensor_properties(tensor, expected_shape=None, 
+                                      expected_dtype=None, expected_scale=None,
+                                      expected_zero_point=None):
+    """Assert that a tensor has the expected quantized properties."""
+    assert tensor.is_quantized, "Tensor should be quantized"
+    
+    if expected_shape is not None:
+        assert tensor.shape == torch.Size(expected_shape), \
+            f"Expected shape {expected_shape}, got {tensor.shape}"
+    
+    if expected_dtype is not None:
+        assert tensor.dtype == expected_dtype, \
+            f"Expected dtype {expected_dtype}, got {tensor.dtype}"
+    
+    if expected_scale is not None:
+        assert math.isclose(tensor.q_scale(), expected_scale, rel_tol=1e-6), \
+            f"Expected scale {expected_scale}, got {tensor.q_scale()}"
+    
+    if expected_zero_point is not None:
+        assert tensor.q_zero_point() == expected_zero_point, \
+            f"Expected zero_point {expected_zero_point}, got {tensor.q_zero_point()}"
+    
+    # Check for NaN or Inf values
+    assert not torch.any(torch.isnan(tensor.dequantize())), "Tensor contains NaN values"
+    assert not torch.any(torch.isinf(tensor.dequantize())), "Tensor contains Inf values"
+
+def calculate_conv_output_shape(input_shape, weight_shape, stride=1, padding=0, dilation=1):
+    """Calculate output shape for convolution operation."""
+    N, C_in, *spatial_dims = input_shape
+    C_out, C_in_div_groups, *kernel_dims = weight_shape
+    
+    output_dims = []
+    for i, (input_dim, kernel_dim) in enumerate(zip(spatial_dims, kernel_dims)):
+        output_dim = math.floor(
+            (input_dim + 2 * padding - dilation * (kernel_dim - 1) - 1) / stride + 1
+        )
+        output_dims.append(output_dim)
+    
+    return (N, C_out, *output_dims)
+
+# ==== BLOCK:HEADER START ====
+# G2组测试文件头
+# 线性与池化函数族测试
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: linear基本量化操作
+@pytest.mark.parametrize("test_params", [
+    {
+        "input_shape": [2, 4],
+        "weight_shape": [3, 4],
+        "input_dtype": torch.quint8,
+        "weight_dtype": torch.qint8,
+        "bias": True,
+        "scale": 1.0,
+        "zero_point": 0
+    }
+])
+def test_linear_basic_quantized_operation(test_params):
+    """Test basic quantized linear operation."""
+    # Initialize quantization engine
+    torch.backends.quantized.engine = 'qnnpack'  # or 'fbgemm'
+    
+    # Unpack parameters
+    input_shape = test_params["input_shape"]
+    weight_shape = test_params["weight_shape"]
+    input_dtype = test_params["input_dtype"]
+    weight_dtype = test_params["weight_dtype"]
+    bias = test_params["bias"]
+    scale = test_params["scale"]
+    zero_point = test_params["zero_point"]
+    
+    # Create quantized input tensor
+    input_tensor = create_quantized_tensor(
+        input_shape, dtype=input_dtype, scale=scale, zero_point=zero_point
+    )
+    
+    # Create quantized weight tensor
+    weight_tensor = create_quantized_weight(
+        weight_shape, dtype=weight_dtype, scale=scale, zero_point=0
+    )
+    
+    # Create bias if needed
+    bias_tensor = None
+    if bias:
+        # For linear operation, bias is float
+        bias_tensor = torch.randn(weight_shape[0])
+    
+    # Calculate expected output shape
+    # Linear: input [batch, in_features] * weight [out_features, in_features]^T
+    # -> output [batch, out_features]
+    expected_shape = (input_shape[0], weight_shape[0])
+    
+    # Perform quantized linear operation
+    output = qF.linear(
+        input=input_tensor,
+        weight=weight_tensor,
+        bias=bias_tensor,
+        scale=scale,
+        zero_point=zero_point
+    )
+    
+    # Weak assertions (first round)
+    # 1. Output is quantized
+    assert output.is_quantized, "Output should be quantized"
+    
+    # 2. Output shape is correct
+    assert output.shape == torch.Size(expected_shape), \
+        f"Expected shape {expected_shape}, got {output.shape}"
+    
+    # 3. Output dtype is correct
+    assert output.dtype == input_dtype, \
+        f"Expected dtype {input_dtype}, got {output.dtype}"
+    
+    # 4. No NaN or Inf values
+    assert not torch.any(torch.isnan(output.dequantize())), "Output contains NaN values"
+    assert not torch.any(torch.isinf(output.dequantize())), "Output contains Inf values"
+    
+    # Additional basic checks
+    assert output.q_scale() == scale, \
+        f"Expected scale {scale}, got {output.q_scale()}"
+    assert output.q_zero_point() == zero_point, \
+        f"Expected zero_point {zero_point}, got {output.q_zero_point()}"
+    
+    # Verify that the operation produces reasonable values
+    # Dequantize and check range
+    dequantized_output = output.dequantize()
+    assert torch.all(torch.isfinite(dequantized_output)), \
+        "Dequantized output should contain only finite values"
+    
+    # Check that output values are within reasonable range
+    # For scale=1.0, zero_point=0, values should be in typical activation range
+    output_mean = dequantized_output.mean().item()
+    output_std = dequantized_output.std().item()
+    assert abs(output_mean) < 10.0, f"Output mean {output_mean} seems too large"
+    assert output_std > 0.01, f"Output std {output_std} seems too small"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: avg_pool2d量化操作
+@pytest.mark.parametrize("test_params", [
+    {
+        "input_shape": [1, 3, 6, 6],
+        "input_dtype": torch.quint8,
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 0,
+        "ceil_mode": False,
+        "count_include_pad": True,
+        "divisor_override": None,
+        "scale": 1.0,
+        "zero_point": 0
+    }
+])
+def test_avg_pool2d_quantized_operation(test_params):
+    """Test quantized avg_pool2d operation."""
+    # Unpack parameters
+    input_shape = test_params["input_shape"]
+    input_dtype = test_params["input_dtype"]
+    kernel_size = test_params["kernel_size"]
+    stride = test_params["stride"]
+    padding = test_params["padding"]
+    ceil_mode = test_params["ceil_mode"]
+    count_include_pad = test_params["count_include_pad"]
+    divisor_override = test_params["divisor_override"]
+    scale = test_params["scale"]
+    zero_point = test_params["zero_point"]
+    
+    # Create quantized input tensor
+    input_tensor = create_quantized_tensor(
+        input_shape, dtype=input_dtype, scale=scale, zero_point=zero_point
+    )
+    
+    # Calculate expected output shape
+    # For avg_pool2d with kernel_size=2, stride=2, padding=0
+    # Input: [1, 3, 6, 6] -> Output: [1, 3, 3, 3]
+    N, C, H, W = input_shape
+    kernel_h, kernel_w = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+    stride_h, stride_w = (stride, stride) if isinstance(stride, int) else stride
+    padding_h, padding_w = (padding, padding) if isinstance(padding, int) else padding
+    
+    # Calculate output dimensions
+    if ceil_mode:
+        H_out = math.ceil((H + 2 * padding_h - kernel_h) / stride_h + 1)
+        W_out = math.ceil((W + 2 * padding_w - kernel_w) / stride_w + 1)
+    else:
+        H_out = math.floor((H + 2 * padding_h - kernel_h) / stride_h + 1)
+        W_out = math.floor((W + 2 * padding_w - kernel_w) / stride_w + 1)
+    
+    expected_shape = (N, C, H_out, W_out)
+    
+    # Perform quantized avg_pool2d operation
+    output = qF.avg_pool2d(
+        input=input_tensor,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        ceil_mode=ceil_mode,
+        count_include_pad=count_include_pad,
+        divisor_override=divisor_override
+    )
+    
+    # Weak assertions (first round)
+    # 1. Output is quantized
+    assert output.is_quantized, "Output should be quantized"
+    
+    # 2. Output shape is correct
+    assert output.shape == torch.Size(expected_shape), \
+        f"Expected shape {expected_shape}, got {output.shape}"
+    
+    # 3. Output dtype is correct
+    assert output.dtype == input_dtype, \
+        f"Expected dtype {input_dtype}, got {output.dtype}"
+    
+    # 4. No NaN or Inf values
+    assert not torch.any(torch.isnan(output.dequantize())), "Output contains NaN values"
+    assert not torch.any(torch.isinf(output.dequantize())), "Output contains Inf values"
+    
+    # Additional checks for avg_pool2d
+    # Check that quantization parameters are preserved
+    # Note: avg_pool2d propagates input quantization parameters to output
+    assert math.isclose(output.q_scale(), scale, rel_tol=1e-6), \
+        f"Expected scale {scale}, got {output.q_scale()}"
+    assert output.q_zero_point() == zero_point, \
+        f"Expected zero_point {zero_point}, got {output.q_zero_point()}"
+    
+    # Verify pooling effect
+    # For kernel_size=2, stride=2, each 2x2 block should be averaged
+    dequantized_input = input_tensor.dequantize()
+    dequantized_output = output.dequantize()
+    
+    # Check a few sample positions (not all to avoid too strict assertions)
+    # For quantized operations, we need larger tolerance due to integer arithmetic
+    sample_positions = [
+        (0, 0, 0),  # top-left corner
+        (0, 1, 1),  # center
+        (1, 2, 2),  # bottom-right corner of channel 1
+    ]
+    
+    for c, h_out, w_out in sample_positions:
+        if c < C and h_out < H_out and w_out < W_out:
+            # Calculate input region
+            h_start = h_out * stride_h
+            w_start = w_out * stride_w
+            h_end = min(h_start + kernel_h, H)
+            w_end = min(w_start + kernel_w, W)
+            
+            # Extract input region
+            input_region = dequantized_input[0, c, h_start:h_end, w_start:w_end]
+            
+            # Calculate expected average
+            if count_include_pad:
+                # Include padding in average calculation
+                region_size = kernel_h * kernel_w
+            else:
+                # Only include actual input values
+                region_size = (h_end - h_start) * (w_end - w_start)
+            
+            if region_size > 0:
+                expected_value = input_region.sum().item() / region_size
+                actual_value = dequantized_output[0, c, h_out, w_out].item()
+                
+                # For quantized avg_pool2d, use larger tolerance
+                # Integer arithmetic can cause larger errors, especially with scale=1.0
+                # Use scale-dependent tolerance but ensure it's at least 0.6 for scale=1.0
+                tolerance = max(0.6, 0.5 * scale)  # Scale-dependent tolerance with minimum
+                assert abs(actual_value - expected_value) < tolerance, \
+                    f"Pooling mismatch at position (c={c}, h={h_out}, w={w_out}): " \
+                    f"expected {expected_value:.4f}, got {actual_value:.4f}, " \
+                    f"diff={abs(actual_value - expected_value):.4f}, tolerance={tolerance:.4f}"
+    
+    # Verify that output values are within reasonable range
+    output_mean = dequantized_output.mean().item()
+    output_std = dequantized_output.std().item()
+    assert abs(output_mean) < 5.0, f"Output mean {output_mean} seems too large"
+    assert output_std > 0.005, f"Output std {output_std} seems too small"
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: max_pool2d量化操作
+@pytest.mark.parametrize("test_params", [
+    {
+        "input_shape": [1, 3, 6, 6],
+        "input_dtype": torch.quint8,
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 0,
+        "dilation": 1,
+        "ceil_mode": False,
+        "scale": 1.0,
+        "zero_point": 0
+    }
+])
+def test_max_pool2d_quantized_operation(test_params):
+    """Test quantized max_pool2d operation."""
+    # Unpack parameters
+    input_shape = test_params["input_shape"]
+    input_dtype = test_params["input_dtype"]
+    kernel_size = test_params["kernel_size"]
+    stride = test_params["stride"]
+    padding = test_params["padding"]
+    dilation = test_params["dilation"]
+    ceil_mode = test_params["ceil_mode"]
+    scale = test_params["scale"]
+    zero_point = test_params["zero_point"]
+    
+    # Create quantized input tensor
+    input_tensor = create_quantized_tensor(
+        input_shape, dtype=input_dtype, scale=scale, zero_point=zero_point
+    )
+    
+    # Calculate expected output shape
+    # For max_pool2d with kernel_size=2, stride=2, padding=0, dilation=1
+    # Input: [1, 3, 6, 6] -> Output: [1, 3, 3, 3]
+    N, C, H, W = input_shape
+    kernel_h, kernel_w = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+    stride_h, stride_w = (stride, stride) if isinstance(stride, int) else stride
+    padding_h, padding_w = (padding, padding) if isinstance(padding, int) else padding
+    dilation_h, dilation_w = (dilation, dilation) if isinstance(dilation, int) else dilation
+    
+    # Calculate effective kernel size with dilation
+    kernel_h_eff = kernel_h + (kernel_h - 1) * (dilation_h - 1)
+    kernel_w_eff = kernel_w + (kernel_w - 1) * (dilation_w - 1)
+    
+    # Calculate output dimensions
+    if ceil_mode:
+        H_out = math.ceil((H + 2 * padding_h - kernel_h_eff) / stride_h + 1)
+        W_out = math.ceil((W + 2 * padding_w - kernel_w_eff) / stride_w + 1)
+    else:
+        H_out = math.floor((H + 2 * padding_h - kernel_h_eff) / stride_h + 1)
+        W_out = math.floor((W + 2 * padding_w - kernel_w_eff) / stride_w + 1)
+    
+    expected_shape = (N, C, H_out, W_out)
+    
+    # Perform quantized max_pool2d operation
+    output = qF.max_pool2d(
+        input=input_tensor,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        ceil_mode=ceil_mode
+    )
+    
+    # Weak assertions (first round)
+    # 1. Output is quantized
+    assert output.is_quantized, "Output should be quantized"
+    
+    # 2. Output shape is correct
+    assert output.shape == torch.Size(expected_shape), \
+        f"Expected shape {expected_shape}, got {output.shape}"
+    
+    # 3. Output dtype is correct
+    assert output.dtype == input_dtype, \
+        f"Expected dtype {input_dtype}, got {output.dtype}"
+    
+    # 4. No NaN or Inf values
+    assert not torch.any(torch.isnan(output.dequantize())), "Output contains NaN values"
+    assert not torch.any(torch.isinf(output.dequantize())), "Output contains Inf values"
+    
+    # Additional checks for max_pool2d
+    # Check that quantization parameters are preserved
+    # Note: max_pool2d propagates input quantization parameters to output
+    assert math.isclose(output.q_scale(), scale, rel_tol=1e-6), \
+        f"Expected scale {scale}, got {output.q_scale()}"
+    assert output.q_zero_point() == zero_point, \
+        f"Expected zero_point {zero_point}, got {output.q_zero_point()}"
+    
+    # Verify max pooling effect
+    # For kernel_size=2, stride=2, each 2x2 block should take the maximum value
+    dequantized_input = input_tensor.dequantize()
+    dequantized_output = output.dequantize()
+    
+    # Check a few sample positions
+    for c in range(C):
+        for h_out in range(H_out):
+            for w_out in range(W_out):
+                # Calculate input region with dilation
+                h_start = h_out * stride_h - padding_h
+                w_start = w_out * stride_w - padding_w
+                
+                # Get all positions in the kernel region considering dilation
+                input_values = []
+                for kh in range(kernel_h):
+                    for kw in range(kernel_w):
+                        h_pos = h_start + kh * dilation_h
+                        w_pos = w_start + kw * dilation_w
+                        
+                        # Check if position is within input bounds (considering padding)
+                        if 0 <= h_pos < H and 0 <= w_pos < W:
+                            input_values.append(dequantized_input[0, c, h_pos, w_pos].item())
+                
+                if input_values:  # If there are valid input positions
+                    expected_value = max(input_values)
+                    actual_value = dequantized_output[0, c, h_out, w_out].item()
+                    
+                    # Allow some tolerance for quantization errors
+                    assert abs(actual_value - expected_value) < 1e-3, \
+                        f"Max pooling mismatch at position (c={c}, h={h_out}, w={w_out}): " \
+                        f"expected {expected_value}, got {actual_value}"
+    
+    # Verify that output values are within reasonable range
+    # Max pooling should not increase the maximum value
+    input_max = dequantized_input.max().item()
+    output_max = dequantized_output.max().item()
+    assert output_max <= input_max + 1e-6, \
+        f"Max pooling output max {output_max} should not exceed input max {input_max}"
+    
+    # Check that output has expected statistics
+    output_mean = dequantized_output.mean().item()
+    output_std = dequantized_output.std().item()
+    assert abs(output_mean) < 5.0, f"Output mean {output_mean} seems too large"
+    assert output_std > 0.005, f"Output std {output_std} seems too small"
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# G2组测试文件尾部
+
+def test_quantized_linear_weight_packing():
+    """Test that linear operation handles weight packing correctly."""
+    # Initialize quantization engine
+    torch.backends.quantized.engine = 'qnnpack'  # or 'fbgemm'
+    
+    # Create quantized input
+    input_tensor = create_quantized_tensor([2, 4], scale=1.0, zero_point=0)
+    
+    # Create quantized weight
+    weight_tensor = create_quantized_weight([3, 4], scale=1.0, zero_point=0)
+    
+    # Perform linear operation
+    output = qF.linear(input_tensor, weight_tensor)
+    
+    # Basic assertions
+    assert output.is_quantized
+    assert output.shape == (2, 3)
+    assert output.dtype == torch.quint8
+
+# Cleanup and teardown if needed
+@pytest.fixture(autouse=True)
+def cleanup_after_test():
+    """Clean up after each test."""
+    yield
+    # Clear any cached data if needed
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+# ==== BLOCK:FOOTER END ====

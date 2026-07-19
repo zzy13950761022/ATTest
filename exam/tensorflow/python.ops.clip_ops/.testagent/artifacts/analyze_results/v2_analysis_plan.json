@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_clip_ops.py::test_clip_by_value_indexed_slices",
+      "block_id": "CASE_06",
+      "error_type": "AttributeError",
+      "action": "adjust_assertion",
+      "note": "dense_shape返回list类型，没有as_list()方法"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

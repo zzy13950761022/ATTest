@@ -1,0 +1,268 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.signal.mel_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_signal_mel_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_signal_mel_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "默认参数生成权重矩阵",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "num_mel_bins": 20,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 8000,
+          "lower_edge_hertz": 125.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float32",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "non_negative"],
+        "strong": ["peak_values_1", "column_sum_1", "htk_formula"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "参数验证异常测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "num_mel_bins": 0,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 8000,
+          "lower_edge_hertz": 125.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float32",
+          "name": null
+        },
+        {
+          "num_mel_bins": 20,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 0,
+          "lower_edge_hertz": 125.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float32",
+          "name": null
+        },
+        {
+          "num_mel_bins": 20,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 8000,
+          "lower_edge_hertz": -1.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float32",
+          "name": null
+        },
+        {
+          "num_mel_bins": 20,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 8000,
+          "lower_edge_hertz": 4000.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float32",
+          "name": null
+        },
+        {
+          "num_mel_bins": 20,
+          "num_spectrogram_bins": 129,
+          "sample_rate": 8000,
+          "lower_edge_hertz": 125.0,
+          "upper_edge_hertz": 5000.0,
+          "dtype": "float32",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_value_error"],
+        "strong": ["specific_error_message"]
+      },
+      "oracle": "exception_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "不同dtype输出一致性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "num_mel_bins": 10,
+          "num_spectrogram_bins": 65,
+          "sample_rate": 16000,
+          "lower_edge_hertz": 80.0,
+          "upper_edge_hertz": 7600.0,
+          "dtype": "float32",
+          "name": null
+        },
+        {
+          "num_mel_bins": 10,
+          "num_spectrogram_bins": 65,
+          "sample_rate": 16000,
+          "lower_edge_hertz": 80.0,
+          "upper_edge_hertz": 7600.0,
+          "dtype": "float64",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "non_negative"],
+        "strong": ["approx_equal", "peak_values_1", "column_sum_1"]
+      },
+      "oracle": "cross_dtype_consistency",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "边界值最小配置",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "num_mel_bins": 1,
+          "num_spectrogram_bins": 1,
+          "sample_rate": 1000,
+          "lower_edge_hertz": 0.0,
+          "upper_edge_hertz": 500.0,
+          "dtype": "float32",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "non_negative"],
+        "strong": ["peak_values_1", "column_sum_1", "nyquist_boundary"]
+      },
+      "oracle": "boundary_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "HTK公式验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "num_mel_bins": 5,
+          "num_spectrogram_bins": 33,
+          "sample_rate": 8000,
+          "lower_edge_hertz": 125.0,
+          "upper_edge_hertz": 3800.0,
+          "dtype": "float64",
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["htk_formula", "mel_frequency_range", "triangular_filters"]
+      },
+      "oracle": "htk_specification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "num_mel_bins": 40,
+        "num_spectrogram_bins": 257,
+        "sample_rate": 16000,
+        "lower_edge_hertz": 80.0,
+        "upper_edge_hertz": 7600.0,
+        "dtype": "float32",
+        "name": null
+      },
+      "note": "扩展参数：更高采样率和更多频带"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "num_mel_bins": 10,
+        "num_spectrogram_bins": 65,
+        "sample_rate": 16000,
+        "lower_edge_hertz": 80.0,
+        "upper_edge_hertz": 7600.0,
+        "dtype": "bfloat16",
+        "name": null
+      },
+      "note": "扩展dtype：测试bfloat16支持"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "num_mel_bins": 1,
+        "num_spectrogram_bins": 1,
+        "sample_rate": 2000,
+        "lower_edge_hertz": 0.0,
+        "upper_edge_hertz": 1000.0,
+        "dtype": "float32",
+        "name": null
+      },
+      "note": "扩展边界：Nyquist频率边界测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

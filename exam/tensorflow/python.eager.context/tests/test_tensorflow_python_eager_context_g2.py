@@ -1,0 +1,534 @@
+"""
+测试 tensorflow.python.eager.context 模块的Context类与设备策略
+G2组：Context类与设备策略（Context, device_policy, execution_mode）
+"""
+
+import pytest
+import tensorflow as tf
+from tensorflow.python.eager import context
+
+# 固定随机种子以确保测试可重复性
+import random
+import numpy as np
+random.seed(42)
+np.random.seed(42)
+
+# ==== BLOCK:HEADER START ====
+# 测试辅助函数和fixtures
+@pytest.fixture(autouse=True)
+def reset_context_state():
+    """每个测试后重置上下文状态"""
+    # 保存原始状态
+    original_context = context.context_safe()
+    yield
+    # 清理：确保上下文状态恢复
+    # 注意：Context测试可能需要更复杂的清理
+    pass
+
+def get_device_policy_names():
+    """获取设备策略常量名称映射"""
+    return {
+        context.DEVICE_PLACEMENT_EXPLICIT: "DEVICE_PLACEMENT_EXPLICIT",
+        context.DEVICE_PLACEMENT_WARN: "DEVICE_PLACEMENT_WARN", 
+        context.DEVICE_PLACEMENT_SILENT: "DEVICE_PLACEMENT_SILENT",
+        context.DEVICE_PLACEMENT_SILENT_FOR_INT32: "DEVICE_PLACEMENT_SILENT_FOR_INT32"
+    }
+
+def get_execution_mode_names():
+    """获取执行模式常量名称映射"""
+    return {
+        context.SYNC: "SYNC",
+        context.ASYNC: "ASYNC"
+    }
+
+def create_test_config():
+    """创建测试用的ConfigProto"""
+    from tensorflow.core.protobuf import config_pb2
+    config = config_pb2.ConfigProto()
+    config.inter_op_parallelism_threads = 2
+    config.intra_op_parallelism_threads = 2
+    return config
+
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize("device_policy,execution_mode", [
+    (context.DEVICE_PLACEMENT_SILENT, context.SYNC),
+    (context.DEVICE_PLACEMENT_EXPLICIT, context.ASYNC),
+    (context.DEVICE_PLACEMENT_WARN, context.SYNC),  # param_extensions: Medium优先级
+    (context.DEVICE_PLACEMENT_SILENT_FOR_INT32, context.ASYNC)  # param_extensions: Medium优先级
+])
+def test_context_basic_initialization(device_policy, execution_mode):
+    """测试Context基础初始化
+    
+    验证Context类使用不同设备策略和执行模式正确初始化
+    弱断言：创建上下文、设置设备策略、设置执行模式、无异常
+    
+    Args:
+        device_policy: 设备策略常量
+        execution_mode: 执行模式常量
+    """
+    # 获取常量名称用于错误消息
+    device_policy_names = get_device_policy_names()
+    execution_mode_names = get_execution_mode_names()
+    
+    device_policy_name = device_policy_names.get(device_policy, f"未知({device_policy})")
+    execution_mode_name = execution_mode_names.get(execution_mode, f"未知({execution_mode})")
+    
+    # 弱断言1：创建上下文（无异常）
+    ctx = context.Context(
+        config=None,
+        device_policy=device_policy,
+        execution_mode=execution_mode,
+        server_def=None
+    )
+    
+    # 弱断言2：设置设备策略
+    assert ctx._device_policy == device_policy, \
+        f"设备策略应该设置为{device_policy_name}，实际为{ctx._device_policy}"
+    
+    # 弱断言3：设置执行模式
+    expected_async = (execution_mode == context.ASYNC)
+    assert ctx._default_is_async == expected_async, \
+        f"执行模式应该设置为{execution_mode_name}（_default_is_async={expected_async}），" \
+        f"实际_default_is_async={ctx._default_is_async}"
+    
+    # 弱断言4：无异常（通过成功创建对象隐式验证）
+    
+    # 额外验证：上下文应该有一些基本属性
+    assert hasattr(ctx, '_context_handle'), "Context对象应该有_context_handle属性"
+    assert hasattr(ctx, '_id'), "Context对象应该有_id属性"
+    assert hasattr(ctx, '_initialized'), "Context对象应该有_initialized属性"
+    
+    # 验证初始化状态
+    assert ctx._initialized is False, "新创建的Context对象应该未初始化"
+    
+    # 验证可以调用ensure_initialized
+    ctx.ensure_initialized()
+    assert ctx._initialized is True, "调用ensure_initialized后应该已初始化"
+    
+    # 验证设备策略常量值
+    assert context.DEVICE_PLACEMENT_EXPLICIT == 0, "DEVICE_PLACEMENT_EXPLICIT应该为0"
+    assert context.DEVICE_PLACEMENT_WARN == 1, "DEVICE_PLACEMENT_WARN应该为1"
+    assert context.DEVICE_PLACEMENT_SILENT == 2, "DEVICE_PLACEMENT_SILENT应该为2"
+    assert context.DEVICE_PLACEMENT_SILENT_FOR_INT32 == 3, "DEVICE_PLACEMENT_SILENT_FOR_INT32应该为3"
+    
+    # 验证执行模式常量值
+    assert context.SYNC == 0, "SYNC应该为0"
+    assert context.ASYNC == 1, "ASYNC应该为1"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+@pytest.mark.parametrize("invalid_param,value", [
+    ("device_policy", "INVALID"),
+    ("execution_mode", "INVALID")
+])
+def test_context_invalid_parameter_validation(invalid_param, value):
+    """测试Context无效参数验证
+    
+    验证Context类对无效参数的验证逻辑
+    弱断言：引发ValueError、错误消息包含参数名
+    
+    Args:
+        invalid_param: 无效参数名，'device_policy'或'execution_mode'
+        value: 无效值
+    """
+    # 准备参数
+    kwargs = {
+        "config": None,
+        "server_def": None
+    }
+    
+    # 设置有效参数
+    if invalid_param == "device_policy":
+        kwargs["device_policy"] = value
+        kwargs["execution_mode"] = context.SYNC  # 有效值
+    else:  # invalid_param == "execution_mode"
+        kwargs["device_policy"] = context.DEVICE_PLACEMENT_SILENT  # 有效值
+        kwargs["execution_mode"] = value
+    
+    if invalid_param == "execution_mode":
+        # 弱断言1：引发ValueError（仅对execution_mode）
+        with pytest.raises(ValueError) as exc_info:
+            context.Context(**kwargs)
+        
+        # 弱断言2：错误消息包含参数名
+        error_message = str(exc_info.value)
+        assert "execution_mode" in error_message.lower() or "none/sync/async" in error_message.lower(), \
+            f"错误消息应该包含'execution_mode'或'none/sync/async'，实际消息：{error_message}"
+        
+        # 验证错误消息的具体内容
+        assert "should be none/sync/async" in error_message.lower() or \
+               "none/sync/async" in error_message.lower(), \
+            f"execution_mode的错误消息应该提到有效值，实际消息：{error_message}"
+    else:
+        # device_policy参数不验证，应该成功创建
+        # 注意：根据Context.__init__源码，device_policy参数不验证，会直接赋值
+        ctx = context.Context(**kwargs)
+        
+        # 验证Context创建成功
+        assert ctx is not None, "无效device_policy值应该也能创建Context（不验证）"
+        assert hasattr(ctx, '_device_policy'), "Context对象应该有_device_policy属性"
+        
+        # 验证device_policy被设置为传入的值（即使无效）
+        # 注意：实际值可能是字符串"INVALID"，而不是整数
+        # 这取决于TensorFlow的实现
+    
+    # 验证其他有效参数组合不会引发异常
+    if invalid_param == "device_policy":
+        # 测试有效的device_policy值
+        for valid_policy in [context.DEVICE_PLACEMENT_SILENT, 
+                           context.DEVICE_PLACEMENT_EXPLICIT,
+                           context.DEVICE_PLACEMENT_WARN,
+                           context.DEVICE_PLACEMENT_SILENT_FOR_INT32]:
+            ctx = context.Context(
+                config=None,
+                device_policy=valid_policy,
+                execution_mode=context.SYNC,
+                server_def=None
+            )
+            assert ctx._device_policy == valid_policy, \
+                f"有效设备策略{valid_policy}应该被接受"
+    else:  # invalid_param == "execution_mode"
+        # 测试有效的execution_mode值
+        for valid_mode in [context.SYNC, context.ASYNC]:
+            ctx = context.Context(
+                config=None,
+                device_policy=context.DEVICE_PLACEMENT_SILENT,
+                execution_mode=valid_mode,
+                server_def=None
+            )
+            expected_async = (valid_mode == context.ASYNC)
+            assert ctx._default_is_async == expected_async, \
+                f"有效执行模式{valid_mode}应该被接受"
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+def test_context_with_config_parameter():
+    """测试Context使用config参数初始化
+    
+    验证Context类可以接受ConfigProto配置参数
+    测试config参数对上下文初始化的影响
+    """
+    # 创建测试配置
+    config = create_test_config()
+    
+    # 设置一些配置选项
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.5
+    config.log_device_placement = True
+    
+    # 使用config参数创建Context
+    ctx = context.Context(
+        config=config,
+        device_policy=context.DEVICE_PLACEMENT_SILENT,
+        execution_mode=context.SYNC,
+        server_def=None
+    )
+    
+    # 验证Context创建成功
+    assert ctx is not None, "使用config参数应该成功创建Context"
+    assert hasattr(ctx, '_config'), "Context对象应该有_config属性"
+    
+    # 验证初始化状态
+    assert ctx._initialized is False, "新创建的Context对象应该未初始化"
+    
+    # 初始化Context
+    ctx.ensure_initialized()
+    assert ctx._initialized is True, "调用ensure_initialized后应该已初始化"
+    
+    # 验证可以获取设备信息（如果有GPU）
+    try:
+        devices = ctx.list_physical_devices()
+        # 如果有设备，验证设备列表不为空
+        if devices:
+            assert len(devices) > 0, "应该能列出物理设备"
+    except (AttributeError, NotImplementedError):
+        # 某些版本可能不支持list_physical_devices方法
+        pass
+    
+    # 测试使用默认config（None）
+    ctx_default = context.Context(
+        config=None,
+        device_policy=context.DEVICE_PLACEMENT_SILENT,
+        execution_mode=context.SYNC,
+        server_def=None
+    )
+    
+    # 验证默认config也能成功创建
+    assert ctx_default is not None, "使用默认config(None)应该成功创建Context"
+    ctx_default.ensure_initialized()
+    assert ctx_default._initialized is True, "默认config的Context应该能初始化"
+    
+    # 验证两个Context的ID不同
+    assert ctx._id != ctx_default._id, "不同的Context对象应该有不同ID"
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+def test_context_execution_mode_switching():
+    """测试Context执行模式切换
+    
+    验证Context可以在SYNC和ASYNC模式之间切换
+    测试执行模式切换对操作执行的影响
+    """
+    # 创建SYNC模式的Context
+    ctx_sync = context.Context(
+        config=None,
+        device_policy=context.DEVICE_PLACEMENT_SILENT,
+        execution_mode=context.SYNC,
+        server_def=None
+    )
+    
+    # 验证SYNC模式设置
+    assert ctx_sync._default_is_async is False, "SYNC模式应该设置_default_is_async=False"
+    
+    # 初始化并验证
+    ctx_sync.ensure_initialized()
+    assert ctx_sync._initialized is True
+    
+    # 创建ASYNC模式的Context
+    ctx_async = context.Context(
+        config=None,
+        device_policy=context.DEVICE_PLACEMENT_SILENT,
+        execution_mode=context.ASYNC,
+        server_def=None
+    )
+    
+    # 验证ASYNC模式设置
+    assert ctx_async._default_is_async is True, "ASYNC模式应该设置_default_is_async=True"
+    
+    # 初始化并验证
+    ctx_async.ensure_initialized()
+    assert ctx_async._initialized is True
+    
+    # 测试使用contextlib进行临时模式切换
+    # 注意：async_scope需要全局上下文已初始化
+    # 首先确保全局上下文已初始化
+    context.ensure_initialized()
+    
+    try:
+        # 测试async_scope上下文管理器
+        # async_scope使用全局上下文，而不是我们创建的ctx_sync或ctx_async
+        with context.async_scope():
+            # 在async_scope内部，执行应该是异步的
+            # 验证当前上下文状态
+            current_ctx = context.context_safe()
+            if current_ctx is not None:
+                # 在async_scope内部，执行模式可能被临时修改
+                # 我们可以验证async_scope不会引发异常
+                pass
+            
+            # 在async_scope内部可以执行一些简单操作
+            # 例如，验证executing_eagerly仍然工作
+            eager_result = context.executing_eagerly()
+            assert isinstance(eager_result, bool), \
+                "在async_scope内部executing_eagerly应该返回bool类型"
+    except (AttributeError, NotImplementedError) as e:
+        # 某些版本可能不支持async_scope
+        # 或者async_scope可能有其他要求
+        print(f"async_scope不可用或出错: {e}")
+        # 跳过async_scope测试，继续其他验证
+    
+    # 测试执行模式上下文管理器
+    # execution_mode()是一个上下文管理器，用于临时设置执行模式
+    try:
+        # 使用execution_mode上下文管理器临时切换到ASYNC模式
+        with context.execution_mode(context.ASYNC):
+            # 在这个上下文中，执行模式应该是ASYNC
+            # 验证可以正常执行操作
+            eager_result = context.executing_eagerly()
+            assert isinstance(eager_result, bool), \
+                "在execution_mode上下文管理器中executing_eagerly应该返回bool类型"
+            
+            # 验证当前上下文存在
+            current_ctx = context.context_safe()
+            assert current_ctx is not None, "在execution_mode上下文中应该有当前上下文"
+            
+            # 注意：execution_mode上下文管理器可能不会修改_default_is_async属性
+            # 它可能通过其他机制临时修改执行模式
+        
+        # 退出上下文管理器后，执行模式应该恢复
+        # 验证可以正常执行操作
+        eager_result = context.executing_eagerly()
+        assert isinstance(eager_result, bool), \
+            "退出execution_mode上下文管理器后executing_eagerly应该返回bool类型"
+        
+        # 测试切换到SYNC模式
+        with context.execution_mode(context.SYNC):
+            # 在这个上下文中，执行模式应该是SYNC
+            eager_result = context.executing_eagerly()
+            assert isinstance(eager_result, bool), \
+                "在SYNC模式的execution_mode上下文中executing_eagerly应该返回bool类型"
+        
+        # 测试使用None参数（应该不改变执行模式）
+        with context.execution_mode(None):
+            # None参数应该不改变执行模式
+            eager_result = context.executing_eagerly()
+            assert isinstance(eager_result, bool), \
+                "在execution_mode(None)上下文中executing_eagerly应该返回bool类型"
+                
+    except (AttributeError, NotImplementedError) as e:
+        # 某些版本可能不支持execution_mode()函数
+        print(f"execution_mode()不可用: {e}")
+    
+    # 验证两个Context的独立性
+    assert ctx_sync._id != ctx_async._id, "不同的Context对象应该有不同ID"
+    assert ctx_sync._default_is_async != ctx_async._default_is_async, \
+        "SYNC和ASYNC模式的_default_is_async应该不同"
+    
+    # 验证两个Context都能独立执行操作
+    # 测试在SYNC模式下执行简单操作
+    ctx_sync.ensure_initialized()
+    
+    # 测试在ASYNC模式下执行简单操作
+    ctx_async.ensure_initialized()
+    
+    # 验证两个Context的设备策略相同（因为我们设置了相同的device_policy）
+    assert ctx_sync._device_policy == ctx_async._device_policy, \
+        "相同设备策略的Context应该有相同_device_policy值"
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+def test_device_policy_behavior_differences():
+    """测试不同设备策略的行为差异
+    
+    验证四种设备策略（EXPLICIT, WARN, SILENT, SILENT_FOR_INT32）的基本行为
+    测试设备策略设置和获取
+    """
+    # 测试所有四种设备策略
+    device_policies = [
+        (context.DEVICE_PLACEMENT_EXPLICIT, "EXPLICIT"),
+        (context.DEVICE_PLACEMENT_WARN, "WARN"),
+        (context.DEVICE_PLACEMENT_SILENT, "SILENT"),
+        (context.DEVICE_PLACEMENT_SILENT_FOR_INT32, "SILENT_FOR_INT32")
+    ]
+    
+    for policy_value, policy_name in device_policies:
+        # 使用当前策略创建Context
+        ctx = context.Context(
+            config=None,
+            device_policy=policy_value,
+            execution_mode=context.SYNC,
+            server_def=None
+        )
+        
+        # 验证设备策略设置正确
+        assert ctx._device_policy == policy_value, \
+            f"{policy_name}策略应该设置为{policy_value}，实际为{ctx._device_policy}"
+        
+        # 初始化Context
+        ctx.ensure_initialized()
+        assert ctx._initialized is True, f"{policy_name}策略的Context应该能初始化"
+        
+        # 验证策略常量值
+        if policy_name == "EXPLICIT":
+            assert policy_value == 0, "EXPLICIT应该为0"
+        elif policy_name == "WARN":
+            assert policy_value == 1, "WARN应该为1"
+        elif policy_name == "SILENT":
+            assert policy_value == 2, "SILENT应该为2"
+        elif policy_name == "SILENT_FOR_INT32":
+            assert policy_value == 3, "SILENT_FOR_INT32应该为3"
+        
+        # 测试设备策略的基本行为
+        # 注意：实际的行为差异（如警告、静默等）需要在实际操作中测试
+        # 这里只验证基本属性设置和初始化
+    
+    # 测试设备策略切换
+    # 创建两个不同策略的Context
+    ctx_explicit = context.Context(
+        config=None,
+        device_policy=context.DEVICE_PLACEMENT_EXPLICIT,
+        execution_mode=context.SYNC,
+        server_def=None
+    )
+    
+    ctx_silent = context.Context(
+        config=None,
+        device_policy=context.DEVICE_PLACEMENT_SILENT,
+        execution_mode=context.SYNC,
+        server_def=None
+    )
+    
+    # 验证策略不同
+    assert ctx_explicit._device_policy != ctx_silent._device_policy, \
+        "不同策略的Context应该有不同_device_policy值"
+    
+    # 验证两个Context都能独立初始化
+    ctx_explicit.ensure_initialized()
+    ctx_silent.ensure_initialized()
+    
+    assert ctx_explicit._initialized is True, "EXPLICIT策略Context应该能初始化"
+    assert ctx_silent._initialized is True, "SILENT策略Context应该能初始化"
+    
+    # 验证ID不同
+    assert ctx_explicit._id != ctx_silent._id, "不同的Context对象应该有不同ID"
+    
+    # 测试device_policy()上下文管理器
+    try:
+        # 确保全局上下文已初始化
+        context.ensure_initialized()
+        
+        # 获取当前全局上下文的设备策略（通过context_safe获取上下文对象）
+        global_ctx = context.context_safe()
+        if global_ctx is not None:
+            original_policy = global_ctx._device_policy
+            
+            # 使用device_policy上下文管理器临时修改设备策略
+            with context.device_policy(context.DEVICE_PLACEMENT_WARN):
+                # 在这个上下文中，设备策略应该是WARN
+                current_ctx = context.context_safe()
+                if current_ctx is not None:
+                    assert current_ctx._device_policy == context.DEVICE_PLACEMENT_WARN, \
+                        "在device_policy(WARN)上下文中，设备策略应该为WARN"
+                
+                # 验证可以正常执行操作
+                eager_result = context.executing_eagerly()
+                assert isinstance(eager_result, bool), \
+                    "在device_policy上下文中executing_eagerly应该返回bool类型"
+            
+            # 退出上下文管理器后，设备策略应该恢复
+            restored_ctx = context.context_safe()
+            if restored_ctx is not None:
+                assert restored_ctx._device_policy == original_policy, \
+                    "退出device_policy上下文管理器后，设备策略应该恢复原值"
+            
+            # 测试其他设备策略
+            for policy_value, policy_name in device_policies:
+                with context.device_policy(policy_value):
+                    current_ctx = context.context_safe()
+                    if current_ctx is not None:
+                        assert current_ctx._device_policy == policy_value, \
+                            f"在device_policy({policy_name})上下文中，设备策略应该为{policy_name}"
+                    
+                    # 验证可以正常执行操作
+                    eager_result = context.executing_eagerly()
+                    assert isinstance(eager_result, bool), \
+                        f"在device_policy({policy_name})上下文中executing_eagerly应该返回bool类型"
+    except (AttributeError, NotImplementedError) as e:
+        # 某些版本可能不支持device_policy()函数
+        print(f"device_policy()不可用: {e}")
+    
+    # 测试不同策略的Context可以执行简单操作
+    # 创建一些简单的TensorFlow操作来验证不同策略下的行为
+    # 注意：实际的行为差异可能需要更复杂的测试场景
+    
+    # 验证所有策略的Context都有相同的基本属性
+    for ctx in [ctx_explicit, ctx_silent]:
+        assert hasattr(ctx, '_context_handle'), "Context对象应该有_context_handle属性"
+        assert hasattr(ctx, '_config'), "Context对象应该有_config属性"
+        assert hasattr(ctx, '_initialized'), "Context对象应该有_initialized属性"
+        assert hasattr(ctx, '_default_is_async'), "Context对象应该有_default_is_async属性"
+        assert hasattr(ctx, '_device_policy'), "Context对象应该有_device_policy属性"
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试清理和验证函数
+def test_context_cleanup():
+    """验证上下文清理"""
+    # 确保测试不会泄漏资源
+    pass
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

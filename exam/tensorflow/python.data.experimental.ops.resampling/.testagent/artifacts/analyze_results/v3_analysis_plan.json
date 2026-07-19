@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRejectionResample.test_basic_functionality",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock配置错误，result不是预期的transformed_dataset"
+    },
+    {
+      "test": "TestRejectionResample.test_deprecation_warning",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "弃用警告未正确捕获，mock路径可能不正确"
+    },
+    {
+      "test": "TestRejectionResample.test_distribution_adjustment",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_rejection_resample未被调用，需要检查mock配置"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRejectionResample.test_optional_initial_dist",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

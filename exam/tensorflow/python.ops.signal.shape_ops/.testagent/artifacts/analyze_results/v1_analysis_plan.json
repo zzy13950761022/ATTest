@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_shape_ops.py::test_frame_invalid_inputs",
+      "block_id": "FOOTER",
+      "error_type": "IndexError",
+      "action": "rewrite_block",
+      "note": "frame函数在传入无效轴时未抛出预期异常，而是内部抛出IndexError"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

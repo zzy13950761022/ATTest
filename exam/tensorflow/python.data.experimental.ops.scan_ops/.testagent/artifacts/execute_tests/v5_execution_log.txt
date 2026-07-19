@@ -1,0 +1,135 @@
+=== Run Tests ===
+.F.                                                                      [100%]
+================================== FAILURES ===================================
+_____________________ test_scan_nested_structure_matching _____________________
+
+    def test_scan_nested_structure_matching():
+        """Test scan with nested dictionary state structure.
+    
+        This test verifies:
+        1. scan() works with nested state structures
+        2. State structure is preserved during updates
+        3. No exceptions are raised with proper structure matching
+        4. The scan function correctly updates nested state
+        """
+        # Create a nested initial state (dictionary with tensor values)
+        initial_state = {
+            'a': tf.constant(1.0, dtype=tf.float32),
+            'b': tf.constant(2.0, dtype=tf.float32)
+        }
+    
+        # Define a scan function that updates nested state
+        def scan_func(state, element):
+            # state is a dict with keys 'a' and 'b'
+            new_state = {
+                'a': state['a'] + element,
+                'b': state['b'] * element
+            }
+            # Output is the 'a' value from new state
+            output_element = new_state['a']
+            return new_state, output_element
+    
+        # Use warnings.catch_warnings to capture deprecation warnings
+        import warnings
+    
+        # Clear any existing warnings
+        warnings.simplefilter("always")
+    
+        # Capture warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+    
+            # Call scan function - this may trigger deprecation warning
+            transform_fn = scan(initial_state, scan_func)
+    
+            # Check for deprecation warning - but don't fail if not present
+            # Some TensorFlow versions may not emit the warning immediately
+            if w:
+                # If warnings were captured, check if any are deprecation warnings
+                deprecation_warnings = [warning for warning in w
+                                       if issubclass(warning.category, DeprecationWarning) or
+                                       "deprecated" in str(warning.message).lower()]
+                if deprecation_warnings:
+                    # Verify it's about scan function
+                    scan_warnings = [warning for warning in deprecation_warnings
+                                   if "scan" in str(warning.message).lower()]
+                    if scan_warnings:
+                        # Good, we have deprecation warning about scan
+                        pass
+    
+        # Verify the returned function is callable
+        assert callable(transform_fn), "scan() should return a callable function"
+    
+        # Create a test dataset with simple batch data
+        data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+        dataset = tf.data.Dataset.from_tensor_slices(data)
+    
+        # Apply the transformation
+        transformed_dataset = transform_fn(dataset)
+    
+        # Verify the transformed dataset is a valid dataset
+        assert isinstance(transformed_dataset, tf.data.Dataset), \
+            "Transformed result should be a Dataset"
+    
+        # Collect results
+        results = list(transformed_dataset.as_numpy_iterator())
+    
+        # Verify we got the expected number of results
+        assert len(results) == len(data), \
+            f"Expected {len(data)} results, got {len(results)}"
+    
+        # Manually track state to verify correctness
+        state = {'a': 1.0, 'b': 2.0}
+        expected_results = []
+    
+        for batch in data:
+            for element in batch:
+                # Update state according to scan_func logic
+                new_state = {
+                    'a': state['a'] + element,
+                    'b': state['b'] * element
+                }
+                output = new_state['a']
+                state = new_state
+                expected_results.append(output)
+    
+        # Verify results match expected
+        # Note: The dataset yields batches, but scan processes elements individually
+        # So we need to flatten the results
+        actual_flat = []
+        for batch_result in results:
+            if isinstance(batch_result, np.ndarray):
+                actual_flat.extend(batch_result.flatten())
+            else:
+                actual_flat.append(batch_result)
+    
+        assert len(actual_flat) == len(expected_results), \
+            f"Expected {len(expected_results)} flattened results, got {len(actual_flat)}"
+    
+        for i, (actual, expected) in enumerate(zip(actual_flat, expected_results)):
+>           np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6,
+                                      err_msg=f"Result mismatch at flattened index {i}")
+E           AssertionError: 
+E           Not equal to tolerance rtol=1e-06, atol=1e-06
+E           Result mismatch at flattened index 1
+E           Mismatched elements: 1 / 1 (100%)
+E           Max absolute difference: 1.
+E           Max relative difference: 0.25
+E            x: array(3., dtype=float32)
+E            y: array(4.)
+
+tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py:252: AssertionError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py     142     65     48      7    46%   35, 39-40, 44-46, 51-56, 62-63, 81-83, 100->114, 102-109, 166-172, 189->203, 191-198, 246, 251->exit, 289-302, 314-343, 348, 353-354
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 142     65     48      7    46%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_nested_structure_matching
+1 failed, 2 passed in 1.66s
+
+Error: exit 1

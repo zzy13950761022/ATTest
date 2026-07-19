@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_composite_tensor_support[3-dtype0-shape0-SparseTensor-composite_tensor]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "SparseTensor无法转换为Tensor，需要调整CompositeTensor处理逻辑"
+    },
+    {
+      "test": "test_composite_tensor_support[2-dtype1-shape1-IndexedSlices-indexed_slices]",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "IndexedSlices处理函数接收list而非tensor，需要修复参数传递"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_fallback_to_while_loop_mechanism[6-dtype0-shape0-True-2-fallback_mechanism]",
+      "reason": "错误类型重复（mock路径问题），跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

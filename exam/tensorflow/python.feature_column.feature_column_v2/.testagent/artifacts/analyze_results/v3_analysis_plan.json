@@ -1,0 +1,63 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 10,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_categorical_column_with_vocabulary_list_basic_creation[department-vocabulary_list0-None--1-0-False]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "VarLenFeature没有shape属性，需要调整断言逻辑"
+    },
+    {
+      "test": "test_categorical_column_with_vocabulary_list_basic_creation[category-vocabulary_list1-dtype1-None-2-False]",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "num_oov_buckets和default_value逻辑错误，TensorFlow内部处理与测试预期不符"
+    },
+    {
+      "test": "test_bucketized_column_boundary_bucketing[age-boundaries0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "parse_example_spec是属性而不是方法，需要调整断言"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_bucketized_column_boundary_bucketing[income-boundaries1]",
+      "reason": "与age-boundaries0相同错误类型，修复CASE_03后应同时解决"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[department-16-mean-True]",
+      "reason": "parse_example_spec属性问题，将在CASE_04中修复"
+    },
+    {
+      "test": "test_embedding_column_dimension_validation[product-32-sqrtn-False]",
+      "reason": "与department-16-mean-True相同错误类型，修复CASE_04后应同时解决"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape1-dtype1-None-None-shape-ValueError]",
+      "reason": "测试代码本身错误，在测试其他参数时意外测试了dtype=object"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape2-invalid-None-None-dtype-expected_exception_type2]",
+      "reason": "错误消息检查失败，需要调整断言逻辑"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape3-dtype3-wrong_type-None-default_value-TypeError]",
+      "reason": "与test-shape1相同错误类型，测试代码本身错误"
+    },
+    {
+      "test": "test_numeric_column_error_handling[test-shape4-dtype4-None-not_callable-normalizer_fn-TypeError]",
+      "reason": "与test-shape1相同错误类型，测试代码本身错误"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

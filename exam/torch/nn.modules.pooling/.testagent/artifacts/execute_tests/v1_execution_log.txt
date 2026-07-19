@@ -1,0 +1,53 @@
+=== Run Tests ===
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+____________________ TestBasicPooling.test_avgpool2d_basic _____________________
+
+self = <test_torch_nn_modules_pooling_basic.TestBasicPooling object at 0x127b9ec80>
+set_random_seed = 42
+create_test_tensor = <function create_test_tensor.<locals>._create at 0x127bd3d90>
+
+    def test_avgpool2d_basic(self, set_random_seed, create_test_tensor):
+        """TC-02: AvgPool2d基本功能
+    
+        Test basic functionality of AvgPool2d with standard parameters.
+        Weak asserts: instance_created, forward_works, output_shape_correct, output_dtype_preserved
+        """
+        # Test parameters from test_plan.json
+        kernel_size = (2, 2)
+        stride = (2, 2)
+        padding = 0
+        dilation = 1
+        ceil_mode = False
+        input_shape = (4, 3, 8, 8)  # (batch, channels, height, width)
+        dtype = torch.float32
+        device = 'cpu'
+    
+        # Create test input tensor
+        x = create_test_tensor(input_shape, dtype=dtype, device=device)
+    
+        # 1. Test instance creation
+>       pool_layer = nn.AvgPool2d(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            ceil_mode=ceil_mode
+        )
+E       TypeError: AvgPool2d.__init__() got an unexpected keyword argument 'dilation'
+
+tests/test_torch_nn_modules_pooling_basic.py:141: TypeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                           Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_pooling_basic.py      87     26      4      0    67%   150-216
+------------------------------------------------------------------------------------------
+TOTAL                                             87     26      4      0    67%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_pooling_basic.py::TestBasicPooling::test_avgpool2d_basic
+1 failed, 1 passed in 0.54s
+
+Error: exit 1

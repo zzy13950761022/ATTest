@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_hub_load.py::test_github_repository_standard_loading",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "mock模块未正确注入到导入的hubconf模块中，导致找不到resnet50可调用对象"
+    },
+    {
+      "test": "tests/test_torch_hub_load.py::test_local_path_loading",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "torch.hub._import_module调用参数与预期不符，需要调整断言或修复mock"
+    },
+    {
+      "test": "tests/test_torch_hub_trust.py::test_trust_mechanism",
+      "block_id": "CASE_03",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "与CASE_01类似的问题，mock模块未正确注入，找不到trust_model可调用对象"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_hub_load.py::test_nonexistent_model_entrypoint",
+      "reason": "错误类型重复（mock配置问题），属于FOOTER中的辅助测试，优先修复核心用例"
+    },
+    {
+      "test": "tests/test_torch_hub_trust.py::test_invalid_trust_repo_value",
+      "reason": "需要更完整的网络mock，属于FOOTER中的边缘情况测试，优先修复核心用例"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

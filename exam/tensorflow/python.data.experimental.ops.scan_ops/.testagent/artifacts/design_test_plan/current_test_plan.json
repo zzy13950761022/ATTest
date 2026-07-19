@@ -1,0 +1,230 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.data.experimental.ops.scan_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_data_experimental_ops_scan_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_g1.py",
+      "G2": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心扫描功能",
+      "entrypoints": ["scan"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试scan函数的基本功能和状态累积"
+    },
+    {
+      "group_id": "G2",
+      "title": "错误处理与边界条件",
+      "entrypoints": ["scan"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_06"],
+      "note": "测试异常场景和边界条件处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本扫描功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "initial_state_type": "scalar",
+          "scan_func_type": "simple_sum",
+          "input_data": "range_5",
+          "requires_mock": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_function", "function_callable", "deprecation_warning", "basic_state_update"],
+        "strong": ["exact_state_values", "output_sequence_correct", "deterministic_behavior", "structure_preservation"]
+      },
+      "oracle": "manual_state_tracking",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "状态结构匹配验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "initial_state_type": "nested_dict",
+          "scan_func_type": "nested_update",
+          "input_data": "simple_batch",
+          "requires_mock": false
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_function", "structure_match", "nested_state_consistency", "no_exception"],
+        "strong": ["deep_structure_equality", "type_preservation", "recursive_update_correct", "all_keys_present"]
+      },
+      "oracle": "manual_structure_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "无效参数异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "initial_state_type": "invalid_none",
+          "scan_func_type": "valid_func",
+          "input_data": "none",
+          "requires_mock": false
+        },
+        {
+          "initial_state_type": "valid_scalar",
+          "scan_func_type": "invalid_args_count",
+          "input_data": "none",
+          "requires_mock": false
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type_correct", "error_message_contains", "no_side_effects"],
+        "strong": ["exception_context_preserved", "stack_trace_meaningful", "resource_cleanup", "state_unchanged"]
+      },
+      "oracle": "tensorflow_error_patterns",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "边界条件处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "initial_state_type": "empty_tensor",
+          "scan_func_type": "identity",
+          "input_data": "empty_dataset",
+          "requires_mock": true
+        },
+        {
+          "initial_state_type": "zero_scalar",
+          "scan_func_type": "simple_sum",
+          "input_data": "single_element",
+          "requires_mock": false
+        }
+      ],
+      "asserts": {
+        "weak": ["no_crash", "returns_function", "handles_empty", "basic_sanity"],
+        "strong": ["empty_result_correct", "zero_state_preserved", "single_pass_works", "edge_case_robustness"]
+      },
+      "oracle": "edge_case_manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "initial_state_type": "vector_3d",
+        "scan_func_type": "vector_accumulate",
+        "input_data": "matrix_batch",
+        "requires_mock": false
+      },
+      "note": "扩展为向量状态和矩阵输入"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "initial_state_type": "dict_multiple",
+        "scan_func_type": "dict_update_complex",
+        "input_data": "dict_sequence",
+        "requires_mock": false
+      },
+      "note": "扩展为复杂字典结构和序列输入"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "initial_state_type": "deep_nested",
+        "scan_func_type": "deep_update",
+        "input_data": "nested_batch",
+        "requires_mock": false
+      },
+      "note": "扩展为深度嵌套结构测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "initial_state_type": "valid_scalar",
+        "scan_func_type": "invalid_return_structure",
+        "input_data": "none",
+        "requires_mock": false
+      },
+      "note": "扩展为返回结构不匹配异常"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "initial_state_type": "nan_inf",
+        "scan_func_type": "numeric_safe",
+        "input_data": "extreme_values",
+        "requires_mock": false
+      },
+      "note": "扩展为极端数值处理"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06"]
+}

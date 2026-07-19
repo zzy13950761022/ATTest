@@ -1,0 +1,36 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_scan_invalid_parameters[None-valid_scan_func-expected_error0]",
+      "block_id": "CASE_03",
+      "error_type": "Failed: DID NOT RAISE",
+      "action": "adjust_assertion",
+      "note": "scan()函数未按预期抛出异常，需要调整异常断言或检查实际错误类型"
+    },
+    {
+      "test": "test_scan_edge_cases[initial_state0-identity_scan_func-empty_dataset-handles_empty]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "未捕获到弃用警告，需要调整警告捕获机制或断言"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_scan_invalid_parameters[initial_state1-invalid_args_scan_func-expected_error1]",
+      "reason": "错误类型重复，与第一个参数化测试相同问题"
+    },
+    {
+      "test": "test_scan_edge_cases[initial_state1-valid_scan_func-single_element_dataset-single_pass_works]",
+      "reason": "错误类型重复，与第一个参数化测试相同问题"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

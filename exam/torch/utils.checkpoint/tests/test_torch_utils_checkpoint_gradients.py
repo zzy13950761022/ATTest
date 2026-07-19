@@ -1,0 +1,411 @@
+import torch
+import pytest
+import numpy as np
+from torch.utils.checkpoint import checkpoint
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions for gradient and RNG tests
+
+import torch
+import pytest
+import numpy as np
+from unittest.mock import patch, MagicMock
+from torch.utils.checkpoint import checkpoint
+
+def set_random_seed(seed=42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+def simple_linear(x, weight=None, bias=None):
+    """Simple linear function for testing."""
+    if weight is None:
+        weight = torch.ones_like(x)
+    if bias is None:
+        bias = torch.zeros_like(x)
+    return x * weight + bias
+
+def random_operation(x, seed=None):
+    """Function with random operations for RNG testing."""
+    if seed is not None:
+        torch.manual_seed(seed)
+    return x + torch.randn_like(x) * 0.1
+
+def nested_output(x):
+    """Function returning nested structure."""
+    return {
+        'tensor': x,
+        'list': [x * 2, x * 3],
+        'tuple': (x + 1, x - 1),
+        'scalar': 42,
+        'nested': {'inner': x * 0.5}
+    }
+
+def approx_equal(a, b, rtol=1e-5, atol=1e-8):
+    """Check if two tensors are approximately equal."""
+    if isinstance(a, torch.Tensor) and isinstance(b, torch.Tensor):
+        return torch.allclose(a, b, rtol=rtol, atol=atol)
+    return False
+
+def check_output_structure(output1, output2):
+    """Check if two nested structures have same structure and tensor values."""
+    if isinstance(output1, torch.Tensor) and isinstance(output2, torch.Tensor):
+        return approx_equal(output1, output2)
+    elif isinstance(output1, (list, tuple)) and isinstance(output2, (list, tuple)):
+        if len(output1) != len(output2):
+            return False
+        return all(check_output_structure(o1, o2) for o1, o2 in zip(output1, output2))
+    elif isinstance(output1, dict) and isinstance(output2, dict):
+        if set(output1.keys()) != set(output2.keys()):
+            return False
+        return all(check_output_structure(output1[k], output2[k]) for k in output1.keys())
+    else:
+        # For non-tensor values, check equality
+        return output1 == output2
+
+@pytest.fixture
+def random_tensor():
+    """Fixture providing random tensor for tests."""
+    set_random_seed(42)
+    return torch.randn(2, 3, dtype=torch.float32)
+
+@pytest.fixture
+def requires_grad_tensor():
+    """Fixture providing tensor with requires_grad=True."""
+    set_random_seed(42)
+    x = torch.randn(2, 3, dtype=torch.float32)
+    x.requires_grad_(True)
+    return x
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: 梯度正确性验证
+# Note: Full implementation is in test_torch_utils_checkpoint_basic.py
+# This is a minimal test to ensure gradient functionality in this file
+
+def test_checkpoint_gradient_smoke():
+    """Smoke test for gradient functionality in gradients test file."""
+    # Set random seed
+    set_random_seed(42)
+    
+    # Create input tensor with requires_grad
+    x = torch.randn(2, 3, dtype=torch.float32)
+    x.requires_grad_(True)
+    
+    # Simple function
+    def func(tensor):
+        return (tensor * 2.0).sum()
+    
+    # Compute direct gradient
+    direct_output = func(x)
+    direct_output.backward()
+    direct_grad = x.grad.clone()
+    x.grad = None  # Reset gradient
+    
+    # Compute checkpoint gradient
+    checkpoint_output = checkpoint(func, x, use_reentrant=True)
+    checkpoint_output.backward()
+    checkpoint_grad = x.grad.clone()
+    
+    # Basic assertions
+    assert checkpoint_grad is not None, "Checkpoint gradient is None"
+    assert direct_grad is not None, "Direct gradient is None"
+    assert checkpoint_grad.shape == x.shape, "Gradient shape mismatch"
+    assert torch.allclose(checkpoint_grad, direct_grad, rtol=1e-5, atol=1e-8), \
+        "Checkpoint gradient differs from direct gradient"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: RNG状态管理验证
+@pytest.mark.parametrize("function_type,input_shape,dtype,device,use_reentrant,preserve_rng_state", [
+    # Base case from test plan
+    ("random_operation", [2, 3], "float32", "cpu", True, True),
+])
+def test_checkpoint_rng_state_management(
+    function_type, input_shape, dtype, device, use_reentrant, preserve_rng_state
+):
+    """
+    Test RNG state management in checkpointed functions.
+    """
+    # Skip CUDA tests if CUDA not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
+    
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create input tensor
+    if dtype == "float32":
+        torch_dtype = torch.float32
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+    
+    x = torch.randn(*input_shape, dtype=torch_dtype)
+    if device == "cuda":
+        x = x.cuda()
+    
+    # Define function based on type
+    if function_type == "random_operation":
+        def func(tensor):
+            # Use a fresh random operation each time
+            return tensor + torch.randn_like(tensor) * 0.1
+    else:
+        raise ValueError(f"Unsupported function_type: {function_type}")
+    
+    # Track RNG state calls
+    get_rng_state_calls = []
+    set_rng_state_calls = []
+    
+    # Save original functions
+    original_get_rng_state = torch.get_rng_state
+    original_set_rng_state = torch.set_rng_state
+    
+    def mock_get_rng_state():
+        get_rng_state_calls.append('cpu')
+        return original_get_rng_state()
+    
+    def mock_set_rng_state(state):
+        set_rng_state_calls.append('cpu')
+        return original_set_rng_state(state)
+    
+    # Track CUDA RNG calls if available
+    if torch.cuda.is_available():
+        original_cuda_get_rng_state = torch.cuda.get_rng_state
+        original_cuda_set_rng_state = torch.cuda.set_rng_state
+        cuda_get_rng_state_calls = []
+        cuda_set_rng_state_calls = []
+        
+        def mock_cuda_get_rng_state(device='cuda'):
+            cuda_get_rng_state_calls.append(device)
+            return original_cuda_get_rng_state(device)
+        
+        def mock_cuda_set_rng_state(state, device='cuda'):
+            cuda_set_rng_state_calls.append(device)
+            return original_cuda_set_rng_state(state, device)
+    
+    # Compute direct result with fixed seed
+    set_random_seed(42)
+    direct_result = func(x)
+    
+    # Reset seed and compute checkpoint result with mocked RNG functions
+    set_random_seed(42)
+    
+    # Apply patches
+    with patch('torch.get_rng_state', side_effect=mock_get_rng_state), \
+         patch('torch.set_rng_state', side_effect=mock_set_rng_state):
+        
+        if torch.cuda.is_available():
+            with patch('torch.cuda.get_rng_state', side_effect=mock_cuda_get_rng_state), \
+                 patch('torch.cuda.set_rng_state', side_effect=mock_cuda_set_rng_state):
+                
+                # For RNG state testing, we need to trigger backward pass
+                # to ensure set_rng_state is called
+                x_for_grad = x.clone().requires_grad_(True)
+                checkpoint_result = checkpoint(
+                    func, x_for_grad,
+                    use_reentrant=use_reentrant,
+                    preserve_rng_state=preserve_rng_state
+                )
+                
+                # Trigger backward pass to invoke set_rng_state
+                if isinstance(checkpoint_result, torch.Tensor):
+                    checkpoint_result.sum().backward()
+        else:
+            # For CPU-only case
+            x_for_grad = x.clone().requires_grad_(True)
+            checkpoint_result = checkpoint(
+                func, x_for_grad,
+                use_reentrant=use_reentrant,
+                preserve_rng_state=preserve_rng_state
+            )
+            
+            # Trigger backward pass to invoke set_rng_state
+            if isinstance(checkpoint_result, torch.Tensor):
+                checkpoint_result.sum().backward()
+    
+    # WEAK ASSERTIONS (epoch 4)
+    # 1. RNG state consistent when preserve_rng_state=True
+    if preserve_rng_state:
+        # Check that RNG state was saved and restored
+        # Note: checkpoint calls get_rng_state in forward pass
+        assert len(get_rng_state_calls) > 0, "get_rng_state should be called in forward pass"
+        
+        # set_rng_state is called in backward pass via torch.random.fork_rng
+        # Since we triggered backward pass, it should be called
+        assert len(set_rng_state_calls) > 0, \
+            f"set_rng_state should be called to restore RNG state in backward pass. " \
+            f"Got {len(set_rng_state_calls)} calls"
+        
+        if torch.cuda.is_available() and device == "cuda":
+            assert len(cuda_get_rng_state_calls) > 0, "cuda_get_rng_state should be called"
+            assert len(cuda_set_rng_state_calls) > 0, "cuda_set_rng_state should be called"
+    
+    # 2. Output deterministic (same seed should produce same result)
+    # Reset seed and compute direct result again
+    set_random_seed(42)
+    direct_result_again = func(x)
+    
+    # Check that direct computation is deterministic
+    assert torch.allclose(direct_result, direct_result_again, rtol=1e-5, atol=1e-8), \
+        "Direct computation should be deterministic with same seed"
+    
+    # 3. No exception raised (implicitly passed if we get here)
+    
+    # Debug info for RNG calls
+    print(f"RNG calls - get: {len(get_rng_state_calls)}, set: {len(set_rng_state_calls)}")
+    
+    # Note: Strong assertions (rng_state_precision, multi_device_rng, nested_rng)
+    # will be added in final round when assertion_level is "strong"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: 嵌套输出结构处理
+@pytest.mark.parametrize("function_type,input_shape,dtype,device,use_reentrant,preserve_rng_state", [
+    # Base case from test plan
+    ("nested_output", [2, 3], "float32", "cpu", True, True),
+])
+def test_checkpoint_nested_output_structure(
+    function_type, input_shape, dtype, device, use_reentrant, preserve_rng_state
+):
+    """
+    Test checkpoint with functions returning nested output structures.
+    """
+    # Skip CUDA tests if CUDA not available
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
+    
+    # Set random seed for reproducibility
+    set_random_seed(42)
+    
+    # Create input tensor
+    if dtype == "float32":
+        torch_dtype = torch.float32
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+    
+    x = torch.randn(*input_shape, dtype=torch_dtype)
+    if device == "cuda":
+        x = x.cuda()
+    
+    # Define function based on type
+    if function_type == "nested_output":
+        def func(tensor):
+            return nested_output(tensor)
+    else:
+        raise ValueError(f"Unsupported function_type: {function_type}")
+    
+    # Compute direct result
+    direct_result = func(x)
+    
+    # Compute checkpoint result
+    checkpoint_result = checkpoint(
+        func, x,
+        use_reentrant=use_reentrant,
+        preserve_rng_state=preserve_rng_state
+    )
+    
+    # WEAK ASSERTIONS (epoch 2)
+    # 1. Output structure matches
+    # Check that both results have the same type
+    assert type(checkpoint_result) == type(direct_result), \
+        f"Checkpoint output type {type(checkpoint_result)} != direct type {type(direct_result)}"
+    
+    # For nested structures, check structure recursively
+    if isinstance(direct_result, dict):
+        # Check keys match
+        assert set(checkpoint_result.keys()) == set(direct_result.keys()), \
+            f"Checkpoint keys {set(checkpoint_result.keys())} != direct keys {set(direct_result.keys())}"
+        
+        # Check each value
+        for key in direct_result.keys():
+            checkpoint_val = checkpoint_result[key]
+            direct_val = direct_result[key]
+            
+            # Check type matches
+            assert type(checkpoint_val) == type(direct_val), \
+                f"Type mismatch for key '{key}': {type(checkpoint_val)} != {type(direct_val)}"
+            
+            # For tensors, check shape and dtype
+            if isinstance(direct_val, torch.Tensor):
+                assert checkpoint_val.shape == direct_val.shape, \
+                    f"Shape mismatch for key '{key}': {checkpoint_val.shape} != {direct_val.shape}"
+                assert checkpoint_val.dtype == direct_val.dtype, \
+                    f"Dtype mismatch for key '{key}': {checkpoint_val.dtype} != {direct_val.dtype}"
+    
+    # 2. Tensor values in structure are preserved
+    # Extract all tensors from nested structure for comparison
+    def extract_tensors(obj, path=""):
+        tensors = []
+        if isinstance(obj, torch.Tensor):
+            tensors.append((path, obj))
+        elif isinstance(obj, (list, tuple)):
+            for i, item in enumerate(obj):
+                tensors.extend(extract_tensors(item, f"{path}[{i}]"))
+        elif isinstance(obj, dict):
+            for key, value in obj.items():
+                tensors.extend(extract_tensors(value, f"{path}.{key}" if path else key))
+        return tensors
+    
+    direct_tensors = extract_tensors(direct_result)
+    checkpoint_tensors = extract_tensors(checkpoint_result)
+    
+    # Check same number of tensors
+    assert len(checkpoint_tensors) == len(direct_tensors), \
+        f"Number of tensors mismatch: {len(checkpoint_tensors)} != {len(direct_tensors)}"
+    
+    # Check each tensor matches
+    for (path1, tensor1), (path2, tensor2) in zip(direct_tensors, checkpoint_tensors):
+        assert path1 == path2, f"Tensor path mismatch: {path1} != {path2}"
+        assert tensor1.shape == tensor2.shape, \
+            f"Tensor shape mismatch at {path1}: {tensor1.shape} != {tensor2.shape}"
+        assert tensor1.dtype == tensor2.dtype, \
+            f"Tensor dtype mismatch at {path1}: {tensor1.dtype} != {tensor2.dtype}"
+        
+        # Check values are approximately equal
+        assert torch.allclose(tensor1, tensor2, rtol=1e-5, atol=1e-8), \
+            f"Tensor values mismatch at {path1}"
+    
+    # 3. Non-tensor values preserved
+    # Extract non-tensor values for comparison
+    def extract_non_tensors(obj, path=""):
+        non_tensors = []
+        if not isinstance(obj, torch.Tensor):
+            if isinstance(obj, (list, tuple)):
+                for i, item in enumerate(obj):
+                    non_tensors.extend(extract_non_tensors(item, f"{path}[{i}]"))
+            elif isinstance(obj, dict):
+                for key, value in obj.items():
+                    non_tensors.extend(extract_non_tensors(value, f"{path}.{key}" if path else key))
+            else:
+                # Primitive value
+                non_tensors.append((path, obj))
+        return non_tensors
+    
+    direct_non_tensors = extract_non_tensors(direct_result)
+    checkpoint_non_tensors = extract_non_tensors(checkpoint_result)
+    
+    # Check same number of non-tensor values
+    assert len(checkpoint_non_tensors) == len(direct_non_tensors), \
+        f"Number of non-tensor values mismatch: {len(checkpoint_non_tensors)} != {len(direct_non_tensors)}"
+    
+    # Check each non-tensor value matches
+    for (path1, value1), (path2, value2) in zip(direct_non_tensors, checkpoint_non_tensors):
+        assert path1 == path2, f"Non-tensor path mismatch: {path1} != {path2}"
+        assert value1 == value2, f"Non-tensor value mismatch at {path1}: {value1} != {value2}"
+    
+    # 4. No exception raised (implicitly passed if we get here)
+    
+    # Note: Strong assertions (gradient_in_structure, deep_nesting, custom_object)
+    # will be added in final round when assertion_level is "strong"
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([__file__] + sys.argv[1:])
+# ==== BLOCK:FOOTER END ====

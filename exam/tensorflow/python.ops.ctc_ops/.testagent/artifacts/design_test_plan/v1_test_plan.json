@@ -1,0 +1,270 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.ctc_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_ctc_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_ctc_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "基本CTC损失计算",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ctc_loss",
+          "batch_size": 2,
+          "max_time": 10,
+          "num_labels": 3,
+          "time_major": true,
+          "preprocess_collapse_repeated": false,
+          "ctc_merge_repeated": true,
+          "ignore_longer_outputs_than_inputs": false,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "non_negative"],
+        "strong": ["approx_equal", "gradient_check", "consistency_with_reference"]
+      },
+      "oracle": "tensorflow.python.ops.ctc_ops.ctc_loss",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "束搜索解码基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ctc_beam_search_decoder",
+          "batch_size": 2,
+          "max_time": 10,
+          "num_labels": 3,
+          "beam_width": 100,
+          "top_paths": 1,
+          "merge_repeated": true,
+          "time_major": true,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "sparse_format"],
+        "strong": ["path_probability_order", "consistency_with_greedy"]
+      },
+      "oracle": "tensorflow.python.ops.ctc_ops.ctc_beam_search_decoder",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "时间主序与批次主序兼容性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ctc_loss",
+          "batch_size": 2,
+          "max_time": 10,
+          "num_labels": 3,
+          "time_major": false,
+          "preprocess_collapse_repeated": false,
+          "ctc_merge_repeated": true,
+          "ignore_longer_outputs_than_inputs": false,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "consistency_with_time_major"],
+        "strong": ["approx_equal", "gradient_check"]
+      },
+      "oracle": "tensorflow.python.ops.ctc_ops.ctc_loss",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "preprocess_collapse_repeated组合测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ctc_loss",
+          "batch_size": 2,
+          "max_time": 10,
+          "num_labels": 3,
+          "time_major": true,
+          "preprocess_collapse_repeated": false,
+          "ctc_merge_repeated": false,
+          "ignore_longer_outputs_than_inputs": false,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "behavior_difference"],
+        "strong": ["approx_equal", "reference_implementation"]
+      },
+      "oracle": "tensorflow.python.ops.ctc_ops.ctc_loss",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "边界条件-空批次和零长度序列",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ctc_loss",
+          "batch_size": 0,
+          "max_time": 10,
+          "num_labels": 3,
+          "time_major": true,
+          "preprocess_collapse_repeated": false,
+          "ctc_merge_repeated": true,
+          "ignore_longer_outputs_than_inputs": false,
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "empty_handling"],
+        "strong": ["exception_handling", "edge_case_robustness"]
+      },
+      "oracle": "tensorflow.python.ops.ctc_ops.ctc_loss",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "ctc_loss",
+        "batch_size": 4,
+        "max_time": 20,
+        "num_labels": 5,
+        "time_major": true,
+        "preprocess_collapse_repeated": true,
+        "ctc_merge_repeated": true,
+        "ignore_longer_outputs_than_inputs": false,
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：更大规模+preprocess_collapse_repeated=True"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "ctc_beam_search_decoder",
+        "batch_size": 4,
+        "max_time": 20,
+        "num_labels": 5,
+        "beam_width": 10,
+        "top_paths": 3,
+        "merge_repeated": false,
+        "time_major": true,
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：多路径输出+merge_repeated=False"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "ctc_loss",
+        "batch_size": 1,
+        "max_time": 1,
+        "num_labels": 1,
+        "time_major": false,
+        "preprocess_collapse_repeated": false,
+        "ctc_merge_repeated": true,
+        "ignore_longer_outputs_than_inputs": true,
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：最小维度+ignore_longer_outputs_than_inputs=True"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "ctc_loss",
+        "batch_size": 2,
+        "max_time": 10,
+        "num_labels": 3,
+        "time_major": true,
+        "preprocess_collapse_repeated": true,
+        "ctc_merge_repeated": true,
+        "ignore_longer_outputs_than_inputs": false,
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "作为参数扩展：文档中未测试的组合"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "function": "ctc_loss",
+        "batch_size": 2,
+        "max_time": 10,
+        "num_labels": 3,
+        "time_major": true,
+        "preprocess_collapse_repeated": false,
+        "ctc_merge_repeated": true,
+        "ignore_longer_outputs_than_inputs": false,
+        "dtype": "float32",
+        "device": "gpu"
+      },
+      "note": "作为参数扩展：GPU设备测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": []
+}

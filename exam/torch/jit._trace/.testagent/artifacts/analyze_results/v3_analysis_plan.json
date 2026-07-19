@@ -1,0 +1,27 @@
+{
+  "status": "成功",
+  "passed": 3,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "exam/torch_group/jit._trace/tests/test_torch_jit_trace_g3.py::test_strict_vs_nonstrict_mode_comparison",
+      "block_id": "CASE_09",
+      "error_type": "TracerWarning",
+      "action": "rewrite_block",
+      "note": "TracerWarning: Converting tensor to Python boolean in control flow"
+    },
+    {
+      "test": "exam/torch_group/jit._trace/tests/test_torch_jit_trace_g3.py::test_tolerance_parameter_adjustment",
+      "block_id": "CASE_10",
+      "error_type": "TracerWarning",
+      "action": "rewrite_block",
+      "note": "Multiple TracerWarnings: nondeterministic nodes and output mismatch"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

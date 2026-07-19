@@ -1,0 +1,551 @@
+=== Run Tests ===
+....F....X..........FF.F...x.                                            [100%]
+=================================== FAILURES ===================================
+_ test_lstm_projection_functionality[LSTM-10-20-15-1-False-False-float32-2-4] __
+
+set_random_seed = None, mode = 'LSTM', input_size = 10, hidden_size = 20
+proj_size = 15, num_layers = 1, batch_first = False, bidirectional = False
+dtype_str = 'float32', batch_size = 2, seq_len = 4
+
+    @pytest.mark.parametrize(
+        "mode,input_size,hidden_size,proj_size,num_layers,batch_first,bidirectional,dtype_str,batch_size,seq_len",
+        [
+            # Base case from test plan: LSTM with projection
+            ("LSTM", 10, 20, 15, 1, False, False, "float32", 2, 4),
+        ]
+    )
+    def test_lstm_projection_functionality(
+        set_random_seed,
+        mode,
+        input_size,
+        hidden_size,
+        proj_size,
+        num_layers,
+        batch_first,
+        bidirectional,
+        dtype_str,
+        batch_size,
+        seq_len,
+    ):
+        """
+        Test LSTM projection functionality constraint checking.
+    
+        Weak assertions:
+        - output_shape_proj: Check output tensor shape with projection
+        - hidden_shape_proj: Check hidden state shape with projection
+        - dtype: Check output dtype matches input dtype
+        - finite: Check all values are finite
+        - proj_size_constraint: Check projection size constraints
+        """
+        # Convert dtype string to torch dtype
+        dtype_map = {
+            "float32": torch.float32,
+            "float64": torch.float64,
+        }
+        dtype = dtype_map[dtype_str]
+    
+        # Create LSTM instance with projection
+        # Note: proj_size is only supported for LSTM in PyTorch
+        lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            proj_size=proj_size,
+            num_layers=num_layers,
+            batch_first=batch_first,
+            bidirectional=bidirectional,
+        )
+    
+        # Convert LSTM parameters to match input dtype if needed
+        if dtype == torch.float64:
+            lstm = lstm.double()
+    
+        # Create test input
+        x = create_test_input(batch_size, seq_len, input_size, batch_first, dtype)
+    
+        # Forward pass
+        output, (h_n, c_n) = lstm(x)
+    
+        # Calculate expected shapes with projection
+        num_directions = 2 if bidirectional else 1
+    
+        # Expected output shape: output uses proj_size instead of hidden_size
+        if batch_first:
+            expected_output_shape = (batch_size, seq_len, num_directions * proj_size)
+        else:
+            expected_output_shape = (seq_len, batch_size, num_directions * proj_size)
+    
+        # Expected hidden state shape: h_n uses proj_size
+        expected_hidden_shape = (num_layers * num_directions, batch_size, proj_size)
+    
+        # Expected cell state shape: c_n still uses hidden_size (not projected)
+        expected_cell_shape = (num_layers * num_directions, batch_size, hidden_size)
+    
+        # Weak assertions
+        # 1. Output shape assertion with projection
+        assert_shape_equal(output, expected_output_shape,
+                          f"Output shape mismatch for LSTM with projection")
+    
+        # 2. Hidden state shape assertion with projection
+        assert_shape_equal(h_n, expected_hidden_shape,
+                          f"Hidden state shape mismatch for LSTM with projection")
+    
+        # 3. Cell state shape assertion (should still use hidden_size)
+        assert_shape_equal(c_n, expected_cell_shape,
+                          f"Cell state shape mismatch for LSTM with projection")
+    
+        # 4. Dtype assertion
+        assert_dtype_equal(output, dtype,
+                          f"Output dtype mismatch for LSTM with projection")
+        assert_dtype_equal(h_n, dtype,
+                          f"Hidden state dtype mismatch for LSTM with projection")
+        assert_dtype_equal(c_n, dtype,
+                          f"Cell state dtype mismatch for LSTM with projection")
+    
+        # 5. Finite values assertion
+        assert_finite(output, f"Output contains non-finite values for LSTM with projection")
+        assert_finite(h_n, f"Hidden state contains non-finite values for LSTM with projection")
+        assert_finite(c_n, f"Cell state contains non-finite values for LSTM with projection")
+    
+        # 6. No NaN assertion (additional safety check)
+        assert_no_nan(output, f"Output contains NaN values for LSTM with projection")
+        assert_no_nan(h_n, f"Hidden state contains NaN values for LSTM with projection")
+        assert_no_nan(c_n, f"Cell state contains NaN values for LSTM with projection")
+    
+        # 7. Projection size constraint check
+        # proj_size must be < hidden_size (PyTorch enforces this)
+        assert proj_size < hidden_size, \
+            f"proj_size ({proj_size}) must be smaller than hidden_size ({hidden_size})"
+    
+        # LSTM-specific projection checks
+        # Check that output dimension matches proj_size (not hidden_size)
+        assert output.shape[-1] == num_directions * proj_size, \
+            f"Output dimension should be {num_directions * proj_size} with projection, got {output.shape[-1]}"
+    
+        # Check that hidden state dimension matches proj_size
+        assert h_n.shape[-1] == proj_size, \
+            f"Hidden state dimension should be {proj_size} with projection, got {h_n.shape[-1]}"
+    
+        # Check that cell state dimension still matches hidden_size (not projected)
+        assert c_n.shape[-1] == hidden_size, \
+            f"Cell state dimension should be {hidden_size} (not projected), got {c_n.shape[-1]}"
+    
+        # Check parameter shapes for projection
+        # LSTM with projection has different weight/bias parameter shapes
+        for name, param in lstm.named_parameters():
+            if "weight_ih" in name or "weight_hh" in name:
+                # Input/hidden weights should have appropriate dimensions
+                if "proj" in name:
+                    # Projection weights
+                    assert param.shape[-1] == proj_size, \
+                        f"Projection weight {name} should have last dimension {proj_size}, got {param.shape}"
+                else:
+                    # Regular weights
+>                   assert param.shape[-1] == hidden_size, \
+                        f"Weight {name} should have last dimension {hidden_size}, got {param.shape}"
+E                   AssertionError: Weight weight_ih_l0 should have last dimension 20, got torch.Size([80, 10])
+E                   assert 10 == 20
+
+tests/test_torch_nn_modules_rnn_g1.py:408: AssertionError
+______ test_rnn_cell_versions[RNNCell_relu-10-20-True-False-float32-2-3] _______
+
+set_random_seed = None, cell_type = 'RNNCell_relu', input_size = 10
+hidden_size = 20, bias = True, batch_first = False, dtype_str = 'float32'
+batch_size = 2, seq_len = 3
+
+    @pytest.mark.parametrize(
+        "cell_type,input_size,hidden_size,bias,batch_first,dtype_str,batch_size,seq_len",
+        [
+            # Test RNNCell with tanh activation
+            ("RNNCell", 8, 16, True, False, "float32", 2, 4),
+            # Test LSTMCell
+            ("LSTMCell", 12, 24, True, True, "float32", 3, 5),
+            # Test GRUCell
+            ("GRUCell", 6, 12, False, False, "float32", 1, 3),
+            # Test RNNCell with relu activation
+            ("RNNCell_relu", 10, 20, True, False, "float32", 2, 3),
+        ]
+    )
+    def test_rnn_cell_versions(
+        set_random_seed,
+        cell_type,
+        input_size,
+        hidden_size,
+        bias,
+        batch_first,
+        dtype_str,
+        batch_size,
+        seq_len,
+    ):
+        """
+        Test RNN cell versions (RNNCell, LSTMCell, GRUCell) independent functionality.
+    
+        Weak assertions:
+        - output_shape: Check output tensor shape matches expected
+        - hidden_shape: Check hidden state shape matches expected
+        - dtype: Check output dtype matches input dtype
+        - finite: Check all values are finite
+        - cell_consistency: Check cell behavior is consistent
+        """
+        # Convert dtype string to torch dtype
+        dtype_map = {
+            "float32": torch.float32,
+            "float64": torch.float64,
+        }
+        dtype = dtype_map[dtype_str]
+    
+        # Create cell instance based on cell_type
+        if cell_type == "RNNCell":
+            # Regular RNNCell with tanh
+            cell = nn.RNNCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                bias=bias,
+                nonlinearity="tanh",
+            )
+            is_lstm = False
+            has_cell_state = False
+        elif cell_type == "RNNCell_relu":
+            # RNNCell with relu activation
+            cell = nn.RNNCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                bias=bias,
+                nonlinearity="relu",
+            )
+            is_lstm = False
+            has_cell_state = False
+        elif cell_type == "LSTMCell":
+            # LSTMCell
+            cell = nn.LSTMCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                bias=bias,
+            )
+            is_lstm = True
+            has_cell_state = True
+        elif cell_type == "GRUCell":
+            # GRUCell
+            cell = nn.GRUCell(
+                input_size=input_size,
+                hidden_size=hidden_size,
+                bias=bias,
+            )
+            is_lstm = False
+            has_cell_state = False
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Convert cell parameters to match input dtype if needed
+        if dtype == torch.float64:
+            cell = cell.double()
+    
+        # Create test input
+        # For cells, we process one timestep at a time
+        # Create input for all timesteps
+        if batch_first:
+            # Shape: (batch_size, seq_len, input_size)
+            x_all = torch.randn(batch_size, seq_len, input_size, dtype=dtype)
+        else:
+            # Shape: (seq_len, batch_size, input_size)
+            x_all = torch.randn(seq_len, batch_size, input_size, dtype=dtype)
+    
+        # Initialize hidden state
+        if is_lstm:
+            # LSTM has both hidden and cell states
+            hx = torch.randn(batch_size, hidden_size, dtype=dtype)
+            cx = torch.randn(batch_size, hidden_size, dtype=dtype)
+            hidden = (hx, cx)
+        else:
+            # RNNCell and GRUCell have only hidden state
+            hidden = torch.randn(batch_size, hidden_size, dtype=dtype)
+    
+        # Process sequence step by step
+        outputs = []
+        hidden_states = []
+    
+        for t in range(seq_len):
+            # Get input for current timestep
+            if batch_first:
+                x_t = x_all[:, t, :]  # (batch_size, input_size)
+            else:
+                x_t = x_all[t, :, :]  # (batch_size, input_size)
+    
+            # Forward pass through cell
+            if is_lstm:
+                # LSTMCell returns (next_hidden, next_cell)
+                next_hidden, next_cell = cell(x_t, hidden)
+                hidden = (next_hidden, next_cell)
+                output = next_hidden  # Use hidden state as output
+                hidden_state = (next_hidden, next_cell)
+            else:
+                # RNNCell/GRUCell returns next hidden state
+                next_hidden = cell(x_t, hidden)
+                hidden = next_hidden
+                output = next_hidden
+                hidden_state = next_hidden
+    
+            # Store output and hidden state
+            outputs.append(output)
+            hidden_states.append(hidden_state)
+    
+        # Stack outputs along sequence dimension
+        if batch_first:
+            # outputs is list of (batch_size, hidden_size)
+            # Stack to (batch_size, seq_len, hidden_size)
+            output_stacked = torch.stack(outputs, dim=1)
+        else:
+            # Stack to (seq_len, batch_size, hidden_size)
+            output_stacked = torch.stack(outputs, dim=0)
+    
+        # Expected output shape
+        if batch_first:
+            expected_output_shape = (batch_size, seq_len, hidden_size)
+        else:
+            expected_output_shape = (seq_len, batch_size, hidden_size)
+    
+        # Expected hidden state shape (for single timestep)
+        expected_hidden_shape = (batch_size, hidden_size)
+    
+        # Weak assertions
+        # 1. Output shape assertion
+        assert_shape_equal(output_stacked, expected_output_shape,
+                          f"Output shape mismatch for {cell_type}")
+    
+        # 2. Hidden state shape assertion (for final hidden state)
+        if is_lstm:
+            final_hidden, final_cell = hidden
+            assert_shape_equal(final_hidden, expected_hidden_shape,
+                              f"Final hidden state shape mismatch for {cell_type}")
+            assert_shape_equal(final_cell, expected_hidden_shape,
+                              f"Final cell state shape mismatch for {cell_type}")
+        else:
+            assert_shape_equal(hidden, expected_hidden_shape,
+                              f"Final hidden state shape mismatch for {cell_type}")
+    
+        # 3. Dtype assertion
+        assert_dtype_equal(output_stacked, dtype,
+                          f"Output dtype mismatch for {cell_type}")
+        if is_lstm:
+            assert_dtype_equal(final_hidden, dtype,
+                              f"Hidden state dtype mismatch for {cell_type}")
+            assert_dtype_equal(final_cell, dtype,
+                              f"Cell state dtype mismatch for {cell_type}")
+        else:
+            assert_dtype_equal(hidden, dtype,
+                              f"Hidden state dtype mismatch for {cell_type}")
+    
+        # 4. Finite values assertion
+        assert_finite(output_stacked, f"Output contains non-finite values for {cell_type}")
+        if is_lstm:
+            assert_finite(final_hidden, f"Hidden state contains non-finite values for {cell_type}")
+            assert_finite(final_cell, f"Cell state contains non-finite values for {cell_type}")
+        else:
+            assert_finite(hidden, f"Hidden state contains non-finite values for {cell_type}")
+    
+        # 5. No NaN assertion (additional safety check)
+        assert_no_nan(output_stacked, f"Output contains NaN values for {cell_type}")
+        if is_lstm:
+            assert_no_nan(final_hidden, f"Hidden state contains NaN values for {cell_type}")
+            assert_no_nan(final_cell, f"Cell state contains NaN values for {cell_type}")
+        else:
+            assert_no_nan(hidden, f"Hidden state contains NaN values for {cell_type}")
+    
+        # Cell-specific consistency checks
+        if cell_type == "RNNCell" or cell_type == "RNNCell_relu":
+            # RNNCell specific checks
+            activation = "relu" if cell_type == "RNNCell_relu" else "tanh"
+    
+            # Check activation function
+            if activation == "tanh":
+                # tanh output should be in [-1, 1]
+                assert torch.all(output_stacked >= -1.0) and torch.all(output_stacked <= 1.0), \
+                    f"RNNCell with tanh should output values in [-1, 1], got range [{output_stacked.min():.4f}, {output_stacked.max():.4f}]"
+            elif activation == "relu":
+                # relu output should be >= 0
+                assert torch.all(output_stacked >= 0.0), \
+                    f"RNNCell with relu should output non-negative values, got min {output_stacked.min():.4f}"
+    
+            # Check parameter count
+            param_count = sum(p.numel() for p in cell.parameters())
+            # RNNCell: W_ih (hidden_size, input_size), W_hh (hidden_size, hidden_size)
+            # plus biases if bias=True
+            expected_params = hidden_size * input_size + hidden_size * hidden_size
+            if bias:
+                expected_params += 2 * hidden_size  # bias_ih and bias_hh
+    
+            assert param_count == expected_params, \
+                f"RNNCell parameter count mismatch: expected {expected_params}, got {param_count}"
+    
+        elif cell_type == "LSTMCell":
+            # LSTMCell specific checks
+            # Check that hidden and cell states are different
+            assert not torch.allclose(final_hidden, final_cell, rtol=1e-5, atol=1e-8), \
+                "LSTMCell hidden and cell states should not be identical"
+    
+            # Check parameter count
+            param_count = sum(p.numel() for p in cell.parameters())
+            # LSTMCell: gate_size = 4 * hidden_size
+            # W_ih (4*hidden_size, input_size), W_hh (4*hidden_size, hidden_size)
+            # plus biases if bias=True
+            expected_params = 4 * hidden_size * input_size + 4 * hidden_size * hidden_size
+            if bias:
+                expected_params += 2 * 4 * hidden_size  # bias_ih and bias_hh
+    
+            assert param_count == expected_params, \
+                f"LSTMCell parameter count mismatch: expected {expected_params}, got {param_count}"
+    
+            # Check that cell state values are reasonable
+            cell_state_abs_max = final_cell.abs().max().item()
+            assert cell_state_abs_max < 100.0, \
+                f"LSTMCell cell state should not explode, max abs value: {cell_state_abs_max}"
+    
+        elif cell_type == "GRUCell":
+            # GRUCell specific checks
+            # Check parameter count
+            param_count = sum(p.numel() for p in cell.parameters())
+            # GRUCell: gate_size = 3 * hidden_size
+            # W_ih (3*hidden_size, input_size), W_hh (3*hidden_size, hidden_size)
+            # plus biases if bias=True
+            expected_params = 3 * hidden_size * input_size + 3 * hidden_size * hidden_size
+            if bias:
+                expected_params += 2 * 3 * hidden_size  # bias_ih and bias_hh
+    
+            assert param_count == expected_params, \
+                f"GRUCell parameter count mismatch: expected {expected_params}, got {param_count}"
+    
+            # Check that output values are reasonable
+            output_abs_max = output_stacked.abs().max().item()
+            assert output_abs_max < 100.0, \
+                f"GRUCell output should not explode, max abs value: {output_abs_max}"
+    
+        # Test cell vs full RNN consistency (simplified)
+        # For single-layer, single-direction RNN, the cell should produce same result
+        # as unrolling the RNN manually
+        if not is_lstm and seq_len <= 5:  # Keep it simple for short sequences
+            # Create corresponding full RNN
+            if cell_type == "RNNCell":
+                nonlinearity = "relu" if cell_type == "RNNCell_relu" else "tanh"
+                full_rnn = nn.RNN(
+                    input_size=input_size,
+                    hidden_size=hidden_size,
+                    num_layers=1,
+                    batch_first=batch_first,
+                    bidirectional=False,
+                    nonlinearity=nonlinearity,
+                    bias=bias,
+                )
+            elif cell_type == "GRUCell":
+                full_rnn = nn.GRU(
+                    input_size=input_size,
+                    hidden_size=hidden_size,
+                    num_layers=1,
+                    batch_first=batch_first,
+                    bidirectional=False,
+                    bias=bias,
+                )
+    
+            # Copy weights from cell to full RNN
+            cell_params = dict(cell.named_parameters())
+>           rnn_params = dict(full_rnn.named_parameters())
+E           UnboundLocalError: local variable 'full_rnn' referenced before assignment
+
+tests/test_torch_nn_modules_rnn_g2.py:955: UnboundLocalError
+______________________ test_rnn_invalid_input_dimensions _______________________
+
+    def test_rnn_invalid_input_dimensions():
+        """Test that invalid input dimensions raise appropriate errors."""
+        # Test 2D input when 3D is expected
+        rnn = nn.RNN(input_size=10, hidden_size=20)
+        x_2d = torch.randn(5, 10)  # Should be (seq_len, batch, input_size) or (batch, seq_len, input_size)
+    
+>       with pytest.raises(RuntimeError, match="input must have 3 dimensions"):
+E       Failed: DID NOT RAISE <class 'RuntimeError'>
+
+tests/test_torch_nn_modules_rnn_g2.py:995: Failed
+_________________________ test_rnn_dropout_validation __________________________
+
+    def test_rnn_dropout_validation():
+        """Test dropout parameter validation."""
+        # Valid dropout values
+        for dropout in [0.0, 0.5, 1.0]:
+            rnn = nn.RNN(input_size=10, hidden_size=20, num_layers=2, dropout=dropout)
+            assert rnn.dropout == dropout, f"Dropout should be {dropout}, got {rnn.dropout}"
+    
+        # Invalid dropout values
+        with pytest.raises(ValueError, match="dropout should be a number in range"):
+            nn.RNN(input_size=10, hidden_size=20, dropout=-0.1)
+    
+        with pytest.raises(ValueError, match="dropout should be a number in range"):
+            nn.RNN(input_size=10, hidden_size=20, dropout=1.1)
+    
+        with pytest.raises(ValueError, match="dropout should be a number in range"):
+>           nn.RNN(input_size=10, hidden_size=20, dropout="invalid")
+
+tests/test_torch_nn_modules_rnn_g2.py:1046: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:425: in __init__
+    super(RNN, self).__init__(mode, *args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'RNN' object has no attribute 'proj_size'") raised in repr()] RNN object at 0x125f45cc0>
+mode = 'RNN_TANH', input_size = 10, hidden_size = 20, num_layers = 1
+bias = True, batch_first = False, dropout = 'invalid', bidirectional = False
+proj_size = 0, device = None, dtype = None
+
+    def __init__(self, mode: str, input_size: int, hidden_size: int,
+                 num_layers: int = 1, bias: bool = True, batch_first: bool = False,
+                 dropout: float = 0., bidirectional: bool = False, proj_size: int = 0,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(RNNBase, self).__init__()
+        self.mode = mode
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bias = bias
+        self.batch_first = batch_first
+>       self.dropout = float(dropout)
+E       ValueError: could not convert string to float: 'invalid'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/rnn.py:56: ValueError
+
+During handling of the above exception, another exception occurred:
+
+    def test_rnn_dropout_validation():
+        """Test dropout parameter validation."""
+        # Valid dropout values
+        for dropout in [0.0, 0.5, 1.0]:
+            rnn = nn.RNN(input_size=10, hidden_size=20, num_layers=2, dropout=dropout)
+            assert rnn.dropout == dropout, f"Dropout should be {dropout}, got {rnn.dropout}"
+    
+        # Invalid dropout values
+        with pytest.raises(ValueError, match="dropout should be a number in range"):
+            nn.RNN(input_size=10, hidden_size=20, dropout=-0.1)
+    
+        with pytest.raises(ValueError, match="dropout should be a number in range"):
+            nn.RNN(input_size=10, hidden_size=20, dropout=1.1)
+    
+>       with pytest.raises(ValueError, match="dropout should be a number in range"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'dropout should be a number in range'
+E         Actual message: "could not convert string to float: 'invalid'"
+
+tests/test_torch_nn_modules_rnn_g2.py:1045: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+tests/test_torch_nn_modules_rnn_g1.py     159     16     28      8    87%   148->exit, 265-266, 325, 338, 400->399, 404, 414-430, 502
+tests/test_torch_nn_modules_rnn_g2.py     422     48    162     34    84%   52, 103-122, 126, 135, 173->exit, 246-275, 279, 289, 298, 312-314, 324-326, 335-336, 343, 354-356, 367, 373, 382-384, 395, 452, 475, 595, 598->618, 604, 629, 641, 652, 742, 746, 869->875, 879->882, 897->900, 908->930, 917, 972, 999-1003, 1170
+-----------------------------------------------------------------------------------
+TOTAL                                     581     64    190     42    85%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_rnn_g1.py::test_lstm_projection_functionality[LSTM-10-20-15-1-False-False-float32-2-4]
+FAILED tests/test_torch_nn_modules_rnn_g2.py::test_rnn_cell_versions[RNNCell_relu-10-20-True-False-float32-2-3]
+FAILED tests/test_torch_nn_modules_rnn_g2.py::test_rnn_invalid_input_dimensions
+FAILED tests/test_torch_nn_modules_rnn_g2.py::test_rnn_dropout_validation - A...
+4 failed, 23 passed, 1 xfailed, 1 xpassed in 0.88s
+
+Error: exit 1

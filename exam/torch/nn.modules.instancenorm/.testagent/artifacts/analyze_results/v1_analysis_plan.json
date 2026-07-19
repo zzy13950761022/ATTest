@@ -1,0 +1,47 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_lazy_instance_norm_inference[test_params0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "LazyInstanceNorm2d未正确推断num_features，num_features保持为0而不是推断为3"
+    },
+    {
+      "test": "test_instance_norm_track_running_stats[test_params0]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "InstanceNorm3d在训练模式下更新了running_mean，但测试期望不更新"
+    },
+    {
+      "test": "test_instance_norm_invalid_parameters",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "add_case",
+      "note": "需要新增参数验证测试块，当前测试未捕获无效参数错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_instance_norm_track_running_stats[test_params1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_instance_norm_input_dimension_validation",
+      "reason": "需要新增维度验证测试块，但受block_limit限制"
+    },
+    {
+      "test": "test_instance_norm_channel_mismatch",
+      "reason": "需要新增通道不匹配验证测试块，但受block_limit限制"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

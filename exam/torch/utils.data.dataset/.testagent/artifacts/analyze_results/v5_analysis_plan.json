@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_random_split_integer_split[100-lengths0-False]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "随机分割结果不一致：91 != 17，mock逻辑可能有问题"
+    },
+    {
+      "test": "test_concat_dataset_multiple_datasets[dataset_sizes0-index_to_test0]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "ConcatDataset不支持空列表，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_concat_dataset_multiple_datasets[dataset_sizes1-index_to_test1]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,74 @@
+=== Run Tests ===
+..F                                                                      [100%]
+================================== FAILURES ===================================
+_______ test_parallel_interleave_error_handling[0-1-simple_range-True] ________
+
+cycle_length = 0, block_length = 1, map_func_type = 'simple_range'
+expect_error = True
+simple_range_dataset = <function simple_range_dataset.<locals>._create_dataset at 0x00000132CF331790>
+
+    @pytest.mark.parametrize(
+        "cycle_length,block_length,map_func_type,expect_error",
+        [
+            (0, 1, "simple_range", True),
+        ]
+    )
+    def test_parallel_interleave_error_handling(
+        cycle_length, block_length, map_func_type, expect_error,
+        simple_range_dataset
+    ):
+        """Test error handling for invalid parameters in parallel_interleave."""
+        # Create base dataset
+        base_dataset = simple_range_dataset(5)
+    
+        # Define map function
+        def map_func(x):
+            return tf.data.Dataset.range(x + 5)
+    
+        # Apply parallel_interleave - deprecation warnings are logged, not captured by warnings module
+        # We'll focus on error handling instead of warning capture
+        if expect_error:
+            # Should raise ValueError for cycle_length <= 0
+            with pytest.raises(ValueError) as exc_info:
+                transform_fn = interleave_ops.parallel_interleave(
+                    map_func=map_func,
+                    cycle_length=cycle_length,
+                    block_length=block_length
+                )
+                # Try to apply if no error raised (should not happen)
+>               base_dataset.apply(transform_fn)
+
+tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g1.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:2238: in apply
+    dataset = transformation_func(self)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\interleave_ops.py:81: in _apply_fn
+    return readers.ParallelInterleaveDataset(dataset, map_func, cycle_length,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\readers.py:365: in __init__
+    variant_tensor = ged_ops.legacy_parallel_interleave_dataset_v2(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\gen_experimental_dataset_ops.py:5996: in legacy_parallel_interleave_dataset_v2
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.InvalidArgumentError: `cycle_length` must be > 0 [Op:LegacyParallelInterleaveDatasetV2]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\ops.py:7186: InvalidArgumentError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                      Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g1.py      77     21     14      4    70%   18-19, 41, 64-70, 116-119, 151-152, 174, 190-202, 215
+---------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                        77     21     14      4    70%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_interleave_ops_g1.py::test_parallel_interleave_error_handling[0-1-simple_range-True]
+1 failed, 2 passed in 1.88s
+
+Error: exit 1

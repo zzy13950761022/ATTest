@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_float_model_quantization[simple_linear-False-default-simple_calibration]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "API日志记录被调用了3次（quantize、prepare、convert），但测试期望只调用1次"
+    },
+    {
+      "test": "test_inplace_quantization[simple_linear-True-default-simple_calibration]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "API日志记录被调用了3次（quantize、prepare、convert），但测试期望只调用1次"
+    },
+    {
+      "test": "test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "convert没有被调用，需要检查prepare的返回值和调用逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_calibration_function_parameter_passing[simple_linear-False-default-complex_calibration]",
+      "reason": "错误类型不同，但需要先修复前3个基础问题"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

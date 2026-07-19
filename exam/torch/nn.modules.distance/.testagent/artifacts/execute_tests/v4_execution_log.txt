@@ -1,0 +1,17 @@
+=== Run Tests ===
+..s.......                                                               [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+cleanup.py                                             6      6      4      0     0%   1-8
+delete_temp_files.py                                   9      9      4      0     0%   1-10
+run_test.py                                            8      8      0      0     0%   1-10
+test_dim_behavior.py                                  40     40      0      0     0%   1-49
+tests/test_torch_nn_modules_distance_cosine.py       102      1      6      1    98%   300
+tests/test_torch_nn_modules_distance_pairwise.py      55      1      6      2    95%   126->131, 160
+----------------------------------------------------------------------------------------------
+TOTAL                                                220     65     20      3    68%
+Coverage XML written to file coverage.xml
+9 passed, 1 skipped in 0.76s

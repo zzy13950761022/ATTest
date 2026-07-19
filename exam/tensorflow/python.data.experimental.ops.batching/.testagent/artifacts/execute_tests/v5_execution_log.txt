@@ -1,0 +1,168 @@
+=== Run Tests ===
+F.F.                                                                     [100%]
+================================== FAILURES ===================================
+_ TestDenseToRaggedBatch.test_dense_to_ragged_batch_basic[2-False-row_splits_dtype0-varying-data_type0] _
+
+self = <test_tensorflow_python_data_experimental_ops_batching_g1.TestDenseToRaggedBatch object at 0x0000018D49EBEE20>
+batch_size = 2, drop_remainder = False, row_splits_dtype = tf.int64
+input_shape = 'varying', data_type = tf.float32
+random_tensor_generator = <function random_tensor_generator.<locals>._generator at 0x0000018D49EC9E50>
+
+    @pytest.mark.parametrize("batch_size,drop_remainder,row_splits_dtype,input_shape,data_type", [
+        (2, False, tf.int64, "varying", tf.float32),
+        (1, False, tf.int64, "single_element", tf.float32),  # param extension
+        (5, False, tf.int32, "large_variation", tf.int32),   # param extension
+    ])
+    def test_dense_to_ragged_batch_basic(self, batch_size, drop_remainder,
+                                        row_splits_dtype, input_shape, data_type,
+                                        random_tensor_generator):
+        """Test basic functionality of dense_to_ragged_batch (CASE_01)."""
+        # Generate test data
+        tensors = random_tensor_generator(shape_type=input_shape, dtype=data_type)
+    
+        # Create dataset using from_generator to handle varying shapes
+        def tensor_generator():
+            for tensor in tensors:
+                yield tensor
+    
+        # Get output signature based on data type
+        if data_type == tf.float32:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float32)
+        elif data_type == tf.int32:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.int32)
+        elif data_type == tf.int64:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.int64)
+        elif data_type == tf.float64:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float64)
+        else:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float32)
+    
+        dataset = tf.data.Dataset.from_generator(
+            tensor_generator,
+            output_signature=output_signature
+        )
+    
+        # Apply dense_to_ragged_batch transformation
+        batch_transform = batching.dense_to_ragged_batch(
+            batch_size=batch_size,
+            drop_remainder=drop_remainder,
+            row_splits_dtype=row_splits_dtype
+        )
+        batched_dataset = dataset.apply(batch_transform)
+    
+        # Collect batches
+>       batches = list(batched_dataset.as_numpy_iterator())
+
+tests\test_tensorflow_python_data_experimental_ops_batching_g1.py:72: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:4407: in __next__
+    return nest.map_structure(to_numpy, next(self._iterator))
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\iterator_ops.py:836: in __next__
+    return self._next_internal()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\iterator_ops.py:819: in _next_internal
+    ret = gen_dataset_ops.iterator_get_next(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\gen_dataset_ops.py:2922: in iterator_get_next
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.InvalidArgumentError: Cannot batch tensors with different shapes in component 0. First element had shape [2] and element 1 had shape [3,4]. [Op:IteratorGetNext]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\ops.py:7186: InvalidArgumentError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 16:15:39.203650: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+_ TestDenseToRaggedBatch.test_dense_to_ragged_batch_basic[5-False-row_splits_dtype2-large_variation-data_type2] _
+
+self = <test_tensorflow_python_data_experimental_ops_batching_g1.TestDenseToRaggedBatch object at 0x0000018D49EDD0A0>
+batch_size = 5, drop_remainder = False, row_splits_dtype = tf.int32
+input_shape = 'large_variation', data_type = tf.int32
+random_tensor_generator = <function random_tensor_generator.<locals>._generator at 0x0000018D49EC9B80>
+
+    @pytest.mark.parametrize("batch_size,drop_remainder,row_splits_dtype,input_shape,data_type", [
+        (2, False, tf.int64, "varying", tf.float32),
+        (1, False, tf.int64, "single_element", tf.float32),  # param extension
+        (5, False, tf.int32, "large_variation", tf.int32),   # param extension
+    ])
+    def test_dense_to_ragged_batch_basic(self, batch_size, drop_remainder,
+                                        row_splits_dtype, input_shape, data_type,
+                                        random_tensor_generator):
+        """Test basic functionality of dense_to_ragged_batch (CASE_01)."""
+        # Generate test data
+        tensors = random_tensor_generator(shape_type=input_shape, dtype=data_type)
+    
+        # Create dataset using from_generator to handle varying shapes
+        def tensor_generator():
+            for tensor in tensors:
+                yield tensor
+    
+        # Get output signature based on data type
+        if data_type == tf.float32:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float32)
+        elif data_type == tf.int32:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.int32)
+        elif data_type == tf.int64:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.int64)
+        elif data_type == tf.float64:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float64)
+        else:
+            output_signature = tf.TensorSpec(shape=None, dtype=tf.float32)
+    
+        dataset = tf.data.Dataset.from_generator(
+            tensor_generator,
+            output_signature=output_signature
+        )
+    
+        # Apply dense_to_ragged_batch transformation
+        batch_transform = batching.dense_to_ragged_batch(
+            batch_size=batch_size,
+            drop_remainder=drop_remainder,
+            row_splits_dtype=row_splits_dtype
+        )
+        batched_dataset = dataset.apply(batch_transform)
+    
+        # Collect batches
+>       batches = list(batched_dataset.as_numpy_iterator())
+
+tests\test_tensorflow_python_data_experimental_ops_batching_g1.py:72: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\dataset_ops.py:4407: in __next__
+    return nest.map_structure(to_numpy, next(self._iterator))
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\iterator_ops.py:836: in __next__
+    return self._next_internal()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\iterator_ops.py:819: in _next_internal
+    ret = gen_dataset_ops.iterator_get_next(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\gen_dataset_ops.py:2922: in iterator_get_next
+    _ops.raise_from_not_ok_status(e, name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+e = _NotOkStatusException(), name = None
+
+    def raise_from_not_ok_status(e, name):
+      e.message += (" name: " + name if name is not None else "")
+>     raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+E     tensorflow.python.framework.errors_impl.InvalidArgumentError: Cannot batch tensors with different shapes in component 0. First element had shape [1] and element 1 had shape [10]. [Op:IteratorGetNext]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\ops.py:7186: InvalidArgumentError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+test_import.py                                                         27     27      8      0     0%   4-43
+tests\test_tensorflow_python_data_experimental_ops_batching_g1.py     123     37     66     11    63%   43-44, 51-56, 85-98, 104, 112, 139-140, 169-174, 178->187, 183, 200->exit, 203-206, 242, 250-255, 263-267
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 150     64     74     11    53%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_batching_g1.py::TestDenseToRaggedBatch::test_dense_to_ragged_batch_basic[2-False-row_splits_dtype0-varying-data_type0]
+FAILED tests\test_tensorflow_python_data_experimental_ops_batching_g1.py::TestDenseToRaggedBatch::test_dense_to_ragged_batch_basic[5-False-row_splits_dtype2-large_variation-data_type2]
+2 failed, 2 passed in 2.78s
+2026-01-18 16:15:40.291006: W tensorflow/core/kernels/data/generator_dataset_op.cc:107] Error occurred when finalizing GeneratorDataset iterator: FAILED_PRECONDITION: Python interpreter state is not initialized. The process may be terminated.
+	 [[{{node PyFunc}}]]
+
+Error: exit 1

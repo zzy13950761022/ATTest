@@ -1,0 +1,223 @@
+{
+  "plan_version": 2,
+  "target": "torch.jit._serialization",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_torch_jit_serialization.py",
+    "all_pattern": "tests/test_torch_jit_serialization_*.py",
+    "groups": {
+      "G1": "tests/test_torch_jit_serialization_g1.py",
+      "G2": "tests/test_torch_jit_serialization_g2.py",
+      "G3": "tests/test_torch_jit_serialization_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心序列化功能",
+      "entrypoints": ["save", "load"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试基本 save/load 循环和文件操作"
+    },
+    {
+      "group_id": "G2",
+      "title": "设备与参数扩展",
+      "entrypoints": ["load"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试设备映射和额外文件参数"
+    },
+    {
+      "group_id": "G3",
+      "title": "边界与异常处理",
+      "entrypoints": ["save", "load"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_08", "CASE_09"],
+      "note": "测试异常场景和边界条件"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本文件序列化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "simple_script_module",
+          "file_type": "path",
+          "device": "cpu",
+          "extra_files": null
+        }
+      ],
+      "asserts": {
+        "weak": ["file_created", "module_loaded", "structure_preserved", "parameters_equal"],
+        "strong": ["exact_parameter_values", "gradient_preserved", "training_mode_preserved"]
+      },
+      "oracle": "torch.jit.save + torch.jit.load",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "缓冲区序列化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "simple_script_module",
+          "file_type": "buffer",
+          "device": "cpu",
+          "extra_files": null
+        }
+      ],
+      "asserts": {
+        "weak": ["buffer_written", "buffer_readable", "module_loaded", "structure_preserved"],
+        "strong": ["buffer_size_reasonable", "buffer_content_consistent", "performance_within_limit"]
+      },
+      "oracle": "torch.jit.save + torch.jit.load with buffer",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "设备映射测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "simple_script_module",
+          "file_type": "path",
+          "device": "cpu",
+          "map_location": "cpu",
+          "extra_files": null
+        }
+      ],
+      "asserts": {
+        "weak": ["module_loaded", "device_correct", "structure_preserved"],
+        "strong": ["device_memory_correct", "tensor_properties_preserved", "cross_device_consistency"]
+      },
+      "oracle": "torch.jit.load with map_location",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "文件对象接口",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "simple_script_module",
+          "file_type": "file_object",
+          "device": "cpu",
+          "extra_files": null
+        }
+      ],
+      "asserts": {
+        "weak": ["file_methods_called", "module_loaded", "structure_preserved"],
+        "strong": ["file_method_sequence_correct", "error_handling_proper", "resource_cleanup"]
+      },
+      "oracle": "torch.jit.save/load with file object",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "复杂模块序列化",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "nested_script_module",
+          "file_type": "path",
+          "device": "cpu",
+          "extra_files": null
+        }
+      ],
+      "asserts": {
+        "weak": ["file_created", "module_loaded", "nested_structure_preserved"],
+        "strong": ["all_submodules_preserved", "recursive_parameters_equal", "module_hierarchy_correct"]
+      },
+      "oracle": "torch.jit.save + torch.jit.load with nested module",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "module_type": "simple_script_module",
+        "file_type": "path",
+        "device": "cpu",
+        "extra_files": {"config.txt": b"test_config"}
+      },
+      "note": "额外文件参数扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "module_type": "simple_script_module",
+        "file_type": "path",
+        "device": "cuda",
+        "map_location": "cuda",
+        "extra_files": null
+      },
+      "note": "GPU设备映射扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Low",
+      "params": {
+        "module_type": "simple_script_module",
+        "file_type": "path",
+        "device": "cpu",
+        "map_location": "cuda:0",
+        "extra_files": null
+      },
+      "note": "特定GPU设备映射"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_09"]
+}

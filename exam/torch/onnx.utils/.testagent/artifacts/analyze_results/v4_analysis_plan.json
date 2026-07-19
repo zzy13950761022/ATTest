@@ -1,0 +1,59 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 9,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-13-True-True]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "文件未打开：mock_file.called为False，需要修复mock配置或导出逻辑"
+    },
+    {
+      "test": "test_export_model_to_bytesio[nn.Module-tensor-bytesio-13-True-True]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "torch.jit.trace未调用：mock_trace.called为False，需要修复mock配置"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_default_parameters",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "fix_dependency",
+      "note": "默认参数测试失败：torch.jit.trace未调用，需要检查导出函数实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-named_tuple-file-13-True-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-7-True-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-16-False-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_model_to_bytesio[ScriptFunction-tensor-bytesio-13-True-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_custom_input_output_names",
+      "reason": "KeyError: 'input_names'，需要检查导出函数参数传递"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_verbose_mode",
+      "reason": "KeyError: 'verbose'，需要检查导出函数参数传递"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

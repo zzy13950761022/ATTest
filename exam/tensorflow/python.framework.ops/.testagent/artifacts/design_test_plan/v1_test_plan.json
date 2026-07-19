@@ -1,0 +1,355 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.framework.ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_framework_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_framework_ops_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_framework_ops_g1.py",
+      "G2": "tests/test_tensorflow_python_framework_ops_g2.py",
+      "G3": "tests/test_tensorflow_python_framework_ops_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "Graph类核心功能",
+      "entrypoints": ["Graph", "Graph.as_default", "Graph.finalize"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "测试Graph的创建、管理和线程安全性"
+    },
+    {
+      "group_id": "G2",
+      "title": "Tensor类属性与方法",
+      "entrypoints": ["Tensor", "Tensor.dtype", "Tensor.shape", "Tensor.device"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试Tensor的构造、属性访问和验证"
+    },
+    {
+      "group_id": "G3",
+      "title": "类型转换函数",
+      "entrypoints": ["convert_to_tensor", "convert_n_to_tensor"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试Python对象到Tensor的类型转换"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "Graph创建与基本属性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "default",
+          "thread_safety": "single_thread",
+          "operations": 0,
+          "tensors": 0
+        }
+      ],
+      "asserts": {
+        "weak": ["graph_exists", "is_empty", "not_finalized", "basic_properties"],
+        "strong": ["operation_count", "tensor_count", "graph_version", "thread_safety"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "Graph添加操作与Tensor",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "default",
+          "operation_count": 3,
+          "tensor_count": 5,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_added", "tensor_added", "dtype_correct", "shape_correct"],
+        "strong": ["dependency_correct", "graph_consistency", "memory_usage"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "Tensor基本构造与属性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [2, 3],
+          "device": "cpu",
+          "value_type": "constant"
+        }
+      ],
+      "asserts": {
+        "weak": ["tensor_exists", "dtype_matches", "shape_matches", "device_matches"],
+        "strong": ["value_accuracy", "memory_layout", "gradient_flow"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "Tensor属性访问方法",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "int32",
+          "shape": [4, 4],
+          "device": "cpu",
+          "access_methods": ["dtype", "shape", "device", "name"]
+        }
+      ],
+      "asserts": {
+        "weak": ["dtype_accessible", "shape_accessible", "device_accessible", "name_accessible"],
+        "strong": ["property_immutability", "cache_consistency", "thread_safety"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "Graph线程安全性验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "thread_count": 2,
+          "operation_per_thread": 2,
+          "sync_method": "none"
+        }
+      ],
+      "asserts": {
+        "weak": ["thread_execution", "no_crash", "basic_consistency"],
+        "strong": ["race_condition_detection", "data_corruption", "deadlock_free"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "Tensor边界形状与数值",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "shape_type": "empty",
+          "dtype": "float32",
+          "value": "zeros"
+        }
+      ],
+      "asserts": {
+        "weak": ["tensor_created", "shape_correct", "dtype_correct", "value_correct"],
+        "strong": ["memory_efficiency", "operation_compatibility", "gradient_support"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "Tensor极端数值处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "special_values": ["inf", "nan", "large", "small"]
+        }
+      ],
+      "asserts": {
+        "weak": ["tensor_created", "value_preserved", "no_crash"],
+        "strong": ["arithmetic_consistency", "comparison_correct", "propagation_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "convert_to_tensor基本转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "input_type": "numpy_array",
+          "dtype": "float32",
+          "shape": [3, 3],
+          "data": "random"
+        }
+      ],
+      "asserts": {
+        "weak": ["conversion_success", "dtype_matches", "shape_matches", "value_preserved"],
+        "strong": ["memory_sharing", "gradient_support", "device_consistency"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "convert_to_tensor支持类型",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "input_type": "python_list",
+          "dtype": "int32",
+          "shape": [2, 2, 2]
+        }
+      ],
+      "asserts": {
+        "weak": ["conversion_success", "dtype_correct", "shape_correct", "value_accurate"],
+        "strong": ["type_inference", "error_messages", "performance_baseline"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "convert_to_tensor异常处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "input_type": "invalid",
+          "expected_error": "ValueError",
+          "error_message": "unsupported type"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type_correct", "message_contains"],
+        "strong": ["error_context", "recovery_possible", "state_cleanup"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "custom",
+        "thread_safety": "multi_thread",
+        "operations": 5,
+        "tensors": 8
+      },
+      "note": "作为参数扩展：自定义图类型和多线程场景"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [10, 10],
+        "device": "gpu",
+        "value_type": "random"
+      },
+      "note": "作为参数扩展：GPU设备和双精度浮点数"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Medium",
+      "params": {
+        "input_type": "python_scalar",
+        "dtype": "int64",
+        "shape": [],
+        "data": "constant"
+      },
+      "note": "作为参数扩展：Python标量到Tensor的转换"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_08"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_09", "CASE_10"]
+}

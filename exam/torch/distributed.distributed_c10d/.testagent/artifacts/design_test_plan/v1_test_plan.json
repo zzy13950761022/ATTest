@@ -1,0 +1,245 @@
+{
+  "plan_version": 2,
+  "target": "torch.distributed.distributed_c10d",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_distributed_distributed_c10d.py",
+    "all_pattern": "tests/test_torch_distributed_distributed_c10d_*.py",
+    "groups": {
+      "G1": "tests/test_torch_distributed_distributed_c10d_g1.py",
+      "G2": "tests/test_torch_distributed_distributed_c10d_g2.py",
+      "G3": "tests/test_torch_distributed_distributed_c10d_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "进程组管理与初始化",
+      "entrypoints": ["init_process_group", "destroy_process_group", "get_rank", "get_world_size"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试进程组生命周期管理"
+    },
+    {
+      "group_id": "G2",
+      "title": "集体通信核心操作",
+      "entrypoints": ["all_reduce", "broadcast", "all_gather", "reduce_scatter"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试分布式集体通信功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "点对点通信与工具函数",
+      "entrypoints": ["send", "recv", "isend", "irecv", "get_backend"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_11", "CASE_12"],
+      "note": "测试异步通信和工具函数"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本进程组初始化与销毁",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "backend": "gloo",
+          "init_method": "env://",
+          "world_size": 2,
+          "rank": 0,
+          "timeout": 1800,
+          "group_name": ""
+        }
+      ],
+      "asserts": {
+        "weak": ["process_group_initialized", "rank_correct", "world_size_correct", "no_exception"],
+        "strong": ["backend_registered", "store_cleanup", "timeout_applied"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "无效backend参数异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "backend": "invalid_backend",
+          "init_method": "env://",
+          "world_size": 2,
+          "rank": 0,
+          "timeout": 1800
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct", "error_message_contains"],
+        "strong": ["exception_context", "cleanup_after_error"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "all_reduce SUM操作基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "tensor_shape": [2, 2],
+          "dtype": "float32",
+          "device": "cpu",
+          "op": "SUM",
+          "async_op": false,
+          "world_size": 2
+        }
+      ],
+      "asserts": {
+        "weak": ["tensor_modified", "values_correct_sum", "dtype_preserved", "shape_preserved"],
+        "strong": ["exact_numerical_match", "memory_layout", "gradient_preserved"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "broadcast基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "tensor_shape": [3, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "src_rank": 0,
+          "async_op": false,
+          "world_size": 2
+        }
+      ],
+      "asserts": {
+        "weak": ["tensor_broadcasted", "values_equal", "dtype_preserved", "shape_preserved"],
+        "strong": ["exact_copy", "memory_efficiency", "async_completion"]
+      },
+      "oracle": "source_tensor_comparison",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G3",
+      "name": "异步发送接收基本流程",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "tensor_shape": [4],
+          "dtype": "float32",
+          "device": "cpu",
+          "src_rank": 0,
+          "dst_rank": 1,
+          "world_size": 2
+        }
+      ],
+      "asserts": {
+        "weak": ["send_initiated", "receive_completed", "data_transferred", "no_deadlock"],
+        "strong": ["async_work_handle", "completion_status", "error_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "backend": "gloo",
+        "init_method": "tcp://localhost:12345",
+        "world_size": 4,
+        "rank": 1,
+        "timeout": 3600
+      },
+      "note": "TCP初始化方式扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "tensor_shape": [10, 10],
+        "dtype": "float64",
+        "device": "cpu",
+        "op": "PRODUCT",
+        "async_op": true,
+        "world_size": 4
+      },
+      "note": "PRODUCT操作和异步模式扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Low",
+      "params": {
+        "tensor_shape": [2, 3, 4],
+        "dtype": "complex64",
+        "device": "cpu",
+        "op": "SUM",
+        "async_op": false,
+        "world_size": 2
+      },
+      "note": "复数张量支持扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": ["CASE_06", "CASE_07", "CASE_08", "CASE_09", "CASE_10", "CASE_11", "CASE_12"]
+}

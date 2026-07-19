@@ -1,0 +1,300 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.lib.io.file_io",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_lib_io_file_io.py",
+    "all_pattern": "tests/test_tensorflow_python_lib_io_file_io_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_lib_io_file_io_g1.py",
+      "G2": "tests/test_tensorflow_python_lib_io_file_io_g2.py",
+      "G3": "tests/test_tensorflow_python_lib_io_file_io_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "文件存在性与状态查询",
+      "entrypoints": ["file_exists", "is_directory", "stat", "get_file_size"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试文件系统状态查询功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "文件读写操作",
+      "entrypoints": ["read_file_to_string", "write_string_to_file", "FileIO"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试文件内容读写功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "目录与文件操作",
+      "entrypoints": ["list_directory", "create_dir", "copy", "rename_file", "delete_file"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_11", "CASE_12"],
+      "note": "测试目录和文件管理功能"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "文件存在性检查基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path": "/tmp/test_file.txt",
+          "expected_result": true
+        }
+      ],
+      "asserts": {
+        "weak": ["return_type", "basic_truthiness", "no_exception"],
+        "strong": ["exact_match", "error_message", "performance_bound"]
+      },
+      "oracle": "file_exists",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.file_exists",
+        "os.path.join"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "文件统计信息获取",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path": "/tmp/test_file.txt",
+          "expected_fields": ["length", "mtime_nsec", "is_directory"]
+        }
+      ],
+      "asserts": {
+        "weak": ["return_type", "has_required_fields", "no_exception"],
+        "strong": ["field_values", "timestamp_accuracy", "cross_validation"]
+      },
+      "oracle": "stat",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.stat",
+        "os.path.join"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "文本文件读写一致性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path": "/tmp/test_text.txt",
+          "content": "Hello TensorFlow",
+          "mode": "w"
+        }
+      ],
+      "asserts": {
+        "weak": ["write_success", "read_success", "content_type"],
+        "strong": ["exact_content_match", "encoding_handling", "atomic_write"]
+      },
+      "oracle": "write_string_to_file + read_file_to_string",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.write_string_to_file",
+        "tensorflow.python.lib.io._pywrap_file_io.read_file_to_string",
+        "os.path.join"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "FileIO类基础读写",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path": "/tmp/test_io.bin",
+          "content": b"binary_data",
+          "mode": "wb"
+        }
+      ],
+      "asserts": {
+        "weak": ["object_creation", "write_method", "read_method", "close_method"],
+        "strong": ["binary_integrity", "seek_tell", "flush_behavior", "context_manager"]
+      },
+      "oracle": "FileIO",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.FileIO",
+        "os.path.join"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G3",
+      "name": "目录列表功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "path": "/tmp/test_dir",
+          "expected_files": ["file1.txt", "file2.txt", "subdir"]
+        }
+      ],
+      "asserts": {
+        "weak": ["return_type", "list_length", "sorted_order", "no_exception"],
+        "strong": ["exact_ordering", "unicode_handling", "hidden_files", "symlink_handling"]
+      },
+      "oracle": "list_directory",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.list_directory",
+        "os.path.join",
+        "os.path.dirname"
+      ]
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G3",
+      "name": "文件复制基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "src": "/tmp/source.txt",
+          "dst": "/tmp/destination.txt",
+          "overwrite": false
+        }
+      ],
+      "asserts": {
+        "weak": ["copy_success", "no_exception", "destination_exists"],
+        "strong": ["content_preservation", "metadata_preservation", "atomic_copy", "overwrite_control"]
+      },
+      "oracle": "copy",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.lib.io._pywrap_file_io.copy",
+        "tensorflow.python.lib.io._pywrap_file_io.file_exists",
+        "os.path.join",
+        "os.path.dirname"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "path": "/tmp/nonexistent.txt",
+        "expected_result": false
+      },
+      "note": "不存在的文件检查"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "path": "",
+        "expected_result": false
+      },
+      "note": "空路径边界情况"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "path": "/tmp/empty.txt",
+        "content": "",
+        "mode": "w"
+      },
+      "note": "空文件读写"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "path": "/tmp/unicode.txt",
+        "content": "中文测试 🚀",
+        "mode": "w"
+      },
+      "note": "Unicode内容处理"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "path": "/tmp/empty_dir",
+        "expected_files": []
+      },
+      "note": "空目录列表"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {
+        "src": "/tmp/source.txt",
+        "dst": "/tmp/destination.txt",
+        "overwrite": true
+      },
+      "note": "覆盖模式文件复制"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05", "CASE_06"],
+  "deferred_set": ["CASE_07", "CASE_08", "CASE_09", "CASE_10", "CASE_11", "CASE_12"]
+}

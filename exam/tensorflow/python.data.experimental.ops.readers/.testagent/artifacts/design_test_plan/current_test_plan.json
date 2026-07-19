@@ -1,0 +1,211 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.data.experimental.ops.readers",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_data_experimental_ops_readers.py",
+    "all_pattern": "tests/test_tensorflow_python_data_experimental_ops_readers_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_data_experimental_ops_readers_csv.py",
+      "G2": "tests/test_tensorflow_python_data_experimental_ops_readers_sql.py",
+      "G3": "tests/test_tensorflow_python_data_experimental_ops_readers_tfrecord.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "CSV读取功能",
+      "entrypoints": ["make_csv_dataset", "CsvDataset"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试CSV文件读取、解析、批处理功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "SQL读取功能",
+      "entrypoints": ["SqlDataset"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_07"],
+      "note": "测试SQLite数据库查询和结果解析"
+    },
+    {
+      "group_id": "G3",
+      "title": "TFRecord读取功能",
+      "entrypoints": ["make_batched_features_dataset", "make_tf_record_dataset"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_08"],
+      "note": "测试TFRecord格式文件读取和特征提取"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "make_csv_dataset基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "make_csv_dataset",
+          "file_pattern": "test.csv",
+          "batch_size": 32,
+          "column_names": ["col1", "col2", "col3"],
+          "label_name": "col3",
+          "column_defaults": [0.0, 0, ""]
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "batch_shape", "feature_names", "label_existence"],
+        "strong": ["exact_values", "type_inference", "order_preservation"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "CsvDataset基本读取",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class": "CsvDataset",
+          "file_pattern": "data.csv",
+          "record_defaults": ["tf.float32", "tf.int32", "tf.string"],
+          "select_cols": [0, 2]
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "record_count", "column_types", "select_cols_filter"],
+        "strong": ["value_accuracy", "type_conversion", "error_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "SqlDataset基本查询",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class": "SqlDataset",
+          "driver_name": "sqlite",
+          "data_source_name": "test.db",
+          "query": "SELECT name, age FROM users",
+          "output_types": ["tf.string", "tf.int32"]
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "result_structure", "type_matching", "connection_closure"],
+        "strong": ["query_accuracy", "transaction_isolation", "resource_cleanup"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "make_tf_record_dataset基本读取",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "make_tf_record_dataset",
+          "file_pattern": "data.tfrecord",
+          "batch_size": 16,
+          "compression_type": null
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "batch_size", "record_format", "compression_support"],
+        "strong": ["feature_integrity", "serialization_roundtrip", "performance_benchmark"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "make_csv_dataset",
+        "file_pattern": ["file1.csv", "file2.csv"],
+        "batch_size": 1,
+        "column_names": null,
+        "label_name": null
+      },
+      "note": "多文件列表输入和最小batch_size"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "make_csv_dataset",
+        "file_pattern": "compressed.csv.gz",
+        "batch_size": 64,
+        "column_defaults": [1.0, 2, "default"],
+        "select_columns": ["col1", "col3"]
+      },
+      "note": "压缩文件和列选择功能"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "class": "CsvDataset",
+        "file_pattern": "empty.csv",
+        "record_defaults": ["tf.float32"],
+        "select_cols": null
+      },
+      "note": "空文件处理和全列选择"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "class": "SqlDataset",
+        "driver_name": "sqlite",
+        "data_source_name": ":memory:",
+        "query": "SELECT * FROM empty_table",
+        "output_types": ["tf.string"]
+      },
+      "note": "内存数据库和空表查询"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestDatasetOps::test_map_operation[tensor-data_shape0-float32-cpu-None-False-lambda x: x * 2]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "错误处理部分使用了张量作为if条件，需要改为标量条件"
+    },
+    {
+      "test": "TestDatasetOps::test_map_operation[tensor-data_shape1-float32-cpu-None-False-lambda x: tf.reduce_sum(x)]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "错误处理部分使用了张量作为if条件，需要改为标量条件"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGenParsingOps.test_parse_example_mixed_sparse_dense_features[example_proto_bytes-dense_keys0-dense_defaults0-dense_shapes0-sparse_keys0-sparse_types0]",
+      "block_id": "CASE_02",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "dense_shapes与特征值数量不匹配：创建了3个值但形状指定为[1]"
+    },
+    {
+      "test": "TestGenParsingOps.test_decode_compressed_support[compressed_data-ZLIB]",
+      "block_id": "CASE_04",
+      "error_type": "NameError",
+      "action": "fix_dependency",
+      "note": "MagicMock未正确导入，需要在HEADER中添加导入"
+    },
+    {
+      "test": "TestGenParsingOps.test_decode_compressed_support[gzip_compressed_data-GZIP]",
+      "block_id": "CASE_04",
+      "error_type": "NameError",
+      "action": "fix_dependency",
+      "note": "与上一条相同错误类型，属于同一BLOCK问题"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

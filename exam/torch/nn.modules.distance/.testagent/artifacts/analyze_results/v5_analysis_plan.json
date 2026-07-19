@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_distance_pairwise.py::TestPairwiseDistance::test_pairwise_distance_invalid_inputs",
+      "block_id": "CASE_05",
+      "error_type": "Failed",
+      "action": "rewrite_block",
+      "note": "测试期望在1D vs 2D输入时抛出RuntimeError，但实际未抛出异常。需要修正异常检测逻辑或理解PairwiseDistance的实际行为。"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_distance_pairwise.py::TestPairwiseDistance::test_pairwise_distance_negative_p",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "负p值数学公式理解有误。对于相同向量，实际结果与期望1/eps不符，需要修正数学期望或检查torch.nn.functional.pairwise_distance的实际行为。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

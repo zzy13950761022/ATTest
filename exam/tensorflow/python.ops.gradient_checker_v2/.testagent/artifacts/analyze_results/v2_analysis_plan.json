@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 14,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gradient_checker_v2.py::test_complex_type_gradient_computation[complex_function-input_shape0-complex64-None-eager]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "复数函数Jacobian形状不匹配：期望(n,2n)，实际得到(2n,2n)"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gradient_checker_v2.py::test_complex_type_gradient_computation[complex_function-input_shape1-complex128-0.001-graph]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

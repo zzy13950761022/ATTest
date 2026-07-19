@@ -1,0 +1,505 @@
+{
+  "plan_version": 2,
+  "target": "torch.jit._trace",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_jit_trace.py",
+    "all_pattern": "tests/test_torch_jit_trace_*.py",
+    "groups": {
+      "G1": "tests/test_torch_jit_trace_g1.py",
+      "G2": "tests/test_torch_jit_trace_g2.py",
+      "G3": "tests/test_torch_jit_trace_g3.py",
+      "G4": "tests/test_torch_jit_trace_g4.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3", "G4"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基本函数追踪",
+      "entrypoints": ["trace"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试简单函数的基本追踪功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "模块追踪",
+      "entrypoints": ["trace"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试nn.Module及其forward方法的追踪"
+    },
+    {
+      "group_id": "G3",
+      "title": "验证与配置参数",
+      "entrypoints": ["trace"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试check_trace、strict等配置参数"
+    },
+    {
+      "group_id": "G4",
+      "title": "边界与异常处理",
+      "entrypoints": ["trace"],
+      "smoke_set": [],
+      "deferred_set": ["CASE_11", "CASE_12", "CASE_13"],
+      "note": "测试边界情况和异常处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本张量操作函数追踪",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality", "is_script_function"],
+        "strong": ["approx_equal", "gradient_check", "performance_benchmark"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "多输入函数追踪",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "multi_input_function",
+          "operation": "linear_combination",
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [3, 4],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality", "is_script_function"],
+        "strong": ["approx_equal", "gradient_check", "memory_usage"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "不同dtype支持",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float16",
+          "device": "cpu",
+          "shape": [2, 2],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["approx_equal", "precision_check"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "GPU设备支持",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cuda",
+          "shape": [2, 3],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality", "device_check"],
+        "strong": ["approx_equal", "gpu_performance"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "简单nn.Module追踪",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "module_type": "simple_linear",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [1, 10],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality", "is_script_module"],
+        "strong": ["approx_equal", "module_structure", "parameter_preservation"]
+      },
+      "oracle": "original_module",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "复杂模块结构追踪",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "sequential_with_layers",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3, 32, 32],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["approx_equal", "submodule_preservation", "training_mode_fixed"]
+      },
+      "oracle": "original_module",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "模块forward方法追踪",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "module_type": "custom_module",
+          "target": "forward_method",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [1, 5],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["approx_equal", "method_binding"]
+      },
+      "oracle": "original_forward",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "验证机制测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "strict": true,
+          "check_trace": true,
+          "check_tolerance": 1e-5
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality", "validation_passed"],
+        "strong": ["tolerance_adjustment", "check_inputs_validation"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "严格模式与非严格模式对比",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "function_with_list",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3],
+          "strict": false,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["strict_vs_nonstrict", "warning_generation"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "容差参数调整",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "strict": true,
+          "check_trace": true,
+          "check_tolerance": 1e-3
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["tolerance_effect", "validation_sensitivity"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G4",
+      "name": "边界形状处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [0, 5],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "basic_equality"],
+        "strong": ["edge_case_handling", "empty_tensor_support"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-12",
+      "block_id": "CASE_12",
+      "group_id": "G4",
+      "name": "异常输入处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "simple_function",
+          "operation": "add_multiply",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "strict": true,
+          "check_trace": true,
+          "invalid_input": true
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "error_type"],
+        "strong": ["error_message", "recovery_behavior"]
+      },
+      "oracle": "exception_pattern",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-13",
+      "block_id": "CASE_13",
+      "group_id": "G4",
+      "name": "动态控制流拒绝",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "function_with_control_flow",
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3],
+          "strict": true,
+          "check_trace": true
+        }
+      ],
+      "asserts": {
+        "weak": ["warning_generated", "basic_equality"],
+        "strong": ["control_flow_limitation", "tracer_warning"]
+      },
+      "oracle": "original_function",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [4, 4],
+        "strict": true,
+        "check_trace": true
+      },
+      "note": "作为参数扩展：不同精度"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cuda",
+        "shape": [2, 3],
+        "strict": true,
+        "check_trace": true
+      },
+      "note": "作为参数扩展：GPU设备"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "module_type": "simple_linear",
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [2, 10],
+        "strict": false,
+        "check_trace": true
+      },
+      "note": "作为参数扩展：非严格模式"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Low",
+      "params": {
+        "func_type": "simple_function",
+        "operation": "add_multiply",
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [2, 2],
+        "strict": true,
+        "check_trace": false,
+        "check_tolerance": 1e-5
+      },
+      "note": "作为参数扩展：关闭验证"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_08"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_09", "CASE_10", "CASE_11", "CASE_12", "CASE_13"]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_clip_grad_g1.py::test_clip_grad_norm_invalid_max_norm",
+      "block_id": "FOOTER",
+      "error_type": "Failed: DID NOT RAISE <class 'RuntimeError'>",
+      "action": "rewrite_block",
+      "note": "clip_grad_norm_ 未对无效max_norm抛出RuntimeError"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

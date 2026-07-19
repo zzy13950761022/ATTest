@@ -1,0 +1,220 @@
+import torch
+import pytest
+import math
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+import torch
+import pytest
+import math
+import numpy as np
+from unittest.mock import patch, MagicMock
+from torch._tensor_str import set_printoptions, PRINT_OPTS
+
+
+class TestTensorStrCore:
+    """Test cases for core tensor string formatting functions."""
+    
+    def setup_method(self):
+        """Save original print options before each test."""
+        self.original_opts = {
+            'precision': PRINT_OPTS.precision,
+            'threshold': PRINT_OPTS.threshold,
+            'edgeitems': PRINT_OPTS.edgeitems,
+            'linewidth': PRINT_OPTS.linewidth,
+            'sci_mode': PRINT_OPTS.sci_mode
+        }
+    
+    def teardown_method(self):
+        """Restore original print options after each test."""
+        set_printoptions(
+            precision=self.original_opts['precision'],
+            threshold=self.original_opts['threshold'],
+            edgeitems=self.original_opts['edgeitems'],
+            linewidth=self.original_opts['linewidth'],
+            sci_mode=self.original_opts['sci_mode']
+        )
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("dtype,device,shape,values,precision", [
+        (torch.float32, 'cpu', (2, 3), 'arange', 4),
+    ])
+    def test_basic_float_tensor_formatting(self, dtype, device, shape, values, precision):
+        """TC-01: Basic float tensor formatting with precision control."""
+        # Set print options
+        set_printoptions(precision=precision)
+        
+        # Create tensor based on values specification
+        if values == 'arange':
+            total_elements = math.prod(shape)
+            tensor = torch.arange(total_elements, dtype=dtype, device=device).reshape(shape)
+        else:
+            raise ValueError(f"Unknown values specification: {values}")
+        
+        # Get string representation
+        tensor_str = str(tensor)
+        
+        # Weak assertions
+        # 1. Output is a string
+        assert isinstance(tensor_str, str), "Tensor string representation should be a string"
+        
+        # 2. Contains shape information - adjust assertion based on actual format
+        # Tensor string format is like: tensor([[0., 1., 2.],\n        [3., 4., 5.]])
+        # We need to check the structure matches the shape
+        lines = tensor_str.strip().split('\n')
+        
+        # Check that we have the right number of lines for the shape
+        # For a 2x3 tensor, we expect at least 3 lines (tensor(...) + 2 data lines)
+        expected_min_lines = shape[0] + 1 if shape[0] <= 10 else 3  # +1 for tensor(...) line
+        assert len(lines) >= min(expected_min_lines, 3), \
+            f"Output should have at least {min(expected_min_lines, 3)} lines for shape {shape}"
+        
+        # 3. Contains dtype information - ADJUSTED: check actual format
+        # Regular tensor output doesn't have dtype= prefix, but we can check other indicators
+        # For float32 tensors, values are shown with decimal points
+        if dtype == torch.float32:
+            assert '.' in tensor_str, "Float32 tensor should show decimal points"
+        
+        # 4. Value count correct
+        # Count numbers in output (basic check)
+        import re
+        numbers = re.findall(r'[-+]?\d*\.\d+|\d+', tensor_str)
+        expected_count = min(math.prod(shape), 1000)  # threshold default is 1000
+        # For 2x3 tensor, we expect 6 numbers
+        assert len(numbers) == math.prod(shape), \
+            f"Should contain {math.prod(shape)} values, got {len(numbers)}"
+        
+        # 5. Precision control (check decimal places)
+        if precision > 0 and dtype.is_floating_point:
+            # Find a floating point number in the output
+            float_pattern = r'[-+]?\d+\.\d+'
+            floats = re.findall(float_pattern, tensor_str)
+            if floats:
+                sample_float = floats[0]
+                decimal_part = sample_float.split('.')[1]
+                # Allow for rounding that might reduce decimal places
+                assert len(decimal_part) <= precision, \
+                    f"Decimal places ({len(decimal_part)}) should not exceed precision ({precision})"
+        
+        # 6. Check that output starts with 'tensor('
+        assert tensor_str.startswith('tensor('), "Tensor string should start with 'tensor('"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("dtype,device,shape,threshold,edgeitems", [
+        (torch.float64, 'cpu', (100, 100), 1000, 3),
+    ])
+    def test_large_tensor_truncation_display(self, dtype, device, shape, threshold, edgeitems):
+        """TC-02: Large tensor truncation display with threshold and edgeitems control."""
+        # Set print options
+        set_printoptions(threshold=threshold, edgeitems=edgeitems)
+        
+        # Create large tensor
+        total_elements = math.prod(shape)
+        tensor = torch.arange(total_elements, dtype=dtype, device=device).reshape(shape)
+        
+        # Get string representation
+        tensor_str = str(tensor)
+        
+        # Weak assertions
+        # 1. Output is a string
+        assert isinstance(tensor_str, str), "Tensor string representation should be a string"
+        
+        # 2. Contains ellipsis for truncation
+        # For 100x100 tensor with threshold=1000, it should be truncated
+        assert "..." in tensor_str, "Large tensor should be truncated with '...'"
+        
+        # 3. Shape information present - ADJUSTED: check structure instead of dtype= prefix
+        # Check that the output has a structure consistent with the shape
+        lines = tensor_str.strip().split('\n')
+        # Large truncated tensor should have multiple lines
+        assert len(lines) >= 3, "Truncated tensor should have multiple lines showing structure"
+        
+        # 4. Truncation indicated
+        # Check that the output is significantly shorter than full representation
+        full_elements = math.prod(shape)
+        
+        # Count numbers in output
+        import re
+        numbers = re.findall(r'[-+]?\d*\.\d+|\d+', tensor_str)
+        
+        # For 100x100 tensor with threshold=1000, should show much fewer than 10000 elements
+        # Threshold controls when summarization happens, not exact number shown
+        # With threshold=1000 and 10000 elements, it should be summarized
+        assert len(numbers) < full_elements, "Truncated tensor should show fewer elements than total"
+        
+        # 5. Check edgeitems behavior (basic check)
+        # The first and last few elements should be shown
+        lines = tensor_str.split('\n')
+        if len(lines) > 1:
+            # Skip the tensor(...) line and look at data lines
+            data_lines = [line for line in lines if '[' in line and ']' in line]
+            if data_lines:
+                first_data_line = data_lines[0]
+                numbers_in_first_line = re.findall(r'[-+]?\d*\.\d+|\d+', first_data_line)
+                if numbers_in_first_line:
+                    # Should show some numbers at the beginning (edgeitems)
+                    assert len(numbers_in_first_line) >= 1, "Should show at least some elements at edges"
+        
+        # 6. Check that output starts with 'tensor('
+        assert tensor_str.startswith('tensor('), "Tensor string should start with 'tensor('"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("dtype,device,shape,precision", [
+        (torch.complex64, 'cpu', (2, 2), 4),
+    ])
+    def test_complex_tensor_formatting(self, dtype, device, shape, precision):
+        """TC-05: Complex tensor formatting with real and imaginary parts."""
+        # Set print options
+        set_printoptions(precision=precision)
+        
+        # Create complex tensor
+        total_elements = math.prod(shape)
+        # Create real and imaginary parts
+        real_part = torch.arange(total_elements, dtype=torch.float32, device=device).reshape(shape)
+        imag_part = torch.arange(total_elements, total_elements * 2, dtype=torch.float32, device=device).reshape(shape)
+        complex_tensor = torch.complex(real_part, imag_part)
+        
+        # Get string representation
+        tensor_str = str(complex_tensor)
+        
+        # Weak assertions
+        # 1. Output is a string
+        assert isinstance(tensor_str, str), "Tensor string representation should be a string"
+        
+        # 2. Contains complex indicator
+        # Complex tensors should show complex numbers
+        assert "j" in tensor_str or "complex" in tensor_str.lower(), \
+            "Complex tensor should contain 'j' or 'complex' indicator"
+        
+        # 3. Real and imaginary parts separate
+        # Complex numbers should show both real and imaginary parts
+        # Look for pattern like (real + imag j)
+        import re
+        complex_pattern = r'\([-+]?\d*\.?\d+\s*[+-]\s*\d*\.?\d+\s*j\)'
+        complex_matches = re.findall(complex_pattern, tensor_str)
+        assert len(complex_matches) > 0, "Should show complex numbers with real and imaginary parts"
+        
+        # 4. Shape information present
+        # Check structure matches shape
+        lines = tensor_str.strip().split('\n')
+        expected_min_lines = shape[0] + 1 if shape[0] <= 10 else 3  # +1 for tensor(...) line
+        assert len(lines) >= min(expected_min_lines, 3), \
+            f"Output should have at least {min(expected_min_lines, 3)} lines for shape {shape}"
+        
+        # 5. Check dtype information
+        dtype_str = str(dtype).split('.')[-1]
+        assert f"dtype=torch.{dtype_str.lower()}" in tensor_str.lower(), \
+            f"dtype information should be in output"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: Deferred test case
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

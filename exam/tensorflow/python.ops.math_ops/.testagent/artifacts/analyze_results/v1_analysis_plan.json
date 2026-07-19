@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_segment_sum_segmentation[dtype0-shape0]",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "numpy.zeros参数错误：shape[1:]是list，需要转换为tuple"
+    },
+    {
+      "test": "test_reduce_mean_reduction[dtype2-shape2-axis2]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "adjust_assertion",
+      "note": "numpy.mean处理列表轴参数错误，需要将axis=[1,2]转换为tuple"
+    },
+    {
+      "test": "test_add_v2_invalid_inputs",
+      "block_id": "HEADER",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "测试预期错误但实际抛出异常，需要调整测试逻辑或使用pytest.raises"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_segment_sum_segmentation[dtype1-shape1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_segment_sum_segmentation[dtype2-shape2]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

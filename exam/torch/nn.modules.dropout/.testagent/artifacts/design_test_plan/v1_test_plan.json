@@ -1,0 +1,240 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.dropout",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_dropout.py",
+    "all_pattern": "tests/test_torch_nn_modules_dropout_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_dropout_g1.py",
+      "G2": "tests/test_torch_nn_modules_dropout_g2.py",
+      "G3": "tests/test_torch_nn_modules_dropout_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心Dropout类测试",
+      "entrypoints": ["Dropout", "Dropout1d", "Dropout2d"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试标准Dropout变体的基本功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级Dropout类测试",
+      "entrypoints": ["Dropout3d", "AlphaDropout", "FeatureAlphaDropout"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试3D和AlphaDropout变体"
+    },
+    {
+      "group_id": "G3",
+      "title": "边界与异常测试",
+      "entrypoints": ["_DropoutNd", "参数验证", "异常处理"],
+      "smoke_set": ["CASE_04"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试参数边界和异常场景"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "Dropout训练评估模式切换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "Dropout",
+          "p": 0.5,
+          "inplace": false,
+          "shape": [2, 3, 4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "training_mode_effect", "no_nan"],
+        "strong": ["exact_scale_factor", "random_pattern_consistency", "statistical_validation"]
+      },
+      "oracle": "torch.nn.functional.dropout",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "Dropout1d形状约束验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "Dropout1d",
+          "p": 0.3,
+          "inplace": false,
+          "shape": [4, 8, 16],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "channel_dim_preserved", "no_nan"],
+        "strong": ["channel_wise_dropout", "spatial_consistency", "gradient_check"]
+      },
+      "oracle": "torch.nn.functional.dropout1d",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "AlphaDropout统计特性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "AlphaDropout",
+          "p": 0.2,
+          "inplace": false,
+          "shape": [3, 5, 7],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "zero_mean_approx", "unit_variance_approx"],
+        "strong": ["exact_zero_mean", "exact_unit_variance", "selu_compatibility", "distribution_test"]
+      },
+      "oracle": "torch.nn.functional.alpha_dropout",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G3",
+      "name": "参数边界值验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "class_name": "Dropout",
+          "p": 0.0,
+          "inplace": false,
+          "shape": [2, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        },
+        {
+          "class_name": "Dropout",
+          "p": 1.0,
+          "inplace": false,
+          "shape": [2, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "p_zero_identity", "p_one_zero_output", "no_nan"],
+        "strong": ["exact_equality_p0", "all_zeros_p1", "edge_case_handling"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "class_name": "Dropout",
+        "p": 0.5,
+        "inplace": true,
+        "shape": [2, 3, 4],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "测试inplace操作副作用"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "class_name": "Dropout",
+        "p": 0.5,
+        "inplace": false,
+        "shape": [2, 3, 4],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "测试float64数据类型支持"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "class_name": "Dropout1d",
+        "p": 0.3,
+        "inplace": false,
+        "shape": [8, 16],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "测试无batch维度的输入形状"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "class_name": "AlphaDropout",
+        "p": 0.2,
+        "inplace": false,
+        "shape": [3, 5, 7],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "测试AlphaDropout的float64支持"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08", "CASE_09", "CASE_10"]
+}

@@ -1,0 +1,156 @@
+=== Run Tests ===
+FsF...                                                                   [100%]
+=================================== FAILURES ===================================
+_ TestTensorStrSpecial.test_sparse_tensor_formatting[dtype0-cpu-shape0-0.5-sparse_coo] _
+
+self = <test_torch_tensor_str_special.TestTensorStrSpecial object at 0x13fa7df00>
+dtype = torch.float32, device = 'cpu', shape = (3, 3), sparsity = 0.5
+layout = 'sparse_coo'
+
+    @pytest.mark.parametrize("dtype,device,shape,sparsity,layout", [
+        (torch.float32, 'cpu', (3, 3), 0.5, 'sparse_coo'),
+        (torch.float64, 'cpu', (5, 5), 0.3, 'sparse_csr'),  # Parameter extension from test plan
+    ])
+    def test_sparse_tensor_formatting(self, dtype, device, shape, sparsity, layout):
+        """TC-04: Sparse tensor formatting with sparse indicator."""
+        # Skip CSR for now as it requires specific handling
+        if layout == 'sparse_csr':
+            pytest.skip("CSR sparse tensor formatting test needs specific implementation")
+    
+        # Create a sparse tensor
+        if layout == 'sparse_coo':
+            # Create COO sparse tensor
+            dense_tensor = torch.randn(shape, dtype=dtype, device=device)
+    
+            # Create sparse mask
+            mask = torch.rand(shape) > sparsity
+            sparse_tensor = dense_tensor.sparse_mask(mask.to_sparse_coo())
+        else:
+            pytest.skip(f"Layout {layout} not implemented in this test")
+    
+        # Get string representation
+        tensor_str = str(sparse_tensor)
+    
+        # Weak assertions
+        # 1. Output is a string
+        assert isinstance(tensor_str, str), "Tensor string representation should be a string"
+    
+        # 2. Contains sparse indicator
+        # Sparse tensors should indicate they are sparse
+        assert "sparse" in tensor_str.lower(), "Sparse tensor should contain 'sparse' indicator"
+    
+        # 3. Shape information present - adjust assertion
+        # Instead of looking for [3, 3], check that the tensor representation
+        # has structure consistent with the shape
+        lines = tensor_str.strip().split('\n')
+        # Sparse tensor representation varies, but should have multiple lines
+        assert len(lines) >= 2, f"Sparse tensor representation should have multiple lines for shape {shape}"
+    
+        # 4. Non-zero values shown (for COO format)
+        if layout == 'sparse_coo':
+            # COO format should show indices and values
+            # Check for either indices or values in the output
+            has_indices_or_values = ("indices" in tensor_str.lower() or
+                                    "values" in tensor_str.lower() or
+                                    "size" in tensor_str.lower())
+            assert has_indices_or_values, \
+                "COO sparse tensor should show indices, values, or size information"
+    
+            # Count non-zero values in the string representation
+            import re
+            numbers = re.findall(r'[-+]?\d*\.\d+|\d+', tensor_str)
+            # Sparse tensor should show some numbers (indices or values)
+            assert len(numbers) > 0, "Should show some numbers (indices or values)"
+    
+        # 5. Check dtype information
+        dtype_str = str(dtype).split('.')[-1]
+        # dtype appears at the end like: dtype=torch.float32
+>       assert f"dtype=torch.{dtype_str.lower()}" in tensor_str.lower(), \
+            f"dtype information should be in output"
+E       AssertionError: dtype information should be in output
+E       assert 'dtype=torch.float32' in 'tensor(indices=tensor([[0, 1, 1, 1, 2],\n                       [1, 0, 1, 2, 0]]),\n       values=tensor([-1.0863, -0.5301,  0.3294, -1.0748,  0.4175]),\n       size=(3, 3), nnz=5, layout=torch.sparse_coo)'
+E        +  where 'tensor(indices=tensor([[0, 1, 1, 1, 2],\n                       [1, 0, 1, 2, 0]]),\n       values=tensor([-1.0863, -0.5301,  0.3294, -1.0748,  0.4175]),\n       size=(3, 3), nnz=5, layout=torch.sparse_coo)' = <built-in method lower of str object at 0x13fa70530>()
+E        +    where <built-in method lower of str object at 0x13fa70530> = 'tensor(indices=tensor([[0, 1, 1, 1, 2],\n                       [1, 0, 1, 2, 0]]),\n       values=tensor([-1.0863, -0.5301,  0.3294, -1.0748,  0.4175]),\n       size=(3, 3), nnz=5, layout=torch.sparse_coo)'.lower
+
+tests/test_torch_tensor_str_special.py:96: AssertionError
+___ TestTensorStrSpecial.test_complex_tensor_formatting[dtype0-cpu-shape0-4] ___
+
+self = <test_torch_tensor_str_special.TestTensorStrSpecial object at 0x13fa7e440>
+dtype = torch.complex64, device = 'cpu', shape = (2, 2), precision = 4
+
+    @pytest.mark.parametrize("dtype,device,shape,precision", [
+        (torch.complex64, 'cpu', (2, 2), 4),
+        (torch.complex128, 'cpu', (3, 3), 6),  # Higher precision test
+    ])
+    def test_complex_tensor_formatting(self, dtype, device, shape, precision):
+        """TC-09: Complex tensor formatting with real/imag parts."""
+        # Save original precision
+        original_precision = PRINT_OPTS.precision
+    
+        try:
+            # Set precision for complex number formatting
+            set_printoptions(precision=precision)
+    
+            # Create complex tensor
+            # Use arange-like values for predictable output
+            total_elements = torch.prod(torch.tensor(shape)).item()
+            real_part = torch.arange(total_elements, dtype=torch.float32).reshape(shape)
+            imag_part = torch.arange(total_elements, dtype=torch.float32).reshape(shape) * 0.5
+            complex_tensor = torch.complex(real_part, imag_part).to(dtype=dtype, device=device)
+    
+            # Get string representation
+            tensor_str = str(complex_tensor)
+    
+            # Weak assertions
+            # 1. Output is a string
+            assert isinstance(tensor_str, str), "Tensor string representation should be a string"
+    
+            # 2. Contains complex indicator or format
+            # Complex numbers are typically shown as (a + bj) or similar
+            # Check for common complex number indicators
+            has_complex_format = ('+' in tensor_str and 'j' in tensor_str) or \
+                                ('(' in tensor_str and ')' in tensor_str)
+            assert has_complex_format, \
+                f"Complex tensor should show complex number format. Got: {tensor_str[:100]}..."
+    
+            # 3. Real and imaginary parts are shown separately
+            # Complex numbers should show both real and imaginary parts
+            # Count parentheses to ensure proper formatting
+            open_paren = tensor_str.count('(')
+            close_paren = tensor_str.count(')')
+            assert open_paren > 0 and close_paren > 0, \
+                "Complex numbers should be enclosed in parentheses"
+    
+            # 4. Shape information present
+            # Check that shape is mentioned in the output
+            shape_str = str(shape).replace('(', '[').replace(')', ']')
+            # The shape might appear in different formats, check for dimension indicators
+            has_dim_info = any(str(dim) in tensor_str for dim in shape)
+            assert has_dim_info, f"Shape information should be present for shape {shape}"
+    
+            # 5. Check dtype information
+            dtype_str = str(dtype).split('.')[-1]
+            # dtype appears at the end like: dtype=torch.complex64
+>           assert f"dtype=torch.{dtype_str.lower()}" in tensor_str.lower(), \
+                f"dtype information should be in output"
+E               AssertionError: dtype information should be in output
+E               assert 'dtype=torch.complex64' in 'tensor([[0.+0.0000j, 1.+0.5000j],\n        [2.+1.0000j, 3.+1.5000j]])'
+E                +  where 'tensor([[0.+0.0000j, 1.+0.5000j],\n        [2.+1.0000j, 3.+1.5000j]])' = <built-in method lower of str object at 0x13fa53f30>()
+E                +    where <built-in method lower of str object at 0x13fa53f30> = 'tensor([[0.+0.0000j, 1.+0.5000j],\n        [2.+1.0000j, 3.+1.5000j]])'.lower
+
+tests/test_torch_tensor_str_special.py:154: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                     Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------
+tests/test_torch_tensor_str_special.py      88      2     14      5    93%   57, 78->94, 165->178, 169->168, 238
+------------------------------------------------------------------------------------
+TOTAL                                       88      2     14      5    93%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_tensor_str_special.py::TestTensorStrSpecial::test_sparse_tensor_formatting[dtype0-cpu-shape0-0.5-sparse_coo]
+FAILED tests/test_torch_tensor_str_special.py::TestTensorStrSpecial::test_complex_tensor_formatting[dtype0-cpu-shape0-4]
+2 failed, 3 passed, 1 skipped in 0.57s
+
+Error: exit 1

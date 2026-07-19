@@ -1,0 +1,191 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.numerics",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_numerics.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_numerics.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "正常浮点张量无NaNInf通过检查",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "shape": [2, 3], "message": "Test valid tensor", "name": null}
+      ],
+      "asserts": {
+        "weak": ["returns_tensor", "same_shape", "same_dtype", "no_exception"],
+        "strong": ["check_numerics_called", "with_dependencies_called", "colocate_with_called"]
+      },
+      "oracle": "tensorflow.python.ops.numerics.verify_tensor_all_finite_v2",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.array_ops.check_numerics",
+        "tensorflow.python.ops.control_flow_ops.with_dependencies",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.colocate_with"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "包含NaN的张量触发错误记录",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "shape": [3], "has_nan": true, "message": "NaN detected", "name": "check_nan"}
+      ],
+      "asserts": {
+        "weak": ["returns_tensor", "same_shape", "same_dtype", "no_exception"],
+        "strong": ["check_numerics_called_with_nan", "error_logged", "message_passed"]
+      },
+      "oracle": "tensorflow.python.ops.numerics.verify_tensor_all_finite_v2",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.array_ops.check_numerics",
+        "tensorflow.python.ops.control_flow_ops.with_dependencies",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.colocate_with"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "包含Inf的张量触发错误记录",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float64", "shape": [2, 2], "has_inf": true, "message": "Inf detected", "name": "check_inf"}
+      ],
+      "asserts": {
+        "weak": ["returns_tensor", "same_shape", "same_dtype", "no_exception"],
+        "strong": ["check_numerics_called_with_inf", "error_logged", "message_passed"]
+      },
+      "oracle": "tensorflow.python.ops.numerics.verify_tensor_all_finite_v2",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.array_ops.check_numerics",
+        "tensorflow.python.ops.control_flow_ops.with_dependencies",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.colocate_with"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "不同浮点数据类型兼容性",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float16", "shape": [4], "message": "float16 test", "name": null}
+      ],
+      "asserts": {
+        "weak": ["returns_tensor", "same_shape", "same_dtype", "no_exception"],
+        "strong": ["check_numerics_called", "dtype_conversion", "device_colocation"]
+      },
+      "oracle": "tensorflow.python.ops.numerics.verify_tensor_all_finite_v2",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.array_ops.check_numerics",
+        "tensorflow.python.ops.control_flow_ops.with_dependencies",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.colocate_with"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "不同形状张量检查",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "shape": [], "message": "scalar test", "name": "scalar_check"}
+      ],
+      "asserts": {
+        "weak": ["returns_tensor", "same_shape", "same_dtype", "no_exception"],
+        "strong": ["check_numerics_called", "shape_handling", "zero_dim_support"]
+      },
+      "oracle": "tensorflow.python.ops.numerics.verify_tensor_all_finite_v2",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.array_ops.check_numerics",
+        "tensorflow.python.ops.control_flow_ops.with_dependencies",
+        "tensorflow.python.framework.ops.convert_to_tensor",
+        "tensorflow.python.framework.ops.colocate_with"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "shape": [5, 5], "message": "Large matrix test", "name": "large_check"},
+      "note": "作为参数扩展：更大矩阵"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"dtype": "float32", "shape": [1, 10, 10], "message": "3D tensor test", "name": "3d_check"},
+      "note": "作为参数扩展：三维张量"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "shape": [2, 3, 4], "has_nan": true, "message": "3D NaN test", "name": "3d_nan"},
+      "note": "作为参数扩展：三维张量含NaN"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {"dtype": "float32", "shape": [10], "has_inf": true, "message": "Vector Inf test", "name": "vector_inf"},
+      "note": "作为参数扩展：向量含Inf"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {"dtype": "bfloat16", "shape": [2, 2], "message": "bfloat16 test", "name": "bfloat_check"},
+      "note": "作为参数扩展：bfloat16数据类型"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"dtype": "float32", "shape": [100], "message": "long vector test", "name": "long_vector"},
+      "note": "作为参数扩展：长向量"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

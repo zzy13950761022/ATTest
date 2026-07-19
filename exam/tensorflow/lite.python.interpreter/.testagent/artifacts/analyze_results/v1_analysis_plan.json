@@ -1,0 +1,34 @@
+{
+  "status": "失败",
+  "passed": 4,
+  "failed": 0,
+  "errors": 3,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests\\test_tensorflow_lite_python_interpreter_g1.py::test_model_loading_and_tensor_allocation[model_path-simple_add-1-False]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock.patch路径错误：tensorflow.lite.python.interpreter.Interpreter导入失败，应为tensorflow.lite.Interpreter"
+    },
+    {
+      "test": "tests\\test_tensorflow_lite_python_interpreter_g1.py::test_complete_inference_workflow[simple_add-input_shape0-float32-1]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "与第一个错误相同，都是mock_interpreter fixture问题"
+    },
+    {
+      "test": "tests\\test_tensorflow_lite_python_interpreter_g1.py::test_model_content_loading[model_content-simple_add--1]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "与第一个错误相同，都是mock_interpreter fixture问题"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

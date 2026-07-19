@@ -1,0 +1,240 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.parallel_for.control_flow_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_parallel_for_control_flow_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_parallel_for_control_flow_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "for_loop基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "for_loop",
+          "iters": 5,
+          "dtype": "float32",
+          "shape": [2, 3],
+          "parallel_iterations": null,
+          "test_type": "basic_scalar"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "basic_structure"],
+        "strong": ["exact_equal", "sequential_consistency", "memory_usage"]
+      },
+      "oracle": "sequential_for_loop",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "pfor向量化转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "pfor",
+          "iters": 10,
+          "dtype": "float64",
+          "shape": [3, 4],
+          "parallel_iterations": 4,
+          "test_type": "arithmetic_ops"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "finite_values", "parallel_execution"],
+        "strong": ["vectorization_correctness", "performance_improvement", "fallback_behavior"]
+      },
+      "oracle": "sequential_arithmetic",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.parallel_for.pfor.PFor",
+        "tensorflow.python.ops.control_flow_ops.while_loop"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "vectorized_map广播功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "vectorized_map",
+          "iters": 8,
+          "dtype": "int32",
+          "shape": [5, 2],
+          "fallback_to_while_loop": false,
+          "test_type": "broadcast_operations"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "broadcast_correctness", "elementwise_consistency"],
+        "strong": ["gradient_correctness", "composite_tensor_support", "xla_compatibility"]
+      },
+      "oracle": "elementwise_operations",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "CompositeTensor支持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "vectorized_map",
+          "iters": 3,
+          "dtype": "float32",
+          "shape": [4, 6],
+          "tensor_type": "SparseTensor",
+          "test_type": "composite_tensor"
+        }
+      ],
+      "asserts": {
+        "weak": ["structure_preserved", "sparse_indices_correct", "values_match", "shape_consistency"],
+        "strong": ["gradient_sparse", "memory_efficiency", "performance_comparison"]
+      },
+      "oracle": "dense_equivalent",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.composite_tensor.CompositeTensor",
+        "tensorflow.python.ops.sparse_ops.SparseTensor"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "fallback_to_while_loop机制",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "pfor",
+          "iters": 6,
+          "dtype": "float32",
+          "shape": [2, 2],
+          "fallback_to_while_loop": true,
+          "parallel_iterations": 2,
+          "test_type": "fallback_mechanism"
+        }
+      ],
+      "asserts": {
+        "weak": ["fallback_triggered", "result_consistent", "no_crash", "basic_functionality"],
+        "strong": ["performance_degradation", "memory_usage_comparison", "error_handling"]
+      },
+      "oracle": "while_loop_equivalent",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.control_flow_ops.while_loop",
+        "tensorflow.python.ops.parallel_for.pfor.PFor"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "for_loop",
+        "iters": 0,
+        "dtype": "float32",
+        "shape": [0, 0],
+        "parallel_iterations": null,
+        "test_type": "zero_iterations"
+      },
+      "note": "零迭代边界测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "for_loop",
+        "iters": 100,
+        "dtype": "float64",
+        "shape": [10, 10],
+        "parallel_iterations": 10,
+        "test_type": "large_iterations"
+      },
+      "note": "大迭代次数测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "pfor",
+        "iters": 3,
+        "dtype": "int64",
+        "shape": [1, 100],
+        "parallel_iterations": 2,
+        "test_type": "extreme_shape"
+      },
+      "note": "极端形状测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "vectorized_map",
+        "iters": 1,
+        "dtype": "float32",
+        "shape": [100, 1],
+        "fallback_to_while_loop": true,
+        "test_type": "single_iteration"
+      },
+      "note": "单次迭代边界"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "vectorized_map",
+        "iters": 2,
+        "dtype": "float32",
+        "shape": [3, 3],
+        "tensor_type": "IndexedSlices",
+        "test_type": "indexed_slices"
+      },
+      "note": "IndexedSlices类型测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

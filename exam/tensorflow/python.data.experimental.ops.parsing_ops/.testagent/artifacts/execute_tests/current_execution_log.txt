@@ -1,0 +1,161 @@
+=== Run Tests ===
+F..FF                                                                    [100%]
+================================== FAILURES ===================================
+____________________ test_fixed_len_feature_basic_parsing _____________________
+
+    def test_fixed_len_feature_basic_parsing():
+        """Test basic parsing with FixedLenFeature (TC-01)."""
+        # Create test data
+        dataset_size = 10
+        serialized_examples = []
+    
+        for i in range(dataset_size):
+            example = create_example_proto({
+                'feature1': float(i),
+                'feature2': i * 2,
+                'feature3': f'string_{i}'.encode('utf-8')
+            })
+            serialized_examples.append(example)
+    
+        # Create dataset - 字符串向量，shape=[None]
+        dataset = create_string_dataset(serialized_examples)
+    
+        # 验证输入数据集是字符串向量
+        element_spec = dataset.element_spec
+        assert isinstance(element_spec, tf.TensorSpec), "输入数据集应该是TensorSpec"
+        assert element_spec.dtype == tf.string, "输入数据集应该是字符串类型"
+>       assert element_spec.shape.as_list() == [None], "输入数据集应该是字符串向量(shape=[None])"
+E       AssertionError: 输入数据集应该是字符串向量(shape=[None])
+E       assert [] == [None]
+E         
+E         Right contains one more item: None
+E         Use -v to get more diff
+
+tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g1.py:88: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 19:15:33.825287: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+_____________________ test_parallel_parsing_functionality _____________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+args = (), keywargs = {}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+>       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1333: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:119: in __enter__
+    return next(self.gen)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1315: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:448: in enter_context
+    result = _cm_type.__enter__(cm)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_____________________ test_multiple_feature_types_support _____________________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+args = (), keywargs = {}
+
+    @wraps(func)
+    def patched(*args, **keywargs):
+>       with self.decoration_helper(patched,
+                                    args,
+                                    keywargs) as (newargs, newkeywargs):
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1333: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:119: in __enter__
+    return next(self.gen)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1315: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\contextlib.py:448: in enter_context
+    result = _cm_type.__enter__(cm)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------------------------
+cleanup.py                                                                 8      8      4      0     0%   2-21
+correct_implementation.py                                                 95     95     26      0     0%   2-188
+execute_verify.py                                                         10     10      2      0     0%   1-12
+fix_header.py                                                             20     20      4      0     0%   2-43
+run_test.py                                                                8      8      0      0     0%   1-11
+test_parse_example_dataset_usage.py                                       33     33      2      0     0%   2-50
+test_shape_check.py                                                       24     24      0      0     0%   1-34
+tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g1.py     222    167     58      5    25%   25, 27-36, 48, 54-63, 91-155, 184->191, 199-286, 300-409, 433-470
+verify_fix.py                                                             63     63     14      0     0%   2-116
+------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                    483    428    110      5    12%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g1.py::test_fixed_len_feature_basic_parsing
+FAILED tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g1.py::test_parallel_parsing_functionality
+FAILED tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g1.py::test_multiple_feature_types_support
+3 failed, 2 passed in 1.88s
+
+Error: exit 1

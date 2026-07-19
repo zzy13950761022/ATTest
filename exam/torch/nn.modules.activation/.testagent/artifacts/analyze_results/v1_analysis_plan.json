@@ -1,0 +1,27 @@
+{
+  "status": "成功",
+  "passed": 10,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_generate_input",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "generate_input函数的extended/mixed/extreme输入范围分支未覆盖"
+    },
+    {
+      "test": "coverage_gap_monotonicity_check",
+      "block_id": "CASE_02",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "test_sigmoid_tanh_basic中的单调性断言和极端值检查未覆盖"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

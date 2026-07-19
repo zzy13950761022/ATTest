@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 2,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_compiler_xla_xla_special.py::TestXLACompileSpecial::test_none_output_handling",
+      "block_id": "CASE_07",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "xla.compile不支持返回None的函数，需要调整测试逻辑或标记为xfail"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

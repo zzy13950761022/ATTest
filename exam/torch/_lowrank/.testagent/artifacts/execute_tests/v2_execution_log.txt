@@ -1,0 +1,43 @@
+=== Run Tests ===
+....FF..                                                                 [100%]
+=================================== FAILURES ===================================
+_____________________ test_get_approximate_basis_invalid_q _____________________
+
+    def test_get_approximate_basis_invalid_q():
+        """测试 get_approximate_basis 无效 q 参数"""
+        set_random_seed()
+        A = torch.randn(6, 4, dtype=torch.float32)
+    
+        # q > min(m,n) 应引发 ValueError
+>       with pytest.raises(ValueError, match="q must be satisfying"):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_torch_lowrank_g2.py:285: Failed
+___________________ test_get_approximate_basis_invalid_niter ___________________
+
+    def test_get_approximate_basis_invalid_niter():
+        """测试 get_approximate_basis 无效 niter 参数"""
+        set_random_seed()
+        A = torch.randn(6, 4, dtype=torch.float32)
+    
+        # niter < 0 应引发 ValueError
+        with pytest.raises(ValueError, match="niter must be non-negative"):
+>           get_approximate_basis(A, niter=-1)
+E           TypeError: get_approximate_basis() missing 1 required positional argument: 'q'
+
+tests/test_torch_lowrank_g2.py:299: TypeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+tests/test_torch_lowrank_g2.py     151      9     24      8    89%   15, 34, 41->43, 43->exit, 94->100, 135->142, 154->161, 239->246, 259-269, 289-290
+----------------------------------------------------------------------------
+TOTAL                              151      9     24      8    89%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_lowrank_g2.py::test_get_approximate_basis_invalid_q
+FAILED tests/test_torch_lowrank_g2.py::test_get_approximate_basis_invalid_niter
+2 failed, 6 passed in 0.82s
+
+Error: exit 1

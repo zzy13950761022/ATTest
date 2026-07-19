@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestGradcheckAdvanced.test_sparse_tensor_gradient_check[dtype0-shape0-True-1e-06-1e-05-0.001]",
+      "block_id": "CASE_03",
+      "error_type": "GradcheckError",
+      "action": "rewrite_block",
+      "note": "稀疏张量梯度检查失败：数值梯度与解析梯度不匹配。需要调整稀疏张量函数定义或增加容差"
+    },
+    {
+      "test": "TestGradcheckBasic.test_complex_function_wirtinger_derivative_check[dtype0-shape0-1e-06-1e-05-0.001]",
+      "block_id": "CASE_02",
+      "error_type": "GradcheckError",
+      "action": "rewrite_block",
+      "note": "复数函数Wirtinger导数检查失败：数值梯度与解析梯度不匹配。需要调整复数函数定义或增加容差"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

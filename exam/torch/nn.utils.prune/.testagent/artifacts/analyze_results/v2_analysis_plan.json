@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_prune.py::TestPruneBasic::test_l1_unstructured_validation[5-5]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "L1剪枝顺序错误：实际剪枝索引[105,181,221,252,369]不是最小的值。需要检查prune.l1_unstructured实现或调整测试断言。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

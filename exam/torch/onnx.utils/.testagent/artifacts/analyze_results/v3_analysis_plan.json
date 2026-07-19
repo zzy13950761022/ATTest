@@ -1,0 +1,63 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 10,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-13-True-True]",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock_model_to_graph返回的MockGraph不是真正的torch::jit::Graph类型"
+    },
+    {
+      "test": "test_export_model_to_bytesio[nn.Module-tensor-bytesio-13-True-True]",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock_model_to_graph返回的MockGraph不是真正的torch::jit::Graph类型"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_default_parameters",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock_model_to_graph返回的MockGraph不是真正的torch::jit::Graph类型"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-named_tuple-file-13-True-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-7-True-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_basic_model_to_file[nn.Module-tuple-file-16-False-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_export_model_to_bytesio[ScriptFunction-tensor-bytesio-13-True-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_custom_input_output_names",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestONNXUtilsExport.test_export_with_verbose_mode",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestONNXUtilsEdgeCases.test_export_to_nonexistent_directory",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

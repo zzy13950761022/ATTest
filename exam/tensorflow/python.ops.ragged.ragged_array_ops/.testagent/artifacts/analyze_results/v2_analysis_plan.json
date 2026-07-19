@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 12,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedArrayOps.test_tile_replication[input_shape0-multiples0-expected_shape0]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "tile函数输出形状不正确，预期行元素数量不匹配"
+    },
+    {
+      "test": "TestRaggedArrayOps.test_expand_dims_dimension_expansion[input_shape1--1-1]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "expand_dims函数值未正确保留，flat_values结构变化"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败集合完全重复，相同的测试用例和错误类型"
+}

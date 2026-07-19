@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_assert_basic_functionality[condition_shape0-data_shapes0-3-True]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "Assert操作在eager模式下返回None，需要调整测试逻辑以正确处理返回值"
+    },
+    {
+      "test": "test_print_basic_functionality[input_shape0-data_shapes0-Test message-10-3-dtype0]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "Print操作在eager模式下不写入stderr，需要调整测试逻辑或使用不同的验证方法"
+    },
+    {
+      "test": "test_image_summary_basic_functionality[tensor_shape0-3-3-test_image-dtype0]",
+      "block_id": "CASE_03",
+      "error_type": "UnimplementedError",
+      "action": "fix_dependency",
+      "note": "ImageSummary的bad_color属性类型不支持，需要调整参数或使用不同的调用方式"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_image_summary_basic_functionality[tensor_shape1-1-1-grayscale-dtype1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_timestamp_basic_functionality",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

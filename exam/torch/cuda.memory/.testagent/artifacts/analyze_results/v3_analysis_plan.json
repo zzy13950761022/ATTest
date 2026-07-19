@@ -1,0 +1,44 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_caching_allocator_direct_operations",
+      "block_id": "CASE_09",
+      "error_type": "SkipTest",
+      "action": "adjust_assertion",
+      "note": "高级内存分配器测试因CUDA不可用被跳过，需要添加mock支持或调整测试逻辑"
+    },
+    {
+      "test": "test_allocator_function_signatures",
+      "block_id": "FOOTER",
+      "error_type": "SkipTest",
+      "action": "adjust_assertion",
+      "note": "FOOTER中的参数化测试因CUDA不可用被跳过，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestCUDAMemoryAdvanced.test_module_import",
+      "reason": "依赖HEADER修复，错误类型重复"
+    },
+    {
+      "test": "test_caching_allocator_direct_operations",
+      "reason": "HEADER: 连续两轮错误类型重复，跳过该代码块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": "",
+  "skipped_blocks": [
+    {
+      "test": "test_caching_allocator_direct_operations",
+      "block_id": "HEADER",
+      "error_type": "SkipTest",
+      "reason": "连续两轮错误类型重复，跳过该代码块"
+    }
+  ]
+}

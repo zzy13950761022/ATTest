@@ -1,0 +1,51 @@
+{
+  "status": "未完全通过",
+  "passed": 19,
+  "failed": 7,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_single_ragged_tensor_input_simple_op[boundary_empty_ragged]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "空RaggedTensor返回普通Tensor而非RaggedTensor"
+    },
+    {
+      "test": "test_ragged_tensor_in_nested_structure[ragged_in_dict]",
+      "block_id": "CASE_04",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "字典中的RaggedTensor处理错误：字符串与int32类型不匹配"
+    },
+    {
+      "test": "test_op_return_value_shape_mismatch_error_handling[different_nested_row_splits]",
+      "block_id": "CASE_05",
+      "error_type": "InvalidArgumentError",
+      "action": "adjust_assertion",
+      "note": "不同nested_row_splits应引发ValueError而非InvalidArgumentError"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_single_ragged_tensor_input_simple_op[boundary_single_element]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_multiple_ragged_tensors_same_nested_row_splits[boundary_two_empty_ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_ragged_tensor_in_nested_structure[multiple_nested_ragged]",
+      "reason": "嵌套结构形状问题，优先处理字典问题"
+    },
+    {
+      "test": "test_ragged_tensor_in_nested_structure[empty_ragged_in_nested]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

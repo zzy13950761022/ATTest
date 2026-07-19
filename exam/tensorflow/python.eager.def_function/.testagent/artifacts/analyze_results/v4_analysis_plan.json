@@ -1,0 +1,32 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：invalid_variable_creation函数未测试，需要添加测试用例验证TensorFlow变量创建限制"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：复杂嵌套控制流和while循环测试未覆盖，需要添加测试用例"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap_3",
+      "reason": "覆盖率缺口较多，优先处理主要功能测试，次要分支标记为deferred"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

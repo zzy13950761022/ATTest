@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_different_mock_func_usage",
+      "block_id": "CASE_06",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "lambda函数参数名不匹配：定义使用'd'但调用使用'dtype'"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

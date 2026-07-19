@@ -1,0 +1,17 @@
+{
+  "status": "成功",
+  "passed": 11,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "test_htk_formula_verification",
+      "reason": "CASE_05在测试计划中被标记为deferred，需要实现HTK公式验证测试"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

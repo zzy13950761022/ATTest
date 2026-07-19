@@ -1,0 +1,59 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 9,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_sparse_matrix_eigenvalue_solution[dtype1-cpu-shape1-5-False-ortho-True]",
+      "block_id": "CASE_06",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "LOBPCG算法限制：矩阵行数(=10)必须≥3×特征对数量(=5)，需要调整测试参数或添加条件检查"
+    },
+    {
+      "test": "test_iteration_parameters_control[dtype2-cpu-shape2-2-True-basic-20-1e-07]",
+      "block_id": "CASE_07",
+      "error_type": "_LinAlgError",
+      "action": "rewrite_block",
+      "note": "Cholesky分解失败：B矩阵可能不是正定的，需要确保测试中生成的B矩阵是严格正定的"
+    },
+    {
+      "test": "test_dense_basic_eigenvalue_solution[dtype0-cpu-shape0-2-True-ortho]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "残差范数0.0112超过了阈值0.01，需要放宽容差或改进算法参数"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_iteration_parameters_control[dtype1-cpu-shape1-3-False-ortho-5-1e-05]",
+      "reason": "与CASE_06类似的问题：矩阵行数(=6)必须≥3×特征对数量(=3)，将在修复CASE_06后处理"
+    },
+    {
+      "test": "test_boundary_conditions[dtype0-cpu-shape0-1-True-ortho]",
+      "reason": "边界条件测试违反LOBPCG限制：矩阵行数(=2)必须≥3×特征对数量(=1)，需要重新设计边界测试"
+    },
+    {
+      "test": "test_boundary_conditions[dtype1-cpu-shape1-2-False-ortho]",
+      "reason": "边界条件测试违反LOBPCG限制：矩阵行数(=3)必须≥3×特征对数量(=2)"
+    },
+    {
+      "test": "test_boundary_conditions[dtype2-cpu-shape2-1-True-ortho]",
+      "reason": "边界条件测试违反LOBPCG限制：矩阵行数(=1)必须≥3×特征对数量(=1)"
+    },
+    {
+      "test": "test_generalized_eigenvalue_problem[dtype1-cpu-shape1-3-False-ortho-True]",
+      "reason": "广义特征值问题违反LOBPCG限制：矩阵行数(=8)必须≥3×特征对数量(=3)"
+    },
+    {
+      "test": "test_generalized_eigenvalue_problem[dtype2-cpu-shape2-2-True-basic-True]",
+      "reason": "广义特征值问题违反LOBPCG限制：矩阵行数(=5)必须≥3×特征对数量(=2)"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

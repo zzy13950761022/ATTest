@@ -1,0 +1,439 @@
+import torch
+import torch.nn as nn
+import pytest
+import math
+from torch.nn.utils import spectral_norm
+
+
+# ==== BLOCK:HEADER START ====
+# Test class and common fixtures
+class TestSpectralNorm:
+    """Test suite for torch.nn.utils.spectral_norm"""
+    
+    def setup_method(self):
+        """Setup method to ensure reproducibility"""
+        torch.manual_seed(42)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_01 START ====
+    def test_standard_linear_spectral_norm(self):
+        """TC-01: 标准线性层谱归一化"""
+        # 创建线性层
+        linear = nn.Linear(in_features=20, out_features=40)
+        
+        # 应用谱归一化
+        sn_linear = spectral_norm(
+            module=linear,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=None
+        )
+        
+        # weak 断言检查
+        # 1. 返回模块
+        assert sn_linear is linear, "Should return the original module"
+        
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_linear, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_linear.weight_u, torch.Tensor), "weight_u should be a tensor"
+        assert sn_linear.weight_u.shape == (40,), f"weight_u shape should be (40,), got {sn_linear.weight_u.shape}"
+        
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_linear, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_linear.weight_v, torch.Tensor), "weight_v should be a tensor"
+        assert sn_linear.weight_v.shape == (20,), f"weight_v shape should be (20,), got {sn_linear.weight_v.shape}"
+        
+        # 4. 检查是否有前向传播钩子
+        assert hasattr(sn_linear, '_forward_pre_hooks'), "Module should have forward pre-hooks"
+        assert len(sn_linear._forward_pre_hooks) > 0, "Should have at least one forward pre-hook"
+        
+        # 5. 检查权重参数仍然存在（但不再是Parameter，而是普通Tensor）
+        assert hasattr(sn_linear, 'weight'), "Module should still have weight attribute"
+        assert isinstance(sn_linear.weight, torch.Tensor), "weight should be a Tensor after spectral norm"
+        
+        # 6. 检查原始权重参数是否存在
+        assert hasattr(sn_linear, 'weight_orig'), "Module should have weight_orig parameter"
+        assert isinstance(sn_linear.weight_orig, nn.Parameter), "weight_orig should be a Parameter"
+# ==== BLOCK:CASE_01 END ====
+
+
+# ==== BLOCK:CASE_02 START ====
+    def test_conv_transpose_special_dim_handling(self):
+        """TC-02: ConvTranspose模块特殊dim处理"""
+        # 创建 ConvTranspose2d 模块
+        conv_transpose = nn.ConvTranspose2d(
+            in_channels=3,
+            out_channels=6,
+            kernel_size=3
+        )
+        
+        # 应用谱归一化
+        sn_conv_transpose = spectral_norm(
+            module=conv_transpose,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=None  # 应该自动设置为1
+        )
+        
+        # weak 断言检查
+        # 1. 返回模块
+        assert sn_conv_transpose is conv_transpose, "Should return the original module"
+        
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_conv_transpose, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_conv_transpose.weight_u, torch.Tensor), "weight_u should be a tensor"
+        # ConvTranspose2d 权重形状: [in_channels, out_channels, kernel_size, kernel_size]
+        # 展平后: [in_channels * kernel_size * kernel_size, out_channels]
+        # weight_u 应该对应输出维度: out_channels
+        assert sn_conv_transpose.weight_u.shape == (6,), f"weight_u shape should be (6,), got {sn_conv_transpose.weight_u.shape}"
+        
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_conv_transpose, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_conv_transpose.weight_v, torch.Tensor), "weight_v should be a tensor"
+        # weight_v 应该对应输入维度: in_channels * kernel_size * kernel_size
+        assert sn_conv_transpose.weight_v.shape == (3 * 3 * 3,), f"weight_v shape should be (27,), got {sn_conv_transpose.weight_v.shape}"
+        
+        # 4. 检查 dim 是否正确设置
+        # 对于 ConvTranspose 模块，dim 应该自动设置为 1
+        # 我们通过检查 weight_u 和 weight_v 的形状来间接验证
+        # weight_u 对应输出维度 (dim=1)，weight_v 对应输入维度 (dim=0)
+        # 对于 ConvTranspose2d，权重形状为 [in_channels, out_channels, kernel_size, kernel_size]
+        # 展平后矩阵形状为 [in_channels * kernel_size * kernel_size, out_channels]
+        # 所以 dim=1 对应 out_channels，dim=0 对应 in_channels * kernel_size * kernel_size
+        assert sn_conv_transpose.weight_u.shape[0] == 6, "weight_u should correspond to output dimension"
+        assert sn_conv_transpose.weight_v.shape[0] == 27, "weight_v should correspond to input dimension"
+# ==== BLOCK:CASE_02 END ====
+
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: 自定义参数名谱归一化
+# Placeholder for CASE_03 (deferred)
+# ==== BLOCK:CASE_03 END ====
+
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: 多轮幂迭代验证
+# Placeholder for CASE_04 (deferred)
+# ==== BLOCK:CASE_04 END ====
+
+
+# ==== BLOCK:CASE_05 START ====
+    def test_different_module_type_compatibility(self):
+        """TC-05: 不同模块类型兼容性"""
+        # 创建 Conv2d 模块
+        conv2d = nn.Conv2d(
+            in_channels=3,
+            out_channels=6,
+            kernel_size=3
+        )
+        
+        # 应用谱归一化
+        sn_conv2d = spectral_norm(
+            module=conv2d,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=None
+        )
+        
+        # weak 断言检查
+        # 1. 返回模块
+        assert sn_conv2d is conv2d, "Should return the original module"
+        
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_conv2d, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_conv2d.weight_u, torch.Tensor), "weight_u should be a tensor"
+        # Conv2d 权重形状: [out_channels, in_channels, kernel_size, kernel_size]
+        # 展平后: [out_channels, in_channels * kernel_size * kernel_size]
+        # weight_u 应该对应输出维度: out_channels (dim=0)
+        assert sn_conv2d.weight_u.shape == (6,), f"weight_u shape should be (6,), got {sn_conv2d.weight_u.shape}"
+        
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_conv2d, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_conv2d.weight_v, torch.Tensor), "weight_v should be a tensor"
+        # weight_v 应该对应输入维度: in_channels * kernel_size * kernel_size
+        assert sn_conv2d.weight_v.shape == (3 * 3 * 3,), f"weight_v shape should be (27,), got {sn_conv2d.weight_v.shape}"
+        
+        # 4. 检查 Conv2d 模块是否被支持
+        # 通过检查是否有前向传播钩子来验证
+        assert hasattr(sn_conv2d, '_forward_pre_hooks'), "Module should have forward pre-hooks"
+        assert len(sn_conv2d._forward_pre_hooks) > 0, "Should have at least one forward pre-hook"
+        
+        # 5. 检查权重参数仍然存在（但不再是Parameter，而是普通Tensor）
+        assert hasattr(sn_conv2d, 'weight'), "Module should still have weight attribute"
+        assert isinstance(sn_conv2d.weight, torch.Tensor), "weight should be a Tensor after spectral norm"
+        
+        # 6. 检查原始权重参数是否存在
+        assert hasattr(sn_conv2d, 'weight_orig'), "Module should have weight_orig parameter"
+        assert isinstance(sn_conv2d.weight_orig, nn.Parameter), "weight_orig should be a Parameter"
+# ==== BLOCK:CASE_05 END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: Placeholder for deferred test case
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: Placeholder for deferred test case
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: Placeholder for deferred test case
+# ==== BLOCK:CASE_08 END ====
+
+
+# ==== BLOCK:CASE_09 START ====
+    def test_nonexistent_parameter_exception(self):
+        """TC-09: 参数不存在异常处理"""
+        # 创建线性层
+        linear = nn.Linear(in_features=10, out_features=20)
+        
+        # 尝试对不存在的参数应用谱归一化
+        # 根据源码，SpectralNorm.apply中会访问module._parameters[name]，这会抛出KeyError
+        with pytest.raises(KeyError) as exc_info:
+            spectral_norm(
+                module=linear,
+                name='nonexistent_param',  # 不存在的参数名
+                n_power_iterations=1,
+                eps=1e-12,
+                dim=None
+            )
+        
+        # weak 断言检查
+        # 1. 检查是否抛出了 KeyError
+        assert exc_info.type is KeyError, f"Should raise KeyError for nonexistent parameter, got {exc_info.type}"
+        
+        # 2. 检查错误消息是否包含参数名
+        error_msg = str(exc_info.value)
+        # KeyError通常直接显示键名，例如"'nonexistent_param'"
+        assert 'nonexistent_param' in error_msg, f"Error message should contain parameter name, got: {error_msg}"
+        
+        # 3. 确保模块没有被修改
+        # 检查模块是否仍然只有标准的参数
+        assert hasattr(linear, 'weight'), "Module should still have weight parameter"
+        assert hasattr(linear, 'bias'), "Module should still have bias parameter"
+        assert not hasattr(linear, 'nonexistent_param'), "Module should not have nonexistent_param"
+        
+        # 4. 检查是否没有添加缓冲区
+        assert not hasattr(linear, 'nonexistent_param_u'), "Module should not have nonexistent_param_u buffer"
+        assert not hasattr(linear, 'nonexistent_param_v'), "Module should not have nonexistent_param_v buffer"
+        assert not hasattr(linear, 'nonexistent_param_orig'), "Module should not have nonexistent_param_orig parameter"
+# ==== BLOCK:CASE_09 END ====
+
+
+# ==== BLOCK:CASE_10 START ====
+    def test_negative_power_iterations_exception(self):
+        """TC-10: 负迭代次数异常处理"""
+        # 创建线性层
+        linear = nn.Linear(in_features=10, out_features=20)
+        
+        # 尝试使用负的迭代次数应用谱归一化
+        # 根据 SpectralNorm.__init__，n_power_iterations <= 0 会抛出 ValueError
+        with pytest.raises(ValueError) as exc_info:
+            spectral_norm(
+                module=linear,
+                name='weight',
+                n_power_iterations=-1,  # 负迭代次数
+                eps=1e-12,
+                dim=None
+            )
+        
+        # weak 断言检查
+        # 1. 检查是否抛出了 ValueError
+        assert exc_info.type is ValueError, f"Should raise ValueError for negative iterations, got {exc_info.type}"
+        
+        # 2. 检查错误消息是否包含相关信息
+        error_msg = str(exc_info.value)
+        # 根据源码，错误消息应该是：'Expected n_power_iterations to be positive, but got n_power_iterations=-1'
+        assert 'n_power_iterations' in error_msg, f"Error message should mention n_power_iterations, got: {error_msg}"
+        assert 'positive' in error_msg or '-1' in error_msg, f"Error message should mention positive or the value, got: {error_msg}"
+        
+        # 3. 确保模块没有被修改
+        # 检查模块是否仍然只有标准的参数
+        assert hasattr(linear, 'weight'), "Module should still have weight parameter"
+        assert hasattr(linear, 'bias'), "Module should still have bias parameter"
+        
+        # 4. 检查是否没有添加谱归一化相关的属性
+        assert not hasattr(linear, 'weight_u'), "Module should not have weight_u buffer"
+        assert not hasattr(linear, 'weight_v'), "Module should not have weight_v buffer"
+        assert not hasattr(linear, 'weight_orig'), "Module should not have weight_orig parameter"
+        
+        # 5. 检查是否没有添加前向传播钩子
+        assert not hasattr(linear, '_forward_pre_hooks') or len(linear._forward_pre_hooks) == 0, \
+            "Module should not have forward pre-hooks"
+# ==== BLOCK:CASE_10 END ====
+
+
+# ==== BLOCK:CASE_11 START ====
+    def test_non_positive_eps_exception(self):
+        """TC-11: 非正eps值异常处理"""
+        # 创建线性层
+        linear = nn.Linear(in_features=10, out_features=20)
+        
+        # 测试 eps = 0 的情况
+        # 根据实际测试，spectral_norm 不验证 eps 参数，所以不会抛出异常
+        # 我们需要验证 eps=0 可以正常工作
+        sn_linear = spectral_norm(
+            module=linear,
+            name='weight',
+            n_power_iterations=1,
+            eps=0,  # eps = 0，应该可以正常工作
+            dim=None
+        )
+        
+        # weak 断言检查
+        # 1. 检查是否成功应用了谱归一化
+        assert sn_linear is linear, "Should return the original module"
+        
+        # 2. 检查是否有 weight_u 缓冲区
+        assert hasattr(sn_linear, 'weight_u'), "Module should have weight_u buffer"
+        assert isinstance(sn_linear.weight_u, torch.Tensor), "weight_u should be a tensor"
+        
+        # 3. 检查是否有 weight_v 缓冲区
+        assert hasattr(sn_linear, 'weight_v'), "Module should have weight_v buffer"
+        assert isinstance(sn_linear.weight_v, torch.Tensor), "weight_v should be a tensor"
+        
+        # 4. 检查是否有前向传播钩子
+        assert hasattr(sn_linear, '_forward_pre_hooks'), "Module should have forward pre-hooks"
+        assert len(sn_linear._forward_pre_hooks) > 0, "Should have at least one forward pre-hook"
+        
+        # 5. 检查钩子中的 eps 值是否正确设置为 0
+        hook = list(sn_linear._forward_pre_hooks.values())[0]
+        assert hasattr(hook, 'eps'), "Hook should have eps attribute"
+        assert hook.eps == 0, f"eps should be 0, got {hook.eps}"
+        
+        # 测试 eps < 0 的情况
+        linear2 = nn.Linear(in_features=10, out_features=20)
+        sn_linear2 = spectral_norm(
+            module=linear2,
+            name='weight',
+            n_power_iterations=1,
+            eps=-1e-12,  # eps < 0，应该也可以正常工作
+            dim=None
+        )
+        
+        # 6. 检查是否成功应用了谱归一化
+        assert sn_linear2 is linear2, "Should return the original module"
+        
+        # 7. 检查钩子中的 eps 值是否正确设置为负值
+        hook2 = list(sn_linear2._forward_pre_hooks.values())[0]
+        assert hasattr(hook2, 'eps'), "Hook should have eps attribute"
+        assert hook2.eps == -1e-12, f"eps should be -1e-12, got {hook2.eps}"
+        
+        # 8. 验证前向传播仍然可以工作（即使eps为负）
+        # 创建输入数据
+        x = torch.randn(5, 10)
+        output = sn_linear2(x)
+        assert output.shape == (5, 20), f"Output shape should be (5, 20), got {output.shape}"
+        
+        # 9. 检查权重参数仍然存在
+        assert hasattr(sn_linear2, 'weight'), "Module should still have weight attribute"
+        assert isinstance(sn_linear2.weight, torch.Tensor), "weight should be a Tensor after spectral norm"
+        
+        # 10. 检查原始权重参数是否存在
+        assert hasattr(sn_linear2, 'weight_orig'), "Module should have weight_orig parameter"
+        assert isinstance(sn_linear2.weight_orig, nn.Parameter), "weight_orig should be a Parameter"
+# ==== BLOCK:CASE_11 END ====
+
+
+# ==== BLOCK:CASE_12 START ====
+    def test_invalid_dim_index_exception(self):
+        """TC-12: 无效dim索引异常处理"""
+        # 创建线性层（权重形状为 [20, 10]，即2维）
+        linear = nn.Linear(in_features=10, out_features=20)
+        
+        # 测试 dim 超出权重张量维度范围的情况
+        # 线性层权重是2维张量，有效dim索引是0或1（或-1或-2）
+        # dim=2 会触发 RuntimeError 因为 permute 操作失败
+        with pytest.raises(RuntimeError) as exc_info:
+            spectral_norm(
+                module=linear,
+                name='weight',
+                n_power_iterations=1,
+                eps=1e-12,
+                dim=2  # 无效的dim索引，应该抛出 RuntimeError
+            )
+        
+        # weak 断言检查
+        # 1. 检查是否抛出了 RuntimeError
+        assert exc_info.type is RuntimeError, f"Should raise RuntimeError for invalid dim index, got {exc_info.type}"
+        
+        # 2. 检查错误消息是否包含相关信息
+        error_msg = str(exc_info.value)
+        # RuntimeError 消息通常包含 "permute" 和维度信息
+        assert 'permute' in error_msg.lower() or 'dimension' in error_msg.lower() or '2' in error_msg, \
+            f"Error message should mention permute/dimension or the value, got: {error_msg}"
+        
+        # 3. 确保模块没有被修改
+        assert hasattr(linear, 'weight'), "Module should still have weight parameter"
+        assert hasattr(linear, 'bias'), "Module should still have bias parameter"
+        assert not hasattr(linear, 'weight_u'), "Module should not have weight_u buffer"
+        
+        # 测试负的无效 dim 索引
+        linear2 = nn.Linear(in_features=10, out_features=20)
+        with pytest.raises(RuntimeError) as exc_info2:
+            spectral_norm(
+                module=linear2,
+                name='weight',
+                n_power_iterations=1,
+                eps=1e-12,
+                dim=-3  # 无效的负dim索引，应该抛出 RuntimeError
+            )
+        
+        # 4. 检查是否抛出了 RuntimeError
+        assert exc_info2.type is RuntimeError, f"Should raise RuntimeError for negative invalid dim index, got {exc_info2.type}"
+        
+        # 5. 检查错误消息是否包含相关信息
+        error_msg2 = str(exc_info2.value)
+        assert 'permute' in error_msg2.lower() or 'dimension' in error_msg2.lower() or '-3' in error_msg2, \
+            f"Error message should mention permute/dimension or the value, got: {error_msg2}"
+        
+        # 6. 测试有效的 dim 索引（应该可以正常工作）
+        linear3 = nn.Linear(in_features=10, out_features=20)
+        sn_linear3 = spectral_norm(
+            module=linear3,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=0  # 有效的dim索引
+        )
+        
+        # 7. 检查是否成功应用了谱归一化
+        assert sn_linear3 is linear3, "Should return the original module"
+        assert hasattr(sn_linear3, 'weight_u'), "Module should have weight_u buffer"
+        assert hasattr(sn_linear3, 'weight_v'), "Module should have weight_v buffer"
+        
+        # 8. 测试另一个有效的 dim 索引
+        linear4 = nn.Linear(in_features=10, out_features=20)
+        sn_linear4 = spectral_norm(
+            module=linear4,
+            name='weight',
+            n_power_iterations=1,
+            eps=1e-12,
+            dim=1  # 有效的dim索引
+        )
+        
+        # 9. 检查是否成功应用了谱归一化
+        assert sn_linear4 is linear4, "Should return the original module"
+        assert hasattr(sn_linear4, 'weight_u'), "Module should have weight_u buffer"
+        assert hasattr(sn_linear4, 'weight_v'), "Module should have weight_v buffer"
+        
+        # 10. 验证前向传播可以工作
+        x = torch.randn(5, 10)
+        output3 = sn_linear3(x)
+        output4 = sn_linear4(x)
+        assert output3.shape == (5, 20), f"Output shape should be (5, 20), got {output3.shape}"
+        assert output4.shape == (5, 20), f"Output shape should be (5, 20), got {output4.shape}"
+# ==== BLOCK:CASE_12 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# Test class footer
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

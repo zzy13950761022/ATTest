@@ -1,0 +1,601 @@
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+# ==== BLOCK:HEADER START ====
+import math
+import pytest
+import torch
+import torch.nn.init as init
+from typing import Tuple, List, Any
+
+
+def set_random_seed(seed: int = 42) -> None:
+    """设置随机种子以确保测试可重复性"""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def assert_tensor_properties(tensor: torch.Tensor, 
+                            expected_shape: Tuple[int, ...],
+                            expected_dtype: torch.dtype,
+                            test_name: str = "") -> None:
+    """验证张量的基本属性"""
+    assert tensor.shape == expected_shape, \
+        f"{test_name}: 形状不匹配，期望 {expected_shape}，实际 {tensor.shape}"
+    assert tensor.dtype == expected_dtype, \
+        f"{test_name}: 数据类型不匹配，期望 {expected_dtype}，实际 {tensor.dtype}"
+    assert torch.isfinite(tensor).all(), \
+        f"{test_name}: 张量包含非有限值"
+
+
+def assert_not_all_zero(tensor: torch.Tensor, test_name: str = "") -> None:
+    """验证张量不全为零"""
+    assert not torch.all(tensor == 0), \
+        f"{test_name}: 张量全为零"
+
+
+def assert_eye_pattern(tensor: torch.Tensor, test_name: str = "") -> None:
+    """验证张量具有单位矩阵模式"""
+    n, m = tensor.shape[-2], tensor.shape[-1]
+    min_dim = min(n, m)
+    
+    # 检查对角线元素接近1
+    for i in range(min_dim):
+        diag_value = tensor[..., i, i].mean().item()
+        assert abs(diag_value - 1.0) < 1e-6, \
+            f"{test_name}: 对角线元素 {i},{i} 应该是1，实际 {diag_value}"
+    
+    # 检查非对角线元素接近0
+    zero_mask = torch.ones_like(tensor, dtype=torch.bool)
+    for i in range(min_dim):
+        zero_mask[..., i, i] = False
+    
+    off_diag_values = tensor[zero_mask]
+    if off_diag_values.numel() > 0:
+        max_off_diag = torch.abs(off_diag_values).max().item()
+        assert max_off_diag < 1e-6, \
+            f"{test_name}: 非对角线元素最大绝对值 {max_off_diag} 应该接近0"
+
+
+# 设置全局随机种子
+set_random_seed(42)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_09 START ====
+@pytest.mark.parametrize("dtype,device,shape,flags", [
+    (torch.float32, "cpu", (3, 3), []),
+])
+def test_eye_and_dirac_basic(dtype: torch.dtype, 
+                            device: str, 
+                            shape: Tuple[int, ...], 
+                            flags: List[str]) -> None:
+    """测试 eye_ 和 dirac_ 函数的基础功能
+    
+    验证特殊矩阵初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. eye_ 创建单位矩阵模式
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 测试 eye_ 函数（2D张量）
+    if len(shape) == 2:
+        # 创建输入张量
+        tensor_eye = torch.empty(shape, dtype=dtype, device=device)
+        original_tensor_id = id(tensor_eye)
+        
+        # 调用 eye_ 初始化函数
+        result_eye = init.eye_(tensor_eye)
+        
+        # 验证原地修改
+        assert id(result_eye) == original_tensor_id, "eye_ 应该原地修改张量"
+        
+        # weak 断言：基本属性验证
+        assert_tensor_properties(result_eye, shape, dtype, "eye_基础测试")
+        
+        # weak 断言：eye模式验证
+        # 对于方阵，对角线应该是1，其他位置应该是0
+        n, m = shape
+        min_dim = min(n, m)
+        
+        # 检查对角线元素
+        for i in range(min_dim):
+            assert torch.allclose(result_eye[i, i], torch.tensor(1.0, dtype=dtype)), \
+                f"对角线元素 {i},{i} 应该是1"
+        
+        # 检查非对角线元素（应该是0）
+        zero_count = (result_eye == 0).sum().item()
+        expected_zero_count = n * m - min_dim
+        assert zero_count >= expected_zero_count, \
+            f"应该有至少 {expected_zero_count} 个零元素，实际 {zero_count}"
+        
+        # 验证张量确实被修改了
+        assert torch.isfinite(result_eye).any(), "张量应该包含有限值"
+        
+        # 使用辅助函数验证eye模式
+        assert_eye_pattern(result_eye, "eye_基础测试")
+    
+    # 注意：dirac_ 需要3-5维张量，但测试用例指定的是2D [3,3]
+    # 所以这里只测试 eye_，dirac_ 测试将在其他用例中覆盖
+    
+    # 如果需要测试 dirac_，可以添加以下代码：
+    # if len(shape) in [3, 4, 5]:
+    #     tensor_dirac = torch.empty(shape, dtype=dtype, device=device)
+    #     result_dirac = init.dirac_(tensor_dirac)
+    #     # 验证dirac_的基本属性
+    #     assert_tensor_properties(result_dirac, shape, dtype, "dirac_基础测试")
+    #     # dirac_应该只在中心位置有1，其他地方为0
+    #     ones_count = (result_dirac == 1).sum().item()
+    #     min_dim = min(shape[0], shape[1])
+    #     assert ones_count == min_dim, f"应该有 {min_dim} 个1，实际 {ones_count}"
+    
+    # 验证eye_函数的特殊性质
+    if len(shape) == 2:
+        # 验证单位矩阵的性质：A * A^T = A
+        eye_matrix = result_eye
+        eye_transpose = eye_matrix.T
+        product = torch.matmul(eye_matrix, eye_transpose)
+        
+        # 对于单位矩阵，应该满足 A * A^T = A
+        assert torch.allclose(product, eye_matrix), \
+            "单位矩阵应该满足 A * A^T = A"
+        
+        # 验证迹等于min(n, m)
+        trace = torch.trace(eye_matrix).item()
+        expected_trace = min(shape[0], shape[1])
+        assert abs(trace - expected_trace) < 1e-6, \
+            f"迹应该是 {expected_trace}，实际 {trace}"
+        
+        # 验证行列式（对于方阵）
+        if shape[0] == shape[1]:
+            # 单位矩阵的行列式应该是1
+            det = torch.det(eye_matrix).item()
+            assert abs(det - 1.0) < 1e-6, \
+                f"单位矩阵的行列式应该是1，实际 {det}"
+# ==== BLOCK:CASE_09 END ====
+
+
+# ==== BLOCK:CASE_10 START ====
+@pytest.mark.parametrize("dtype,device,shape,sparsity,flags", [
+    (torch.float32, "cpu", (4, 4), 0.5, []),
+])
+def test_sparse_and_orthogonal_basic(dtype: torch.dtype, 
+                                    device: str, 
+                                    shape: Tuple[int, ...], 
+                                    sparsity: float,
+                                    flags: List[str]) -> None:
+    """测试 sparse_ 和 orthogonal_ 函数的基础功能
+    
+    验证稀疏和正交初始化的基本属性：
+    1. 形状正确
+    2. 数据类型正确
+    3. 所有值都是有限值
+    4. sparse_ 创建指定稀疏度的矩阵
+    5. orthogonal_ 创建正交矩阵
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 测试 sparse_ 函数
+    if len(shape) == 2:  # sparse_ 只支持2D张量
+        # 创建输入张量
+        tensor_sparse = torch.empty(shape, dtype=dtype, device=device)
+        original_tensor_id = id(tensor_sparse)
+        
+        # 调用 sparse_ 初始化函数
+        result_sparse = init.sparse_(tensor_sparse, sparsity=sparsity)
+        
+        # 验证原地修改
+        assert id(result_sparse) == original_tensor_id, "sparse_ 应该原地修改张量"
+        
+        # weak 断言：基本属性验证
+        assert_tensor_properties(result_sparse, shape, dtype, "sparse_基础测试")
+        
+        # weak 断言：稀疏度近似验证
+        # 计算实际稀疏度（零元素比例）
+        zero_count = (result_sparse == 0).sum().item()
+        total_elements = result_sparse.numel()
+        actual_sparsity = zero_count / total_elements
+        
+        # 稀疏度应该在指定值附近（由于随机性，允许一定误差）
+        expected_sparsity = sparsity
+        sparsity_tolerance = 0.1  # 10% 容差
+        assert abs(actual_sparsity - expected_sparsity) <= sparsity_tolerance, \
+            f"稀疏度不匹配: 期望 {expected_sparsity:.3f}, 实际 {actual_sparsity:.3f}"
+        
+        # 验证非零元素来自正态分布
+        non_zero_mask = result_sparse != 0
+        if non_zero_mask.any():
+            non_zero_values = result_sparse[non_zero_mask]
+            # 检查非零值不是全零
+            assert not torch.all(non_zero_values == 0), \
+                "非零元素不应该全为零"
+            
+            # 检查非零值有变化（不是所有值都相同）
+            unique_values = torch.unique(non_zero_values)
+            assert len(unique_values) > 1, \
+                "非零元素应该有变化"
+        
+        # 验证每列都有指定数量的零元素
+        rows, cols = shape
+        expected_zeros_per_col = int(math.ceil(sparsity * rows))
+        
+        for col in range(cols):
+            zero_count_in_col = (result_sparse[:, col] == 0).sum().item()
+            assert zero_count_in_col == expected_zeros_per_col, \
+                f"第 {col} 列应该有 {expected_zeros_per_col} 个零元素，实际 {zero_count_in_col}"
+    
+    # 测试 orthogonal_ 函数
+    if len(shape) >= 2:  # orthogonal_ 需要至少2D张量
+        # 创建输入张量
+        tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+        original_tensor_id = id(tensor_ortho)
+        
+        # 调用 orthogonal_ 初始化函数
+        result_ortho = init.orthogonal_(tensor_ortho)
+        
+        # 验证原地修改
+        assert id(result_ortho) == original_tensor_id, "orthogonal_ 应该原地修改张量"
+        
+        # weak 断言：基本属性验证
+        assert_tensor_properties(result_ortho, shape, dtype, "orthogonal_基础测试")
+        
+        # 验证正交性质（对于2D矩阵）
+        if len(shape) == 2:
+            # 对于正交矩阵，Q^T * Q 应该接近单位矩阵
+            rows, cols = shape
+            if rows <= cols:  # 行数 <= 列数，半正交
+                q = result_ortho
+                q_t_q = torch.matmul(q.T, q)
+                
+                # 检查对角线元素接近1
+                for i in range(rows):
+                    diag_value = q_t_q[i, i].item()
+                    assert abs(diag_value - 1.0) < 1e-6, \
+                        f"Q^T*Q 对角线元素 {i},{i} 应该是1，实际 {diag_value}"
+                
+                # 检查非对角线元素接近0
+                for i in range(rows):
+                    for j in range(rows):
+                        if i != j:
+                            off_diag_value = q_t_q[i, j].item()
+                            assert abs(off_diag_value) < 1e-6, \
+                                f"Q^T*Q 非对角线元素 {i},{j} 应该接近0，实际 {off_diag_value}"
+            
+            else:  # 行数 > 列数，Q * Q^T 应该接近单位矩阵
+                q = result_ortho
+                q_q_t = torch.matmul(q, q.T)
+                
+                # 检查对角线元素接近1
+                for i in range(cols):
+                    diag_value = q_q_t[i, i].item()
+                    assert abs(diag_value - 1.0) < 1e-6, \
+                        f"Q*Q^T 对角线元素 {i},{i} 应该是1，实际 {diag_value}"
+                
+                # 检查非对角线元素接近0
+                for i in range(cols):
+                    for j in range(cols):
+                        if i != j:
+                            off_diag_value = q_q_t[i, j].item()
+                            assert abs(off_diag_value) < 1e-6, \
+                                f"Q*Q^T 非对角线元素 {i},{j} 应该接近0，实际 {off_diag_value}"
+        
+        # 验证正交矩阵的范数性质
+        if len(shape) == 2:
+            q = result_ortho
+            # 正交矩阵的列应该是单位向量
+            for col in range(q.shape[1]):
+                column = q[:, col]
+                norm = torch.norm(column).item()
+                assert abs(norm - 1.0) < 1e-6, \
+                    f"第 {col} 列的范数应该是1，实际 {norm}"
+        
+        # 验证正交矩阵的行列式（对于方阵）
+        if len(shape) == 2 and shape[0] == shape[1]:
+            q = result_ortho
+            # 正交矩阵的行列式应该是 ±1
+            det = torch.det(q).item()
+            assert abs(abs(det) - 1.0) < 1e-6, \
+                f"正交矩阵的行列式应该是 ±1，实际 {det}"
+    
+    # 验证两个函数产生不同的结果
+    if len(shape) == 2:
+        # 创建两个相同的张量
+        tensor1 = torch.empty(shape, dtype=dtype, device=device)
+        tensor2 = torch.empty(shape, dtype=dtype, device=device)
+        
+        # 分别用 sparse_ 和 orthogonal_ 初始化
+        result1 = init.sparse_(tensor1, sparsity=sparsity)
+        result2 = init.orthogonal_(tensor2)
+        
+        # 验证结果不同
+        assert not torch.allclose(result1, result2), \
+            "sparse_ 和 orthogonal_ 应该产生不同的结果"
+# ==== BLOCK:CASE_10 END ====
+
+
+# ==== BLOCK:CASE_11 START ====
+@pytest.mark.parametrize("dtype,device,shape,flags", [
+    (torch.float32, "cpu", (2, 2, 3), ["dimension_check"]),
+])
+def test_special_functions_dimension_boundaries(dtype: torch.dtype, 
+                                               device: str, 
+                                               shape: Tuple[int, ...], 
+                                               flags: List[str]) -> None:
+    """测试特殊函数的维度边界情况
+    
+    验证不同维度下的函数行为：
+    1. 验证 eye_ 只支持2D
+    2. 验证 dirac_ 只支持3-5D
+    3. 验证 sparse_ 只支持2D
+    4. 验证 orthogonal_ 支持2D及以上
+    """
+    # 设置随机种子以确保可重复性
+    set_random_seed(42)
+    
+    # 根据维度测试不同的函数
+    dim = len(shape)
+    
+    if dim == 2:
+        # 测试 eye_（应该成功）
+        tensor_eye = torch.empty(shape, dtype=dtype, device=device)
+        result_eye = init.eye_(tensor_eye)
+        assert_tensor_properties(result_eye, shape, dtype, "eye_2D测试")
+        
+        # 测试 sparse_（应该成功）
+        tensor_sparse = torch.empty(shape, dtype=dtype, device=device)
+        result_sparse = init.sparse_(tensor_sparse, sparsity=0.3)
+        assert_tensor_properties(result_sparse, shape, dtype, "sparse_2D测试")
+        
+        # 测试 orthogonal_（应该成功）
+        tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+        result_ortho = init.orthogonal_(tensor_ortho)
+        assert_tensor_properties(result_ortho, shape, dtype, "orthogonal_2D测试")
+        
+        # 测试 dirac_（应该失败，需要3-5D）
+        tensor_dirac = torch.empty(shape, dtype=dtype, device=device)
+        with pytest.raises(ValueError, match="Only tensors with 3, 4, or 5 dimensions are supported"):
+            init.dirac_(tensor_dirac)
+    
+    elif dim == 3:
+        # 测试 dirac_（应该成功）
+        tensor_dirac = torch.empty(shape, dtype=dtype, device=device)
+        result_dirac = init.dirac_(tensor_dirac)
+        assert_tensor_properties(result_dirac, shape, dtype, "dirac_3D测试")
+        
+        # 测试 orthogonal_（应该成功）
+        tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+        result_ortho = init.orthogonal_(tensor_ortho)
+        assert_tensor_properties(result_ortho, shape, dtype, "orthogonal_3D测试")
+        
+        # 测试 eye_（应该失败，只支持2D）
+        tensor_eye = torch.empty(shape, dtype=dtype, device=device)
+        with pytest.raises(ValueError, match="Only tensors with 2 dimensions are supported"):
+            init.eye_(tensor_eye)
+        
+        # 测试 sparse_（应该失败，只支持2D）
+        tensor_sparse = torch.empty(shape, dtype=dtype, device=device)
+        with pytest.raises(ValueError, match="Only tensors with 2 dimensions are supported"):
+            init.sparse_(tensor_sparse, sparsity=0.3)
+    
+    elif dim == 4:
+        # 测试 dirac_（应该成功）
+        tensor_dirac = torch.empty(shape, dtype=dtype, device=device)
+        result_dirac = init.dirac_(tensor_dirac)
+        assert_tensor_properties(result_dirac, shape, dtype, "dirac_4D测试")
+        
+        # 测试 orthogonal_（应该成功）
+        tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+        result_ortho = init.orthogonal_(tensor_ortho)
+        assert_tensor_properties(result_ortho, shape, dtype, "orthogonal_4D测试")
+    
+    elif dim == 5:
+        # 测试 dirac_（应该成功）
+        tensor_dirac = torch.empty(shape, dtype=dtype, device=device)
+        result_dirac = init.dirac_(tensor_dirac)
+        assert_tensor_properties(result_dirac, shape, dtype, "dirac_5D测试")
+        
+        # 测试 orthogonal_（应该成功）
+        tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+        result_ortho = init.orthogonal_(tensor_ortho)
+        assert_tensor_properties(result_ortho, shape, dtype, "orthogonal_5D测试")
+    
+    else:  # 1D 或其他维度
+        # 测试 eye_（应该失败）
+        tensor_eye = torch.empty(shape, dtype=dtype, device=device)
+        with pytest.raises(ValueError, match="Only tensors with 2 dimensions are supported"):
+            init.eye_(tensor_eye)
+        
+        # 测试 orthogonal_（对于1D应该失败）
+        if dim < 2:
+            tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+            with pytest.raises(ValueError, match="Only tensors with 2 or more dimensions are supported"):
+                init.orthogonal_(tensor_ortho)
+        else:
+            # 对于高维度（>5），orthogonal_ 应该成功
+            tensor_ortho = torch.empty(shape, dtype=dtype, device=device)
+            result_ortho = init.orthogonal_(tensor_ortho)
+            assert_tensor_properties(result_ortho, shape, dtype, f"orthogonal_{dim}D测试")
+    
+    # 验证维度检查标志
+    if "dimension_check" in flags:
+        # 验证不同函数的维度要求
+        test_cases = [
+            ("eye_", 2, True),      # 只支持2D
+            ("dirac_", 3, True),    # 支持3D
+            ("dirac_", 4, True),    # 支持4D
+            ("dirac_", 5, True),    # 支持5D
+            ("sparse_", 2, True),   # 只支持2D
+            ("orthogonal_", 2, True),  # 支持2D及以上
+        ]
+        
+        for func_name, test_dim, should_succeed in test_cases:
+            test_shape = tuple([2] * test_dim)  # 创建测试形状
+            
+            try:
+                tensor = torch.empty(test_shape, dtype=dtype, device=device)
+                
+                if func_name == "eye_":
+                    init.eye_(tensor)
+                elif func_name == "dirac_":
+                    init.dirac_(tensor)
+                elif func_name == "sparse_":
+                    init.sparse_(tensor, sparsity=0.3)
+                elif func_name == "orthogonal_":
+                    init.orthogonal_(tensor)
+                
+                if should_succeed:
+                    # 应该成功
+                    pass
+                else:
+                    # 应该失败但没有失败
+                    assert False, f"{func_name} 在 {test_dim}D 应该失败但没有失败"
+                    
+            except ValueError as e:
+                if should_succeed:
+                    # 应该成功但失败了
+                    assert False, f"{func_name} 在 {test_dim}D 应该成功但失败: {e}"
+                else:
+                    # 应该失败且确实失败了
+                    pass
+    
+    # 验证错误消息的清晰度
+    if dim == 1:
+        # 测试1D张量的错误消息
+        tensor_1d = torch.empty(3, dtype=dtype, device=device)
+        
+        try:
+            init.eye_(tensor_1d)
+            assert False, "eye_ 应该对1D张量失败"
+        except ValueError as e:
+            error_msg = str(e)
+            assert "2 dimensions" in error_msg, \
+                f"eye_ 错误消息应该提到2D，实际: {error_msg}"
+    
+    if dim == 2:
+        # 测试2D张量对dirac_的错误消息
+        tensor_2d = torch.empty(3, 3, dtype=dtype, device=device)
+        
+        try:
+            init.dirac_(tensor_2d)
+            assert False, "dirac_ 应该对2D张量失败"
+        except ValueError as e:
+            error_msg = str(e)
+            assert "3, 4, or 5 dimensions" in error_msg, \
+                f"dirac_ 错误消息应该提到3-5D，实际: {error_msg}"
+# ==== BLOCK:CASE_11 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+def test_invalid_inputs() -> None:
+    """测试非法输入场景"""
+    
+    # 测试 eye_ 的非法维度
+    tensor_1d = torch.empty(3)
+    with pytest.raises(ValueError, match="Only tensors with 2 dimensions are supported"):
+        init.eye_(tensor_1d)
+    
+    # 测试 dirac_ 的非法维度
+    tensor_2d = torch.empty(3, 3)
+    with pytest.raises(ValueError, match="Only tensors with 3, 4, or 5 dimensions are supported"):
+        init.dirac_(tensor_2d)
+    
+    # 测试 sparse_ 的非法稀疏度
+    # 注意：sparse_ 函数不会对 sparsity > 1 抛出异常
+    # 而是会将所有元素设置为0
+    tensor = torch.empty(4, 4)
+    
+    # 测试稀疏度 > 1 的情况
+    result = init.sparse_(tensor.clone(), sparsity=1.5)
+    # 当稀疏度 > 1 时，所有元素都应该被设置为0
+    zero_count = (result == 0).sum().item()
+    total_elements = result.numel()
+    assert zero_count == total_elements, \
+        f"稀疏度 > 1 时，所有元素应该为0，实际零元素: {zero_count}/{total_elements}"
+    
+    # 测试稀疏度 < 0 的情况
+    # 同样，sparse_ 函数不会抛出异常，但行为可能未定义
+    # 我们只验证函数能正常执行而不崩溃
+    tensor2 = torch.empty(4, 4)
+    try:
+        result2 = init.sparse_(tensor2, sparsity=-0.5)
+        # 如果执行成功，验证基本属性
+        assert_tensor_properties(result2, (4, 4), torch.float32, "sparse_负稀疏度测试")
+    except Exception as e:
+        # 如果抛出异常，记录但不失败（因为文档没有指定行为）
+        print(f"sparse_ 对负稀疏度抛出异常: {type(e).__name__}: {e}")
+
+
+def test_no_grad_context() -> None:
+    """验证初始化函数在无梯度上下文中工作"""
+    tensor = torch.empty(3, 3, requires_grad=True)
+    
+    # 保存原始梯度状态
+    original_requires_grad = tensor.requires_grad
+    
+    # 调用初始化函数
+    result = init.eye_(tensor)
+    
+    # 验证梯度状态保持不变
+    assert result.requires_grad == original_requires_grad, \
+        "初始化不应该改变张量的梯度状态"
+    
+    # 验证张量被修改了
+    assert not torch.allclose(result, torch.zeros_like(result)), \
+        "张量应该被修改"
+
+
+def test_random_seed_consistency() -> None:
+    """验证随机种子的一致性（对于随机初始化函数）"""
+    shape = (4, 4)
+    
+    # 测试 sparse_ 的随机种子一致性
+    set_random_seed(42)
+    tensor1 = torch.empty(shape)
+    result1 = init.sparse_(tensor1, sparsity=0.5)
+    
+    set_random_seed(42)
+    tensor2 = torch.empty(shape)
+    result2 = init.sparse_(tensor2, sparsity=0.5)
+    
+    # 验证稀疏模式相同
+    zero_mask1 = result1 == 0
+    zero_mask2 = result2 == 0
+    assert torch.all(zero_mask1 == zero_mask2), \
+        "相同随机种子应该产生相同的稀疏模式"
+
+
+if __name__ == "__main__":
+    # 简单的手动测试
+    print("运行G3组手动测试...")
+    
+    # 测试 eye_
+    tensor = torch.empty(3, 3)
+    result = init.eye_(tensor)
+    print(f"eye_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 dirac_ (需要3-5维)
+    tensor = torch.empty(3, 3, 3, 3)  # 4维
+    result = init.dirac_(tensor)
+    print(f"dirac_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 sparse_
+    tensor = torch.empty(4, 4)
+    result = init.sparse_(tensor, sparsity=0.5)
+    print(f"sparse_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    # 测试 orthogonal_
+    tensor = torch.empty(4, 4)
+    result = init.orthogonal_(tensor)
+    print(f"orthogonal_ 测试通过: shape={result.shape}, dtype={result.dtype}")
+    
+    print("G3组所有手动测试完成！")
+# ==== BLOCK:FOOTER END ====

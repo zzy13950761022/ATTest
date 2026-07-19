@@ -1,0 +1,43 @@
+{
+  "status": "成功",
+  "passed": 19,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_CASE_04",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "嵌套子模块融合测试未执行，覆盖率缺失G1文件328,457,564行"
+    },
+    {
+      "test": "coverage_gap_CASE_07",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "非Module类型输入测试未执行，覆盖率缺失G2文件215-230,272,312行"
+    },
+    {
+      "test": "coverage_gap_CASE_09",
+      "block_id": "CASE_09",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "自定义fuser_func测试未执行，覆盖率缺失G2文件329-330行"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap_CASE_05",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "coverage_gap_CASE_08",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

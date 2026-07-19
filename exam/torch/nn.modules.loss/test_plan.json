@@ -1,0 +1,412 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.loss",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_loss.py",
+    "all_pattern": "tests/test_torch_nn_modules_loss_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_loss_g1.py",
+      "G2": "tests/test_torch_nn_modules_loss_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心损失函数族",
+      "entrypoints": ["L1Loss", "MSELoss", "CrossEntropyLoss"],
+      "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+      "deferred_set": ["CASE_04", "CASE_05"],
+      "note": "覆盖主要损失类的基础功能与reduction模式"
+    },
+    {
+      "group_id": "G2",
+      "title": "加权与特殊损失函数族",
+      "entrypoints": ["BCELoss", "NLLLoss", "KLDivLoss"],
+      "smoke_set": ["CASE_06", "CASE_07"],
+      "deferred_set": ["CASE_08", "CASE_09", "CASE_10"],
+      "note": "覆盖加权损失、概率分布输入和特殊reduction处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "L1Loss基础功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "loss_class": "L1Loss",
+          "reduction": "mean",
+          "input_shape": [2, 3, 4],
+          "target_shape": [2, 3, 4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "reduction_correct"],
+        "strong": ["numerical_accuracy", "edge_cases", "complex_support"]
+      },
+      "oracle": "手动计算L1损失",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "MSELoss三种reduction模式",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "loss_class": "MSELoss",
+          "reduction": "none",
+          "input_shape": [3, 2],
+          "target_shape": [3, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        },
+        {
+          "loss_class": "MSELoss",
+          "reduction": "mean",
+          "input_shape": [3, 2],
+          "target_shape": [3, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        },
+        {
+          "loss_class": "MSELoss",
+          "reduction": "sum",
+          "input_shape": [3, 2],
+          "target_shape": [3, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape_match_reduction", "dtype_preserved", "finite_values"],
+        "strong": ["exact_numerical_match", "gradient_consistency"]
+      },
+      "oracle": "手动计算MSE损失",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "CrossEntropyLoss形状兼容性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "loss_class": "CrossEntropyLoss",
+          "reduction": "mean",
+          "input_shape": [4, 10],
+          "target_shape": [4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_scalar_shape", "dtype_float32", "finite_output"],
+        "strong": ["class_probability_consistency", "ignore_index_handling"]
+      },
+      "oracle": "手动计算交叉熵损失",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "L1Loss弃用参数向后兼容",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "loss_class": "L1Loss",
+          "size_average": true,
+          "reduce": true,
+          "input_shape": [2, 2],
+          "target_shape": [2, 2],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["deprecation_warning", "output_correct_with_legacy_params"],
+        "strong": ["param_conflict_resolution", "all_legacy_combinations"]
+      },
+      "oracle": "reduction='mean'的等效结果",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "极端形状与数值边界",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "loss_class": "MSELoss",
+          "reduction": "none",
+          "input_shape": [1],
+          "target_shape": [1],
+          "dtype": "float32",
+          "device": "cpu",
+          "special_values": ["zero", "inf", "nan"]
+        }
+      ],
+      "asserts": {
+        "weak": ["handle_extreme_values", "single_element_shape", "finite_or_nan_handling"],
+        "strong": ["numerical_stability", "all_extreme_combinations"]
+      },
+      "oracle": "预期异常或特殊值处理",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "BCELoss概率输入验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "loss_class": "BCELoss",
+          "reduction": "mean",
+          "input_shape": [3, 2],
+          "target_shape": [3, 2],
+          "dtype": "float32",
+          "device": "cpu",
+          "value_range": [0, 1]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_in_valid_range", "probability_input_handling", "finite_check"],
+        "strong": ["log_clamping", "gradient_at_boundaries"]
+      },
+      "oracle": "手动计算二值交叉熵",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "NLLLoss负对数似然验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "loss_class": "NLLLoss",
+          "reduction": "mean",
+          "input_shape": [4, 5],
+          "target_shape": [4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_scalar", "log_probability_input", "class_index_target"],
+        "strong": ["ignore_index_functionality", "weight_parameter_effect"]
+      },
+      "oracle": "手动计算负对数似然损失",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "KLDivLoss特殊reduction处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "loss_class": "KLDivLoss",
+          "reduction": "batchmean",
+          "input_shape": [3, 4],
+          "target_shape": [3, 4],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["batchmean_shape", "probability_distribution_input", "finite_output"],
+        "strong": ["kl_divergence_properties", "all_reduction_modes"]
+      },
+      "oracle": "手动计算KL散度",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G2",
+      "name": "加权损失类权重参数",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "loss_class": "CrossEntropyLoss",
+          "reduction": "mean",
+          "weight": "random",
+          "input_shape": [3, 5],
+          "target_shape": [3],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["weight_parameter_acceptance", "output_with_weight", "shape_compatibility"],
+        "strong": ["weight_effect_calculation", "edge_weight_values"]
+      },
+      "oracle": "带权重的交叉熵计算",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G2",
+      "name": "设备兼容性验证",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "loss_class": "L1Loss",
+          "reduction": "mean",
+          "input_shape": [2, 3],
+          "target_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["cpu_device_support", "consistent_results_across_runs"],
+        "strong": ["gpu_device_support", "device_transfer_consistency"]
+      },
+      "oracle": "CPU计算结果作为基准",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "loss_class": "L1Loss",
+        "reduction": "sum",
+        "input_shape": [5, 5],
+        "target_shape": [5, 5],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "作为CASE_01的参数扩展：不同reduction和dtype"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "loss_class": "L1Loss",
+        "reduction": "none",
+        "input_shape": [1, 10, 10],
+        "target_shape": [1, 10, 10],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "作为CASE_01的参数扩展：3D形状和none reduction"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "loss_class": "MSELoss",
+        "reduction": "mean",
+        "input_shape": [100, 50],
+        "target_shape": [100, 50],
+        "dtype": "float32",
+        "device": "cpu"
+      },
+      "note": "作为CASE_02的参数扩展：较大形状测试"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {
+        "loss_class": "BCELoss",
+        "reduction": "sum",
+        "input_shape": [2, 3, 4],
+        "target_shape": [2, 3, 4],
+        "dtype": "float64",
+        "device": "cpu",
+        "value_range": [0.1, 0.9]
+      },
+      "note": "作为CASE_06的参数扩展：3D形状和不同dtype"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_06", "CASE_07"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_08", "CASE_09", "CASE_10"]
+}

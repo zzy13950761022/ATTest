@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 19,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_lowrank_g1.py::test_svd_lowrank_randomness_control",
+      "block_id": "CASE_04",
+      "error_type": "覆盖率缺口",
+      "action": "add_case",
+      "note": "测试用例在 deferred_set 中，覆盖率报告显示相关代码未执行。需要激活该测试以覆盖随机性控制逻辑。"
+    },
+    {
+      "test": "tests/test_torch_lowrank_g2.py::test_pca_lowrank_centering",
+      "block_id": "CASE_05",
+      "error_type": "覆盖率缺口",
+      "action": "add_case",
+      "note": "测试用例在 deferred_set 中，覆盖率报告显示 pca_lowrank 中心化功能相关代码未覆盖。需要激活该测试。"
+    },
+    {
+      "test": "辅助函数分支覆盖",
+      "block_id": "HEADER",
+      "error_type": "覆盖率缺口",
+      "action": "rewrite_block",
+      "note": "create_test_matrix 函数中的多个条件分支未覆盖（如 'normal' 标志处理、空 flags 列表处理等）。需要添加测试用例覆盖这些分支。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

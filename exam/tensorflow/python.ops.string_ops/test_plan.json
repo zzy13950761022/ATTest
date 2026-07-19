@@ -1,0 +1,224 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.string_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_string_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_string_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "regex_full_match 基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "regex_full_match",
+          "input": ["TF lib", "lib TF", "TensorFlow"],
+          "pattern": ".*lib$",
+          "expected": [true, false, false]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "basic_equality"],
+        "strong": ["edge_cases", "unicode_support", "performance_check"]
+      },
+      "oracle": "手动计算正则匹配结果",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "string_length BYTE vs UTF8_CHAR 单位",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_length",
+          "input": ["Hello", "TensorFlow", "🙂"],
+          "unit": "BYTE",
+          "expected": [5, 10, 4]
+        },
+        {
+          "function": "string_length",
+          "input": ["Hello", "TensorFlow", "🙂"],
+          "unit": "UTF8_CHAR",
+          "expected": [5, 10, 1]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "basic_equality"],
+        "strong": ["invalid_utf8_handling", "multi_byte_chars", "performance_check"]
+      },
+      "oracle": "手动计算字符串长度",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "string_join 形状保持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_join",
+          "inputs": [["abc", "123"], ["def", "456"]],
+          "separator": " ",
+          "expected": ["abc def", "123 456"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "basic_equality"],
+        "strong": ["empty_separator", "nested_arrays", "performance_check"]
+      },
+      "oracle": "手动计算字符串连接结果",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "regex_replace 基础替换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "regex_replace",
+          "input": "Text with tags.<br />",
+          "pattern": "<[^>]+>",
+          "rewrite": " ",
+          "replace_global": true,
+          "expected": "Text with tags. "
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "basic_equality"],
+        "strong": ["non_global_replace", "complex_patterns", "performance_check"]
+      },
+      "oracle": "手动计算正则替换结果",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "string_split 基础分割",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_split",
+          "source": ["a,b,c", "d,e,f"],
+          "sep": ",",
+          "skip_empty": true,
+          "expected_shape": [2, 3]
+        }
+      ],
+      "asserts": {
+        "weak": ["sparse_shape_match", "values_match", "basic_equality"],
+        "strong": ["empty_skip_handling", "no_separator", "performance_check"]
+      },
+      "oracle": "手动验证分割结果形状和值",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_string_ops.string_split",
+        "tensorflow.python.framework.ops.convert_to_tensor"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "regex_full_match",
+        "input": ["", "test", "123"],
+        "pattern": "^\\d+$",
+        "expected": [false, false, true]
+      },
+      "note": "空字符串和数字匹配扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "string_length",
+        "input": ["", "a\\nb\\tc"],
+        "unit": "BYTE",
+        "expected": [0, 5]
+      },
+      "note": "空字符串和特殊字符扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "string_join",
+        "inputs": [[], ["single"]],
+        "separator": "-",
+        "expected": ["", "single"]
+      },
+      "note": "空数组和单元素扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "regex_replace",
+        "input": "aaa",
+        "pattern": "a",
+        "rewrite": "b",
+        "replace_global": false,
+        "expected": "baa"
+      },
+      "note": "非全局替换扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

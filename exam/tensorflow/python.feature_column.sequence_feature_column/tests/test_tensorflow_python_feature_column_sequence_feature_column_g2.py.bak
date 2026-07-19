@@ -1,0 +1,93 @@
+"""
+Test cases for tensorflow.python.feature_column.sequence_feature_column
+Group G2: 上下文拼接与形状处理
+"""
+
+import numpy as np
+import pytest
+import tensorflow as tf
+
+# Import target functions
+from tensorflow.python.feature_column.sequence_feature_column import (
+    concatenate_context_input
+)
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test class and fixtures for G2 tests
+class TestSequenceFeatureColumnG2:
+    """Test cases for context concatenation and shape handling."""
+    
+    @pytest.fixture
+    def random_float32_tensor(self):
+        """Create random float32 tensor with given shape."""
+        def _create_tensor(shape):
+            return tf.constant(np.random.randn(*shape).astype(np.float32))
+        return _create_tensor
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_05 START ====
+    def test_concatenate_context_input_basic(self, random_float32_tensor):
+        """Test basic context input concatenation (CASE_05)."""
+        # Test case 1: Basic shape from test plan
+        context_shape = (2, 3)  # [batch_size, d1]
+        sequence_shape = (2, 5, 4)  # [batch_size, padded_length, d0]
+        expected_shape = (2, 5, 7)  # [batch_size, padded_length, d0 + d1]
+        
+        context_input = random_float32_tensor(context_shape)
+        sequence_input = random_float32_tensor(sequence_shape)
+        
+        # Call the function
+        result = concatenate_context_input(context_input, sequence_input)
+        
+        # Weak assertions
+        # 1. Check output shape
+        assert result.shape == expected_shape
+        
+        # 2. Check output dtype
+        assert result.dtype == tf.float32
+        
+        # 3. Check no NaN values
+        assert not tf.reduce_any(tf.math.is_nan(result))
+        
+        # 4. Check no infinite values
+        assert not tf.reduce_any(tf.math.is_inf(result))
+        
+        # Test case 2: Parameter extension from test plan
+        context_shape_ext = (4, 2)  # [batch_size, d1]
+        sequence_shape_ext = (4, 8, 6)  # [batch_size, padded_length, d0]
+        expected_shape_ext = (4, 8, 8)  # [batch_size, padded_length, d0 + d1]
+        
+        context_input_ext = random_float32_tensor(context_shape_ext)
+        sequence_input_ext = random_float32_tensor(sequence_shape_ext)
+        
+        # Call the function with extended parameters
+        result_ext = concatenate_context_input(context_input_ext, sequence_input_ext)
+        
+        # Check output shape for extended case
+        assert result_ext.shape == expected_shape_ext
+        
+        # Additional basic checks
+        # Check that batch dimension is preserved
+        assert result.shape[0] == context_shape[0] == sequence_shape[0]
+        
+        # Check that sequence length is preserved
+        assert result.shape[1] == sequence_shape[1]
+        
+        # Check that concatenation dimension is correct
+        assert result.shape[2] == sequence_shape[2] + context_shape[1]
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Placeholder for CASE_06: 不同形状上下文拼接
+# This block will be replaced with actual test code
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper functions and cleanup
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

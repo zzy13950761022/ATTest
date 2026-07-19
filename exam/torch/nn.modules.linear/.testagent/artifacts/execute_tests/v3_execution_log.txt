@@ -1,0 +1,380 @@
+=== Run Tests ===
+.FF.F..E                                                                 [100%]
+==================================== ERRORS ====================================
+_____________ ERROR at setup of test_kaiming_initialization_range ______________
+file /Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py, line 611
+  def test_kaiming_initialization_range(fan_in, weight_tensor, tolerance=0.2):
+E       fixture 'fan_in' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py:611
+=================================== FAILURES ===================================
+___________ test_linear_invalid_inputs[5-3-True-dtype0-input_shape0] ___________
+
+in_features = 5, out_features = 3, bias = True, dtype = torch.float32
+input_shape = (10, 4)
+
+    @pytest.mark.parametrize("in_features,out_features,bias,dtype,input_shape", [
+        (5, 3, True, torch.float32, (10, 4)),  # Wrong dimension case from test plan
+    ])
+    def test_linear_invalid_inputs(in_features, out_features, bias, dtype, input_shape):
+        """Test Linear layer with invalid inputs (wrong dimension)."""
+        # Create Linear layer
+        linear = nn.Linear(
+            in_features=in_features,
+            out_features=out_features,
+            bias=bias,
+            dtype=dtype
+        )
+    
+        # Create test input with wrong feature dimension
+        # input_shape[-1] should be 4, but in_features is 5
+        x = create_test_input(input_shape, dtype=dtype)
+    
+        # Verify that input has wrong dimension
+        assert x.shape[-1] != in_features, \
+            f"Test setup error: input feature dimension {x.shape[-1]} should not equal in_features {in_features}"
+    
+        # Forward pass should raise RuntimeError
+        with pytest.raises(RuntimeError) as exc_info:
+            linear(x)
+    
+        # Check error message contains relevant information
+        error_msg = str(exc_info.value).lower()
+    
+        # The error should mention something about shape, size, or dimension mismatch
+        assert any(keyword in error_msg for keyword in ["shape", "size", "dimension", "match", "inconsistent"]), \
+            f"Error message should mention shape/size/dimension, got: {error_msg}"
+    
+        # Check that the error message includes the actual and expected dimensions
+        # PyTorch error messages typically include something like:
+        # "mat1 and mat2 shapes cannot be multiplied (axb and cxd)"
+        # or "size mismatch"
+        assert str(in_features) in error_msg or str(x.shape[-1]) in error_msg, \
+            f"Error message should include feature dimensions, got: {error_msg}"
+    
+        # Test that layer state is preserved after error
+        # Parameters should not be corrupted
+        if bias:
+            assert linear.bias is not None, "Bias should still exist after error"
+            assert linear.bias.shape == (out_features,), \
+                f"Bias shape corrupted: {linear.bias.shape} != ({out_features},)"
+    
+        assert linear.weight.shape == (out_features, in_features), \
+            f"Weight shape corrupted: {linear.weight.shape} != ({out_features}, {in_features})"
+    
+        # Test with correct input dimension - should work
+        x_correct = create_test_input((10, in_features), dtype=dtype)
+        y_correct = linear(x_correct)
+    
+        assert y_correct.shape == (10, out_features), \
+            f"Correct input output shape mismatch: {y_correct.shape} != (10, {out_features})"
+    
+        # Test other invalid input scenarios
+    
+        # Test with 0-dimensional input (scalar)
+        x_scalar = torch.tensor(1.0, dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info2:
+            linear(x_scalar)
+    
+        # Test with 1D input but wrong dimension
+        x_1d_wrong = create_test_input((in_features + 2,), dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info3:
+            linear(x_1d_wrong)
+    
+        # Test with 1D input correct dimension
+        x_1d_correct = create_test_input((in_features,), dtype=dtype)
+        y_1d = linear(x_1d_correct)
+        assert y_1d.shape == (out_features,), \
+            f"1D input output shape mismatch: {y_1d.shape} != ({out_features},)"
+    
+        # Test with 3D input wrong dimension
+        x_3d_wrong = create_test_input((4, 5, in_features - 1), dtype=dtype)
+        with pytest.raises(RuntimeError) as exc_info4:
+            linear(x_3d_wrong)
+    
+        # Test with 3D input correct dimension
+        x_3d_correct = create_test_input((4, 5, in_features), dtype=dtype)
+        y_3d = linear(x_3d_correct)
+        assert y_3d.shape == (4, 5, out_features), \
+            f"3D input output shape mismatch: {y_3d.shape} != (4, 5, {out_features})"
+    
+        # Test with NaN/inf values in input
+        # Linear should propagate NaN/inf values
+        x_nan = torch.full(input_shape, float('nan'), dtype=dtype)
+>       y_nan = linear(x_nan)
+
+tests/test_torch_nn_modules_linear_g3.py:273: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Linear(in_features=5, out_features=3, bias=True)
+input = tensor([[nan, nan, nan, nan],
+        [nan, nan, nan, nan],
+        [nan, nan, nan, nan],
+        [nan, nan, nan, nan]...       [nan, nan, nan, nan],
+        [nan, nan, nan, nan],
+        [nan, nan, nan, nan],
+        [nan, nan, nan, nan]])
+
+    def forward(self, input: Tensor) -> Tensor:
+>       return F.linear(input, self.weight, self.bias)
+E       RuntimeError: mat1 and mat2 shapes cannot be multiplied (10x4 and 5x3)
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/linear.py:114: RuntimeError
+____ test_linear_initialization_verification[7-4-True-dtype0-input_shape0] _____
+
+in_features = 7, out_features = 4, bias = True, dtype = torch.float32
+input_shape = (1, 7)
+
+    @pytest.mark.parametrize("in_features,out_features,bias,dtype,input_shape", [
+        (7, 4, True, torch.float32, (1, 7)),  # Check init case from test plan
+    ])
+    def test_linear_initialization_verification(in_features, out_features, bias, dtype, input_shape):
+        """Test Linear layer initialization parameters."""
+        # Set fixed random seed for reproducible initialization
+        torch.manual_seed(42)
+    
+        # Create Linear layer with fixed seed
+        linear = nn.Linear(
+            in_features=in_features,
+            out_features=out_features,
+            bias=bias,
+            dtype=dtype
+        )
+    
+        # Check weight shape
+        assert linear.weight.shape == (out_features, in_features), \
+            f"Weight shape mismatch: {linear.weight.shape} != ({out_features}, {in_features})"
+    
+        # Check bias shape when enabled
+        if bias:
+            assert linear.bias is not None, "Bias should not be None when bias=True"
+            assert linear.bias.shape == (out_features,), \
+                f"Bias shape mismatch: {linear.bias.shape} != ({out_features},)"
+        else:
+            assert linear.bias is None, f"Bias should be None when bias=False, got {linear.bias}"
+    
+        # Check parameters are not NaN
+        check_finite(linear.weight, "Weight initialization")
+        if bias:
+            check_finite(linear.bias, "Bias initialization")
+    
+        # Check initialization range (weak assertions)
+        # Kaiming uniform initialization: U(-bound, bound) where bound = sqrt(6 / fan_in)
+        # fan_in = in_features for Linear weight
+        expected_bound = math.sqrt(6.0 / in_features)
+    
+        weight_min = linear.weight.min().item()
+        weight_max = linear.weight.max().item()
+        weight_abs_max = max(abs(weight_min), abs(weight_max))
+    
+        # Weight values should be within expected range (with some tolerance)
+        # Kaiming uniform generates values in [-bound, bound]
+        # Allow 20% tolerance for statistical variation
+        tolerance = 0.2 * expected_bound
+        assert weight_abs_max <= expected_bound + tolerance, \
+            f"Weight values exceed expected range: max|weight|={weight_abs_max:.4f}, expected bound={expected_bound:.4f}"
+    
+        # Most values should be within range (not just extremes)
+        weight_within_range = ((linear.weight >= -expected_bound - tolerance) &
+                              (linear.weight <= expected_bound + tolerance))
+        within_ratio = weight_within_range.float().mean().item()
+    
+        # At least 95% of weights should be within range
+        assert within_ratio >= 0.95, \
+            f"Too many weights outside expected range: {100*(1-within_ratio):.1f}% outside"
+    
+        if bias:
+            # Bias initialization: uniform distribution U(-bound, bound) where bound = 1 / sqrt(fan_in)
+            bias_expected_bound = 1.0 / math.sqrt(in_features)
+    
+            bias_min = linear.bias.min().item()
+            bias_max = linear.bias.max().item()
+            bias_abs_max = max(abs(bias_min), abs(bias_max))
+    
+            # Bias values should be within expected range
+            bias_tolerance = 0.2 * bias_expected_bound
+            assert bias_abs_max <= bias_expected_bound + bias_tolerance, \
+                f"Bias values exceed expected range: max|bias|={bias_abs_max:.4f}, expected bound={bias_expected_bound:.4f}"
+    
+            # Most bias values should be within range
+            bias_within_range = ((linear.bias >= -bias_expected_bound - bias_tolerance) &
+                                (linear.bias <= bias_expected_bound + bias_tolerance))
+            bias_within_ratio = bias_within_range.float().mean().item()
+    
+            # At least 90% of biases should be within range
+            assert bias_within_ratio >= 0.90, \
+                f"Too many biases outside expected range: {100*(1-bias_within_ratio):.1f}% outside"
+    
+        # Test reset_parameters method
+        # Store initial parameters
+        initial_weight = linear.weight.clone()
+        initial_bias = linear.bias.clone() if bias else None
+    
+        # Reset parameters
+        linear.reset_parameters()
+    
+        # Check parameters changed (not identical)
+        assert not torch.allclose(linear.weight, initial_weight, rtol=1e-5, atol=1e-8), \
+            "Weight unchanged after reset_parameters"
+    
+        if bias:
+            assert not torch.allclose(linear.bias, initial_bias, rtol=1e-5, atol=1e-8), \
+                "Bias unchanged after reset_parameters"
+    
+        # Check parameters are still finite after reset
+        check_finite(linear.weight, "Weight after reset_parameters")
+        if bias:
+            check_finite(linear.bias, "Bias after reset_parameters")
+    
+        # Check parameters still within expected range after reset
+        weight_abs_max_reset = torch.abs(linear.weight).max().item()
+        assert weight_abs_max_reset <= expected_bound + tolerance, \
+            f"Weight after reset exceeds range: max|weight|={weight_abs_max_reset:.4f}, expected bound={expected_bound:.4f}"
+    
+        if bias:
+            bias_abs_max_reset = torch.abs(linear.bias).max().item()
+            assert bias_abs_max_reset <= bias_expected_bound + bias_tolerance, \
+                f"Bias after reset exceeds range: max|bias|={bias_abs_max_reset:.4f}, expected bound={bias_expected_bound:.4f}"
+    
+        # Test that forward pass works with initialized parameters
+        x = create_test_input(input_shape, dtype=dtype)
+        y = linear(x)
+    
+        assert y.shape == (*input_shape[:-1], out_features), \
+            f"Output shape mismatch: {y.shape} != (*, {out_features})"
+    
+        check_finite(y, "Output after initialization")
+    
+        # Test initialization with different random seeds produces different parameters
+        torch.manual_seed(123)
+        linear_seed1 = nn.Linear(in_features, out_features, bias=bias, dtype=dtype)
+    
+        torch.manual_seed(456)
+        linear_seed2 = nn.Linear(in_features, out_features, bias=bias, dtype=dtype)
+    
+        # Parameters should be different with different seeds
+        assert not torch.allclose(linear_seed1.weight, linear_seed2.weight, rtol=1e-5, atol=1e-8), \
+            "Weight initialization should differ with different seeds"
+    
+        if bias:
+            assert not torch.allclose(linear_seed1.bias, linear_seed2.bias, rtol=1e-5, atol=1e-8), \
+                "Bias initialization should differ with different seeds"
+    
+        # Test that same seed produces same parameters
+        torch.manual_seed(999)
+        linear_seed3a = nn.Linear(in_features, out_features, bias=bias, dtype=dtype)
+        weight_seed3a = linear_seed3a.weight.clone()
+        bias_seed3a = linear_seed3a.bias.clone() if bias else None
+    
+        torch.manual_seed(999)  # Reset to same seed
+        linear_seed3b = nn.Linear(in_features, out_features, bias=bias, dtype=dtype)
+    
+        # Parameters should be identical with same seed
+        assert torch.allclose(linear_seed3b.weight, weight_seed3a, rtol=1e-5, atol=1e-8), \
+            "Weight initialization should be identical with same seed"
+    
+        if bias:
+            assert torch.allclose(linear_seed3b.bias, bias_seed3a, rtol=1e-5, atol=1e-8), \
+                "Bias initialization should be identical with same seed"
+    
+        # Test initialization with mock to verify kaiming_uniform is called
+        # This is a weak check - we just verify the method exists and is called
+>       with patch.object(linear, '_reset_parameters', wraps=linear._reset_parameters) as mock_reset:
+
+tests/test_torch_nn_modules_linear_g3.py:474: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Linear(in_features=7, out_features=4, bias=True)
+name = '_reset_parameters'
+
+    def __getattr__(self, name: str) -> Union[Tensor, 'Module']:
+        if '_parameters' in self.__dict__:
+            _parameters = self.__dict__['_parameters']
+            if name in _parameters:
+                return _parameters[name]
+        if '_buffers' in self.__dict__:
+            _buffers = self.__dict__['_buffers']
+            if name in _buffers:
+                return _buffers[name]
+        if '_modules' in self.__dict__:
+            modules = self.__dict__['_modules']
+            if name in modules:
+                return modules[name]
+>       raise AttributeError("'{}' object has no attribute '{}'".format(
+            type(self).__name__, name))
+E       AttributeError: 'Linear' object has no attribute '_reset_parameters'. Did you mean: 'reset_parameters'?
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1265: AttributeError
+_________ TestLazyLinearEdgeCasesG3.test_lazy_linear_different_dtypes __________
+
+self = <test_torch_nn_modules_linear_g3.TestLazyLinearEdgeCasesG3 object at 0x12cba7f10>
+
+    def test_lazy_linear_different_dtypes(self):
+        """Test LazyLinear with different data types."""
+        out_features = 10
+    
+        # Test float32
+        lazy_f32 = nn.LazyLinear(out_features=out_features, dtype=torch.float32)
+        x_f32 = create_test_input((5, 8), dtype=torch.float32)
+        y_f32 = lazy_f32(x_f32)
+        assert y_f32.dtype == torch.float32
+    
+        # Test float64
+        lazy_f64 = nn.LazyLinear(out_features=out_features, dtype=torch.float64)
+        x_f64 = create_test_input((5, 8), dtype=torch.float64)
+        y_f64 = lazy_f64(x_f64)
+        assert y_f64.dtype == torch.float64
+    
+        # Test float16 (if supported)
+        if hasattr(torch, 'float16'):
+            lazy_f16 = nn.LazyLinear(out_features=out_features, dtype=torch.float16)
+            x_f16 = create_test_input((5, 8), dtype=torch.float16)
+>           y_f16 = lazy_f16(x_f16)
+
+tests/test_torch_nn_modules_linear_g3.py:548: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1208: in _call_impl
+    result = forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Linear(in_features=8, out_features=10, bias=True)
+input = tensor([[ 0.4216,  1.4268, -1.4160,  0.2537, -2.2520,  0.8018,  1.9053,  1.1201],
+        [-1.6084,  0.4812, -0.5620, ...1.4160],
+        [-0.3938, -2.3262, -0.6206,  0.7852, -2.1348,  0.1500, -0.6099,  1.7461]],
+       dtype=torch.float16)
+
+    def forward(self, input: Tensor) -> Tensor:
+>       return F.linear(input, self.weight, self.bias)
+E       RuntimeError: "addmm_impl_cpu_" not implemented for 'Half'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/linear.py:114: RuntimeError
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::test_lazy_linear_delayed_initialization[15-True-dtype0-input_shape0]
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::TestLazyLinearEdgeCasesG3::test_lazy_linear_no_bias_extension
+exam/torch_group/nn.modules.linear/tests/test_torch_nn_modules_linear_g3.py::TestLazyLinearEdgeCasesG3::test_lazy_linear_different_dtypes
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/lazy.py:180: UserWarning: Lazy modules are a new feature under heavy development so changes to the API or functionality can happen at any moment.
+    warnings.warn('Lazy modules are a new feature under heavy development '
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_linear_g3.py     263     34     30     15    83%   35, 82, 119, 141->145, 226->231, 276-316, 346, 350->356, 378->402, 412->417, 418->422, 426->432, 451->456, 468->474, 476-489, 545->exit, 549, 605, 613-616, 620-621
+--------------------------------------------------------------------------------------
+TOTAL                                        263     34     30     15    83%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_linear_g3.py::test_linear_invalid_inputs[5-3-True-dtype0-input_shape0]
+FAILED tests/test_torch_nn_modules_linear_g3.py::test_linear_initialization_verification[7-4-True-dtype0-input_shape0]
+FAILED tests/test_torch_nn_modules_linear_g3.py::TestLazyLinearEdgeCasesG3::test_lazy_linear_different_dtypes
+ERROR tests/test_torch_nn_modules_linear_g3.py::test_kaiming_initialization_range
+3 failed, 4 passed, 3 warnings, 1 error in 0.90s
+
+Error: exit 1

@@ -1,0 +1,154 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.modules.normalization import (
+    LocalResponseNorm,
+    CrossMapLRN2d,
+    LayerNorm,
+    GroupNorm
+)
+
+# ==== BLOCK:HEADER START ====
+"""
+Main test file for torch.nn.modules.normalization module.
+
+NOTE: Tests have been split into group-specific files according to test plan configuration:
+- G1 (GroupNorm tests): tests/test_torch_nn_modules_normalization_g1.py
+- G2 (LayerNorm tests): tests/test_torch_nn_modules_normalization_g2.py  
+- G3 (LocalResponseNorm & CrossMapLRN2d tests): tests/test_torch_nn_modules_normalization_g3.py
+
+This file serves as a placeholder and documentation reference.
+Run individual group files or use pytest discovery to run all tests.
+"""
+
+import math
+import pytest
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.modules.normalization import (
+    LocalResponseNorm,
+    CrossMapLRN2d,
+    LayerNorm,
+    GroupNorm
+)
+
+# Test fixtures and helper functions (kept for reference)
+@pytest.fixture(scope="function")
+def set_random_seed():
+    """Set random seed for reproducibility"""
+    torch.manual_seed(42)
+    return 42
+
+def assert_tensor_properties(tensor, expected_shape=None, expected_dtype=None, 
+                           expected_device=None, name=""):
+    """Helper to assert tensor properties"""
+    assert torch.is_tensor(tensor), f"{name}: Output is not a tensor"
+    assert torch.all(torch.isfinite(tensor)), f"{name}: Tensor contains NaN or Inf"
+    
+    if expected_shape is not None:
+        assert tensor.shape == expected_shape, \
+            f"{name}: Shape mismatch: {tensor.shape} != {expected_shape}"
+    
+    if expected_dtype is not None:
+        assert tensor.dtype == expected_dtype, \
+            f"{name}: Dtype mismatch: {tensor.dtype} != {expected_dtype}"
+    
+    if expected_device is not None:
+        assert tensor.device == expected_device, \
+            f"{name}: Device mismatch: {tensor.device} != {expected_device}"
+    
+    return True
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# TC-01: MOVED TO G1 GROUP FILE - tests/test_torch_nn_modules_normalization_g1.py
+# This test case has been moved to the G1 group file as per test plan configuration
+# G1 group contains GroupNorm tests
+pass
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# TC-02: MOVED TO G1 GROUP FILE - tests/test_torch_nn_modules_normalization_g1.py
+# This test case has been moved to the G1 group file as per test plan configuration
+# G1 group contains GroupNorm tests
+pass
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: MOVED TO G2 GROUP FILE - tests/test_torch_nn_modules_normalization_g2.py
+# This test case has been moved to the G2 group file as per test plan configuration
+# G2 group contains LayerNorm tests
+pass
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: MOVED TO G3 GROUP FILE - tests/test_torch_nn_modules_normalization_g3.py
+# This test case has been moved to the G3 group file as per test plan configuration
+# G3 group contains LocalResponseNorm and CrossMapLRN2d tests
+pass
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: DEFERRED - GroupNorm 参数扩展测试
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: DEFERRED - GroupNorm 设备/数据类型测试
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: DEFERRED - LayerNorm 参数扩展测试
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: DEFERRED - LayerNorm 异常形状测试
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# TC-09: DEFERRED - CrossMapLRN2d 基本功能测试
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# TC-10: DEFERRED - LocalResponseNorm 边界值测试
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Test discovery helper
+def test_discovery():
+    """Helper function to verify test files exist"""
+    import os
+    test_files = [
+        "tests/test_torch_nn_modules_normalization_g1.py",
+        "tests/test_torch_nn_modules_normalization_g2.py",
+        "tests/test_torch_nn_modules_normalization_g3.py"
+    ]
+    
+    for test_file in test_files:
+        assert os.path.exists(test_file), f"Test file not found: {test_file}"
+    return True
+
+if __name__ == "__main__":
+    # Run test discovery to verify all group files exist
+    try:
+        test_discovery()
+        print("✓ All group test files exist")
+    except AssertionError as e:
+        print(f"✗ {e}")
+    
+    # Run pytest on all test files
+    import sys
+    pytest_args = [
+        "tests/test_torch_nn_modules_normalization_g1.py",
+        "tests/test_torch_nn_modules_normalization_g2.py",
+        "tests/test_torch_nn_modules_normalization_g3.py",
+        "-v"
+    ]
+    
+    if len(sys.argv) > 1:
+        pytest_args = sys.argv[1:]
+    
+    pytest.main(pytest_args)
+# ==== BLOCK:FOOTER END ====

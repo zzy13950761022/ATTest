@@ -1,0 +1,66 @@
+=== Run Tests ===
+F..                                                                      [100%]
+================================== FAILURES ===================================
+____________ test_counter_different_dtypes[dtype0-expected_dtype0] ____________
+
+dtype = tf.int32, expected_dtype = tf.int32
+
+    @pytest.mark.parametrize("dtype,expected_dtype", [
+        (tf.int32, tf.int32),
+        (tf.float64, tf.float64),
+    ])
+    def test_counter_different_dtypes(dtype, expected_dtype):
+        """Test CounterV2 with different data types."""
+        # Create dataset with specified dtype
+        dataset = counter.CounterV2(start=0, step=1, dtype=dtype)
+    
+        # Weak assertions
+        # 1. dataset_type: Verify it's a Dataset object
+        assert isinstance(dataset, tf.data.Dataset)
+    
+        # 2. element_shape: Verify element spec shape is scalar
+        assert dataset.element_spec.shape == ()
+    
+        # 3. dtype_match: Verify dtype matches expected
+        assert dataset.element_spec.dtype == expected_dtype
+    
+        # 4. sequence_start: Verify first few elements
+        first_five = list(dataset.take(5).as_numpy_iterator())
+    
+        # Expected values depend on dtype
+        if expected_dtype in [tf.int32, tf.int64]:
+            expected = [0, 1, 2, 3, 4]
+            assert first_five == expected
+        elif expected_dtype == tf.float64:
+            # For float64, we need to compare with tolerance
+            expected = [0.0, 1.0, 2.0, 3.0, 4.0]
+            for actual, expected_val in zip(first_five, expected):
+                assert abs(actual - expected_val) < 1e-10
+    
+        # Verify dtype of elements
+        for element in first_five:
+            # Check that element has appropriate type
+            if expected_dtype == tf.int32:
+                # TensorFlow int32 elements come as Python int
+>               assert isinstance(element, int)
+E               assert False
+E                +  where False = isinstance(0, int)
+
+tests\test_tensorflow_python_data_experimental_ops_counter_g2.py:56: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 16:29:28.918121: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                               Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_counter_g2.py      40      2     16      2    93%   14, 45->52, 57->52, 69
+--------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 40      2     16      2    93%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_counter_g2.py::test_counter_different_dtypes[dtype0-expected_dtype0]
+1 failed, 2 passed in 1.58s
+
+Error: exit 1

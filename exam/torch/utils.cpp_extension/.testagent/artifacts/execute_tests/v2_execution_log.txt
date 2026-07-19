@@ -1,0 +1,270 @@
+=== Run Tests ===
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_parameter_combinations[param_test-sources0-extra_cflags0-extra_include_paths0-/tmp/test_build-False] _
+
+test_name = 'param_test', sources = ['test.cpp']
+extra_cflags = ['-Wall', '-Wextra']
+extra_include_paths = ['/usr/local/include']
+build_directory = '/tmp/test_build', keep_intermediates = False
+mock_subprocess = <MagicMock name='run' id='5269316672'>
+mock_import_module = <MagicMock name='import_module' id='5256793824'>
+mock_tempfile = <MagicMock name='mkdtemp' id='5256801888'>
+mock_os_path = <MagicMock name='exists' id='5257072016'>
+mock_os_makedirs = <MagicMock name='makedirs' id='5257080032'>
+mock_shutil_rmtree = <MagicMock name='rmtree' id='5257120976'>
+mock_file_baton = <MagicMock name='FileBaton' id='5257129040'>
+mock_os_makedirs_for_cache = <MagicMock name='makedirs' id='5257317680'>
+cleanup_temp_dirs = []
+tmp_path = PosixPath('/private/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/pytest-of-zzf1sh/pytest-1/test_parameter_combinations_pa0')
+
+    @pytest.mark.parametrize("test_name,sources,extra_cflags,extra_include_paths,build_directory,keep_intermediates", [
+        ("param_test", ["test.cpp"], ["-Wall", "-Wextra"], ["/usr/local/include"], "/tmp/test_build", False),
+    ])
+    def test_parameter_combinations(
+        test_name, sources, extra_cflags, extra_include_paths, build_directory, keep_intermediates,
+        mock_subprocess, mock_import_module, mock_tempfile, mock_os_path,
+        mock_os_makedirs, mock_shutil_rmtree, mock_file_baton, mock_os_makedirs_for_cache,
+        cleanup_temp_dirs, tmp_path
+    ):
+        """
+        测试各种参数组合
+        """
+        # 创建测试源文件
+        source_dir = tmp_path / "sources"
+        source_dir.mkdir()
+    
+        for source_file in sources:
+            file_path = source_dir / source_file
+            file_path.write_text(SIMPLE_CPP_CONTENT)
+    
+        # 准备源文件路径列表
+        source_paths = [str(source_dir / s) for s in sources]
+    
+        # Mock构建目录创建
+        mock_build_dir = "/tmp/mock_build_dir"
+    
+        # 调用load函数
+        with patch('os.path.exists') as mock_exists:
+            mock_exists.return_value = True
+    
+            with patch('tempfile.mkdtemp') as mock_mkdtemp:
+                if build_directory is None:
+                    mock_mkdtemp.return_value = mock_build_dir
+                else:
+                    # 如果指定了构建目录，确保它存在
+                    mock_exists.return_value = True
+    
+                # 确保FileBaton被正确mock
+                with patch('torch.utils.file_baton.FileBaton') as mock_baton_class:
+                    mock_baton = Mock()
+                    mock_baton.try_acquire.return_value = True
+                    mock_baton.release.return_value = None
+                    mock_baton_class.return_value = mock_baton
+    
+>                   module = load(
+                        name=test_name,
+                        sources=source_paths,
+                        extra_cflags=extra_cflags,
+                        extra_include_paths=extra_include_paths,
+                        build_directory=build_directory,
+                        keep_intermediates=keep_intermediates
+                    )
+
+tests/test_torch_utils_cpp_extension_g2.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1284: in load
+    return _jit_compile(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1485: in _jit_compile
+    if baton.try_acquire():
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.utils.file_baton.FileBaton object at 0x13a304e50>
+
+    def try_acquire(self):
+        '''
+        Tries to atomically create a file under exclusive access.
+    
+        Returns:
+            True if the file could be created, else False.
+        '''
+        try:
+>           self.fd = os.open(self.lock_file_path, os.O_CREAT | os.O_EXCL)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/tmp/test_build/lock'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/file_baton.py:29: FileNotFoundError
+______ test_invalid_source_files[invalid_ext-sources0-True-RuntimeError] _______
+
+test_name = 'invalid_ext', sources = [], expect_error = True
+error_type = <class 'RuntimeError'>
+mock_subprocess = <MagicMock name='run' id='5257079984'>
+mock_tempfile = <MagicMock name='mkdtemp' id='4414441648'>
+mock_os_path = <MagicMock name='exists' id='5271616528'>
+mock_file_baton = <MagicMock name='FileBaton' id='5271788064'>
+mock_os_makedirs_for_cache = <MagicMock name='makedirs' id='5271792336'>
+cleanup_temp_dirs = []
+tmp_path = PosixPath('/private/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/pytest-of-zzf1sh/pytest-1/test_invalid_source_files_inva0')
+
+    @pytest.mark.parametrize("test_name,sources,expect_error,error_type", [
+        ("invalid_ext", [], True, RuntimeError),
+        ("invalid_ext", ["nonexistent.cpp"], True, RuntimeError),
+    ])
+    def test_invalid_source_files(
+        test_name, sources, expect_error, error_type,
+        mock_subprocess, mock_tempfile, mock_os_path, mock_file_baton,
+        mock_os_makedirs_for_cache, cleanup_temp_dirs, tmp_path
+    ):
+        """
+        测试无效源文件的错误处理
+        """
+        # 准备源文件路径列表
+        source_paths = []
+        for source_file in sources:
+            if source_file:  # 非空字符串
+                source_paths.append(str(tmp_path / source_file))
+    
+        # 根据测试场景设置mock
+        with patch('os.path.exists') as mock_exists:
+            if not sources or "nonexistent" in str(sources):
+                # 文件不存在
+                mock_exists.return_value = False
+            else:
+                mock_exists.return_value = True
+    
+            if expect_error:
+                # 期望抛出异常
+                with pytest.raises(error_type) as exc_info:
+                    # 确保FileBaton被正确mock
+                    with patch('torch.utils.file_baton.FileBaton') as mock_baton_class:
+                        mock_baton = Mock()
+                        mock_baton.try_acquire.return_value = True
+                        mock_baton.release.return_value = None
+                        mock_baton_class.return_value = mock_baton
+    
+>                       load(
+                            name=test_name,
+                            sources=source_paths if source_paths else []
+                        )
+
+tests/test_torch_utils_cpp_extension_g2.py:232: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1284: in load
+    return _jit_compile(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1485: in _jit_compile
+    if baton.try_acquire():
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.utils.file_baton.FileBaton object at 0x13a3f22c0>
+
+    def try_acquire(self):
+        '''
+        Tries to atomically create a file under exclusive access.
+    
+        Returns:
+            True if the file could be created, else False.
+        '''
+        try:
+>           self.fd = os.open(self.lock_file_path, os.O_CREAT | os.O_EXCL)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/Users/zzf1sh/Library/Caches/torch_extensions/py310_cpu/invalid_ext/lock'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/file_baton.py:29: FileNotFoundError
+______ test_invalid_source_files[invalid_ext-sources1-True-RuntimeError] _______
+
+test_name = 'invalid_ext', sources = ['nonexistent.cpp'], expect_error = True
+error_type = <class 'RuntimeError'>
+mock_subprocess = <MagicMock name='run' id='5271791952'>
+mock_tempfile = <MagicMock name='mkdtemp' id='5273044160'>
+mock_os_path = <MagicMock name='exists' id='5273054096'>
+mock_file_baton = <MagicMock name='FileBaton' id='5272552784'>
+mock_os_makedirs_for_cache = <MagicMock name='makedirs' id='5272565744'>
+cleanup_temp_dirs = []
+tmp_path = PosixPath('/private/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/pytest-of-zzf1sh/pytest-1/test_invalid_source_files_inva1')
+
+    @pytest.mark.parametrize("test_name,sources,expect_error,error_type", [
+        ("invalid_ext", [], True, RuntimeError),
+        ("invalid_ext", ["nonexistent.cpp"], True, RuntimeError),
+    ])
+    def test_invalid_source_files(
+        test_name, sources, expect_error, error_type,
+        mock_subprocess, mock_tempfile, mock_os_path, mock_file_baton,
+        mock_os_makedirs_for_cache, cleanup_temp_dirs, tmp_path
+    ):
+        """
+        测试无效源文件的错误处理
+        """
+        # 准备源文件路径列表
+        source_paths = []
+        for source_file in sources:
+            if source_file:  # 非空字符串
+                source_paths.append(str(tmp_path / source_file))
+    
+        # 根据测试场景设置mock
+        with patch('os.path.exists') as mock_exists:
+            if not sources or "nonexistent" in str(sources):
+                # 文件不存在
+                mock_exists.return_value = False
+            else:
+                mock_exists.return_value = True
+    
+            if expect_error:
+                # 期望抛出异常
+                with pytest.raises(error_type) as exc_info:
+                    # 确保FileBaton被正确mock
+                    with patch('torch.utils.file_baton.FileBaton') as mock_baton_class:
+                        mock_baton = Mock()
+                        mock_baton.try_acquire.return_value = True
+                        mock_baton.release.return_value = None
+                        mock_baton_class.return_value = mock_baton
+    
+>                       load(
+                            name=test_name,
+                            sources=source_paths if source_paths else []
+                        )
+
+tests/test_torch_utils_cpp_extension_g2.py:232: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1284: in load
+    return _jit_compile(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:1467: in _jit_compile
+    version = JIT_EXTENSION_VERSIONER.bump_version_if_changed(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/_cpp_extension_versioner.py:45: in bump_version_if_changed
+    hash_value = hash_source_files(hash_value, source_files)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+hash_value = 0
+source_files = ['/private/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/pytest-of-zzf1sh/pytest-1/test_invalid_source_files_inva1/nonexistent.cpp']
+
+    def hash_source_files(hash_value, source_files):
+        for filename in source_files:
+>           with open(filename) as file:
+E           FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/pytest-of-zzf1sh/pytest-1/test_invalid_source_files_inva1/nonexistent.cpp'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/_cpp_extension_versioner.py:15: FileNotFoundError
+=============================== warnings summary ===============================
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:25
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/cpp_extension.py:25: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import packaging  # type: ignore[attr-defined]
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pkg_resources/__init__.py:3146
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/pkg_resources/__init__.py:3146: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('google')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                         Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------
+tests/conftest.py                               43     18      0      0    58%   60, 65, 70-76, 81-86, 91-93
+tests/test_torch_utils_cpp_extension_g2.py     141     42     32      6    64%   84-85, 136, 158-191, 211->210, 220, 238-272, 285
+----------------------------------------------------------------------------------------
+TOTAL                                          184     60     32      6    63%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_utils_cpp_extension_g2.py::test_parameter_combinations[param_test-sources0-extra_cflags0-extra_include_paths0-/tmp/test_build-False]
+FAILED tests/test_torch_utils_cpp_extension_g2.py::test_invalid_source_files[invalid_ext-sources0-True-RuntimeError]
+FAILED tests/test_torch_utils_cpp_extension_g2.py::test_invalid_source_files[invalid_ext-sources1-True-RuntimeError]
+3 failed, 2 warnings in 0.94s
+
+Error: exit 1

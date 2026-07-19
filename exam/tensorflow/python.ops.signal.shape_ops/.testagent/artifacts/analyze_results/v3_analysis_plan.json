@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 12,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_shape_ops.py::test_frame_edge_case_large_frame[signal_shape1-dtype1-200-50-True-0--1-cpu]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "当frame_length > signal_length且pad_end=True时，填充值验证失败。可能是填充逻辑或断言条件需要调整"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_shape_ops.py::test_frame_edge_case_zero_frame_length",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "frame_length=0时未产生预期的RuntimeWarning警告，需要调整测试逻辑或了解实际行为"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_shape_ops.py::test_frame_negative_frame_step",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "负的frame_step未抛出预期的ValueError或InvalidArgumentError异常，需要调整测试逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

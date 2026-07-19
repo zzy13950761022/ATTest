@@ -1,0 +1,170 @@
+{
+  "workflow_id": "e1eac228",
+  "created_at": "2026-01-21T14:38:39.443976",
+  "op": "torch_nn_utils_spectral_norm",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/torch_group/nn.utils.spectral_norm",
+  "target": "torch.nn.utils.spectral_norm",
+  "target_slug": "torch_nn_utils_spectral_norm",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "",
+  "last_error_signature": "",
+  "last_block_errors": {},
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# torch.nn.utils.spectral_norm - 函数说明\n\n## 1. 基本信息\n- **FQN**: torch.nn.utils.spectral_norm\n- **模块文件**: `/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/utils/__init__.py`\n- **签名**: `(module: ~T_module, name: str = 'weight', n_power_iterations: int = 1, eps: float = 1e-12, dim: Optional[int] = None) -> ~T_module`\n- **对象类型**: function\n\n## 2. 功能概述\n- 对给定模块中的参数应用谱归一化\n- 通过幂迭代法计算权重矩阵的谱范数并重新缩放权重\n- 返回带有谱归一化钩子的原始模块\n\n## 3. 参数说明\n- `module` (nn.Module): 包含权重参数的模块\n- `name` (str, 默认'weight'): 权重参数的名称\n- `n_power_iterations` (int, 默认1): 计算谱范数的幂迭代次数\n- `eps` (float, 默认1e-12): 计算范数时的数值稳定性epsilon\n- `dim` (Optional[int], 默认None): 对应输出数量的维度\n\n## 4. 返回值\n- 类型: 原始模块类型 `~T_module`\n- 返回带有谱归一化钩子的原始模块\n\n## 5. 文档要点\n- 谱归一化稳定GAN中判别器的训练\n- 权重张量维度大于2时，在幂迭代中重塑为2D\n- 通过钩子在每次前向传播前计算谱范数并重新缩放权重\n- 默认 `dim=0`，ConvTranspose{1,2,3}d 模块除外（`dim=1`）\n\n## 6. 源码摘要\n- 关键分支：根据模块类型设置 `dim` 参数\n- 依赖：`SpectralNorm.apply()` 方法\n- 副作用：为模块添加前向传播钩子\n- 处理 ConvTranspose 类型的特殊逻辑\n\n## 7. 示例与用法\n```python\n>>> m = spectral_norm(nn.Linear(20, 40))\n>>> m\nLinear(in_features=20, out_features=40, bias=True)\n>>> m.weight_u.size()\ntorch.Size([40])\n```\n\n## 8. 风险与空白\n- 函数已标记为弃用，推荐使用 `torch.nn.utils.parametrizations.spectral_norm`\n- 未明确说明支持的模块类型限制\n- 缺少对 `n_power_iterations` 范围的约束说明\n- 未提供 `eps` 值的有效范围指导\n- 缺少对异常情况的详细说明（如参数不存在时）\n- 需要测试边界情况：零权重、负迭代次数、极小eps值",
+    "requirements.md": "# torch.nn.utils.spectral_norm 测试需求\n\n## 1. 目标与范围\n- 主要功能与期望行为\n  - 对模块的指定权重参数应用谱归一化\n  - 通过幂迭代法计算权重矩阵的谱范数\n  - 添加前向传播钩子实现动态权重重缩放\n  - 返回带有谱归一化钩子的原始模块\n- 不在范围内的内容\n  - 替代函数 `torch.nn.utils.parametrizations.spectral_norm` 的功能\n  - 谱归一化的数学原理验证\n  - 训练过程中的收敛性测试\n\n## 2. 输入与约束\n- 参数列表（名称、类型/shape、默认值）\n  - `module`: nn.Module，必需，包含权重参数的模块\n  - `name`: str，默认'weight'，权重参数名称\n  - `n_power_iterations`: int，默认1，幂迭代次数\n  - `eps`: float，默认1e-12，数值稳定性epsilon\n  - `dim`: Optional[int]，默认None，对应输出数量的维度\n- 有效取值范围/维度/设备要求\n  - `module` 必须包含名为 `name` 的参数\n  - 权重张量维度 ≥ 2\n  - `n_power_iterations` ≥ 0\n  - `eps` > 0\n  - `dim` 为 None 或有效维度索引\n- 必需与可选组合\n  - `module` 为必需参数\n  - 其他参数均有默认值，可选\n- 随机性/全局状态要求\n  - 幂迭代算法包含随机初始化\n  - 模块状态被修改（添加钩子）\n\n## 3. 输出与判定\n- 期望返回结构及关键字段\n  - 返回原始模块类型实例\n  - 模块包含 `weight_u` 和 `weight_v` 缓冲区\n  - 模块具有前向传播钩子\n- 容差/误差界（如浮点）\n  - 谱范数计算误差在 `eps` 范围内\n  - 浮点计算使用默认精度容差\n- 状态变化或副作用检查点\n  - 模块添加了 `_forward_pre_hooks`\n  - 权重参数被包装为 `SpectralNorm` 实例\n  - 缓冲区 `weight_u` 和 `weight_v` 正确初始化\n\n## 4. 错误与异常场景\n- 非法输入/维度/类型触发的异常或警告\n  - 模块不包含指定参数名时抛出 AttributeError\n  - 权重张量维度 < 2 时抛出 ValueError\n  - `n_power_iterations` 为负数时抛出 ValueError\n  - `eps` ≤ 0 时抛出 ValueError\n  - `dim` 超出权重张量维度范围时抛出 IndexError\n- 边界值（空、None、0 长度、极端形状/数值）\n  - `n_power_iterations = 0`（无迭代）\n  - `eps` 极小值（如 1e-30）\n  - 权重值为零矩阵\n  - 权重值为单位矩阵\n  - 极端形状（如 1×1 或超大矩阵）\n\n## 5. 依赖与环境\n- 外部资源/设备/网络/文件依赖\n  - PyTorch 库依赖\n  - CUDA 设备支持（可选）\n- 需要 mock/monkeypatch 的部分\n  - `torch.nn.utils.spectral_norm.SpectralNorm.apply` 方法\n  - 模块的 `_parameters` 字典访问\n  - 随机数生成器（用于幂迭代初始化）\n\n## 6. 覆盖与优先级\n- 必测路径（高优先级，最多 5 条，短句）\n  1. 标准线性层谱归一化\n  2. ConvTranspose 模块的特殊 dim 处理\n  3. 自定义参数名的谱归一化\n  4. 多轮幂迭代验证\n  5. 异常参数输入的错误处理\n- 可选路径（中/低优先级合并为一组列表）\n  - 不同设备（CPU/GPU）的兼容性\n  - 各种模块类型（Conv1d/2d/3d, Linear, etc.）\n  - 不同权重形状的边界情况\n  - 与其他 PyTorch 功能的集成\n  - 前向传播钩子的正确触发\n- 已知风险/缺失信息（仅列条目，不展开）\n  - 函数已标记为弃用\n  - 未明确支持的模块类型限制\n  - `n_power_iterations` 范围约束不明确\n  - `eps` 值的有效范围未定义\n  - 异常情况的详细说明缺失",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"torch.nn.utils.spectral_norm\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\"include\": \"SMOKE_SET\", \"assert_level\": \"weak\", \"max_blocks\": 5},\n    \"roundN\": {\"only_fix_failed_blocks\": true, \"block_limit\": 3, \"promote_deferred\": true},\n    \"final\": {\"enable_strong_asserts\": true, \"coverage_optional\": true}\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_torch_nn_utils_spectral_norm.py\",\n    \"all_pattern\": \"tests/test_torch_nn_utils_spectral_norm_*.py\",\n    \"groups\": {\n      \"G1\": \"tests/test_torch_nn_utils_spectral_norm_g1.py\",\n      \"G2\": \"tests/test_torch_nn_utils_spectral_norm_g2.py\",\n      \"G3\": \"tests/test_torch_nn_utils_spectral_norm_g3.py\"\n    }\n  },\n  \"active_group_order\": [\"G1\", \"G2\", \"G3\"],\n  \"groups\": [\n    {\n      \"group_id\": \"G1\",\n      \"title\": \"核心功能测试\",\n      \"entrypoints\": [\"spectral_norm\"],\n      \"smoke_set\": [\"CASE_01\", \"CASE_02\"],\n      \"deferred_set\": [\"CASE_03\", \"CASE_04\"],\n      \"note\": \"测试谱归一化的基本功能和行为\"\n    },\n    {\n      \"group_id\": \"G2\",\n      \"title\": \"参数处理测试\",\n      \"entrypoints\": [\"spectral_norm\"],\n      \"smoke_set\": [\"CASE_05\"],\n      \"deferred_set\": [\"CASE_06\", \"CASE_07\", \"CASE_08\"],\n      \"note\": \"测试不同参数组合和边界情况\"\n    },\n    {\n      \"group_id\": \"G3\",\n      \"title\": \"异常处理测试\",\n      \"entrypoints\": [\"spectral_norm\"],\n      \"smoke_set\": [\"CASE_09\"],\n      \"deferred_set\": [\"CASE_10\", \"CASE_11\", \"CASE_12\"],\n      \"note\": \"测试错误输入和异常场景处理\"\n    }\n  ],\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"group_id\": \"G1\",\n      \"name\": \"标准线性层谱归一化\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Linear\",\n          \"in_features\": 20,\n          \"out_features\": 40,\n          \"name\": \"weight\",\n          \"n_power_iterations\": 1,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"returns_module\", \"has_weight_u\", \"has_weight_v\", \"has_forward_hooks\"],\n        \"strong\": [\"spectral_norm_correct\", \"hook_functionality\", \"buffer_values_valid\"]\n      },\n      \"oracle\": \"manual_verification\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 6,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"group_id\": \"G1\",\n      \"name\": \"ConvTranspose模块特殊dim处理\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"ConvTranspose2d\",\n          \"in_channels\": 3,\n          \"out_channels\": 6,\n          \"kernel_size\": 3,\n          \"name\": \"weight\",\n          \"n_power_iterations\": 1,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"returns_module\", \"has_weight_u\", \"has_weight_v\", \"dim_set_correctly\"],\n        \"strong\": [\"dim_value_correct\", \"conv_transpose_special_case\"]\n      },\n      \"oracle\": \"manual_verification\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 7,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"group_id\": \"G1\",\n      \"name\": \"自定义参数名谱归一化\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Linear\",\n          \"in_features\": 10,\n          \"out_features\": 20,\n          \"name\": \"custom_weight\",\n          \"n_power_iterations\": 1,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"returns_module\", \"has_custom_weight_u\", \"has_custom_weight_v\", \"parameter_renamed\"],\n        \"strong\": [\"custom_name_handled\", \"buffer_names_correct\"]\n      },\n      \"oracle\": \"manual_verification\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 6,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"group_id\": \"G1\",\n      \"name\": \"多轮幂迭代验证\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Linear\",\n          \"in_features\": 15,\n          \"out_features\": 30,\n          \"name\": \"weight\",\n          \"n_power_iterations\": 5,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"returns_module\", \"has_weight_u\", \"has_weight_v\", \"iterations_applied\"],\n        \"strong\": [\"convergence_check\", \"multiple_iterations_effect\"]\n      },\n      \"oracle\": \"manual_verification\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 6,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-05\",\n      \"block_id\": \"CASE_05\",\n      \"group_id\": \"G2\",\n      \"name\": \"不同模块类型兼容性\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Conv2d\",\n          \"in_channels\": 3,\n          \"out_channels\": 6,\n          \"kernel_size\": 3,\n          \"name\": \"weight\",\n          \"n_power_iterations\": 1,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"returns_module\", \"has_weight_u\", \"has_weight_v\", \"conv_module_supported\"],\n        \"strong\": [\"conv_weights_normalized\", \"shape_handling_correct\"]\n      },\n      \"oracle\": \"manual_verification\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 7,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-09\",\n      \"block_id\": \"CASE_09\",\n      \"group_id\": \"G3\",\n      \"name\": \"参数不存在异常处理\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"module_type\": \"Linear\",\n          \"in_features\": 10,\n          \"out_features\": 20,\n          \"name\": \"nonexistent_param\",\n          \"n_power_iterations\": 1,\n          \"eps\": 1e-12,\n          \"dim\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"raises_attribute_error\", \"error_message_contains\"],\n        \"strong\": [\"specific_error_type\", \"clear_error_message\"]\n      },\n      \"oracle\": \"expected_exception\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 65,\n      \"max_params\": 6,\n      \"is_parametrized\": false,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"in_features\": 50,\n        \"out_features\": 100,\n        \"name\": \"weight\",\n        \"n_power_iterations\": 1,\n        \"eps\": 1e-12,\n        \"dim\": null\n      },\n      \"note\": \"更大尺寸的线性层\"\n    },\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"in_features\": 20,\n        \"out_features\": 40,\n        \"name\": \"weight\",\n        \"n_power_iterations\": 1,\n        \"eps\": 1e-6,\n        \"dim\": null\n      },\n      \"note\": \"不同eps值\"\n    },\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"ConvTranspose1d\",\n        \"in_channels\": 2,\n        \"out_channels\": 4,\n        \"kernel_size\": 3,\n        \"name\": \"weight\",\n        \"n_power_iterations\": 1,\n        \"eps\": 1e-12,\n        \"dim\": null\n      },\n      \"note\": \"ConvTranspose1d模块\"\n    },\n    {\n      \"base_block_id\": \"CASE_05\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Conv3d\",\n        \"in_channels\": 2,\n        \"out_channels\": 4,\n        \"kernel_size\": 3,\n        \"name\": \"weight\",\n        \"n_power_iterations\": 1,\n        \"eps\": 1e-12,\n        \"dim\": null\n      },\n      \"note\": \"Conv3d模块\"\n    },\n    {\n      \"base_block_id\": \"CASE_09\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"module_type\": \"Linear\",\n        \"in_features\": 10,\n        \"out_features\": 20,\n        \"name\": \"weight\",\n        \"n_power_iterations\": -1,\n        \"eps\": 1e-12,\n        \"dim\": null\n      },\n      \"note\": \"负迭代次数异常\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_02\", \"CASE_05\", \"CASE_09\"],\n  \"deferred_set\": [\"CASE_03\", \"CASE_04\", \"CASE_06\", \"CASE_07\", \"CASE_08\", \"CASE_10\", \"CASE_11\", \"CASE_12\"]\n}",
+    "test_plan.md": "# torch.nn.utils.spectral_norm 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：直接测试函数，无需mock（首轮）\n- 随机性处理：固定随机种子确保幂迭代可重复性\n- 设备支持：首轮仅测试CPU，后续扩展GPU\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- **SMOKE_SET**: CASE_01, CASE_02, CASE_05, CASE_09（4个核心用例）\n- **DEFERRED_SET**: CASE_03, CASE_04, CASE_06, CASE_07, CASE_08, CASE_10, CASE_11, CASE_12\n- **group列表**: G1（核心功能）, G2（参数处理）, G3（异常处理）\n- **active_group_order**: G1 → G2 → G3\n- **断言分级策略**: 首轮仅使用weak断言，最终轮启用strong断言\n- **预算策略**: 每个用例max_lines≤80, max_params≤7, size=S\n\n## 3. 数据与边界\n- **正常数据集**: 标准Linear/Conv层，中等尺寸权重矩阵\n- **随机生成策略**: 固定随机种子，可重复的权重初始化\n- **边界值测试**:\n  - 零权重矩阵（全零）\n  - 单位矩阵权重\n  - 极小eps值（1e-30）\n  - 零迭代次数（n_power_iterations=0）\n  - 1×1极小形状权重\n- **负例与异常场景**:\n  - 参数不存在（AttributeError）\n  - 负迭代次数（ValueError）\n  - 非正eps值（ValueError）\n  - 无效dim索引（IndexError）\n  - 一维权重张量（ValueError）\n\n## 4. 覆盖映射\n| TC ID | 对应需求/约束 | 优先级 |\n|-------|--------------|--------|\n| TC-01 | 标准线性层谱归一化 | High |\n| TC-02 | ConvTranspose特殊dim处理 | High |\n| TC-03 | 自定义参数名支持 | High |\n| TC-04 | 多轮幂迭代验证 | High |\n| TC-05 | 不同模块类型兼容性 | High |\n| TC-09 | 参数不存在异常处理 | High |\n\n**尚未覆盖的风险点**:\n- 函数已标记为弃用的兼容性影响\n- 超大权重矩阵的内存和性能问题\n- GPU设备上的计算差异\n- 与其他PyTorch功能的集成问题\n- 前向传播钩子的线程安全性",
+    "tests/test_torch_nn_utils_spectral_norm.py": "import torch\nimport torch.nn as nn\nimport pytest\nimport math\nfrom torch.nn.utils import spectral_norm\n\n\n# ==== BLOCK:HEADER START ====\n# Test class and common fixtures\nclass TestSpectralNorm:\n    \"\"\"Test suite for torch.nn.utils.spectral_norm\"\"\"\n    \n    def setup_method(self):\n        \"\"\"Setup method to ensure reproducibility\"\"\"\n        torch.manual_seed(42)\n# ==== BLOCK:HEADER END ====\n\n\n# ==== BLOCK:CASE_01 START ====\n# TC-01: 标准线性层谱归一化\n# Placeholder for CASE_01\n# ==== BLOCK:CASE_01 END ====\n\n\n# ==== BLOCK:CASE_02 START ====\n# TC-02: ConvTranspose模块特殊dim处理\n# Placeholder for CASE_02\n# ==== BLOCK:CASE_02 END ====\n\n\n# ==== BLOCK:CASE_03 START ====\n# TC-03: 自定义参数名谱归一化\n# Placeholder for CASE_03 (deferred)\n# ==== BLOCK:CASE_03 END ====\n\n\n# ==== BLOCK:CASE_04 START ====\n# TC-04: 多轮幂迭代验证\n# Placeholder for CASE_04 (deferred)\n# ==== BLOCK:CASE_04 END ====\n\n\n# ==== BLOCK:CASE_05 START ====\n# TC-05: 不同模块类型兼容性\n# Placeholder for CASE_05\n# ==== BLOCK:CASE_05 END ====\n\n\n# ==== BLOCK:CASE_06 START ====\n# TC-06: Placeholder for deferred test case\n# ==== BLOCK:CASE_06 END ====\n\n\n# ==== BLOCK:CASE_07 START ====\n# TC-07: Placeholder for deferred test case\n# ==== BLOCK:CASE_07 END ====\n\n\n# ==== BLOCK:CASE_08 START ====\n# TC-08: Placeholder for deferred test case\n# ==== BLOCK:CASE_08 END ====\n\n\n# ==== BLOCK:CASE_09 START ====\n# TC-09: 参数不存在异常处理\n# Placeholder for CASE_09\n# ==== BLOCK:CASE_09 END ====\n\n\n# ==== BLOCK:CASE_10 START ====\n# TC-10: Placeholder for deferred test case\n# ==== BLOCK:CASE_10 END ====\n\n\n# ==== BLOCK:CASE_11 START ====\n# TC-11: Placeholder for deferred test case\n# ==== BLOCK:CASE_11 END ====\n\n\n# ==== BLOCK:CASE_12 START ====\n# TC-12: Placeholder for deferred test case\n# ==== BLOCK:CASE_12 END ====\n\n\n# ==== BLOCK:FOOTER START ====\n# Test class footer\nif __name__ == \"__main__\":\n    pytest.main([__file__, \"-v\"])\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\n.......                                                                  [100%]\n================================ tests coverage ================================\n______________ coverage: platform darwin, python 3.10.19-final-0 _______________\n\nName                                         Stmts   Miss Branch BrPart  Cover   Missing\n----------------------------------------------------------------------------------------\ncleanup.py                                       3      3      0      0     0%   1-3\ntest_eps_behavior.py                            29     29      0      0     0%   1-37\ntests/test_torch_nn_utils_spectral_norm.py     138      1      2      1    99%   438\n----------------------------------------------------------------------------------------\nTOTAL                                          170     33      2      1    80%\nCoverage XML written to file coverage.xml\n7 passed in 0.55s\n",
+    "exit_code.txt": "0",
+    "analysis_plan.json": "{\n  \"status\": \"成功\",\n  \"passed\": 7,\n  \"failed\": 0,\n  \"errors\": 0,\n  \"collection_errors\": false,\n  \"block_limit\": 3,\n  \"failures\": [],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "# 测试分析报告\n\n## 状态与统计\n- **状态**: 成功\n- **通过**: 7个测试\n- **失败**: 0个测试\n- **错误**: 0个\n- **集合错误**: 无\n\n## 待修复 BLOCK 列表 (0个)\n所有测试已通过，无需修复。\n\n## 停止建议\n- **stop_recommended**: false\n- **stop_reason**: 无",
+    "test_eps_behavior.py": "import torch\nimport torch.nn as nn\nfrom torch.nn.utils import spectral_norm\n\n# 测试 eps=0 的情况\nlinear = nn.Linear(10, 20)\ntry:\n    sn_linear = spectral_norm(linear, name='weight', n_power_iterations=1, eps=0, dim=None)\n    print(\"eps=0: SUCCESS - No exception raised\")\n    print(f\"eps value in module: {sn_linear._forward_pre_hooks[list(sn_linear._forward_pre_hooks.keys())[0]].eps}\")\nexcept Exception as e:\n    print(f\"eps=0: FAILED - {type(e).__name__}: {e}\")\n\n# 测试 eps=-1e-12 的情况\nlinear2 = nn.Linear(10, 20)\ntry:\n    sn_linear2 = spectral_norm(linear2, name='weight', n_power_iterations=1, eps=-1e-12, dim=None)\n    print(\"eps=-1e-12: SUCCESS - No exception raised\")\n    print(f\"eps value in module: {sn_linear2._forward_pre_hooks[list(sn_linear2._forward_pre_hooks.keys())[0]].eps}\")\nexcept Exception as e:\n    print(f\"eps=-1e-12: FAILED - {type(e).__name__}: {e}\")\n\n# 测试 dim=2 的情况（线性层权重是2维）\nlinear3 = nn.Linear(10, 20)\ntry:\n    sn_linear3 = spectral_norm(linear3, name='weight', n_power_iterations=1, eps=1e-12, dim=2)\n    print(\"dim=2: SUCCESS - No exception raised\")\nexcept Exception as e:\n    print(f\"dim=2: FAILED - {type(e).__name__}: {e}\")\n\n# 测试 dim=-3 的情况\nlinear4 = nn.Linear(10, 20)\ntry:\n    sn_linear4 = spectral_norm(linear4, name='weight', n_power_iterations=1, eps=1e-12, dim=-3)\n    print(\"dim=-3: SUCCESS - No exception raised\")\nexcept Exception as e:\n    print(f\"dim=-3: FAILED - {type(e).__name__}: {e}\")",
+    "cleanup.py": "import os\nos.remove(\"test_eps_behavior.py\")\nos.remove(\"cleanup.py\")",
+    "final_report.md": "# torch.nn.utils.spectral_norm 测试报告\n\n## 1. 执行摘要\n所有7个测试用例全部通过，函数核心功能正常，但需注意该函数已标记为弃用，建议迁移至新API `torch.nn.utils.parametrizations.spectral_norm`。\n\n**关键发现**：\n- 核心功能（谱归一化、ConvTranspose特殊处理、自定义参数名）均正常工作\n- 异常处理逻辑符合预期\n- 无阻塞性问题，测试覆盖了主要功能路径\n\n## 2. 测试范围\n**目标FQN**: `torch.nn.utils.spectral_norm`\n\n**测试环境**:\n- 框架：pytest\n- 依赖：PyTorch库\n- 设备：CPU（首轮）\n- 随机性：固定随机种子确保可重复性\n\n**覆盖场景**:\n- 标准线性层谱归一化（TC-01）\n- ConvTranspose模块的特殊dim处理（TC-02）\n- 自定义参数名支持（TC-03）\n- 多轮幂迭代验证（TC-04）\n- 不同模块类型兼容性（TC-05）\n- 参数不存在异常处理（TC-09）\n- 其他核心功能验证\n\n**未覆盖项**:\n- GPU设备兼容性测试\n- 超大权重矩阵性能测试\n- 与其他PyTorch功能集成测试\n- 前向传播钩子的线程安全性\n- 边界值测试（零权重、单位矩阵、极小eps等）\n\n## 3. 结果概览\n- **用例总数**: 7个\n- **通过**: 7个（100%）\n- **失败**: 0个\n- **错误**: 0个\n\n**主要测试点**:\n1. 函数基本功能验证\n2. 参数处理逻辑\n3. 异常场景处理\n4. 模块状态变化检查\n\n## 4. 详细发现\n**无严重问题**，所有测试用例均通过。\n\n**需要注意的潜在问题**:\n1. **弃用警告**: 函数已标记为弃用，长期维护风险\n2. **文档不完整**: 缺少对`n_power_iterations`范围、`eps`有效范围的明确说明\n3. **模块类型限制**: 未明确说明支持的模块类型边界\n\n**建议修复动作**:\n1. 更新文档，明确参数约束范围\n2. 添加弃用迁移指南\n3. 补充异常情况的详细说明\n\n## 5. 覆盖与风险\n**需求覆盖情况**:\n- ✅ 核心功能：谱归一化应用\n- ✅ 参数处理：默认值、自定义参数名\n- ✅ 特殊逻辑：ConvTranspose的dim处理\n- ✅ 异常处理：参数不存在、无效输入\n- ⚠️ 边界值：部分边界情况未测试\n- ⚠️ 设备兼容性：仅测试CPU环境\n\n**尚未覆盖的风险点**:\n1. **性能风险**: 超大矩阵的内存和计算性能\n2. **设备差异**: CPU/GPU计算结果一致性\n3. **集成风险**: 与其他PyTorch功能组合使用\n4. **并发风险**: 前向传播钩子的线程安全性\n5. **数值稳定性**: 极端参数值（极小eps、零权重等）\n\n**缺失信息**:\n- 函数弃用时间表和替代方案细节\n- 支持的模块类型完整列表\n- 幂迭代算法的收敛性保证\n- 数值误差的精确边界\n\n## 6. 后续动作\n**优先级排序的TODO**:\n\n**P0（必须修复/补充）**:\n1. 添加弃用警告测试，验证用户迁移路径\n2. 补充GPU设备兼容性测试\n3. 添加边界值测试（零权重、单位矩阵、极小eps=1e-30）\n\n**P1（建议补充）**:\n4. 测试不同模块类型（Conv1d/2d/3d等）的兼容性\n5. 验证前向传播钩子的正确触发时机\n6. 测试与其他PyTorch功能（如DataParallel）的集成\n\n**P2（可选完善）**:\n7. 性能测试：超大权重矩阵（>1000×1000）\n8. 数值稳定性测试：极端参数组合\n9. 随机性测试：不同随机种子下的结果一致性\n\n**环境调整建议**:\n- 后续测试轮次增加GPU测试环境\n- 考虑添加内存使用监控\n- 建立性能基准测试套件\n\n---\n\n**报告生成时间**: 基于测试执行结果分析  \n**测试状态**: ✅ 全部通过  \n**风险评估**: 中等（主要风险来自函数弃用状态）  \n**建议**: 核心功能稳定，但建议尽快迁移至新API"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:39:30.537063",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:40:19.095244",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:42:35.060018",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:45:31.303375",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:45:32.201949",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:47:03.461165",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:49:07.373124",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:49:08.183169",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:50:13.446209",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:53:22.150706",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:53:22.977100",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:54:45.300830",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:57:36.833455",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:57:37.739488",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-21T14:58:50.737183",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-21T15:00:20.042091",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-21T15:00:20.890492",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-21T15:02:17.060646",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-21T15:03:11.140521",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

@@ -1,0 +1,103 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 5,
+  "errors": 15,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestBatchFunction.test_batch_invalid_batch_size",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "batch_size=0未引发ValueError，需要调整断言或函数行为"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_invalid_min_after_dequeue",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "min_after_dequeue>capacity未引发错误，需要调整断言或函数行为"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_dynamic_padding_without_shapes_raises_error",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "tf.placeholder在TensorFlow 2.x中不存在，需要替换为tf.compat.v1.placeholder"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestBatchFunction.test_batch_invalid_capacity",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchFunction.test_batch_empty_tensor_list",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestBatchFunction.test_batch_basic_functionality[2-32-False]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestBatchFunction.test_batch_basic_functionality[4-64-True]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestBatchFunction.test_batch_basic_functionality[1-10-False]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestBatchFunction.test_batch_with_dictionary_input",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_basic_functionality[2-32-8-42]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_basic_functionality[2-32-16-123]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_with_seed_reproducibility",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_with_enqueue_many",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction.test_shuffle_batch_allow_smaller_final_batch",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_batch_with_dynamic_padding[2-32-True-False]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_batch_with_dynamic_padding[3-48-True-True]",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_dynamic_padding_with_explicit_shapes",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_dynamic_padding_preserves_data_types",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction.test_dynamic_padding_with_zero_dimensions",
+      "reason": "fixture mock错误，等待HEADER修复"
+    },
+    {
+      "test": "TestAdditionalEdgeCases.test_batch_with_single_tensor",
+      "reason": "fixture mock错误，等待HEADER修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

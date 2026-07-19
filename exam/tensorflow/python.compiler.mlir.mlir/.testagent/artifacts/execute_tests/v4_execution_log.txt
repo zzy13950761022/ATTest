@@ -1,0 +1,12 @@
+=== Run Tests ===
+......                                                                   [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                    Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_compiler_mlir_mlir_g2.py     101     10     18      4    87%   31, 47-50, 65-68, 135, 172->exit, 219->227, 240->exit, 334
+---------------------------------------------------------------------------------------------------
+TOTAL                                                     101     10     18      4    87%
+Coverage XML written to file coverage.xml
+
+6 passed in 1.78s

@@ -1,0 +1,213 @@
+import math
+import pytest
+import tensorflow as tf
+import numpy as np
+from unittest.mock import Mock, patch, MagicMock
+import warnings
+
+from tensorflow.python.data.experimental.ops.resampling import rejection_resample
+
+# ==== BLOCK:HEADER START ====
+# Test class for rejection_resample function - G2 group
+class TestRejectionResampleG2:
+    """Test cases for rejection_resample function - Distribution adjustment and randomness."""
+    
+    @pytest.fixture
+    def mock_dataset(self):
+        """Create a mock dataset for testing."""
+        dataset = Mock(spec=tf.data.Dataset)
+        # Mock the rejection_resample method on the dataset instance
+        dataset.rejection_resample = Mock()
+        return dataset
+    
+    @pytest.fixture
+    def simple_class_func(self):
+        """Create a simple class function for testing."""
+        def class_func(element):
+            # Simple function that extracts class from element
+            return tf.cast(element % 4, tf.int32)
+        return class_func
+    
+    @pytest.fixture
+    def uniform_target_dist(self):
+        """Create a uniform target distribution for 4 classes."""
+        return tf.constant([0.25, 0.25, 0.25, 0.25], dtype=tf.float32)
+    
+    @pytest.fixture
+    def skewed_target_dist(self):
+        """Create a skewed target distribution."""
+        return tf.constant([0.1, 0.2, 0.3, 0.4], dtype=tf.float32)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_06 START ====
+    def test_uniform_distribution_adjustment(self, mock_dataset, simple_class_func, uniform_target_dist):
+        """TC-03: 均匀分布调整验证 - 验证函数正确处理均匀目标分布"""
+        # Arrange
+        num_classes = 4
+        dataset_size = 200
+        seed = 123
+        
+        # Use the fixture class function
+        class_func = simple_class_func
+        
+        # Use the fixture uniform target distribution
+        target_dist = uniform_target_dist
+        
+        # Mock the rejection_resample method to return the dataset itself
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_dataset.rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Apply the transformation to mock dataset
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Output distribution close (verify parameters passed correctly)
+        mock_dataset.rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Verify target_dist is uniform
+        expected_value = 0.25
+        for i in range(num_classes):
+            assert abs(target_dist[i].numpy() - expected_value) < 1e-6, \
+                f"Target distribution should be uniform, got {target_dist[i].numpy()}"
+        
+        # 2. Dataset not empty (mock returns dataset)
+        assert result is transformed_dataset, "Should return non-empty dataset"
+        
+        # 3. Class function works
+        # Test class_func with sample inputs
+        test_inputs = [0, 1, 2, 3, 4, 5, 6, 7]
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert 0 <= output.numpy() < num_classes, \
+                f"class_func output should be in [0, {num_classes}), got {output.numpy()}"
+        
+        # 4. Verify target_dist shape and dtype
+        assert target_dist.shape == (num_classes,), f"target_dist should have shape ({num_classes},)"
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+        
+        # 5. Verify seed is passed correctly
+        call_args = mock_dataset.rejection_resample.call_args
+        assert call_args[1]['seed'] == seed, f"seed should be {seed}"
+        
+        # 6. Verify initial_dist is None
+        assert call_args[1]['initial_dist'] is None, "initial_dist should be None when not provided"
+        
+        # 7. Verify function returns callable
+        assert callable(transform_fn), "rejection_resample should return a callable function"
+        
+        # 8. Verify uniform distribution properties
+        # Check that distribution sums to 1 (within tolerance)
+        dist_sum = tf.reduce_sum(target_dist).numpy()
+        assert abs(dist_sum - 1.0) < 1e-6, f"Target distribution should sum to 1, got {dist_sum}"
+        
+        # Check that all values are equal (uniform distribution)
+        first_value = target_dist[0].numpy()
+        for i in range(1, num_classes):
+            assert abs(target_dist[i].numpy() - first_value) < 1e-6, \
+                f"Uniform distribution should have equal values, but {target_dist[i].numpy()} != {first_value}"
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+    def test_skewed_distribution_adjustment(self, mock_dataset, simple_class_func, skewed_target_dist):
+        """TC-06: 非均匀分布测试 - 验证函数正确处理非均匀目标分布"""
+        # Arrange
+        num_classes = 4
+        dataset_size = 200
+        seed = 456
+        
+        # Use the fixture class function
+        class_func = simple_class_func
+        
+        # Use the fixture skewed target distribution
+        target_dist = skewed_target_dist
+        
+        # Mock the rejection_resample method to return the dataset itself
+        transformed_dataset = Mock(spec=tf.data.Dataset)
+        mock_dataset.rejection_resample.return_value = transformed_dataset
+        
+        # Act
+        transform_fn = rejection_resample(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Apply the transformation to mock dataset
+        result = transform_fn(mock_dataset)
+        
+        # Assert - weak assertions
+        # 1. Output distribution close (verify parameters passed correctly)
+        mock_dataset.rejection_resample.assert_called_once_with(
+            class_func=class_func,
+            target_dist=target_dist,
+            initial_dist=None,
+            seed=seed
+        )
+        
+        # Verify target_dist is skewed (not uniform)
+        expected_values = [0.1, 0.2, 0.3, 0.4]
+        for i in range(num_classes):
+            assert abs(target_dist[i].numpy() - expected_values[i]) < 1e-6, \
+                f"Target distribution should be skewed, got {target_dist[i].numpy()} at index {i}, expected {expected_values[i]}"
+        
+        # 2. Dataset not empty (mock returns dataset)
+        assert result is transformed_dataset, "Should return non-empty dataset"
+        
+        # 3. Class function works
+        # Test class_func with sample inputs
+        test_inputs = [0, 1, 2, 3, 4, 5, 6, 7]
+        for inp in test_inputs:
+            output = class_func(inp)
+            assert output.dtype == tf.int32, "class_func should return tf.int32"
+            assert 0 <= output.numpy() < num_classes, \
+                f"class_func output should be in [0, {num_classes}), got {output.numpy()}"
+        
+        # 4. Verify target_dist shape and dtype
+        assert target_dist.shape == (num_classes,), f"target_dist should have shape ({num_classes},)"
+        assert target_dist.dtype == tf.float32, "target_dist should be float32"
+        
+        # 5. Verify seed is passed correctly
+        call_args = mock_dataset.rejection_resample.call_args
+        assert call_args[1]['seed'] == seed, f"seed should be {seed}"
+        
+        # 6. Verify initial_dist is None
+        assert call_args[1]['initial_dist'] is None, "initial_dist should be None when not provided"
+        
+        # 7. Verify function returns callable
+        assert callable(transform_fn), "rejection_resample should return a callable function"
+        
+        # 8. Verify skewed distribution properties
+        # Check that distribution sums to 1 (within tolerance)
+        dist_sum = tf.reduce_sum(target_dist).numpy()
+        assert abs(dist_sum - 1.0) < 1e-6, f"Target distribution should sum to 1, got {dist_sum}"
+        
+        # Check that distribution is not uniform
+        first_value = target_dist[0].numpy()
+        is_uniform = all(abs(target_dist[i].numpy() - first_value) < 1e-6 for i in range(num_classes))
+        assert not is_uniform, "Target distribution should be skewed, not uniform"
+        
+        # 9. Verify distribution is monotonically increasing (as defined in fixture)
+        for i in range(num_classes - 1):
+            assert target_dist[i].numpy() < target_dist[i + 1].numpy(), \
+                f"Skewed distribution should be increasing, but {target_dist[i].numpy()} >= {target_dist[i + 1].numpy()}"
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_dropoutwrapper_serialization[BasicRNNCell-0.7-0.8-0.9-True-float32-5]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "浮点数精度问题：0.699999988079071 != 0.7，需要改用近似比较"
+    },
+    {
+      "test": "test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]",
+      "block_id": "CASE_09",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "DropoutWrapper可能没有input_keep_prob属性，需要检查属性名或使用get_config()获取参数"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

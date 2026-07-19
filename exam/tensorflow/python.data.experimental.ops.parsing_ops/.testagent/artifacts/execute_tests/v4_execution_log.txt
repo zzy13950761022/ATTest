@@ -1,0 +1,77 @@
+=== Run Tests ===
+F                                                                        [100%]
+================================== FAILURES ===================================
+_ TestParsingOpsG2.test_multiple_feature_types_support[feature_types0-dtype_combinations0-False-15] _
+
+self = <test_tensorflow_python_data_experimental_ops_parsing_ops_g2.TestParsingOpsG2 object at 0x0000027FFA035CA0>
+create_string_vector_dataset = <function TestParsingOpsG2.create_string_vector_dataset.<locals>._create_dataset at 0x0000027FFA040AF0>
+feature_types = ['FixedLenFeature', 'VarLenFeature']
+dtype_combinations = ['float32', 'int64'], deterministic = False
+dataset_size = 15
+
+    @pytest.mark.parametrize("feature_types,dtype_combinations,deterministic,dataset_size", [
+        (["FixedLenFeature", "VarLenFeature"], ["float32", "int64"], False, 15)
+    ])
+    def test_multiple_feature_types_support(self, create_string_vector_dataset,
+                                           feature_types, dtype_combinations,
+                                           deterministic, dataset_size):
+        """测试多种特征类型支持 (TC-05)
+    
+        验证parse_example_dataset能够正确处理FixedLenFeature和VarLenFeature的组合。
+        """
+        # 创建特征规格字典
+        features = {}
+    
+        # 添加FixedLenFeature
+        if "FixedLenFeature" in feature_types:
+            if "float32" in dtype_combinations:
+                features["fixed_float"] = tf.io.FixedLenFeature([], tf.float32)
+            if "int64" in dtype_combinations:
+                features["fixed_int"] = tf.io.FixedLenFeature([], tf.int64)
+    
+        # 添加VarLenFeature
+        if "VarLenFeature" in feature_types:
+            if "float32" in dtype_combinations:
+                features["var_float"] = tf.io.VarLenFeature(tf.float32)
+            if "int64" in dtype_combinations:
+                features["var_int"] = tf.io.VarLenFeature(tf.int64)
+    
+        # 创建测试数据集
+        dataset = create_string_vector_dataset(dataset_size, features)
+    
+        # 验证输入数据集是字符串向量
+        element_spec = dataset.element_spec
+        assert isinstance(element_spec, tf.TensorSpec), "输入数据集应该是TensorSpec"
+        assert element_spec.dtype == tf.string, "输入数据集应该是字符串类型"
+>       assert element_spec.shape.as_list() == [None], "输入数据集应该是字符串向量(shape=[None])"
+E       AssertionError: 输入数据集应该是字符串向量(shape=[None])
+E       assert [] == [None]
+E         
+E         Right contains one more item: None
+E         Use -v to get more diff
+
+tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g2.py:100: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-18 19:05:21.766695: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------------------------
+cleanup.py                                                                 8      8      4      0     0%   2-21
+correct_implementation.py                                                 95     95     26      0     0%   2-188
+execute_verify.py                                                         10     10      2      0     0%   1-12
+fix_header.py                                                             20     20      4      0     0%   2-43
+run_test.py                                                                8      8      0      0     0%   1-11
+test_parse_example_dataset_usage.py                                       33     33      2      0     0%   2-50
+tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g2.py     122     72     64     10    38%   46-47, 48->40, 51->40, 80->87, 81->83, 83->87, 87->94, 88->90, 90->94, 103-233, 255-284
+verify_fix.py                                                             63     63     14      0     0%   2-116
+------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                    359    309    116     10    15%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_parsing_ops_g2.py::TestParsingOpsG2::test_multiple_feature_types_support[feature_types0-dtype_combinations0-False-15]
+1 failed in 1.61s
+
+Error: exit 1

@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_autograph_utils_ag_logging_g3.py::test_trace_basic_output",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "trace函数未输出到stdout，需要实现print调用"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,226 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.sparse_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_sparse_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_sparse_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "from_dense 基本转换",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [5],
+          "dense_values": [0, 0, 3, 0, 1],
+          "expected_indices": [[2], [4]],
+          "expected_values": [3.0, 1.0]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "indices_correct", "values_correct"],
+        "strong": ["sparse_properties", "roundtrip_consistency", "lexicographic_order"]
+      },
+      "oracle": "tensorflow.sparse.from_dense",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "sparse_to_dense 基本填充",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "indices": [[0, 0], [1, 2]],
+          "values": [1.0, 2.0],
+          "shape": [3, 4],
+          "default_value": 0.0,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "dtype_match", "sparse_values_placed", "default_filled"],
+        "strong": ["exact_value_match", "edge_cases", "performance_check"]
+      },
+      "oracle": "tensorflow.sparse.to_dense",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "sparse_tensor_dense_mat_mul 矩阵乘法",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "sparse_shape": [2, 3],
+          "sparse_indices": [[0, 1], [1, 2]],
+          "sparse_values": [2.0, 3.0],
+          "dense_shape": [3, 2],
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["result_shape", "dtype_match", "basic_calculation", "dimension_compatibility"],
+        "strong": ["numerical_accuracy", "adjoint_operations", "large_scale_validation"]
+      },
+      "oracle": "手动计算验证",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_sparse_ops",
+        "tensorflow.python.framework.ops",
+        "tensorflow.python.eager.context"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "边界条件 - 空稀疏张量",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "indices": [],
+          "values": [],
+          "shape": [3, 4],
+          "dtype": "float32",
+          "operation": "to_dense"
+        }
+      ],
+      "asserts": {
+        "weak": ["empty_handling", "shape_preserved", "all_default_values"],
+        "strong": ["memory_efficiency", "performance_characteristics"]
+      },
+      "oracle": "理论预期",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "异常输入验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "test_type": "unsorted_indices",
+          "indices": [[1, 0], [0, 0]],
+          "values": [1.0, 2.0],
+          "shape": [2, 2],
+          "dtype": "float32",
+          "expected_error": "InvalidArgumentError"
+        }
+      ],
+      "asserts": {
+        "weak": ["error_type_match", "error_message_contains", "no_side_effects"],
+        "strong": ["error_context", "recovery_behavior"]
+      },
+      "oracle": "TensorFlow 异常规范",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "int32",
+        "shape": [3, 3],
+        "dense_values": [[0, 5, 0], [0, 0, 0], [2, 0, 8]],
+        "expected_indices": [[0, 1], [2, 0], [2, 2]],
+        "expected_values": [5, 2, 8]
+      },
+      "note": "二维整数张量转换"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [10],
+        "dense_values": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "expected_indices": [],
+        "expected_values": []
+      },
+      "note": "全零密集张量"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "indices": [[0], [2], [4]],
+        "values": [10, 20, 30],
+        "shape": [5],
+        "default_value": -1.0,
+        "dtype": "float32"
+      },
+      "note": "一维张量不同默认值"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "sparse_shape": [4, 4],
+        "sparse_indices": [[0, 0], [1, 1], [2, 2], [3, 3]],
+        "sparse_values": [1.0, 1.0, 1.0, 1.0],
+        "dense_shape": [4, 4],
+        "dtype": "float64",
+        "adjoint_a": true
+      },
+      "note": "伴随操作和双精度"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "indices": [],
+        "values": [],
+        "shape": [1000, 1000],
+        "dtype": "float32",
+        "operation": "from_dense"
+      },
+      "note": "大形状空张量"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

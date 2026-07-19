@@ -1,0 +1,17 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "TestOverlapAndAdd::test_error_handling[signal_shape1-2-dtype1-cpu-flags1-ValueError]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮失败集合完全重复：非整数frame_step测试中，错误消息不包含'integer'或'type'，而是返回rank错误。需要重新设计测试逻辑或调整实现。"
+}

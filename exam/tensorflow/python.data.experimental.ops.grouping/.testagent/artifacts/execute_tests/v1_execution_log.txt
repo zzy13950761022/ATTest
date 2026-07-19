@@ -1,0 +1,204 @@
+=== Run Tests ===
+.FFF                                                                     [100%]
+================================== FAILURES ===================================
+_ test_group_by_reducer_parameter_validation[wrong_return_type-InvalidArgumentError] _
+
+invalid_key_func_type = 'wrong_return_type'
+expected_exception = <class 'tensorflow.python.framework.errors_impl.InvalidArgumentError'>
+
+    @pytest.mark.parametrize("invalid_key_func_type, expected_exception", [
+        ("wrong_return_type", errors.InvalidArgumentError),  # Returns wrong dtype
+        ("non_scalar_return", errors.InvalidArgumentError),  # Returns non-scalar tensor
+    ])
+    def test_group_by_reducer_parameter_validation(invalid_key_func_type, expected_exception):
+        """Test parameter validation and exception handling for group_by_reducer."""
+    
+        # Create a simple dataset
+        dataset = create_simple_dataset(5)
+        reducer = create_sum_reducer()
+    
+        if invalid_key_func_type == "wrong_return_type":
+            # Key function returns wrong type (float32 instead of int64)
+            def wrong_type_key_func(x):
+                return tf.cast(x % 3, tf.float32)  # Wrong dtype
+    
+            # Weak assertion 1: exception_raised
+            with pytest.raises(expected_exception) as exc_info:
+                transform_fn = group_by_reducer(wrong_type_key_func, reducer)
+>               _ = transform_fn(dataset)
+
+tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py:155: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:53: in _apply_fn
+    return _GroupByReducerDataset(dataset, key_func, reducer)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:266: in __init__
+    self._make_key_func(key_func, input_dataset)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <[AttributeError("'_GroupByReducerDataset' object has no attribute '_finalize_func'") raised in repr()] _GroupByReducerDataset object at 0x237eb552c40>
+key_func = <function test_group_by_reducer_parameter_validation.<locals>.wrong_type_key_func at 0x00000237EB538EE0>
+input_dataset = <RangeDataset element_spec=TensorSpec(shape=(), dtype=tf.int64, name=None)>
+
+    def _make_key_func(self, key_func, input_dataset):
+      """Make wrapping defun for key_func."""
+      self._key_func = structured_function.StructuredFunctionWrapper(
+          key_func, self._transformation_name(), dataset=input_dataset)
+      if not self._key_func.output_structure.is_compatible_with(
+          tensor_spec.TensorSpec([], dtypes.int64)):
+>       raise ValueError(
+            f"Invalid `key_func`. Expected `key_func` to return a scalar "
+            f"tf.int64 tensor, but instead `key_func` has output "
+            f"types={self._key_func.output_types} "
+            f"and shapes={self._key_func.output_shapes}."
+        )
+E       ValueError: Invalid `key_func`. Expected `key_func` to return a scalar tf.int64 tensor, but instead `key_func` has output types=<dtype: 'float32'> and shapes=().
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:289: ValueError
+_ test_group_by_reducer_parameter_validation[non_scalar_return-InvalidArgumentError] _
+
+invalid_key_func_type = 'non_scalar_return'
+expected_exception = <class 'tensorflow.python.framework.errors_impl.InvalidArgumentError'>
+
+    @pytest.mark.parametrize("invalid_key_func_type, expected_exception", [
+        ("wrong_return_type", errors.InvalidArgumentError),  # Returns wrong dtype
+        ("non_scalar_return", errors.InvalidArgumentError),  # Returns non-scalar tensor
+    ])
+    def test_group_by_reducer_parameter_validation(invalid_key_func_type, expected_exception):
+        """Test parameter validation and exception handling for group_by_reducer."""
+    
+        # Create a simple dataset
+        dataset = create_simple_dataset(5)
+        reducer = create_sum_reducer()
+    
+        if invalid_key_func_type == "wrong_return_type":
+            # Key function returns wrong type (float32 instead of int64)
+            def wrong_type_key_func(x):
+                return tf.cast(x % 3, tf.float32)  # Wrong dtype
+    
+            # Weak assertion 1: exception_raised
+            with pytest.raises(expected_exception) as exc_info:
+                transform_fn = group_by_reducer(wrong_type_key_func, reducer)
+                _ = transform_fn(dataset)
+    
+            # Weak assertion 2: exception_type
+            assert exc_info.type == expected_exception, f"Expected {expected_exception}, got {exc_info.type}"
+    
+            # Weak assertion 3: error_message_contains
+            error_msg = str(exc_info.value).lower()
+            # Check for relevant error indicators
+            assert any(keyword in error_msg for keyword in ['type', 'dtype', 'int64', 'scalar']), \
+                f"Error message should mention type/dtype/int64/scalar, got: {error_msg}"
+    
+        elif invalid_key_func_type == "non_scalar_return":
+            # Key function returns non-scalar tensor
+            def non_scalar_key_func(x):
+                return tf.constant([x % 3, x % 2], dtype=tf.int64)  # Non-scalar
+    
+            # Weak assertion 1: exception_raised
+            with pytest.raises(expected_exception) as exc_info:
+                transform_fn = group_by_reducer(non_scalar_key_func, reducer)
+>               _ = transform_fn(dataset)
+
+tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:53: in _apply_fn
+    return _GroupByReducerDataset(dataset, key_func, reducer)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:266: in __init__
+    self._make_key_func(key_func, input_dataset)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\experimental\ops\grouping.py:285: in _make_key_func
+    self._key_func = structured_function.StructuredFunctionWrapper(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:271: in __init__
+    self._function = fn_factory()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3070: in get_concrete_function
+    graph_function = self._get_concrete_function_garbage_collected(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3036: in _get_concrete_function_garbage_collected
+    graph_function, _ = self._maybe_define_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3292: in _maybe_define_function
+    graph_function = self._create_graph_function(args, kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\function.py:3130: in _create_graph_function
+    func_graph_module.func_graph_from_py_func(
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\func_graph.py:1161: in func_graph_from_py_func
+    func_outputs = python_func(*func_args, **func_kwargs)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:248: in wrapped_fn
+    ret = wrapper_helper(*args)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\data\ops\structured_function.py:177: in wrapper_helper
+    ret = autograph.tf_convert(self._func, ag_ctx)(*nested_args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (<tf.Tensor 'args_0:0' shape=() dtype=int64>,), kwargs = {}
+options = <tensorflow.python.autograph.core.converter.ConversionOptions object at 0x00000237EC646BE0>
+
+    def wrapper(*args, **kwargs):
+      """Wrapper that calls the converted version of f."""
+      options = converter.ConversionOptions(
+          recursive=recursive,
+          user_requested=user_requested,
+          optional_features=optional_features)
+      try:
+        with conversion_ctx:
+          return converted_call(f, args, kwargs, options=options)
+      except Exception as e:  # pylint:disable=broad-except
+        if hasattr(e, 'ag_error_metadata'):
+>         raise e.ag_error_metadata.to_exception(e)
+E         TypeError: in user code:
+E         
+E             File "D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.grouping\tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py", line 169, in non_scalar_key_func  *
+E                 return tf.constant([x % 3, x % 2], dtype=tf.int64)  # Non-scalar
+E         
+E             TypeError: Expected int64, but got Tensor("mod:0", shape=(), dtype=int64) of type 'Tensor'.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\autograph\impl\api.py:692: TypeError
+______ test_group_by_window_basic_functionality_with_deprecation_warning ______
+
+    def test_group_by_window_basic_functionality_with_deprecation_warning():
+        """Test basic functionality of group_by_window with deprecation warning."""
+    
+        # Create dataset
+        dataset_size = 12
+        dataset = create_simple_dataset(dataset_size)
+    
+        # Define key function
+        def key_func(x):
+            return simple_mod_key_func(x, 3)  # Group by mod 3
+    
+        # Define reduce function - take first element from each window
+        def reduce_func(key, window_dataset):
+            # Take first element from the window
+            return window_dataset.take(1)
+    
+        window_size = 3
+    
+        # Weak assertion 1: deprecation_warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+    
+            # Apply group_by_window transformation
+            transform_fn = group_by_window(key_func, reduce_func, window_size=window_size)
+    
+            # Check that deprecation warning was raised
+>           assert len(w) > 0, "Deprecation warning should be raised for group_by_window"
+E           AssertionError: Deprecation warning should be raised for group_by_window
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py:259: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  tensorflow:deprecation.py:337 From D:\Project\TestAgent-CLI-main\exam\tensorflow\python.data.experimental.ops.grouping\tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py:256: group_by_window (from tensorflow.python.data.experimental.ops.grouping) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.data.Dataset.group_by_window(...)`.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py     105     34     16      2    67%   31, 35, 39, 43, 47, 59-62, 83, 150, 158-163, 169, 177-186, 242, 247, 264-285, 314-315
+---------------------------------------------------------------------------------------------------------------
+TOTAL                                                                 105     34     16      2    67%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py::test_group_by_reducer_parameter_validation[wrong_return_type-InvalidArgumentError]
+FAILED tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py::test_group_by_reducer_parameter_validation[non_scalar_return-InvalidArgumentError]
+FAILED tests\test_tensorflow_python_data_experimental_ops_grouping_g1.py::test_group_by_window_basic_functionality_with_deprecation_warning
+3 failed, 1 passed in 1.83s
+
+Error: exit 1

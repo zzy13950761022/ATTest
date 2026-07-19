@@ -1,0 +1,43 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 1,
+  "errors": 3,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_make_csv_dataset_basic[test.csv-32-column_names0-col3-column_defaults0]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.platform.gfile.Glob不存在"
+    },
+    {
+      "test": "test_csvdataset_basic_reading[data.csv-record_defaults0-select_cols0]",
+      "block_id": "CASE_02",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "select_cols与record_defaults长度不匹配"
+    },
+    {
+      "test": "TestCSVReaders.test_csvdataset_basic_reading",
+      "block_id": "FOOTER",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "select_cols与record_defaults长度不匹配"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_csvdataset_basic_reading[data.csv-record_defaults0-select_cols0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestCSVReaders.test_make_csv_dataset_basic",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,182 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.check_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "single": "tests/test_tensorflow_python_ops_check_ops.py",
+    "default": "tests/test_tensorflow_python_ops_check_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_check_ops_*.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "assert_equal_eager_mode",
+      "priority": "High",
+      "param_matrix": [
+        {"func": "assert_equal", "x_shape": [2, 2], "y_shape": [2, 2], "dtype": "float32", "mode": "eager"}
+      ],
+      "asserts": {
+        "weak": ["returns_none", "no_exception"],
+        "strong": ["error_message_format", "control_dependency"]
+      },
+      "oracle": "check_ops.assert_equal",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.framework.tensor_util.constant_value",
+        "tensorflow.python.ops.math_ops.equal"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "assert_equal_graph_mode",
+      "priority": "High",
+      "param_matrix": [
+        {"func": "assert_equal", "x_shape": [3, 3], "y_shape": [3, 3], "dtype": "int32", "mode": "graph"}
+      ],
+      "asserts": {
+        "weak": ["returns_assert_op", "no_exception"],
+        "strong": ["op_name_correct", "control_dependency_chain"]
+      },
+      "oracle": "check_ops.assert_equal",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.framework.tensor_util.constant_value",
+        "tensorflow.python.ops.math_ops.equal",
+        "tensorflow.python.ops.control_flow_ops.Assert"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "assert_less_static_failure",
+      "priority": "High",
+      "param_matrix": [
+        {"func": "assert_less", "x_shape": [2], "y_shape": [2], "dtype": "float64", "mode": "static_fail"}
+      ],
+      "asserts": {
+        "weak": ["raises_invalid_argument_error", "error_type_correct"],
+        "strong": ["error_message_contains_values", "summarize_parameter"]
+      },
+      "oracle": "check_ops.assert_less",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.tensor_util.constant_value",
+        "tensorflow.python.ops.math_ops.less"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "assert_positive_empty_tensor",
+      "priority": "High",
+      "param_matrix": [
+        {"func": "assert_positive", "x_shape": [0, 0], "dtype": "float32", "mode": "eager"}
+      ],
+      "asserts": {
+        "weak": ["returns_none", "no_exception"],
+        "strong": ["empty_tensor_handling", "broadcast_compatibility"]
+      },
+      "oracle": "check_ops.assert_positive",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.framework.tensor_util.constant_value",
+        "tensorflow.python.ops.math_ops.greater"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "assert_rank_broadcast_shapes",
+      "priority": "High",
+      "param_matrix": [
+        {"func": "assert_rank", "x_shape": [1, 3, 1], "y_shape": [3, 1, 5], "dtype": "int64", "mode": "eager"}
+      ],
+      "asserts": {
+        "weak": ["returns_none", "no_exception"],
+        "strong": ["broadcast_shape_correct", "rank_assertion"]
+      },
+      "oracle": "check_ops.assert_equal",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.framework.tensor_util.constant_value",
+        "tensorflow.python.ops.math_ops.equal",
+        "tensorflow.python.ops.array_ops.shape"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"func": "assert_equal", "x_shape": [4, 4], "y_shape": [4, 4], "dtype": "float64", "mode": "eager"},
+      "note": "作为参数扩展：不同数据类型"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"func": "assert_greater", "x_shape": [2, 2], "y_shape": [2, 2], "dtype": "float32", "mode": "eager"},
+      "note": "作为参数扩展：不同断言函数"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"func": "assert_equal", "x_shape": [1, 5], "y_shape": [5, 1], "dtype": "int32", "mode": "graph"},
+      "note": "作为参数扩展：广播形状"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {"func": "assert_less", "x_shape": [3], "y_shape": [3], "dtype": "float32", "mode": "static_fail"},
+      "note": "作为参数扩展：不同失败场景"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {"func": "assert_positive", "x_shape": [0], "dtype": "int32", "mode": "graph"},
+      "note": "作为参数扩展：不同空张量形状"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

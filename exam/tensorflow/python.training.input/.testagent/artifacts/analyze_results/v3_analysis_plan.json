@@ -1,0 +1,83 @@
+{
+  "status": "未完全通过",
+  "passed": 14,
+  "failed": 0,
+  "errors": 15,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[2-32-False]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock.patch路径错误：'tensorflow.python.training.queue_runner.QueueRunner' - TensorFlow 2.x中tensorflow.python可能不可直接访问"
+    },
+    {
+      "test": "TestBatchFunction::test_batch_with_dictionary_input",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock.patch路径错误：'tensorflow.python.ops.data_flow_ops.FIFOQueue' - 需要修复TensorFlow 2.x兼容的导入路径"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_with_seed_reproducibility",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock.patch路径错误：'tensorflow.python.ops.data_flow_ops.RandomShuffleQueue' - 所有mock路径需要统一修复"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[4-64-True]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[1-10-False]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-8-42]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-16-123]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_with_enqueue_many",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_allow_smaller_final_batch",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_batch_with_dynamic_padding[2-32-True-False]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_batch_with_dynamic_padding[3-48-True-True]",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_dynamic_padding_with_explicit_shapes",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_dynamic_padding_preserves_data_types",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_dynamic_padding_with_zero_dimensions",
+      "reason": "错误类型重复，等待HEADER修复"
+    },
+    {
+      "test": "TestAdditionalEdgeCases::test_batch_with_single_tensor",
+      "reason": "错误类型重复，等待HEADER修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

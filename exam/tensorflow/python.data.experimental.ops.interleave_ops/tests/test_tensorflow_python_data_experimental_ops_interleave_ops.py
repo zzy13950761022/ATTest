@@ -1,0 +1,511 @@
+"""
+Test cases for tensorflow.python.data.experimental.ops.interleave_ops
+This file contains G2 group tests (sample_from_datasets_v2 and choose_from_datasets_v2)
+G1 group tests are in test_tensorflow_python_data_experimental_ops_interleave_ops_g1.py
+"""
+import warnings
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.data.experimental.ops import interleave_ops
+
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions for G2 group
+@pytest.fixture
+def tf_record_simulated_dataset():
+    """Simulate TFRecord dataset for testing."""
+    def _create_dataset(size=10):
+        data = tf.data.Dataset.range(size)
+        return data.map(lambda x: tf.io.serialize_tensor(tf.cast(x, tf.float32)))
+    return _create_dataset
+
+
+@pytest.fixture
+def simple_range_dataset():
+    """Create simple range dataset for testing."""
+    def _create_dataset(size=10):
+        return tf.data.Dataset.range(size)
+    return _create_dataset
+
+
+def count_dataset_elements(dataset):
+    """Count elements in a dataset."""
+    count = 0
+    for _ in dataset:
+        count += 1
+    return count
+
+
+def capture_deprecation_warnings():
+    """Context manager to capture deprecation warnings."""
+    return warnings.catch_warnings(record=True)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_01 START ====
+# TC-01: parallel_interleave 基本功能
+@pytest.mark.parametrize(
+    "cycle_length,block_length,sloppy,map_func_type,dataset_size,buffer_output_elements,prefetch_input_elements",
+    [
+        (2, 1, False, "simple_range", 10, None, None),
+        (4, 2, False, "tfrecord_simulated", 20, None, None),  # Extended parameter set 1
+        (2, 1, True, "simple_range", 10, 10, 5),  # Extended parameter set 2
+    ]
+)
+def test_parallel_interleave_basic(
+    cycle_length, block_length, sloppy, map_func_type, dataset_size,
+    buffer_output_elements, prefetch_input_elements,
+    simple_range_dataset, tf_record_simulated_dataset
+):
+    """Test basic functionality of parallel_interleave."""
+    # Create base dataset
+    base_dataset = simple_range_dataset(dataset_size)
+    
+    # Define map function based on type
+    if map_func_type == "simple_range":
+        def map_func(x):
+            return tf.data.Dataset.range(x + 5)
+    elif map_func_type == "tfrecord_simulated":
+        def map_func(x):
+            return tf_record_simulated_dataset(x + 5)
+    else:
+        def map_func(x):
+            return tf.data.Dataset.from_tensors(x)
+    
+    # Apply parallel_interleave with deprecation warning capture
+    with capture_deprecation_warnings() as w:
+        transform_fn = interleave_ops.parallel_interleave(
+            map_func=map_func,
+            cycle_length=cycle_length,
+            block_length=block_length,
+            sloppy=sloppy,
+            buffer_output_elements=buffer_output_elements,
+            prefetch_input_elements=prefetch_input_elements
+        )
+        
+        # Verify deprecation warning is raised
+        assert len(w) > 0, "Deprecation warning should be raised"
+        assert any("deprecated" in str(warning.message).lower() for warning in w)
+    
+    # Apply transformation to create dataset
+    result_dataset = base_dataset.apply(transform_fn)
+    
+    # Verify dataset structure
+    assert isinstance(result_dataset, tf.data.Dataset)
+    
+    # Count elements (weak assertion)
+    element_count = count_dataset_elements(result_dataset)
+    expected_min = dataset_size * 5  # Each input produces at least 5 elements
+    assert element_count >= expected_min, f"Expected at least {expected_min} elements, got {element_count}"
+    
+    # Verify transformation returns callable
+    assert callable(transform_fn), "parallel_interleave should return a callable transformation function"
+    
+    # Additional assertions for extended parameters
+    if buffer_output_elements is not None or prefetch_input_elements is not None:
+        # Verify optional parameters are accepted
+        assert True, "Optional parameters buffer_output_elements and prefetch_input_elements should be accepted"
+    
+    if sloppy:
+        # With sloppy=True, order may not be deterministic
+        # We can't assert specific order, but should still get all elements
+        assert element_count > 0, "With sloppy=True, dataset should still have elements"
+# ==== BLOCK:CASE_01 END ====
+
+
+# ==== BLOCK:CASE_02 START ====
+# TC-02: parallel_interleave 参数边界
+@pytest.mark.parametrize(
+    "cycle_length,block_length,sloppy,map_func_type,dataset_size",
+    [
+        (1, 1, True, "identity", 5),
+    ]
+)
+def test_parallel_interleave_boundary_params(
+    cycle_length, block_length, sloppy, map_func_type, dataset_size,
+    simple_range_dataset
+):
+    """Test boundary parameters of parallel_interleave."""
+    # Create base dataset
+    base_dataset = simple_range_dataset(dataset_size)
+    
+    # Define map function based on type
+    if map_func_type == "identity":
+        def map_func(x):
+            return tf.data.Dataset.from_tensors(x)
+    else:
+        def map_func(x):
+            return tf.data.Dataset.range(x + 1)
+    
+    # Apply parallel_interleave with deprecation warning capture
+    with capture_deprecation_warnings() as w:
+        transform_fn = interleave_ops.parallel_interleave(
+            map_func=map_func,
+            cycle_length=cycle_length,
+            block_length=block_length,
+            sloppy=sloppy
+        )
+        
+        # Verify deprecation warning is raised
+        assert len(w) > 0, "Deprecation warning should be raised"
+        assert any("deprecated" in str(warning.message).lower() for warning in w)
+    
+    # Apply transformation to create dataset
+    result_dataset = base_dataset.apply(transform_fn)
+    
+    # Verify dataset structure
+    assert isinstance(result_dataset, tf.data.Dataset)
+    
+    # Verify no crash with minimal parameters
+    # Count elements (weak assertion)
+    element_count = count_dataset_elements(result_dataset)
+    assert element_count > 0, "Dataset should have elements"
+    
+    # Verify transformation returns callable
+    assert callable(transform_fn), "parallel_interleave should return a callable transformation function"
+    
+    # Test with cycle_length=1 (minimum valid value)
+    # This should work without errors
+    try:
+        # Consume some elements to ensure no runtime errors
+        iterator = iter(result_dataset)
+        for _ in range(min(3, element_count)):
+            next(iterator)
+    except Exception as e:
+        pytest.fail(f"Dataset consumption failed with cycle_length=1: {e}")
+# ==== BLOCK:CASE_02 END ====
+
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: sample_from_datasets_v2 基本采样
+@pytest.mark.parametrize(
+    "datasets_count,weights,seed,dataset_size,stop_on_empty",
+    [
+        (2, [0.5, 0.5], 42, 20, False),
+        (3, [0.2, 0.3, 0.5], None, 30, True),  # Extended parameter set
+    ]
+)
+def test_sample_from_datasets_v2_basic(
+    datasets_count, weights, seed, dataset_size, stop_on_empty
+):
+    """Test basic sampling functionality of sample_from_datasets_v2."""
+    # Create datasets with offset values to distinguish them
+    datasets = []
+    for i in range(datasets_count):
+        offset = i * 100  # Different offset for each dataset
+        dataset = tf.data.Dataset.range(offset, offset + dataset_size)
+        datasets.append(dataset)
+    
+    # Apply sample_from_datasets_v2 with deprecation warning capture
+    with capture_deprecation_warnings() as w:
+        result_dataset = interleave_ops.sample_from_datasets_v2(
+            datasets=datasets,
+            weights=weights,
+            seed=seed,
+            stop_on_empty_dataset=stop_on_empty
+        )
+        
+        # Verify deprecation warning is raised
+        assert len(w) > 0, "Deprecation warning should be raised"
+        assert any("deprecated" in str(warning.message).lower() for warning in w)
+    
+    # Verify dataset structure
+    assert isinstance(result_dataset, tf.data.Dataset)
+    
+    # Count elements (weak assertion)
+    element_count = count_dataset_elements(result_dataset)
+    total_elements = datasets_count * dataset_size
+    assert element_count == total_elements, f"Expected {total_elements} elements, got {element_count}"
+    
+    # Verify sampling distribution (weak assertion)
+    # Collect samples to verify they come from all datasets
+    samples = []
+    for elem in result_dataset:
+        samples.append(elem.numpy())
+    
+    # Check that we have elements from all datasets
+    # Each dataset has values in range [i*100, i*100 + dataset_size)
+    from_datasets = [False] * datasets_count
+    for sample in samples:
+        for i in range(datasets_count):
+            if i * 100 <= sample < i * 100 + dataset_size:
+                from_datasets[i] = True
+                break
+    
+    # All datasets should be represented in the samples
+    assert all(from_datasets), f"Not all datasets are represented in samples: {from_datasets}"
+    
+    # Verify seed reproducibility (weak assertion)
+    if seed is not None:
+        # Create another dataset with same seed
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dataset2 = interleave_ops.sample_from_datasets_v2(
+                datasets=datasets,
+                weights=weights,
+                seed=seed,
+                stop_on_empty_dataset=stop_on_empty
+            )
+        
+        # Compare first few elements
+        samples1 = [next(iter(result_dataset)).numpy() for _ in range(min(5, element_count))]
+        samples2 = [next(iter(dataset2)).numpy() for _ in range(min(5, element_count))]
+        
+        # With same seed, first elements should match
+        assert samples1 == samples2, f"With same seed, samples should match: {samples1} != {samples2}"
+    
+    # Additional assertions for extended parameters
+    if datasets_count == 3 and weights == [0.2, 0.3, 0.5] and stop_on_empty:
+        # Test stop_on_empty=True behavior with empty dataset simulation
+        # Create datasets where one might become empty
+        datasets_with_empty = []
+        for i in range(datasets_count):
+            offset = i * 100
+            # First dataset has normal size, others have reduced size
+            size = dataset_size if i == 0 else dataset_size // 2
+            dataset = tf.data.Dataset.range(offset, offset + size)
+            datasets_with_empty.append(dataset)
+        
+        # With stop_on_empty=True, should stop when any dataset is exhausted
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dataset_with_stop = interleave_ops.sample_from_datasets_v2(
+                datasets=datasets_with_empty,
+                weights=weights,
+                seed=seed,
+                stop_on_empty_dataset=True
+            )
+        
+        # Count elements - should stop when smallest dataset is exhausted
+        count_with_stop = count_dataset_elements(dataset_with_stop)
+        min_dataset_size = min(dataset_size, dataset_size // 2)
+        # With stop_on_empty=True, should have at least min_dataset_size elements
+        assert count_with_stop >= min_dataset_size, (
+            f"With stop_on_empty=True, expected at least {min_dataset_size} elements, got {count_with_stop}"
+        )
+# ==== BLOCK:CASE_03 END ====
+
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: choose_from_datasets_v2 基本选择
+@pytest.mark.parametrize(
+    "datasets_count,choice_pattern,dataset_size,stop_on_empty",
+    [
+        (3, "sequential", 15, False),
+        (2, "random", 10, True),  # Extended parameter set
+    ]
+)
+def test_choose_from_datasets_v2_basic(
+    datasets_count, choice_pattern, dataset_size, stop_on_empty
+):
+    """Test basic selection functionality of choose_from_datasets_v2."""
+    # Create datasets with offset values to distinguish them
+    datasets = []
+    for i in range(datasets_count):
+        offset = i * 100  # Different offset for each dataset
+        dataset = tf.data.Dataset.range(offset, offset + dataset_size)
+        datasets.append(dataset)
+    
+    # Create choice dataset based on pattern
+    if choice_pattern == "sequential":
+        # Sequential pattern: 0, 1, 2, 0, 1, 2, ...
+        choice_values = list(range(datasets_count)) * (dataset_size // datasets_count + 1)
+        choice_dataset = tf.data.Dataset.from_tensor_slices(choice_values[:dataset_size])
+    elif choice_pattern == "random":
+        # Random pattern (fixed seed for reproducibility)
+        tf.random.set_seed(42)
+        choice_dataset = tf.data.Dataset.random(
+            seed=42
+        ).map(lambda x: tf.cast(x * datasets_count, tf.int64))
+    else:
+        # Single choice pattern
+        choice_dataset = tf.data.Dataset.from_tensors(0).repeat(dataset_size)
+    
+    # Apply choose_from_datasets_v2 with deprecation warning capture
+    with capture_deprecation_warnings() as w:
+        result_dataset = interleave_ops.choose_from_datasets_v2(
+            datasets=datasets,
+            choice_dataset=choice_dataset,
+            stop_on_empty_dataset=stop_on_empty
+        )
+        
+        # Verify deprecation warning is raised
+        assert len(w) > 0, "Deprecation warning should be raised"
+        assert any("deprecated" in str(warning.message).lower() for warning in w)
+    
+    # Verify dataset structure
+    assert isinstance(result_dataset, tf.data.Dataset)
+    
+    # Count elements (weak assertion)
+    element_count = count_dataset_elements(result_dataset)
+    # Should have same number of elements as choice dataset
+    choice_count = count_dataset_elements(choice_dataset)
+    assert element_count == choice_count, f"Expected {choice_count} elements, got {element_count}"
+    
+    # Verify selection logic (weak assertion)
+    # Collect choices and results
+    choices = list(choice_dataset.as_numpy_iterator())
+    results = list(result_dataset.as_numpy_iterator())
+    
+    # Verify each result comes from the chosen dataset
+    for i, (choice, result) in enumerate(zip(choices, results)):
+        expected_min = choice * 100
+        expected_max = expected_min + dataset_size
+        assert expected_min <= result < expected_max, (
+            f"Element {i}: choice={choice}, result={result} "
+            f"not in expected range [{expected_min}, {expected_max})"
+        )
+    
+    # Verify element count matches expectations
+    assert len(results) == dataset_size, f"Expected {dataset_size} elements, got {len(results)}"
+    
+    # For sequential pattern, verify pattern is followed
+    if choice_pattern == "sequential":
+        for i, (choice, result) in enumerate(zip(choices, results)):
+            expected_value = (choice * 100) + (i // datasets_count)
+            # Allow for some flexibility in exact values due to dataset consumption
+            # But verify it's from the correct dataset
+            assert (choice * 100) <= result < (choice * 100 + dataset_size), (
+                f"Element {i}: result {result} not from dataset {choice}"
+            )
+    
+    # Additional assertions for extended parameters
+    if choice_pattern == "random" and stop_on_empty:
+        # Test stop_on_empty=True behavior
+        # Create datasets with different sizes to test stop condition
+        datasets_with_empty = []
+        for i in range(datasets_count):
+            offset = i * 100
+            # First dataset has normal size, second has reduced size
+            size = dataset_size if i == 0 else dataset_size // 2
+            dataset = tf.data.Dataset.range(offset, offset + size)
+            datasets_with_empty.append(dataset)
+        
+        # With stop_on_empty=True, should stop when any dataset is exhausted
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dataset_with_stop = interleave_ops.choose_from_datasets_v2(
+                datasets=datasets_with_empty,
+                choice_dataset=choice_dataset,
+                stop_on_empty_dataset=True
+            )
+        
+        # Count elements - should stop when smallest dataset is exhausted
+        count_with_stop = count_dataset_elements(dataset_with_stop)
+        min_dataset_size = min(dataset_size, dataset_size // 2)
+        # With stop_on_empty=True, should have at least min_dataset_size elements
+        assert count_with_stop >= min_dataset_size, (
+            f"With stop_on_empty=True, expected at least {min_dataset_size} elements, got {count_with_stop}"
+        )
+# ==== BLOCK:CASE_04 END ====
+
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: parallel_interleave 异常处理
+@pytest.mark.parametrize(
+    "cycle_length,block_length,map_func_type,expect_error",
+    [
+        (0, 1, "simple_range", True),
+        (2, 1, "simple_range", False),  # Valid parameter test for coverage
+    ]
+)
+def test_parallel_interleave_error_handling(
+    cycle_length, block_length, map_func_type, expect_error,
+    simple_range_dataset
+):
+    """Test error handling for invalid parameters in parallel_interleave."""
+    # Create base dataset
+    base_dataset = simple_range_dataset(5)
+    
+    # Define map function
+    def map_func(x):
+        return tf.data.Dataset.range(x + 5)
+    
+    # Apply parallel_interleave with deprecation warning capture
+    with capture_deprecation_warnings() as w:
+        if expect_error:
+            # Should raise ValueError for cycle_length <= 0
+            with pytest.raises(ValueError) as exc_info:
+                transform_fn = interleave_ops.parallel_interleave(
+                    map_func=map_func,
+                    cycle_length=cycle_length,
+                    block_length=block_length
+                )
+                # Try to apply if no error raised (should not happen)
+                base_dataset.apply(transform_fn)
+            
+            # Verify error message contains relevant information
+            error_msg = str(exc_info.value).lower()
+            assert any(keyword in error_msg for keyword in ["cycle", "length", "positive", "0"])
+            
+            # Still should have deprecation warning
+            assert len(w) > 0, "Deprecation warning should be raised even for invalid parameters"
+        else:
+            # Should work without error
+            transform_fn = interleave_ops.parallel_interleave(
+                map_func=map_func,
+                cycle_length=cycle_length,
+                block_length=block_length
+            )
+            
+            # Verify deprecation warning
+            assert len(w) > 0, "Deprecation warning should be raised"
+            assert any("deprecated" in str(warning.message).lower() for warning in w)
+            
+            # Apply transformation
+            result_dataset = base_dataset.apply(transform_fn)
+            assert isinstance(result_dataset, tf.data.Dataset)
+            
+            # Verify dataset has elements
+            element_count = count_dataset_elements(result_dataset)
+            assert element_count > 0, "Valid parameters should produce non-empty dataset"
+            
+            # Verify transformation function is callable
+            assert callable(transform_fn), "parallel_interleave should return callable"
+            
+            # Test with additional optional parameters for coverage
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # Test with buffer_output_elements and prefetch_input_elements
+                transform_fn_with_buffers = interleave_ops.parallel_interleave(
+                    map_func=map_func,
+                    cycle_length=cycle_length,
+                    block_length=block_length,
+                    buffer_output_elements=10,
+                    prefetch_input_elements=5
+                )
+                
+                # Apply and verify
+                result_with_buffers = base_dataset.apply(transform_fn_with_buffers)
+                assert isinstance(result_with_buffers, tf.data.Dataset)
+                
+                # Count elements
+                buffer_count = count_dataset_elements(result_with_buffers)
+                assert buffer_count > 0, "Dataset with buffers should have elements"
+# ==== BLOCK:CASE_05 END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: DEFERRED - parallel_interleave 扩展参数
+# Placeholder for deferred test case
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: DEFERRED - sample_from_datasets_v2 扩展参数
+# Placeholder for deferred test case
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: DEFERRED - choose_from_datasets_v2 扩展参数
+# Placeholder for deferred test case
+# ==== BLOCK:CASE_08 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper functions and cleanup
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

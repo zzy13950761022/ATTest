@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_context_execution_mode_switching",
+      "block_id": "CASE_08",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "execution_mode()函数需要mode参数，测试中调用时缺少参数"
+    },
+    {
+      "test": "test_device_policy_behavior_differences",
+      "block_id": "CASE_09",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "device_policy()函数需要policy参数，测试中调用时缺少参数"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

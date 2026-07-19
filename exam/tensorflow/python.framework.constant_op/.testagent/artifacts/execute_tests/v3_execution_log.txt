@@ -1,0 +1,78 @@
+=== Run Tests ===
+..............ssss...F                                                   [100%]
+================================== FAILURES ===================================
+_____________________ test_constant_reshape_capabilities ______________________
+
+    def test_constant_reshape_capabilities():
+        """Test constant's ability to reshape values."""
+        # Test 1: Reshape 2D to 1D
+        tensor1 = constant_op.constant([[1, 2], [3, 4]], shape=[4])
+        assert_tensor_properties(
+            tensor=tensor1,
+            expected_shape=(4,),
+            expected_dtype=tf.int32,
+            expected_value=[1, 2, 3, 4]
+        )
+    
+        # Test 2: Reshape 1D to 2D
+        tensor2 = constant_op.constant([1, 2, 3, 4, 5, 6], shape=[2, 3])
+        assert_tensor_properties(
+            tensor=tensor2,
+            expected_shape=(2, 3),
+            expected_dtype=tf.int32,
+            expected_value=[[1, 2, 3], [4, 5, 6]]
+        )
+    
+        # Test 3: Reshape scalar to multi-dimensional
+        tensor3 = constant_op.constant(5, shape=[2, 2, 2])
+        assert_tensor_properties(
+            tensor=tensor3,
+            expected_shape=(2, 2, 2),
+            expected_dtype=tf.int32,
+            expected_value=[[[5, 5], [5, 5]], [[5, 5], [5, 5]]]
+        )
+    
+        # Test 4: Reshape with -1 dimension (inferred size)
+>       tensor4 = constant_op.constant([1, 2, 3, 4, 5, 6], shape=[2, -1])
+
+tests\test_tensorflow_python_framework_constant_op.py:506: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:267: in constant
+    return _constant_impl(value, dtype, shape, name, verify_shape=False,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:279: in _constant_impl
+    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:307: in _constant_eager_impl
+    shape = tensor_shape.as_shape(shape)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\tensor_shape.py:1311: in as_shape
+    return TensorShape(shape)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\tensor_shape.py:771: in __init__
+    self._dims = [Dimension(d) for d in dims]
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\tensor_shape.py:771: in <listcomp>
+    self._dims = [Dimension(d) for d in dims]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <[AttributeError('_value') raised in repr()] Dimension object at 0x18b6bea7070>
+value = -1
+
+    def __init__(self, value):
+      """Creates a new Dimension with the given value."""
+      if isinstance(value, int):  # Most common case.
+        if value < 0:
+>         raise ValueError("Dimension %d must be >= 0" % value)
+E         ValueError: Dimension -1 must be >= 0
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\tensor_shape.py:200: ValueError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                    Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_constant_op.py     149     13     24      6    89%   41->57, 62, 68, 76, 183-185, 239->exit, 368, 375, 382, 389, 507-509
+---------------------------------------------------------------------------------------------------
+TOTAL                                                     149     13     24      6    89%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_constant_op.py::test_constant_reshape_capabilities
+1 failed, 17 passed, 4 skipped in 1.63s
+
+Error: exit 1

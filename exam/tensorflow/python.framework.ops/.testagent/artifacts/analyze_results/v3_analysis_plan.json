@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_framework_ops.py::test_convert_to_tensor_basic_conversion",
+      "block_id": "CASE_08",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "tf.convert_to_tensor不支持as_ref参数，需要移除该参数调用"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,423 @@
+=== Run Tests ===
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+_ TestUniformCandidateSampler.test_uniform_candidate_sampler_basic[true_classes_shape0-3-5-10-False-42] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestUniformCandidateSampler object at 0x000001F37B0F4F40>
+true_classes_shape = [2, 3], num_true = 3, num_sampled = 5, range_max = 10
+unique = False, seed = 42
+
+    @pytest.mark.parametrize("true_classes_shape,num_true,num_sampled,range_max,unique,seed", [
+        ([2, 3], 3, 5, 10, False, 42),  # Base case from test plan
+        ([4, 2], 2, 8, 20, False, 999),  # Extension case
+    ])
+    def test_uniform_candidate_sampler_basic(
+        self, true_classes_shape, num_true, num_sampled, range_max, unique, seed
+    ):
+        """Test uniform_candidate_sampler with basic parameters."""
+        batch_size, _ = true_classes_shape
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, range_max, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'uniform_candidate_sampler') as mock_op, \
+             patch.object(random_seed, 'get_seed', return_value=(seed, seed)):
+    
+            # Setup mock return values
+            mock_sampled_candidates = tf.constant(
+                np.random.randint(0, range_max, size=[num_sampled]),
+                dtype=tf.int64
+            )
+            mock_true_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=true_classes_shape),
+                dtype=tf.float32
+            )
+            mock_sampled_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=[num_sampled]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (
+                mock_sampled_candidates,
+                mock_true_expected_count,
+                mock_sampled_expected_count
+            )
+    
+            # Call the function under test
+            result = candidate_sampling_ops.uniform_candidate_sampler(
+                true_classes=true_classes,
+                num_true=num_true,
+                num_sampled=num_sampled,
+                unique=unique,
+                range_max=range_max,
+                seed=seed
+            )
+    
+            sampled_candidates, true_expected_count, sampled_expected_count = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:106: KeyError
+---------------------------- Captured stderr call -----------------------------
+2026-01-21 14:47:15.541471: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+_ TestUniformCandidateSampler.test_uniform_candidate_sampler_basic[true_classes_shape1-2-8-20-False-999] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestUniformCandidateSampler object at 0x000001F37B0F4FA0>
+true_classes_shape = [4, 2], num_true = 2, num_sampled = 8, range_max = 20
+unique = False, seed = 999
+
+    @pytest.mark.parametrize("true_classes_shape,num_true,num_sampled,range_max,unique,seed", [
+        ([2, 3], 3, 5, 10, False, 42),  # Base case from test plan
+        ([4, 2], 2, 8, 20, False, 999),  # Extension case
+    ])
+    def test_uniform_candidate_sampler_basic(
+        self, true_classes_shape, num_true, num_sampled, range_max, unique, seed
+    ):
+        """Test uniform_candidate_sampler with basic parameters."""
+        batch_size, _ = true_classes_shape
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, range_max, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'uniform_candidate_sampler') as mock_op, \
+             patch.object(random_seed, 'get_seed', return_value=(seed, seed)):
+    
+            # Setup mock return values
+            mock_sampled_candidates = tf.constant(
+                np.random.randint(0, range_max, size=[num_sampled]),
+                dtype=tf.int64
+            )
+            mock_true_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=true_classes_shape),
+                dtype=tf.float32
+            )
+            mock_sampled_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=[num_sampled]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (
+                mock_sampled_candidates,
+                mock_true_expected_count,
+                mock_sampled_expected_count
+            )
+    
+            # Call the function under test
+            result = candidate_sampling_ops.uniform_candidate_sampler(
+                true_classes=true_classes,
+                num_true=num_true,
+                num_sampled=num_sampled,
+                unique=unique,
+                range_max=range_max,
+                seed=seed
+            )
+    
+            sampled_candidates, true_expected_count, sampled_expected_count = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:106: KeyError
+_ TestUniqueConstraint.test_unique_constraint_validation[true_classes_shape0-2-3-5-True-123] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestUniqueConstraint object at 0x000001F37B112310>
+true_classes_shape = [1, 2], num_true = 2, num_sampled = 3, range_max = 5
+unique = True, seed = 123
+
+    @pytest.mark.parametrize("true_classes_shape,num_true,num_sampled,range_max,unique,seed", [
+        ([1, 2], 2, 3, 5, True, 123),  # Base case from test plan
+        ([2, 1], 1, 4, 4, True, 777),  # Extension case: num_sampled equals range_max
+    ])
+    def test_unique_constraint_validation(
+        self, true_classes_shape, num_true, num_sampled, range_max, unique, seed
+    ):
+        """Test uniform_candidate_sampler with unique=True constraint."""
+        batch_size, _ = true_classes_shape
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, range_max, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'uniform_candidate_sampler') as mock_op, \
+             patch.object(random_seed, 'get_seed', return_value=(seed, seed)):
+    
+            # For unique=True, create unique sampled candidates
+            unique_candidates = np.arange(range_max)
+            np.random.shuffle(unique_candidates)
+            mock_sampled_candidates = tf.constant(
+                unique_candidates[:num_sampled],
+                dtype=tf.int64
+            )
+    
+            mock_true_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=true_classes_shape),
+                dtype=tf.float32
+            )
+            mock_sampled_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=[num_sampled]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (
+                mock_sampled_candidates,
+                mock_true_expected_count,
+                mock_sampled_expected_count
+            )
+    
+            # Call the function under test
+            result = candidate_sampling_ops.uniform_candidate_sampler(
+                true_classes=true_classes,
+                num_true=num_true,
+                num_sampled=num_sampled,
+                unique=unique,
+                range_max=range_max,
+                seed=seed
+            )
+    
+            sampled_candidates, true_expected_count, sampled_expected_count = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:200: KeyError
+_ TestUniqueConstraint.test_unique_constraint_validation[true_classes_shape1-1-4-4-True-777] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestUniqueConstraint object at 0x000001F37B1125B0>
+true_classes_shape = [2, 1], num_true = 1, num_sampled = 4, range_max = 4
+unique = True, seed = 777
+
+    @pytest.mark.parametrize("true_classes_shape,num_true,num_sampled,range_max,unique,seed", [
+        ([1, 2], 2, 3, 5, True, 123),  # Base case from test plan
+        ([2, 1], 1, 4, 4, True, 777),  # Extension case: num_sampled equals range_max
+    ])
+    def test_unique_constraint_validation(
+        self, true_classes_shape, num_true, num_sampled, range_max, unique, seed
+    ):
+        """Test uniform_candidate_sampler with unique=True constraint."""
+        batch_size, _ = true_classes_shape
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, range_max, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'uniform_candidate_sampler') as mock_op, \
+             patch.object(random_seed, 'get_seed', return_value=(seed, seed)):
+    
+            # For unique=True, create unique sampled candidates
+            unique_candidates = np.arange(range_max)
+            np.random.shuffle(unique_candidates)
+            mock_sampled_candidates = tf.constant(
+                unique_candidates[:num_sampled],
+                dtype=tf.int64
+            )
+    
+            mock_true_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=true_classes_shape),
+                dtype=tf.float32
+            )
+            mock_sampled_expected_count = tf.constant(
+                np.random.uniform(0.1, 0.5, size=[num_sampled]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (
+                mock_sampled_candidates,
+                mock_true_expected_count,
+                mock_sampled_expected_count
+            )
+    
+            # Call the function under test
+            result = candidate_sampling_ops.uniform_candidate_sampler(
+                true_classes=true_classes,
+                num_true=num_true,
+                num_sampled=num_sampled,
+                unique=unique,
+                range_max=range_max,
+                seed=seed
+            )
+    
+            sampled_candidates, true_expected_count, sampled_expected_count = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:200: KeyError
+_ TestComputeAccidentalHits.test_compute_accidental_hits_basic[true_classes_shape0-sampled_candidates_shape0-2-456] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestComputeAccidentalHits object at 0x000001F37B1128B0>
+true_classes_shape = [3, 2], sampled_candidates_shape = [4], num_true = 2
+seed = 456
+
+    @pytest.mark.parametrize("true_classes_shape,sampled_candidates_shape,num_true,seed", [
+        ([3, 2], [4], 2, 456),  # Base case from test plan
+        ([1, 5], [10], 5, 555),  # Extension case
+    ])
+    def test_compute_accidental_hits_basic(
+        self, true_classes_shape, sampled_candidates_shape, num_true, seed
+    ):
+        """Test compute_accidental_hits with basic parameters."""
+        batch_size, _ = true_classes_shape
+        num_sampled = sampled_candidates_shape[0]
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, 10, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Create sampled_candidates tensor
+        sampled_candidates = tf.constant(
+            np.random.randint(0, 10, size=sampled_candidates_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'compute_accidental_hits') as mock_op:
+    
+            # Setup mock return values
+            # For accidental hits, we need indices where true_classes match sampled_candidates
+            mock_indices = tf.constant(
+                np.random.randint(0, batch_size * num_true, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int32
+            )
+            mock_ids = tf.constant(
+                np.random.randint(0, num_sampled, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int64
+            )
+            mock_weights = tf.constant(
+                np.random.uniform(-1.0, 1.0, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (mock_indices, mock_ids, mock_weights)
+    
+            # Call the function under test
+            result = candidate_sampling_ops.compute_accidental_hits(
+                true_classes=true_classes,
+                sampled_candidates=sampled_candidates,
+                num_true=num_true,
+                seed=seed
+            )
+    
+            indices, ids, weights = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:298: KeyError
+_ TestComputeAccidentalHits.test_compute_accidental_hits_basic[true_classes_shape1-sampled_candidates_shape1-5-555] _
+
+self = <test_tensorflow_python_ops_candidate_sampling_ops.TestComputeAccidentalHits object at 0x000001F37B112A90>
+true_classes_shape = [1, 5], sampled_candidates_shape = [10], num_true = 5
+seed = 555
+
+    @pytest.mark.parametrize("true_classes_shape,sampled_candidates_shape,num_true,seed", [
+        ([3, 2], [4], 2, 456),  # Base case from test plan
+        ([1, 5], [10], 5, 555),  # Extension case
+    ])
+    def test_compute_accidental_hits_basic(
+        self, true_classes_shape, sampled_candidates_shape, num_true, seed
+    ):
+        """Test compute_accidental_hits with basic parameters."""
+        batch_size, _ = true_classes_shape
+        num_sampled = sampled_candidates_shape[0]
+    
+        # Create true_classes tensor
+        true_classes = tf.constant(
+            np.random.randint(0, 10, size=true_classes_shape),
+            dtype=tf.int64
+        )
+    
+        # Create sampled_candidates tensor
+        sampled_candidates = tf.constant(
+            np.random.randint(0, 10, size=sampled_candidates_shape),
+            dtype=tf.int64
+        )
+    
+        # Mock the underlying C++ operation
+        with patch.object(gen_candidate_sampling_ops, 'compute_accidental_hits') as mock_op:
+    
+            # Setup mock return values
+            # For accidental hits, we need indices where true_classes match sampled_candidates
+            mock_indices = tf.constant(
+                np.random.randint(0, batch_size * num_true, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int32
+            )
+            mock_ids = tf.constant(
+                np.random.randint(0, num_sampled, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.int64
+            )
+            mock_weights = tf.constant(
+                np.random.uniform(-1.0, 1.0, size=[min(batch_size * num_true, num_sampled)]),
+                dtype=tf.float32
+            )
+    
+            mock_op.return_value = (mock_indices, mock_ids, mock_weights)
+    
+            # Call the function under test
+            result = candidate_sampling_ops.compute_accidental_hits(
+                true_classes=true_classes,
+                sampled_candidates=sampled_candidates,
+                num_true=num_true,
+                seed=seed
+            )
+    
+            indices, ids, weights = result
+    
+            # Verify mock was called with correct arguments
+            mock_op.assert_called_once()
+            call_args = mock_op.call_args[1]
+>           assert call_args['true_classes'] is true_classes
+E           KeyError: 'true_classes'
+
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py:298: KeyError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                         Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_candidate_sampling_ops.py     129     63      8      1    49%   24-27, 31, 36, 41-43, 107-133, 201-233, 299-331, 348
+--------------------------------------------------------------------------------------------------------
+TOTAL                                                          129     63      8      1    49%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestUniformCandidateSampler::test_uniform_candidate_sampler_basic[true_classes_shape0-3-5-10-False-42]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestUniformCandidateSampler::test_uniform_candidate_sampler_basic[true_classes_shape1-2-8-20-False-999]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestUniqueConstraint::test_unique_constraint_validation[true_classes_shape0-2-3-5-True-123]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestUniqueConstraint::test_unique_constraint_validation[true_classes_shape1-1-4-4-True-777]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape0-sampled_candidates_shape0-2-456]
+FAILED tests\test_tensorflow_python_ops_candidate_sampling_ops.py::TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape1-sampled_candidates_shape1-5-555]
+6 failed in 2.04s
+
+Error: exit 1

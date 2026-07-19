@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_functionality[dtype0-shape0-40-2-flags0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "TensorFlow MFCC输出与NumPy参考实现不匹配，需要修正核心算法实现"
+    },
+    {
+      "test": "test_data_type_validation[dtype0-shape0-20-1-flags0]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "精度检查失败，需要调整断言容差或修正算法精度"
+    },
+    {
+      "test": "test_boundary_conditions[dtype0-shape0-1-3-flags0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "边界条件(num_mel_bins=1)的缩放因子不正确"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_data_type_validation[dtype1-shape1-1024-1-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_boundary_conditions[dtype1-shape1-1-1-flags1]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

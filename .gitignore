@@ -1,0 +1,34 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environments
+.env
+.venv
+.envrc
+
+# Editors
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# Build / coverage
+build/
+dist/
+.coverage
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage / gcov artifacts
+*.gcov
+*.gcda
+*.gcno
+attest_batch_logs/
+
+# Egg-info
+*.egg-info/

@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_prune.py::TestPruneBasic::test_random_unstructured_basic[0.3-4]",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "TypeError: argument of type 'int' is not iterable - 检查_forward_pre_hooks的键类型"
+    },
+    {
+      "test": "tests/test_torch_nn_utils_prune.py::TestPruneBasic::test_l1_unstructured_validation[5-5]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "AssertionError: Smallest absolute values should be pruned first - L1剪枝顺序验证失败"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

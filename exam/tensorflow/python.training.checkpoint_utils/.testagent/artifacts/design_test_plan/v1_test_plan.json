@@ -1,0 +1,232 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.training.checkpoint_utils",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_training_checkpoint_utils.py",
+    "all_pattern": "tests/test_tensorflow_python_training_checkpoint_utils.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "load_checkpoint 基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "ckpt_path": "valid_checkpoint.ckpt",
+          "mock_reader": true,
+          "has_tensor_result": true
+        }
+      ],
+      "asserts": {
+        "weak": ["返回 CheckpointReader 对象", "支持 has_tensor 方法", "路径解析正确"],
+        "strong": ["reader 对象属性完整", "错误处理机制", "性能基准"]
+      },
+      "oracle": "tensorflow.python.py_checkpoint_reader.NewCheckpointReader",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.training.checkpoint_management.latest_checkpoint",
+        "tensorflow.python.py_checkpoint_reader.NewCheckpointReader",
+        "os.path.exists"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "load_variable 加载变量值",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "ckpt_path": "valid_checkpoint.ckpt",
+          "var_name": "layer1/weights",
+          "var_shape": [3, 3],
+          "var_dtype": "float32",
+          "var_value": "random_array"
+        }
+      ],
+      "asserts": {
+        "weak": ["返回 numpy ndarray", "形状匹配", "数据类型正确", "数值非空"],
+        "strong": ["数值精度保持", "内存使用合理", "大变量加载性能"]
+      },
+      "oracle": "numpy array 验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.training.checkpoint_management.latest_checkpoint",
+        "tensorflow.python.py_checkpoint_reader.NewCheckpointReader",
+        "tensorflow.python.training.checkpoint_utils._get_checkpoint_filename"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "list_variables 列出变量",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "ckpt_path": "valid_checkpoint.ckpt",
+          "var_list": [
+            ["layer1/weights", [3, 3]],
+            ["layer1/bias", [3]],
+            ["layer2/weights", [3, 5]]
+          ]
+        }
+      ],
+      "asserts": {
+        "weak": ["返回列表格式正确", "每个元素为 (key, shape) 元组", "key 为字符串", "shape 为元组"],
+        "strong": ["变量顺序稳定", "分区变量处理", "空检查点处理"]
+      },
+      "oracle": "检查点 reader 的 get_variable_to_shape_map",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.training.checkpoint_management.latest_checkpoint",
+        "tensorflow.python.py_checkpoint_reader.NewCheckpointReader"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "init_from_checkpoint 变量初始化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "ckpt_path": "valid_checkpoint.ckpt",
+          "assignment_map": {"old_scope/": "new_scope/"},
+          "var_names": ["new_scope/layer1/weights", "new_scope/layer1/bias"]
+        }
+      ],
+      "asserts": {
+        "weak": ["无返回值", "设置变量初始化器", "映射关系正确"],
+        "strong": ["变量值正确初始化", "scope 映射完整", "错误恢复机制"]
+      },
+      "oracle": "变量初始化状态",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.training.checkpoint_management.latest_checkpoint",
+        "tensorflow.python.py_checkpoint_reader.NewCheckpointReader",
+        "tensorflow.python.training.checkpoint_utils._set_checkpoint_initializer",
+        "tensorflow.compat.v1.get_variable"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "checkpoints_iterator 监控目录",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "checkpoint_dir": "/tmp/checkpoints",
+          "min_interval_secs": 1,
+          "timeout": 5,
+          "checkpoint_files": ["model.ckpt-1000", "model.ckpt-2000"]
+        }
+      ],
+      "asserts": {
+        "weak": ["返回生成器对象", "生成检查点路径", "间隔控制基本功能"],
+        "strong": ["超时处理正确", "回调函数调用", "并发安全性"]
+      },
+      "oracle": "文件系统监控行为",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.training.checkpoint_management.latest_checkpoint",
+        "os.listdir",
+        "time.sleep",
+        "os.path.getmtime"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "ckpt_path": "checkpoint_dir/",
+        "mock_reader": true,
+        "has_tensor_result": true
+      },
+      "note": "目录路径（自动查找最新检查点）"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "ckpt_path": "valid_checkpoint.ckpt",
+        "var_name": "layer1/weights:0",
+        "var_shape": [3, 3],
+        "var_dtype": "float32",
+        "var_value": "random_array"
+      },
+      "note": "变量名包含 :0 后缀（兼容性处理）"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "ckpt_path": "valid_checkpoint.ckpt",
+        "var_name": "partitioned_var/part_0",
+        "var_shape": [100, 100],
+        "var_dtype": "float64",
+        "var_value": "partitioned_array"
+      },
+      "note": "分区变量加载"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "ckpt_path": "valid_checkpoint.ckpt",
+        "assignment_map": [("old_var", "new_var")],
+        "var_names": ["new_var"]
+      },
+      "note": "assignment_map 为键值对列表格式"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

@@ -1,0 +1,71 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 5,
+  "errors": 7,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_cholesky_invalid_input",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块不存在"
+    },
+    {
+      "test": "test_qr_with_zeros",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块不存在"
+    },
+    {
+      "test": "test_matrix_inverse_singular",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_dtype_support_cholesky[dtype0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_dtype_support_cholesky[dtype1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_cholesky_decomposition[float32-shape0-symmetric_positive_definite]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_cholesky_decomposition[float64-shape1-symmetric_positive_definite]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_cholesky_decomposition[float32-shape2-symmetric_positive_definite]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_qr_decomposition[float64-shape0-flags0-full_rank]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_qr_decomposition[float32-shape1-flags1-full_rank]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_matrix_inverse[float32-shape0-well_conditioned]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_matrix_inverse[float64-shape1-well_conditioned]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

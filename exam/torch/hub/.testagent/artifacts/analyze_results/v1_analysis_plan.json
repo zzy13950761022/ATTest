@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 3,
+  "errors": 1,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_hub_load.py::test_github_repository_standard_loading",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock_github_download fixture 引用了不存在的 torch.hub._download_url_to_file 属性"
+    },
+    {
+      "test": "tests/test_torch_hub_load.py::test_local_path_loading",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "import_module 没有被调用，因为本地路径加载可能使用不同的导入机制"
+    },
+    {
+      "test": "tests/test_torch_hub_load.py::test_missing_hubconf_file",
+      "block_id": "FOOTER",
+      "error_type": "FileNotFoundError",
+      "action": "rewrite_block",
+      "note": "测试期望抛出 ImportError/RuntimeError，但实际抛出 FileNotFoundError，需要调整异常处理"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_hub_load.py::test_nonexistent_model_entrypoint",
+      "reason": "错误类型重复（网络错误），跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

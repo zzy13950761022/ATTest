@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_ao_nn_quantized_functional_g3.py::test_relu_quantized_activation[test_params0]",
+      "block_id": "CASE_08",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "qF.relu不存在，需要检查正确的API或函数名"
+    },
+    {
+      "test": "tests/test_torch_ao_nn_quantized_functional_g3.py::test_relu_inplace_vs_outplace",
+      "block_id": "FOOTER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "qF.relu不存在，需要检查正确的API或函数名"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

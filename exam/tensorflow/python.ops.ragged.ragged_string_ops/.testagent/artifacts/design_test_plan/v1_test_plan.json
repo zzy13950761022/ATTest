@@ -1,0 +1,248 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.ragged.ragged_string_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_ragged_ragged_string_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_ragged_ragged_string_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "string_bytes_split基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_bytes_split",
+          "input_type": "Tensor",
+          "input_shape": [2, 3],
+          "content": ["hello", "world", "test", "data", "split", "bytes"],
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_rank", "basic_shape", "content_preserved"],
+        "strong": ["exact_bytes", "edge_cases", "performance"]
+      },
+      "oracle": "手动验证字节分割逻辑",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "unicode_encode基础编码",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "unicode_encode",
+          "input_type": "Tensor",
+          "input_shape": [2, 3],
+          "content": [[72, 101, 108], [108, 111, 32], [87, 111, 114], [108, 100, 33]],
+          "output_encoding": "UTF-8",
+          "errors": "replace",
+          "replacement_char": 65533,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_shape", "encoding_correct", "basic_content"],
+        "strong": ["all_encodings", "error_modes", "replacement_char"]
+      },
+      "oracle": "Python标准库unicode编码",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "unicode_decode基础解码",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "unicode_decode",
+          "input_type": "Tensor",
+          "input_shape": [2],
+          "content": ["Hello", "World"],
+          "input_encoding": "UTF-8",
+          "errors": "replace",
+          "replacement_char": 65533,
+          "replace_control_characters": false,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_rank", "decoding_correct", "basic_unicode"],
+        "strong": ["all_encodings", "control_characters", "error_handling"]
+      },
+      "oracle": "Python标准库unicode解码",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "string_split_v2基础分割",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "string_split_v2",
+          "input_type": "Tensor",
+          "input_shape": [3],
+          "content": ["a,b,c", "d,e,f", "g,h,i"],
+          "sep": ",",
+          "maxsplit": -1,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_rank", "split_count", "basic_separator"],
+        "strong": ["empty_sep", "maxsplit_limits", "edge_cases"]
+      },
+      "oracle": "Python字符串split方法",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "ngrams基础生成",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "ngrams",
+          "data_type": "Tensor",
+          "data_shape": [3, 4],
+          "content": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"],
+          "ngram_width": 2,
+          "separator": " ",
+          "pad_values": null,
+          "padding_width": null,
+          "preserve_short_sequences": false,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["output_type", "output_shape", "ngram_count", "basic_generation"],
+        "strong": ["padding_options", "short_sequences", "multiple_widths"]
+      },
+      "oracle": "手动n-gram生成逻辑",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 9,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "string_bytes_split",
+        "input_type": "RaggedTensor",
+        "input_shape": "ragged",
+        "content": [["hello", "world"], ["test"], ["data", "split", "bytes"]],
+        "name": null
+      },
+      "note": "RaggedTensor输入扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "unicode_encode",
+        "input_type": "Tensor",
+        "input_shape": [1, 5],
+        "content": [[72, 101, 108, 108, 111]],
+        "output_encoding": "UTF-16-BE",
+        "errors": "ignore",
+        "replacement_char": 65533,
+        "name": null
+      },
+      "note": "UTF-16编码和ignore错误模式"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "unicode_decode",
+        "input_type": "Tensor",
+        "input_shape": [1],
+        "content": ["测试"],
+        "input_encoding": "UTF-8",
+        "errors": "strict",
+        "replacement_char": 65533,
+        "replace_control_characters": true,
+        "name": null
+      },
+      "note": "strict错误模式和控制字符替换"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "function": "string_split_v2",
+        "input_type": "RaggedTensor",
+        "input_shape": "ragged",
+        "content": [["a,b,c", "d,e"], ["f,g,h,i"]],
+        "sep": null,
+        "maxsplit": 1,
+        "name": null
+      },
+      "note": "RaggedTensor输入和maxsplit限制"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "function": "ngrams",
+        "data_type": "RaggedTensor",
+        "data_shape": "ragged",
+        "content": [["a", "b", "c"], ["d", "e"], ["f"]],
+        "ngram_width": 3,
+        "separator": "-",
+        "pad_values": "PAD",
+        "padding_width": 2,
+        "preserve_short_sequences": true,
+        "name": null
+      },
+      "note": "RaggedTensor输入和完整填充选项"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": []
+}

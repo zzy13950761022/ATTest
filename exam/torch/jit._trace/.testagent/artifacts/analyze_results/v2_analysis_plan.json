@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_jit_trace_g2.py::test_complex_module_structure_tracing",
+      "block_id": "CASE_06",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "参数匹配逻辑错误导致张量形状不匹配。需要修复参数名匹配逻辑，避免比较不同形状的参数。"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_jit_trace_g2.py::test_complex_module_structure_tracing",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

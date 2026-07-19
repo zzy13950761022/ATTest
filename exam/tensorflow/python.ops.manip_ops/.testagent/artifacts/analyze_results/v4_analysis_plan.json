@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_boundary_conditions_empty_scalar[input_shape1-input_dtype1-0-0-\u6807\u91cf\u5f20\u91cf\u6eda\u52a8\u65e0\u53d8\u5316]",
+      "block_id": "CASE_04",
+      "error_type": "AxisError",
+      "action": "rewrite_block",
+      "note": "标量张量（shape=[]）的numpy参考实现需要特殊处理，np.roll无法处理0维数组的axis参数"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,67 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 11,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_reshape_basic_shape_transform[input_shape0-target_shape0-float32]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_tensor_ops fixture返回字典，不支持上下文管理器"
+    },
+    {
+      "test": "test_expand_dims_dimension_insertion[input_shape0-0-float32]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "adjust_assertion",
+      "note": "依赖HEADER修复，但需要检查测试逻辑"
+    },
+    {
+      "test": "test_concat_tensor_concatenation[input_shapes0-0-float32]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "adjust_assertion",
+      "note": "依赖HEADER修复，但需要检查测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_reshape_basic_shape_transform[input_shape1-target_shape1-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_expand_dims_dimension_insertion[input_shape1--1-int32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_concat_tensor_concatenation[input_shapes1-1-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_stack_tensor_stacking[input_shapes0-0-float32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestArrayOps.test_reshape_invalid_shape",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestArrayOps.test_expand_dims_invalid_axis",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestArrayOps.test_concat_empty_list",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestArrayOps.test_stack_incompatible_shapes",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

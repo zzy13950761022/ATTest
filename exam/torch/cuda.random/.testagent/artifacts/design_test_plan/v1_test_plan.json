@@ -1,0 +1,304 @@
+{
+  "plan_version": 2,
+  "target": "torch.cuda.random",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_cuda_random.py",
+    "all_pattern": "tests/test_torch_cuda_random_*.py",
+    "groups": {
+      "G1": "tests/test_torch_cuda_random_g1.py",
+      "G2": "tests/test_torch_cuda_random_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "单设备状态管理",
+      "entrypoints": ["get_rng_state", "set_rng_state", "manual_seed", "seed", "initial_seed"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试单GPU设备的基本随机数生成器管理功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "多设备状态管理",
+      "entrypoints": ["get_rng_state_all", "set_rng_state_all", "manual_seed_all", "seed_all"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试多GPU设备的批量状态管理功能"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "单设备状态获取与设置",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device": 0,
+          "state_type": "valid_byte_tensor",
+          "seed": 42,
+          "test_scenario": "basic_flow"
+        }
+      ],
+      "asserts": {
+        "weak": ["state_shape_consistent", "state_type_byte_tensor", "seed_set_correctly", "no_exception"],
+        "strong": ["state_content_preserved", "random_sequence_deterministic", "device_independence"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "种子设置与查询",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device": "cuda",
+          "seed_values": [0, 42, 123456],
+          "test_scenario": "seed_operations"
+        }
+      ],
+      "asserts": {
+        "weak": ["seed_set_success", "initial_seed_returns_correct", "no_exception", "cuda_initialized"],
+        "strong": ["seed_persistence", "cross_device_seed_independence", "seed_affects_randomness"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "多设备状态批量管理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "device_count": 2,
+          "state_type": "valid_byte_tensor_list",
+          "seed": 42,
+          "test_scenario": "multi_device_basic"
+        }
+      ],
+      "asserts": {
+        "weak": ["list_length_matches_device_count", "each_state_is_byte_tensor", "no_exception", "all_devices_processed"],
+        "strong": ["state_list_consistency", "device_specific_states", "deterministic_across_devices"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "无效设备索引异常处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "invalid_device": -1,
+          "invalid_state_type": "float_tensor",
+          "test_scenario": "error_handling"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct", "error_message_contains_device", "no_side_effects"],
+        "strong": ["exception_details_complete", "state_not_corrupted", "other_devices_unaffected"]
+      },
+      "oracle": "pytest_raises",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "非ByteTensor状态类型检查",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "invalid_state_types": ["float32", "int64", "bool"],
+          "device": 0,
+          "test_scenario": "type_validation"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised_for_wrong_type", "exception_type_correct", "error_message_mentions_byte_tensor"],
+        "strong": ["all_invalid_types_rejected", "state_format_validation_complete"]
+      },
+      "oracle": "pytest_raises",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 55,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G1",
+      "name": "CUDA不可用场景处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "cuda_available": false,
+          "device": "cuda",
+          "test_scenario": "cuda_unavailable"
+        }
+      ],
+      "asserts": {
+        "weak": ["no_exception_on_cuda_unavailable", "function_returns_none_or_default", "no_cuda_initialization"],
+        "strong": ["graceful_degradation", "consistent_behavior_across_calls", "memory_cleanup"]
+      },
+      "oracle": "mock_cuda_unavailable",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 2,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "空状态列表处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "empty_states": [],
+          "device_count": 2,
+          "test_scenario": "empty_input"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct", "error_message_meaningful"],
+        "strong": ["empty_list_validation_complete", "state_length_validation"]
+      },
+      "oracle": "pytest_raises",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 45,
+      "max_params": 2,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "极端种子值边界测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "extreme_seeds": [0, -1, 2147483647, -2147483648],
+          "device": 0,
+          "test_scenario": "boundary_seeds"
+        }
+      ],
+      "asserts": {
+        "weak": ["no_exception", "seed_accepted", "initial_seed_returns_correct"],
+        "strong": ["seed_wrapping_handled", "negative_seeds_normalized", "large_seeds_truncated"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "device": "cuda:0",
+        "state_type": "valid_byte_tensor",
+        "seed": 123,
+        "test_scenario": "device_string_format"
+      },
+      "note": "设备字符串标识符支持测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "device": 1,
+        "state_type": "valid_byte_tensor",
+        "seed": 42,
+        "test_scenario": "non_default_device"
+      },
+      "note": "非默认设备索引测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "device_count": 4,
+        "state_type": "valid_byte_tensor_list",
+        "seed": 42,
+        "test_scenario": "multi_device_scalability"
+      },
+      "note": "多设备扩展性测试"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Low",
+      "params": {
+        "invalid_device": 999,
+        "invalid_state_type": "float_tensor",
+        "test_scenario": "large_invalid_index"
+      },
+      "note": "超大无效设备索引测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

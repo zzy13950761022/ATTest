@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_parameter_exclusivity",
+      "block_id": "CASE_09",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息检查失败：期望包含'both'/'mutually'/'exclusive'，实际消息为'only one of size or scale_factor should be defined'"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_invalid_mode_parameter",
+      "block_id": "CASE_10",
+      "error_type": "NotImplementedError",
+      "action": "rewrite_block",
+      "note": "期望ValueError但得到NotImplementedError，需要调整错误处理逻辑"
+    },
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_negative_scale_factor",
+      "block_id": "CASE_11",
+      "error_type": "Failed",
+      "action": "add_case",
+      "note": "新增测试：负scale_factor未抛出异常，需要验证边界条件处理"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_nn_modules_upsampling_g3.py::test_zero_scale_factor",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,32 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestNNImpl.test_moments_statistics[x_shape0-float32-axes0-False]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "numpy.mean不支持列表形式的axes参数，需要转换为元组或处理单个整数"
+    },
+    {
+      "test": "TestNNImpl.test_log_poisson_loss_basic[targets_shape0-log_input_shape0-float32-False]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "Stirling近似项在某些情况下可能为负，需要调整断言逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestNNImpl.test_log_poisson_loss_basic[targets_shape2-log_input_shape2-float32-False]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

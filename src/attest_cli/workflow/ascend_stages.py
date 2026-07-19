@@ -1,0 +1,4277 @@
+"""
+Ascend-specific workflow stages.
+"""
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import dataclass
+import json
+import re
+import shlex
+import shutil
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from ..ascend import AscendSkillProvider
+from ..block_utils import (
+    build_block_entries,
+    build_block_index_json,
+    detect_comment_style,
+    end_marker,
+    placeholder_marker,
+    start_marker,
+)
+from ..config import load_config
+from ..session import append_message
+from ..tools import ToolContext
+from ..utils import ensure_parent
+from .stage import Stage, StageConfig, StageResult
+
+
+LAYER_ORDER = {
+    "op_host": 0,
+    "op_api": 1,
+    "op_kernel": 2,
+    "op_kernel_aicpu": 3,
+}
+
+LAYER_COMMAND_KEYS = {
+    "op_host": "compile_ophost",
+    "op_api": "compile_opapi",
+    "op_kernel": "compile_opkernel",
+    "op_kernel_aicpu": "compile_opkernel_aicpu",
+}
+
+LAYER_FLAG_NAMES = {
+    "op_host": "ophost",
+    "op_api": "opapi",
+    "op_kernel": "opkernel",
+    "op_kernel_aicpu": "opkernel_aicpu",
+}
+
+
+def _json_load(value: Any, default: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        return value
+    if not value:
+        return default
+    try:
+        return json.loads(str(value))
+    except Exception:
+        return default
+
+
+def _load_json_artifact(state, name: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return _json_load(state.load_artifact(name), default or {})
+
+
+def _render_json(data: Dict[str, Any]) -> str:
+    return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def _compress_old_messages(messages: List[Dict[str, Any]], keep_recent: int = 60) -> List[Dict[str, Any]]:
+    """Sliding-window compression: keep the system/initial user prompt + last `keep_recent` messages."""
+    if len(messages) <= keep_recent + 2:
+        return messages
+    # Always keep messages[0] (initial user prompt) and the most recent `keep_recent` messages
+    head = messages[:1]
+    tail = messages[-keep_recent:]
+    dropped = len(messages) - 1 - keep_recent
+    summary_msg = {
+        "role": "user",
+        "content": (
+            f"[Context compression: {dropped} earlier messages omitted to stay within context limits. "
+            "Your prior file edits are already on disk — use list_files/read_file to inspect current state.]"
+        ),
+    }
+    return head + [summary_msg] + tail
+
+
+def _build_ws_sig_section(layer_id: str, slim_context: Dict[str, Any]) -> str:
+    if layer_id != "op_api":
+        return ""
+    ws_sigs = slim_context.get("workspace_signatures") or []
+    if not ws_sigs:
+        return ""
+    lines = [
+        "OP_API_UT Function Signatures (CRITICAL for correct INPUT/OUTPUT macro usage):",
+        "Use these signatures to determine how many parameters go into INPUT() and OUTPUT().",
+        "The `OP_API_UT(api, INPUT(...), OUTPUT(...))` macro calls `api##GetWorkspaceSize` with:",
+        "  - INPUT params → first N positional arguments",
+        "  - OUTPUT params → next M positional arguments",
+        "  - framework auto-appends `&workspaceSize` and `&executor`",
+        "```json",
+        json.dumps(ws_sigs, indent=2, ensure_ascii=False),
+        "```",
+        "**Example**: if the signature shows `input_params: [self, other]` and `output_params: [out]`,",
+        "use `OP_API_UT(aclnnXxx, INPUT(self_desc, other_desc), OUTPUT(out_desc))`.",
+        "**For Inplace variants**: if `output_params` is `[]`, use `OUTPUT()` (empty).",
+        "**For Inplace variants with selfRef**: selfRef is an input, NOT an output — pass it in INPUT only.",
+    ]
+    return "\n".join(lines)
+
+
+def _patch_build_sh_for_isolation(target_root: Path) -> None:
+    build_sh = target_root / "build.sh"
+    if not build_sh.exists():
+        return
+    content = build_sh.read_text(encoding="utf-8")
+    if '${BUILD_PATH:-' in content:
+        return
+    content = re.sub(
+        r'export BUILD_PATH="\$\{BASE_PATH\}/build"',
+        'export BUILD_PATH=${BUILD_PATH:-"${BASE_PATH}/build"}',
+        content,
+    )
+    content = re.sub(
+        r'export BUILD_OUT_PATH="\$\{BASE_PATH\}/build_out"',
+        'export BUILD_OUT_PATH=${BUILD_OUT_PATH:-"${BASE_PATH}/build_out"}',
+        content,
+    )
+    build_sh.write_text(content, encoding="utf-8")
+
+
+_CANN_CMAKE_PREP_MARKER = "function/prepare.cmake"
+
+
+def _ensure_cann_cmake_available(target_root: Path) -> bool:
+    target = target_root / "third_party" / "cann-cmake"
+    if (target / _CANN_CMAKE_PREP_MARKER).exists():
+        return True
+
+    build_deps = target_root / "build" / "_deps" / "cann-cmake-src"
+    candidates: List[Path] = []
+    if (build_deps / _CANN_CMAKE_PREP_MARKER).exists():
+        candidates.append(build_deps)
+
+    for sibling in (target_root.parent, target_root):
+        if sibling and sibling.is_dir():
+            for child in sibling.iterdir():
+                if not child.is_dir():
+                    continue
+                for candidate_rel in (
+                    Path("build") / "_deps" / "cann-cmake-src",
+                    Path(".attest") / "generated_repo" / "build" / "_deps" / "cann-cmake-src",
+                ):
+                    candidate = child / candidate_rel
+                    if (candidate / _CANN_CMAKE_PREP_MARKER).exists():
+                        candidates.append(candidate)
+
+    for known in (
+        Path("/mnt/fangcr/workspace-baseline/B3_opencode_skill/build/_deps/cann-cmake-src"),
+        Path("/mnt/fangcr/workspace-baseline/B2_opencode_plain/build/_deps/cann-cmake-src"),
+    ):
+        if (known / _CANN_CMAKE_PREP_MARKER).exists():
+            candidates.append(known)
+
+    for backup_base in (
+        Path("/mnt/fangcr/ops-math-round1-backup-20260515_231645"),
+        Path("/mnt/fangcr/ops-math-round2-backup-20260517_221941"),
+    ):
+        backup_src = backup_base / "build" / "_deps" / "cann-cmake-src"
+        if (backup_src / _CANN_CMAKE_PREP_MARKER).exists():
+            candidates.append(backup_src)
+
+    for src in candidates:
+        try:
+            shutil.copytree(src, target, dirs_exist_ok=True)
+            if (target / _CANN_CMAKE_PREP_MARKER).exists():
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _ordered_files(plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+    files = plan.get("files") or []
+    return sorted(
+        [item for item in files if isinstance(item, dict)],
+        key=lambda item: (
+            0 if item.get("kind") == "cmake" else 1,
+            LAYER_ORDER.get(str(item.get("layer_id")), 99),
+            str(item.get("path", "")),
+        ),
+    )
+
+
+def _cases_by_file(plan: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    buckets: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for case in plan.get("cases") or []:
+        if isinstance(case, dict):
+            buckets[str(case.get("file_id", ""))].append(case)
+    for values in buckets.values():
+        values.sort(key=lambda item: str(item.get("block_id", "")))
+    return buckets
+
+
+def _smoke_set(plan: Dict[str, Any]) -> List[str]:
+    return [item for item in (plan.get("smoke_set") or []) if isinstance(item, str)]
+
+
+def _deferred_set(plan: Dict[str, Any]) -> List[str]:
+    return [item for item in (plan.get("deferred_set") or []) if isinstance(item, str)]
+
+
+def _path_to_file_id(plan: Dict[str, Any]) -> Dict[str, str]:
+    mapping = {}
+    for entry in plan.get("files") or []:
+        if isinstance(entry, dict):
+            mapping[str(entry.get("path", ""))] = str(entry.get("file_id", ""))
+    return mapping
+
+
+def _extract_existing_test_scenarios(ut_file_path: Path, max_scenarios: int = 30) -> List[str]:
+    if not ut_file_path.exists():
+        return []
+    try:
+        content = ut_file_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return []
+    scenarios = []
+    test_name_pattern = re.compile(r'TEST[_F]?\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)')
+    for match in test_name_pattern.finditer(content):
+        suite = match.group(1)
+        case = match.group(2)
+        start = match.end()
+        end = min(start + 500, len(content))
+        body = content[start:end]
+        dtypes = set()
+        for dtype in ["DT_FLOAT", "DT_FLOAT16", "DT_BF16", "DT_INT32", "DT_INT64", "DT_INT8",
+                       "DT_INT16", "DT_UINT8", "DT_BOOL", "DT_COMPLEX64", "DT_COMPLEX128",
+                       "DT_DOUBLE", "DT_UINT16", "DT_UINT32", "DT_UINT64"]:
+            if dtype in body:
+                dtypes.add(dtype.replace("DT_", ""))
+        formats = set()
+        for fmt in ["FORMAT_ND", "FORMAT_NCHW", "FORMAT_NHWC", "FORMAT_NC1HWC0",
+                     "FORMAT_NCDHW", "FORMAT_NDHWC", "FORMAT_HWCN"]:
+            if fmt in body:
+                formats.add(fmt.replace("FORMAT_", ""))
+        tags = []
+        if "nullptr" in body or "NULL" in body:
+            tags.append("nullptr")
+        if "empty" in body.lower() or "shape_0" in body or "{0" in body:
+            tags.append("empty")
+        if "shape_mismatch" in body.lower() or "mismatch" in body.lower():
+            tags.append("shape_mismatch")
+        if "invalid" in body.lower() or "error" in body.lower():
+            tags.append("invalid")
+        if "broadcast" in body.lower():
+            tags.append("broadcast")
+        if "inplace" in body.lower() or "Inplace" in body:
+            tags.append("inplace")
+        desc_parts = []
+        if dtypes:
+            desc_parts.append("dtypes=" + ",".join(sorted(dtypes)[:4]))
+        if formats:
+            desc_parts.append("fmts=" + ",".join(sorted(formats)[:3]))
+        if tags:
+            desc_parts.append(",".join(tags[:3]))
+        scenario = f"{suite}.{case}"
+        if desc_parts:
+            scenario += f" ({'; '.join(desc_parts)})"
+        scenarios.append(scenario)
+        if len(scenarios) >= max_scenarios:
+            break
+    return scenarios
+
+
+def _default_analysis_plan() -> Dict[str, Any]:
+    return {
+        "status": "not_fully_passed",
+        "passed": 0,
+        "failed": 0,
+        "errors": 0,
+        "collection_errors": False,
+        "block_limit": 12,
+        "failures": [],
+        "deferred": [],
+        "stop_recommended": False,
+        "stop_reason": "",
+    }
+
+
+def _generation_mode(meta: Dict[str, Any]) -> str:
+    return str(meta.get("generation_mode", "ut_generate"))
+
+
+def _coverage_mode(meta: Dict[str, Any]) -> str:
+    return str(meta.get("coverage_mode") or meta.get("mode") or "single_run")
+
+
+def _is_enhance_mode(meta: Dict[str, Any]) -> bool:
+    return _generation_mode(meta) == "ut_enhance"
+
+
+def _is_compare_mode(meta: Dict[str, Any]) -> bool:
+    return _coverage_mode(meta) == "before_after_compare"
+
+
+def _layer_coverage_threshold(meta: Optional[Dict[str, Any]] = None) -> float:
+    if isinstance(meta, dict) and _is_compare_mode(meta):
+        return 85.0
+    return 80.0
+
+
+def _overall_coverage_threshold(meta: Optional[Dict[str, Any]] = None) -> float:
+    if isinstance(meta, dict) and _is_compare_mode(meta):
+        return 90.0
+    return 80.0
+
+
+def _coverage_stop_policy(meta: Dict[str, Any]) -> Dict[str, Any]:
+    cfg = load_config().get("profiles", {}).get("ascend_ut", {}).get("coverage_stop_policy", {})
+    enhance_compare = _is_compare_mode(meta) and _is_enhance_mode(meta)
+    default_stop_on_threshold = not enhance_compare
+    stop_key = "enhance_stop_on_threshold" if enhance_compare else "generate_stop_on_threshold"
+    if stop_key in cfg:
+        stop_on_threshold = bool(cfg.get(stop_key))
+    elif "stop_on_threshold" in cfg:
+        stop_on_threshold = bool(cfg.get("stop_on_threshold"))
+    else:
+        stop_on_threshold = default_stop_on_threshold
+    try:
+        patience = int(cfg.get("patience_no_improvement", 2))
+    except (TypeError, ValueError):
+        patience = 2
+    return {
+        "stop_on_threshold": stop_on_threshold,
+        "patience_no_improvement": max(1, patience),
+    }
+
+
+def _operator_source_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
+    category = str(meta.get("category") or "")
+    op_name = str(meta.get("op_name") or "")
+    if not category or not op_name:
+        return []
+
+    root = f"*/{category}/{op_name}"
+    if layer == "op_host":
+        return [f"{root}/op_host/*"]
+    if layer == "op_api":
+        return [f"{root}/op_api/*", f"{root}/op_host/op_api/*"]
+    return []
+
+
+def _operator_remove_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
+    category = str(meta.get("category") or "")
+    op_name = str(meta.get("op_name") or "")
+    if not category or not op_name:
+        return []
+    if layer == "op_host":
+        return [f"*/{category}/{op_name}/op_host/op_api/*"]
+    return []
+
+
+def _normalize_case_block_id(raw_value: str) -> str:
+    match = re.search(r"(CASE_\d+)", raw_value)
+    if match:
+        return match.group(1)
+    return raw_value
+
+
+def _coverage_target_actually_failed(log_text: str) -> bool:
+    lowered = log_text.lower()
+    if "built target generate_ops_cpp_cov" in lowered:
+        return False
+    cov_build_fail = re.search(
+        r"gmake\[\d+\]:\s*\*\*\*.*generate_ops_cpp_cov.*error",
+        lowered,
+    )
+    if cov_build_fail:
+        return True
+    error_255_with_cov = re.search(
+        r"generate_ops_cpp_cov.*error\s*255|error\s*255.*generate_ops_cpp_cov",
+        lowered,
+    )
+    if error_255_with_cov:
+        return True
+    genhtml_error = "genhtml: error" in lowered and "no valid records found in tracefile" in lowered
+    if genhtml_error:
+        return True
+    lcov_no_data = re.search(r"lines\.+:\s*no data found", lowered) is not None
+    if lcov_no_data and "built target generate_ops_cpp_cov" not in lowered:
+        return True
+    return False
+
+
+def _infer_execution_error_type(log_text: str) -> str:
+    lowered = log_text.lower()
+    has_ok_tests = "[  ok  ]" in lowered or "[       ok ]" in lowered
+    has_test_failure = (
+        "[  failed  ]" in lowered
+        or "segmentation fault" in lowered
+        or "core dumped" in lowered
+    )
+    if has_test_failure and not ("[  failed  ]" in lowered):
+        if "segmentation fault" in lowered or "core dumped" in lowered:
+            if has_ok_tests and (
+                "--cov" in lowered
+                or "gcov" in lowered
+                or "coverage" in lowered
+            ):
+                return "CoverageInstrumentationError"
+    has_compile_failure = (
+        "undefined reference" in lowered
+        or "collect2:" in lowered
+        or "cmake error" in lowered
+        or re.search(r"\.(?:c|cc|cpp|cxx|h|hpp):[0-9]+:[0-9]+:\s+error:", lowered) is not None
+        or re.search(r"\bfatal error:", lowered) is not None
+    )
+    has_cov_target_failure = _coverage_target_actually_failed(log_text)
+    lcov_specific_failure = (
+        "lcov_extract_no_match" in lowered
+        or "lcov_source_missing" in lowered
+        or "lcov: error" in lowered
+        or "libgcov profiling error" in lowered
+    )
+    has_coverage_failure = has_cov_target_failure or lcov_specific_failure
+    if has_coverage_failure:
+        if not has_compile_failure and not has_test_failure:
+            return "CoverageCollectionError"
+    if "assertionerror" in lowered:
+        return "AssertionError"
+    if has_test_failure:
+        return "TestFailure"
+    if has_compile_failure:
+        return "CompilationError"
+    if "error:" in lowered:
+        if "gmake[" in lowered and "math_op_host_ut" in lowered and "run ops op_host utest" in lowered:
+            return "TestFailure"
+        return "CompilationError"
+    if "gmake[" in lowered and ("math_op_host_ut" in lowered or "math_op_api_ut" in lowered):
+        return "TestFailure"
+    return "CompilationError"
+
+
+def _coverage_error_reason(log_text: str) -> Optional[str]:
+    lowered = log_text.lower()
+    if _coverage_target_actually_failed(log_text):
+        if re.search(r"lines\.+:\s*no data found", lowered):
+            return "lcov summary contains no coverage data (no instrumented code executed)"
+        if "genhtml: error" in lowered and "no valid records" in lowered:
+            return "coverage tracefile is empty (no tests exercised instrumented code)"
+        return "coverage target generate_ops_cpp_cov failed"
+    if "lcov_extract_no_match" in lowered:
+        return "operator lcov extract matched no source files"
+    if "lcov_source_missing" in lowered:
+        return "lcov source info file is missing"
+    if "lcov: error" in lowered:
+        return "lcov/genhtml reported an error"
+    if re.search(r"lines\.+:\s*no data found", lowered):
+        return "lcov summary contains no coverage data"
+    if "libgcov profiling error" in lowered:
+        return "gcov profile data is stale or mixed across builds"
+    return None
+
+
+def _generated_repo_root(state) -> Path:
+    return state.workspace / ".attest" / "generated_repo"
+
+
+def _generated_operator_root(state, context: Dict[str, Any]) -> Path:
+    return _generated_repo_root(state) / str(context.get("relative_op_dir", state.category + "/" + state.op_name))
+
+
+def _llm_project_root(state, context: Dict[str, Any]) -> Path:
+    if _is_enhance_mode(context):
+        return _generated_repo_root(state)
+    return Path(state.project_root)
+
+
+def _parse_exit_payload(raw_value: Any) -> Dict[str, int]:
+    if isinstance(raw_value, dict):
+        return {str(key): int(value) for key, value in raw_value.items()}
+
+    raw_text = str(raw_value or "").strip()
+    if not raw_text:
+        return {"overall": 1}
+
+    try:
+        parsed = json.loads(raw_text)
+    except Exception:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        payload: Dict[str, int] = {}
+        for key, value in parsed.items():
+            try:
+                payload[str(key)] = int(value)
+            except Exception:
+                continue
+        return payload or {"overall": 1}
+
+    try:
+        return {"overall": int(raw_text)}
+    except Exception:
+        return {"overall": 1}
+
+
+def _rewrite_context_for_project_root(context: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
+    rewritten = dict(context)
+    rewritten["project_root"] = str(project_root)
+    relative_op_dir = str(rewritten.get("relative_op_dir", ""))
+    original_operator_dir = str(rewritten.get("operator_dir", ""))
+    rewritten_operator_dir = str(project_root / relative_op_dir) if relative_op_dir else original_operator_dir
+    if rewritten_operator_dir:
+        rewritten["operator_dir"] = rewritten_operator_dir
+        rewritten["tests_root"] = str(Path(rewritten_operator_dir) / "tests" / "ut")
+
+    layers = rewritten.get("layers")
+    if isinstance(layers, dict) and rewritten_operator_dir and original_operator_dir:
+        rebuilt_layers: Dict[str, Any] = {}
+        original_root = Path(original_operator_dir)
+        rewritten_root = Path(rewritten_operator_dir)
+        for layer_name, meta in layers.items():
+            if not isinstance(meta, dict):
+                rebuilt_layers[layer_name] = meta
+                continue
+            rebuilt_meta = dict(meta)
+            raw_path = str(meta.get("path", ""))
+            try:
+                rel = Path(raw_path).relative_to(original_root)
+                rebuilt_meta["path"] = str(rewritten_root / rel)
+            except Exception:
+                rebuilt_meta["path"] = str(rewritten_root / layer_name)
+            rebuilt_layers[layer_name] = rebuilt_meta
+        rewritten["layers"] = rebuilt_layers
+
+    reference_context = rewritten.get("reference_context")
+    if isinstance(reference_context, dict):
+        rebuilt_reference = dict(reference_context)
+        rebuilt_current_operator_ut: Dict[str, List[str]] = {}
+        for layer_name, values in (reference_context.get("current_operator_ut") or {}).items():
+            if isinstance(values, list):
+                rebuilt_current_operator_ut[str(layer_name)] = [str(item) for item in values if isinstance(item, str)]
+        rebuilt_reference["current_operator_ut"] = rebuilt_current_operator_ut
+        rewritten["reference_context"] = rebuilt_reference
+
+    return rewritten
+
+
+def _sanitize_context_for_generation(context: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = dict(context)
+    generated_project_root = sanitized.get("generated_project_root")
+    if generated_project_root:
+        sanitized = _rewrite_context_for_project_root(sanitized, Path(str(generated_project_root)))
+
+    sanitized["reference_ut_paths"] = []
+    sanitized["existing_ut_files"] = []
+    sanitized["existing_ut_by_layer"] = {}
+    if isinstance(sanitized.get("reference_context"), dict):
+        sanitized["reference_context"] = dict(sanitized["reference_context"])
+        sanitized["reference_context"]["current_operator_ut"] = {}
+    return sanitized
+
+
+def _reference_context(meta: Dict[str, Any]) -> Dict[str, Any]:
+    value = meta.get("reference_context")
+    return value if isinstance(value, dict) else {}
+
+
+def _paths_for_layer(paths: List[Any], layer_id: str) -> List[str]:
+    token = f"/{layer_id}/"
+    return [str(item) for item in paths if isinstance(item, str) and token in item]
+
+
+def _shared_harness_for_layer(meta: Dict[str, Any], layer_id: str) -> List[str]:
+    shared = _reference_context(meta).get("shared_test_harness") or []
+    values = [path for path in _paths_for_layer(shared, layer_id)]
+    values.extend([str(item) for item in shared if isinstance(item, str) and "/common/" in item])
+    return list(dict.fromkeys(values))[:8]
+
+
+def _shared_helpers_for_layer(meta: Dict[str, Any], layer_id: str) -> List[str]:
+    if layer_id != "op_host":
+        return []
+    helpers = _reference_context(meta).get("shared_helpers") or []
+    return [str(item) for item in helpers if isinstance(item, str)][:8]
+
+
+def _operator_impl_for_layer(meta: Dict[str, Any], layer_id: str) -> List[str]:
+    impl_files = _reference_context(meta).get("operator_impl_files") or []
+    return _paths_for_layer(impl_files, layer_id)[:10]
+
+
+def _similar_examples_for_layer(meta: Dict[str, Any], layer_id: str) -> List[str]:
+    examples = _reference_context(meta).get("similar_examples") or []
+    values = _paths_for_layer(examples, layer_id)
+    return values[:6]
+
+
+def _current_operator_ut_for_layer(meta: Dict[str, Any], layer_id: str) -> List[str]:
+    current_ut = _reference_context(meta).get("current_operator_ut") or {}
+    values = current_ut.get(layer_id) if isinstance(current_ut, dict) else []
+    return [str(item) for item in values if isinstance(item, str)][:8]
+
+
+class AscendBaseStage(Stage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+
+    def _skill_provider(self, state) -> AscendSkillProvider:
+        skill_root = getattr(state, "skill_root", "") or load_config().get("profiles", {}).get("ascend_ut", {}).get("skill_root", "")
+        return AscendSkillProvider(skill_root=skill_root)
+
+    def get_config(self) -> StageConfig:
+        return self.config
+
+
+class AscendInspectOperatorStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="understand_function",
+            display_name="Inspect Operator",
+            description="Inspect Ascend operator layout and build context",
+            prompt_template="",
+            input_artifacts=[],
+            output_artifacts=["operator_context.json", "operator_context.md"],
+            tools=["inspect_ascend_operator"],
+            allow_skip=False,
+        )
+
+    def execute(self, state) -> StageResult:
+        ctx = ToolContext(cwd=str(state.project_root), auto_approve=True)
+        params = {
+            "project_root": str(state.project_root),
+            "op_path": state.op_path or state.target,
+            "soc_hint": state.soc,
+        }
+        result = self.tool_runner.execute("inspect_ascend_operator", params, ctx)
+        if not result.ok:
+            return StageResult(False, {}, error=result.error or "inspect_ascend_operator failed")
+
+        context = _json_load(result.output, {})
+        if not context:
+            return StageResult(False, {}, error="inspect_ascend_operator returned empty context")
+
+        state.workflow_kind = "ascend_ut"
+        state.op_path = context.get("op_path", state.op_path)
+        state.repo_name = context.get("repo_name", state.repo_name)
+        state.category = context.get("category", state.category)
+        state.op_name = context.get("op_name", state.op_name or state.op)
+        state.generation_mode = context.get("generation_mode", "ut_generate")
+        state.coverage_mode = context.get("coverage_mode", "single_run")
+        state.enabled_layers = context.get("enabled_layers", [])
+        state.target = context.get("op_path", state.target)
+        state.target_slug = state.op_name
+
+        provider = self._skill_provider(state)
+        guidance = provider.get_stage_packet(
+            "understand_function",
+            generation_mode=context.get("generation_mode", "ut_generate"),
+        )
+        lines = [
+            f"# Ascend operator context - {context.get('op_path', state.target)}",
+            "",
+            "## Mode",
+            f"- Generation mode: `{context.get('generation_mode', 'unknown')}`",
+            f"- Coverage mode: `{context.get('coverage_mode', 'unknown')}`",
+            f"- Existing UT detected: `{context.get('existing_ut_detected', False)}`",
+            f"- Compare scope: {', '.join(context.get('compare_scope', [])) or 'none'}",
+            "",
+            "## Layout",
+            f"- Repo: `{context.get('repo_name', '')}`",
+            f"- Category: `{context.get('category', '')}`",
+            f"- Operator: `{context.get('op_name', '')}`",
+            f"- Operator dir: `{context.get('operator_dir', '')}`",
+            "",
+            "## Enabled Layers",
+        ]
+        for layer in context.get("enabled_layers", []):
+            lines.append(f"- `{layer}`")
+        if context.get("excluded_layers"):
+            lines.extend(["", "## Excluded Layers"])
+            for layer in context.get("excluded_layers", []):
+                lines.append(f"- `{layer}`")
+        lines.extend(
+            [
+                "",
+                "## Build",
+                f"- Selected SoC: `{context.get('selected_soc', '')}`",
+                f"- Supported SoCs: {', '.join(context.get('supported_socs', [])) or 'unknown'}",
+                "",
+                "### build.sh -h summary",
+                "```text",
+                context.get("build_help_summary", "build.sh -h unavailable"),
+                "```",
+                "",
+                "## DType / Format",
+                f"- DTypes: {', '.join(context.get('dtype_candidates', [])) or 'unknown'}",
+                f"- Formats: {', '.join(context.get('format_candidates', [])) or 'unknown'}",
+                "",
+                "## Required Attributes",
+                *(f"- `{name}`" for name in context.get("required_attrs", [])),
+                "",
+                "## Reference UT",
+                *(f"- `{path}`" for path in context.get("reference_ut_paths", [])[:8]),
+                "",
+                "## Shared Harness",
+                *(f"- `{path}`" for path in (context.get("reference_context", {}) or {}).get("shared_test_harness", [])[:8]),
+                "",
+                "## Shared Helpers",
+                *(f"- `{path}`" for path in (context.get("reference_context", {}) or {}).get("shared_helpers", [])[:8]),
+                "",
+                "## Skill Guidance",
+                "```text",
+                guidance,
+                "```",
+            ]
+        )
+        markdown = "\n".join(line for line in lines if line is not None)
+
+        state.save_artifact("operator_context.json", _render_json(context))
+        state.save_artifact("operator_context.md", markdown)
+
+        outputs = {
+            "operator_context.json": _render_json(context),
+            "operator_context.md": markdown,
+        }
+
+        if "op_host" not in context.get("enabled_layers", []):
+            state.auto_stop_reason = "Current operator does not expose comparable op_host/op_api layers"
+            return StageResult(
+                True,
+                outputs,
+                message="No comparable `op_host`/`op_api` layers were found.",
+                complete_workflow=True,
+            )
+
+        if _generation_mode(context) == "ut_enhance":
+            return StageResult(
+                True,
+                outputs,
+                message="Existing op_host/op_api UT detected. The workflow will enhance them in a snapshot and compare before/after coverage.",
+            )
+
+        return StageResult(True, outputs, message="Operator context collected for from-scratch UT generation")
+
+
+class AscendRequirementsStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="generate_requirements",
+            display_name="Generate Requirements",
+            description="Build Ascend UT requirements from deterministic operator context",
+            prompt_template="",
+            input_artifacts=["operator_context.json"],
+            output_artifacts=["requirements.md"],
+            tools=[],
+            allow_skip=False,
+        )
+
+    def execute(self, state) -> StageResult:
+        context = _load_json_artifact(state, "operator_context.json")
+        provider = self._skill_provider(state)
+        layers = context.get("enabled_layers", [])
+        generation_mode = _generation_mode(context)
+        coverage_mode = _coverage_mode(context)
+        guidance = provider.get_stage_packet(
+            "generate_requirements",
+            generation_mode=generation_mode,
+        )
+
+        lines = [
+            f"# Ascend UT Requirements for {context.get('op_path', state.target)}",
+            "",
+            "## 1. Goals and Scope",
+            "- Compare only `op_host` and `op_api`.",
+            "- Exclude ST, op_graph, op_kernel, op_kernel_aicpu, and operator implementation changes.",
+            "",
+            "## 1.1 Mode Selection",
+            f"- generation_mode: `{generation_mode}`",
+            f"- coverage_mode: `{coverage_mode}`",
+        ]
+
+        if generation_mode == "ut_generate":
+            lines.extend(
+                [
+                    "- No current-operator `op_host/op_api` UT are available, so Stage 4 should generate tests from scratch.",
+                    "- It is valid to reference shared test harness files, common helpers, and similar operators from other directories.",
+                    "",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "- Existing current-operator `op_host/op_api` UT are available and should be used as style and framework references.",
+                    "- Stage 4 should enhance coverage by adding companion tests in an isolated snapshot rather than rewriting the original repository.",
+                    "- Before/after coverage comparison uses the current operator's existing UT as the baseline.",
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+            "## 2. Inputs and Constraints",
+            f"- Selected SoC: `{context.get('selected_soc', '')}`",
+            f"- Candidate dtypes: {', '.join(context.get('dtype_candidates', [])) or 'unknown'}",
+            f"- Candidate formats: {', '.join(context.get('format_candidates', [])) or 'unknown'}",
+            f"- Required attrs from op_host: {', '.join(context.get('required_attrs', [])) or 'none detected'}",
+            "",
+            "## 3. Layer Responsibilities",
+            ]
+        )
+
+        if "op_host" in layers:
+            lines.extend(
+                [
+                    "### op_host",
+                ]
+            )
+            if context.get("is_aclnn_exclude"):
+                lines.extend(
+                    [
+                        "- This operator uses `aclnn_exclude` (composite/delegate pattern) — no independent tiling kernel.",
+                        "- Skip tiling tests. Include only infershape coverage.",
+                        "",
+                    ]
+                )
+            else:
+                lines.extend(
+                    [
+                        "- Must include both tiling and infershape coverage.",
+                        "- TDD order: invalid dtype/attr paths before happy-path tiling and shape inference.",
+                        "- CompileInfo type, namespace, headers, and NodeAttrs must match inspection output.",
+                        "",
+                    ]
+                )
+        if "op_api" in layers:
+            lines.extend(
+                [
+                    "### op_api",
+                    "- Cover nullptr, invalid dtype, shape mismatch, and one valid path.",
+                    "- Add out/inplace variants only when the repo exposes corresponding headers or symbols.",
+                    "",
+                ]
+            )
+        lines.extend(
+            [
+                "## 4. Build and Execution",
+                "- Commands come from the Ascend profile templates and run through `build.sh`.",
+            ]
+        )
+        if generation_mode == "ut_generate":
+            lines.extend(
+                [
+                    "- Generated files may be created directly under the operator's `tests/ut/<layer>/` directories.",
+                    "- `CMakeLists.txt` must be generated for every enabled comparable layer directory.",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "- Coverage enhancement must run in an isolated repo snapshot so the original repository remains untouched.",
+                    "- Existing UT files may be read for reference, but all writes must target the snapshot.",
+                    "- Prefer adding companion `*_attest.cpp` files and reuse existing `CMakeLists.txt` when it already picks up directory sources.",
+                ]
+            )
+        lines.extend(
+            [
+                "",
+                "## 5. Coverage and Priorities",
+                "- Priority order: op_host infershape -> op_api."
+                if context.get("is_aclnn_exclude")
+                else "- Priority order: op_host tiling -> op_host infershape -> op_api.",
+            ]
+        )
+        if coverage_mode == "before_after_compare":
+            lines.extend(
+                [
+                    "- Mandatory thresholds: overall line coverage >= 90% and per-layer line coverage >= 85%.",
+                    "- Comparison target: after-enhancement coverage should be >= baseline coverage for each enabled comparable layer.",
+                    "- When enhanced coverage is below threshold or below baseline, prefer filling deferred placeholders before inventing more files.",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "- Mandatory thresholds: overall line coverage >= 80% and per-layer line coverage >= 80%.",
+                    "- When generated coverage is below threshold, prefer filling deferred placeholders before inventing more files.",
+                ]
+            )
+        lines.extend(
+            [
+                "",
+                "## 6. Skill Guidance",
+                "```text",
+                guidance,
+                "```",
+            ]
+        )
+
+        content = "\n".join(lines)
+        state.save_artifact("requirements.md", content)
+        return StageResult(True, {"requirements.md": content}, message="Ascend UT requirements generated")
+
+
+class AscendTestPlanStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="design_test_plan",
+            display_name="Design Test Plan",
+            description="Generate deterministic multi-file Ascend UT plan",
+            prompt_template="",
+            input_artifacts=["operator_context.json", "requirements.md"],
+            output_artifacts=["test_plan.md", "test_plan.json"],
+            tools=[],
+            allow_skip=False,
+        )
+
+    def _build_cases(self, state, context: Dict[str, Any]) -> Dict[str, Any]:
+        files = context.get("suggested_files", [])
+        cpp_files = [entry for entry in files if entry.get("kind") == "cpp"]
+        cases: List[Dict[str, Any]] = []
+        smoke_set: List[str] = []
+        deferred_set: List[str] = []
+        next_case = 1
+
+        def add_case(file_id: str, layer_id: str, case_type: str, priority: str, name: str, inputs: Dict[str, Any], expected: List[str]) -> None:
+            nonlocal next_case
+            block_id = f"CASE_{next_case:02d}"
+            next_case += 1
+            case = {
+                "tc_id": f"TC-{next_case - 1:02d}",
+                "block_id": block_id,
+                "file_id": file_id,
+                "layer_id": layer_id,
+                "case_type": case_type,
+                "priority": priority,
+                "name": name,
+                "inputs": inputs,
+                "expected": expected,
+                "depends_on": [],
+                "test_name_hint": f"{block_id}_{case_type}",
+            }
+            cases.append(case)
+            if priority == "High":
+                smoke_set.append(block_id)
+            else:
+                deferred_set.append(block_id)
+
+        file_lookup = {entry["path"]: entry for entry in cpp_files}
+        op_name = context.get("op_name", state.op)
+        category = context.get("category", state.category)
+        supported_dtypes = context.get("supported_dtypes") or context.get("dtype_candidates") or []
+        supported_formats = context.get("supported_formats") or context.get("format_candidates") or []
+
+        def _find_path(layer_id: str, token: str) -> Optional[str]:
+            for path, entry in file_lookup.items():
+                if entry.get("layer_id") != layer_id:
+                    continue
+                if token in path:
+                    return path
+            return None
+
+        tiling_path = _find_path("op_host", "tiling")
+        infershape_path = _find_path("op_host", "infershape")
+        api_path = _find_path("op_api", f"test_aclnn_{op_name}")
+
+        if tiling_path and not context.get("is_aclnn_exclude"):
+            file_id = file_lookup[tiling_path]["file_id"]
+            add_case(file_id, "op_host", "tiling_invalid_dtype", "High", "unsupported dtype fails", {"dtype": "invalid_or_unsupported"}, ["GRAPH_FAILED"])
+            add_case(file_id, "op_host", "tiling_valid_smoke", "High", "basic tiling success", {"dtype": "primary_supported_dtype"}, ["GRAPH_SUCCESS", "tiling key set"])
+            add_case(file_id, "op_host", "tiling_attr_variant", "Medium", "attr-dependent tiling path", {"attrs": context.get("required_attrs", [])[:2]}, ["attr-specific path exercised"])
+            for dtype in supported_dtypes:
+                add_case(file_id, "op_host", f"tiling_dtype_{dtype}", "Medium", f"tiling with {dtype}", {"dtype": dtype, "shape": "{128,256}"}, ["GRAPH_SUCCESS or dtype-specific tiling path"])
+            add_case(file_id, "op_host", "tiling_scalar_inputs", "Medium", "scalar/tiny shape tiling", {"shape": "[1]"}, ["tiling fallback or success"])
+            add_case(file_id, "op_host", "tiling_large_shape", "Medium", "large shape tiling", {"shape": "[1024, 1024]"}, ["tiling workspace computed"])
+            add_case(file_id, "op_host", "tiling_zero_dim", "Low", "zero-dim / empty tensor tiling", {"shape": "[]"}, ["graceful handle or skip"])
+            add_case(file_id, "op_host", "tiling_broadcast", "Low", "broadcast shape tiling", {"shape_a": "[1, 64]", "shape_b": "[32, 64]"}, ["tiling with broadcast"])
+            for fmt in supported_formats[:3]:
+                add_case(file_id, "op_host", f"tiling_format_{fmt}", "Low", f"tiling format={fmt}", {"format": fmt, "shape": "typical"}, ["format-specific tiling path"])
+            add_case(file_id, "op_host", "tiling_dynamic_shape", "Low", "dynamic shape tiling", {"shape": "{-1}"}, ["dynamic shape tiling handled"])
+            add_case(file_id, "op_host", "tiling_rank3", "Low", "3D tensor tiling", {"shape": "{8,16,32}"}, ["tiling for rank-3"])
+            add_case(file_id, "op_host", "tiling_rank4", "Low", "4D tensor tiling", {"shape": "{1,3,16,16}"}, ["tiling for rank-4"])
+
+        if infershape_path:
+            file_id = file_lookup[infershape_path]["file_id"]
+            add_case(file_id, "op_host", "infershape_basic", "High", "basic shape inference", {"shape": "primary example"}, ["GRAPH_SUCCESS", "expected output shape"])
+            add_case(file_id, "op_host", "infershape_boundary", "Medium", "shape boundary variant", {"shape": "boundary"}, ["boundary shape handled"])
+            for dtype in supported_dtypes[:max(6, len(supported_dtypes))]:
+                add_case(file_id, "op_host", f"infershape_dtype_{dtype}", "Medium", f"infershape with {dtype}", {"dtype": dtype, "shape": "{2,4,8}"}, ["GRAPH_SUCCESS", "dtype preserved"])
+            add_case(file_id, "op_host", "infershape_scalar", "Medium", "scalar shape inference", {"shape": "[1]"}, ["GRAPH_SUCCESS", "scalar output"])
+            add_case(file_id, "op_host", "infershape_high_rank", "Low", "high-rank tensor inference", {"shape": "[2, 4, 8, 16, 32]"}, ["GRAPH_SUCCESS", "rank preserved"])
+            add_case(file_id, "op_host", "infershape_0d", "Low", "zero-dim inference", {"shape": "[]"}, ["GRAPH_SUCCESS or error"])
+            add_case(file_id, "op_host", "infershape_mismatch_rank", "High", "rank mismatch fails", {"shape": "mismatch_rank"}, ["GRAPH_FAILED"])
+            add_case(file_id, "op_host", "infershape_null_input", "High", "null input descriptor", {"input": "null"}, ["GRAPH_FAILED"])
+            for fmt in supported_formats[:3]:
+                add_case(file_id, "op_host", f"infershape_format_{fmt}", "Low", f"infershape format={fmt}", {"format": fmt}, ["GRAPH_SUCCESS", "format preserved"])
+            add_case(file_id, "op_host", "infershape_dynamic", "Medium", "dynamic shape inference", {"shape": "{-1}"}, ["dynamic shape handled"])
+            add_case(file_id, "op_host", "infershape_rank3", "Low", "3D tensor inference", {"shape": "{4,8,16}"}, ["GRAPH_SUCCESS"])
+            add_case(file_id, "op_host", "infershape_rank4", "Low", "4D tensor inference", {"shape": "{2,3,8,8}"}, ["GRAPH_SUCCESS"])
+            add_case(file_id, "op_host", "infershape_rank6", "Low", "6D tensor inference", {"shape": "{2,2,2,4,4,4}"}, ["GRAPH_SUCCESS"])
+
+        if api_path:
+            file_id = file_lookup[api_path]["file_id"]
+            add_case(file_id, "op_api", "api_valid", "High", "valid input smoke", {"dtype": "primary_supported_dtype"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_invalid_dtype", "Medium", "invalid dtype path", {"dtype": "unsupported"}, ["ACLNN_ERR_PARAM_INVALID"])
+            add_case(file_id, "op_api", "api_shape_mismatch", "Low", "shape mismatch path", {"shape": "mismatch"}, ["error or failure code"])
+            add_case(file_id, "op_api", "api_null_output", "High", "null output tensor — use OP_API_UT_EXPECT with valid INPUT and null OUTPUT, NEVER use INPUT(nullptr)", {"input": "valid_tensor", "output": "(aclTensor*)nullptr"}, ["ACLNN_ERR_PARAM_NULLPTR"])
+            add_case(file_id, "op_api", "api_null_workspace", "High", "null workspace pointer", {"workspace": "nullptr"}, ["ACLNN_ERR_PARAM_NULLPTR or workspace_size=0"])
+            for dtype in supported_dtypes[:max(6, len(supported_dtypes))]:
+                add_case(file_id, "op_api", f"api_dtype_{dtype}", "Medium", f"execute with {dtype}", {"dtype": dtype, "shape": "{32,64}"}, ["ACL_SUCCESS", "result verified"])
+            add_case(file_id, "op_api", "api_inplace", "Medium", "inplace variant", {"inplace": True, "dtype": "primary_supported_dtype"}, ["ACL_SUCCESS", "output == input"])
+            add_case(file_id, "op_api", "api_scalar_input", "Medium", "scalar tensor execution", {"shape": "[1]"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_large_shape", "Low", "large shape execution", {"shape": "[512, 512]"}, ["ACL_SUCCESS", "correct result"])
+            add_case(file_id, "op_api", "api_zero_dim", "Low", "zero-dim tensor execution", {"shape": "[]"}, ["ACL_SUCCESS or error"])
+            add_case(file_id, "op_api", "api_broadcast", "Low", "broadcast shape execution", {"shape_a": "[1, 64]", "shape_b": "[32, 64]"}, ["ACL_SUCCESS", "broadcast result"])
+            add_case(file_id, "op_api", "api_boundary_fp", "High", "fp boundary values FLT_MAX/FLT_MIN/DBL_MIN/subnormal", {"values": "FLT_MAX, FLT_MIN, DBL_MIN, subnormal, -FLT_MAX", "dtype": "DT_FLOAT"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_boundary_zero_one", "Medium", "zeros and ones inputs", {"values": "all_zeros, all_ones", "dtype": "DT_FLOAT16"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_boundary_int", "Medium", "int boundary: INT_MIN/INT_MAX/zero/negative", {"values": "INT_MIN, INT_MAX, 0, -1", "dtype": "DT_INT32"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_sign_combos", "Medium", "positive/negative/zero sign combinations", {"values": "all_pos, all_neg, mixed_sign, zeros"}, ["ACL_SUCCESS"])
+            if len(supported_dtypes) >= 2:
+                add_case(file_id, "op_api", "api_dtype_pair_a", "Medium", f"mixed input: {supported_dtypes[0]} x {supported_dtypes[1]}", {"dtype_a": supported_dtypes[0], "dtype_b": supported_dtypes[1]}, ["ACL_SUCCESS or type-promotion error"])
+            if len(supported_dtypes) >= 3:
+                add_case(file_id, "op_api", "api_dtype_pair_b", "Medium", f"mixed input: {supported_dtypes[0]} x {supported_dtypes[2]}", {"dtype_a": supported_dtypes[0], "dtype_b": supported_dtypes[2]}, ["ACL_SUCCESS or type-promotion error"])
+            add_case(file_id, "op_api", "api_rank3", "Medium", "3D tensor execution", {"shape": "{4,8,16}", "dtype": "DT_FLOAT16" if supported_dtypes else "primary_supported_dtype"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_rank4", "Low", "4D tensor execution", {"shape": "{2,3,8,8}", "dtype": "DT_FLOAT16" if supported_dtypes else "primary_supported_dtype"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_rank5", "Low", "5D tensor execution", {"shape": "{2,2,4,4,4}", "dtype": "DT_FLOAT16" if supported_dtypes else "primary_supported_dtype"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_extreme_large", "Low", "very large tensor", {"shape": "{2,65536}"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_large_shape_b", "Low", "large 3D shape", {"shape": "{128,256,64}"}, ["ACL_SUCCESS"])
+            add_case(file_id, "op_api", "api_broadcast_high_rank", "Low", "high-rank broadcast", {"shape_a": "{1,1,64}", "shape_b": "{4,8,64}"}, ["ACL_SUCCESS", "broadcast result"])
+
+        return {
+            "cases": cases,
+            "smoke_set": smoke_set,
+            "deferred_set": deferred_set,
+        }
+
+    def execute(self, state) -> StageResult:
+        context = _load_json_artifact(state, "operator_context.json")
+        provider = self._skill_provider(state)
+        cfg = load_config().get("profiles", {}).get("ascend_ut", {})
+        command_cfg = cfg.get("commands", {})
+        generation_mode = _generation_mode(context)
+        coverage_mode = _coverage_mode(context)
+        guidance = provider.get_stage_packet("design_test_plan", generation_mode=generation_mode)
+
+        case_payload = self._build_cases(state, context)
+        files = context.get("suggested_files", [])
+        build_plan: Dict[str, Dict[str, str]] = {}
+        combined_layers = []
+        for layer in context.get("enabled_layers", []):
+            compile_key = LAYER_COMMAND_KEYS.get(layer, f"compile_{layer}")
+            if compile_key not in command_cfg:
+                continue
+            compile_cmd = command_cfg[compile_key].format(
+                op_name=context.get("op_name", state.op_name or state.op),
+                soc=context.get("selected_soc", state.soc),
+                op_path=context.get("op_path", state.op_path),
+                project_root=str(state.project_root),
+                repo_name=context.get("repo_name", state.repo_name),
+                category=context.get("category", state.category),
+                layer=layer,
+            )
+            coverage_cmd = compile_cmd + str(command_cfg.get("compile_cov_suffix", " --cov"))
+            build_plan[layer] = {
+                "compile": compile_cmd,
+                "coverage": coverage_cmd,
+            }
+            combined_layers.append(layer)
+
+        if len(combined_layers) > 1:
+            layer_flags = " ".join(f"--{LAYER_FLAG_NAMES.get(layer, layer)}" for layer in combined_layers)
+            combined_base = f"bash build.sh -u {layer_flags} --ops='{context.get('op_name', state.op_name or state.op)}' --soc='{context.get('selected_soc', state.soc)}'"
+            build_plan["_combined"] = {
+                "combined_compile": combined_base,
+                "combined_coverage": combined_base + " --cov",
+            }
+
+        plan = {
+            "workflow_kind": "ascend_ut",
+            "generation_mode": generation_mode,
+            "coverage_mode": coverage_mode,
+            "category": context.get("category", state.category),
+            "op_name": context.get("op_name", state.op_name or state.op),
+            "op_path": context.get("op_path", state.op_path),
+            "selected_soc": context.get("selected_soc", state.soc),
+            "enabled_layers": context.get("enabled_layers", []),
+            "compare_scope": context.get("compare_scope", []),
+            "baseline": {
+                "project_root": str(state.project_root),
+                "existing_ut_detected": context.get("existing_ut_detected", False),
+                "existing_ut_by_layer": context.get("existing_ut_by_layer", {}),
+            },
+            "generated": {
+                "project_root": str(_generated_repo_root(state)) if generation_mode == "ut_enhance" else str(state.project_root),
+                "isolated_snapshot": generation_mode == "ut_enhance",
+                "strategy": "companion_files" if generation_mode == "ut_enhance" else "from_scratch",
+            },
+            "files": files,
+            "cases": case_payload["cases"],
+            "smoke_set": case_payload["smoke_set"],
+            "deferred_set": case_payload["deferred_set"],
+            "build_plan": build_plan,
+            "reference_context": context.get("reference_context", {}),
+        }
+
+        md_lines = [
+            f"# Ascend UT Test Plan - {context.get('op_path', state.target)}",
+            "",
+            "## 1. Strategy",
+            f"- generation_mode: `{generation_mode}`",
+            f"- coverage_mode: `{coverage_mode}`",
+            "- First round fills only the smoke set; deferred placeholders remain for coverage-driven iterations.",
+            "- Test names must embed BLOCK_ID for analysis-stage traceability.",
+            "",
+            "## 2. Generated Files",
+        ]
+        if generation_mode == "ut_generate":
+            md_lines.insert(4, "- Multi-file generation with one CMake file per enabled comparable layer.")
+        else:
+            md_lines.insert(4, "- Coverage enhancement uses companion `*_attest.cpp` files inside an isolated snapshot.")
+        for entry in _ordered_files(plan):
+            md_lines.append(f"- `{entry['file_id']}` -> `{entry['path']}` ({entry['layer_id']}, {entry['kind']})")
+
+        md_lines.extend(["", "## 3. Smoke Set"])
+        for block_id in plan["smoke_set"]:
+            md_lines.append(f"- `{block_id}`")
+        md_lines.extend(["", "## 4. Deferred Set"])
+        for block_id in plan["deferred_set"]:
+            md_lines.append(f"- `{block_id}`")
+        md_lines.extend(["", "## 5. Build Plan"])
+        for layer, commands in build_plan.items():
+            if layer.startswith("_"):
+                continue
+            compile_cmd = commands.get("compile")
+            if compile_cmd:
+                md_lines.append(f"- `{layer}` compile: `{compile_cmd}`")
+            coverage_cmd = commands.get("coverage")
+            if coverage_cmd:
+                md_lines.append(f"- `{layer}` coverage: `{coverage_cmd}`")
+        if coverage_mode == "before_after_compare":
+            md_lines.extend(
+                [
+                    "",
+                    "## 6. Baseline vs Enhanced",
+                    f"- Baseline root: `{state.project_root}`",
+                    f"- Generated root: `{_generated_repo_root(state)}`",
+                ]
+            )
+        md_lines.extend(
+            [
+                "",
+                "## 7. Skill Guidance",
+                "```text",
+                guidance,
+                "```",
+            ]
+        )
+
+        plan_md = "\n".join(md_lines)
+        plan_json = _render_json(plan)
+
+        state.save_artifact("test_plan.json", plan_json)
+        state.save_artifact("test_plan.md", plan_md)
+        return StageResult(
+            True,
+            {"test_plan.json": plan_json, "test_plan.md": plan_md},
+            message=f"Generated multi-file Ascend test plan with {len(plan['files'])} files and {len(plan['cases'])} cases",
+        )
+
+
+class AscendCodeGenStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="generate_code",
+            display_name="Generate Code",
+            description="Generate Ascend C++ UT files with semantic block markers",
+            prompt_template="",
+            input_artifacts=["operator_context.json", "requirements.md", "test_plan.json"],
+            output_artifacts=["generation_manifest.json"],
+            tools=["list_files", "read_file", "part_read", "search", "write_file", "replace_in_file", "replace_block", "exec_command"],
+            allow_skip=False,
+        )
+
+    def _prepare_generated_repo(self, state, context: Dict[str, Any]) -> Path:
+        target_root = _generated_repo_root(state)
+        source_root = Path(state.project_root)
+        source_git = source_root / ".git"
+        target_git = target_root / ".git"
+        if target_root.exists():
+            if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
+                shutil.rmtree(target_root)
+            else:
+                _patch_build_sh_for_isolation(target_root)
+                return target_root
+
+        ignore = shutil.ignore_patterns(
+            ".attest",
+            "__pycache__",
+            ".pytest_cache",
+            "build",
+            "*.pyc",
+        )
+        shutil.copytree(source_root, target_root, ignore=ignore)
+        if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
+            raise RuntimeError(f"Generated snapshot is missing git metadata: {target_git}")
+
+        _patch_build_sh_for_isolation(target_root)
+        return target_root
+
+    def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
+        path = project_root / str(file_entry["path"])
+        comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
+
+        if path.exists():
+            if str(file_entry.get("kind")) != "cmake":
+                return False
+            existing_blocks = build_block_entries(path)
+            if existing_blocks:
+                return False
+            original = path.read_text(encoding="utf-8")
+            layer_id = str(file_entry.get("layer_id", ""))
+            lines = [
+                start_marker("HEADER", comment_style),
+                original.rstrip(),
+                end_marker("HEADER", comment_style),
+            ]
+            for case in file_cases:
+                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+            if layer_id == "op_host":
+                lines.extend([
+                    start_marker("FOOTER", comment_style),
+                    f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
+                    f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                    f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                    f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                    f"endif()",
+                    end_marker("FOOTER", comment_style),
+                ])
+            else:
+                lines.append(start_marker("FOOTER", comment_style))
+                lines.append(end_marker("FOOTER", comment_style))
+            content = "\n".join(lines) + "\n"
+            ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+            self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+            return True
+
+        ensure_parent(path)
+        lines = [
+            placeholder_marker("HEADER", comment_style),
+        ]
+        for case in file_cases:
+            lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+        lines.append(placeholder_marker("FOOTER", comment_style))
+        content = "\n".join(lines) + "\n"
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+        return True
+
+    def _select_target_blocks(self, project_root: Path, state, plan: Dict[str, Any], file_entry: Dict[str, Any], analysis_plan: Dict[str, Any], created: bool = False, uncovered_for_layer: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
+        file_id = str(file_entry["file_id"])
+        file_cases = _cases_by_file(plan).get(file_id, [])
+        smoke_ids = set(_smoke_set(plan))
+        targets: List[str] = []
+        path = project_root / str(file_entry["path"])
+        block_entries = {entry["block_id"]: entry for entry in build_block_entries(path)} if path.exists() else {}
+        if created or not path.exists():
+            targets.extend(["HEADER", "FOOTER"])
+        elif not block_entries:
+            targets.extend(["HEADER", "FOOTER"])
+        else:
+            for block_id in ("HEADER", "FOOTER"):
+                if block_entries.get(block_id, {}).get("status") == "placeholder":
+                    targets.append(block_id)
+
+        file_has_failures = False
+        if analysis_plan.get("failures"):
+            for item in analysis_plan.get("failures", []):
+                if not isinstance(item, dict):
+                    continue
+                if item.get("file_id") != file_id:
+                    continue
+                block_id = str(item.get("block_id") or "")
+                if block_id and block_id not in targets:
+                    targets.append(block_id)
+                file_has_failures = True
+            if file_has_failures:
+                return targets
+
+        if getattr(state, "epoch_current", 1) == 1:
+            for case in file_cases:
+                if case["block_id"] in smoke_ids:
+                    targets.append(str(case["block_id"]))
+            return list(dict.fromkeys(targets))
+
+        deferred_ids = set(_deferred_set(plan))
+        placeholder_count = 0
+        max_blocks_per_epoch = plan.get("block_limit", 6)
+        for case in file_cases:
+            block_id = str(case["block_id"])
+            if block_id not in deferred_ids:
+                continue
+            entry = block_entries.get(block_id)
+            if entry and entry.get("status") == "placeholder":
+                targets.append(block_id)
+                placeholder_count += 1
+                if placeholder_count >= max_blocks_per_epoch:
+                    break
+
+        layer_id = str(file_entry.get("layer_id", ""))
+        if uncovered_for_layer and layer_id and layer_id in uncovered_for_layer:
+            udata = uncovered_for_layer[layer_id]
+            if udata.get("files") and udata.get("total_uncovered", 0) > 0:
+                if "HEADER" not in targets:
+                    targets.append("HEADER")
+
+        return list(dict.fromkeys(targets))
+
+    def _tool_schemas(self) -> List[Dict[str, Any]]:
+        allowed = set(self.config.tools)
+        return [
+            schema
+            for schema in self.tool_runner.registry.to_llm_schema()
+            if schema["function"]["name"] in allowed
+        ]
+
+    def _validate_generated_code(self, project_root: Path, file_entry) -> Optional[List[str]]:
+        violations: List[str] = []
+        target_path = project_root / str(file_entry["path"])
+        if not target_path.exists():
+            return None
+        content = target_path.read_text(encoding="utf-8", errors="replace")
+        if "TestPrecision" in content:
+            violations.append(
+                f"{str(file_entry['path'])} contains 'TestPrecision' call. "
+                "TestPrecision() invokes real device API and will segfault in UT. "
+                "Replace ALL TestPrecision() calls with TestGetWorkspaceSize(&ws)."
+            )
+        if re.search(r"INPUT\s*\([^)]*nullptr[^)]*\)", content):
+            violations.append(
+                "Code passes nullptr to INPUT macro; this will cause segfault. "
+                "IMPORTANT: INPUT() must ALWAYS receive a valid TensorDesc (e.g. `auto in = TensorDesc({128}, ACL_FLOAT); ... INPUT(in)`). "
+                "For nullptr validation, pass nullptr to OUTPUT only: `OP_API_UT_EXPECT(aclnnXxx, INPUT(valid_in), OUTPUT((aclTensor*)nullptr))` returns ACLNN_ERR_PARAM_NULLPTR."
+            )
+        if re.search(r"(?<!\w)aclnn\w+\s*\(", content) and "OP_API_UT" not in content:
+            violations.append(
+                "Code calls aclnn* API directly without OP_API_UT macro. "
+                "Use OP_API_UT(aclnnXxx, INPUT(...), OUTPUT(...)) instead."
+            )
+        if re.search(r"\bint\s+main\s*\(", content):
+            violations.append(
+                "Code defines main() function. "
+                "This conflicts with test_op_api_main.cpp. Remove the main() definition."
+            )
+        return violations if violations else None
+
+    def _run_compile_check(self, project_root: Path, layer_id: str, plan: Dict[str, Any]) -> tuple[bool, str]:
+        build_plan = plan.get("build_plan") or {}
+        layer_cmd = build_plan.get(layer_id, {})
+        compile_cmd = layer_cmd.get("compile", "") if isinstance(layer_cmd, dict) else ""
+        if not compile_cmd:
+            return True, ""
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        result = self.tool_runner.execute("exec_command", {"cmd": compile_cmd}, ctx, source="framework")
+        output = (result.output if result.output else result.error or "")
+        return result.ok, output
+
+    def _run_binary_check(self, project_root: Path, layer_id: str, plan: Dict[str, Any]) -> tuple[bool, str]:
+        build_plan = plan.get("build_plan") or {}
+        layer_cmd = build_plan.get(layer_id, {})
+        compile_cmd = layer_cmd.get("compile", "") if isinstance(layer_cmd, dict) else ""
+        if not compile_cmd:
+            return True, ""
+        run_cmd = f"{compile_cmd} 2>&1 | tail -200"
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        result = self.tool_runner.execute("exec_command", {"cmd": run_cmd}, ctx, source="framework")
+        output = (result.output if result.output else result.error or "")
+        return result.ok, output
+
+    def _run_repair_with_verification(
+        self,
+        state,
+        project_root: Path,
+        file_entry: Dict[str, Any],
+        error_kind: str,
+        error_text: str,
+        target_blocks: List[str],
+        plan: Optional[Dict[str, Any]] = None,
+    ) -> StageResult:
+        file_path = str(file_entry["path"])
+        layer_id = str(file_entry.get("layer_id", ""))
+        compile_cmd = ""
+        if plan:
+            build_plan_dict = plan.get("build_plan") or {}
+            layer_cmds = build_plan_dict.get(layer_id, {}) if isinstance(build_plan_dict, dict) else {}
+            compile_cmd = str(layer_cmds.get("compile", ""))
+        recompile_hint = f"exec_command(cmd=\"{compile_cmd}\")" if compile_cmd else "the build command for this layer"
+        rerun_hint = f"exec_command(cmd=\"{compile_cmd} 2>&1 | tail -100\")" if compile_cmd else "the build command for this layer (build.sh runs tests automatically)"
+        repair_prompt = f"""The C++ file `{file_path}` has a **{error_kind}**. Fix it in a reflection loop.
+
+## FULL ERROR OUTPUT (read carefully):
+```
+{error_text}
+```
+
+## REFLECTION PROCESS (follow strictly):
+
+1. **Read this error carefully**. Identify the exact line, file, error message, and what caused it.
+2. **Reason about the root cause**:
+   - If compile error: what API did you call with wrong arguments? What type mismatch?
+   - If runtime abort / assertion failure: what input value (dtype/shape/scalar) did you pass that violates the API's contract?
+3. **Read the source** of the failing function via `read_file` to confirm its actual signature / valid input contract.
+   Do NOT guess — verify.
+4. **Fix the code** via `replace_in_file`. Make the MINIMAL correct change.
+5. **Re-compile**: {recompile_hint}
+6. If compile passes, **re-run tests**: {rerun_hint}
+7. Repeat steps 1-6 until tests run cleanly without abort.
+
+When done, output a brief summary of:
+- what the actual root cause was
+- what code change resolved it
+- what lesson you learned for future blocks in this same file
+"""
+        return self._run_llm_session(state, repair_prompt, project_root)
+
+    def _repair_file(
+        self,
+        state,
+        project_root: Path,
+        file_entry: Dict[str, Any],
+        compile_error: str,
+        target_blocks: List[str],
+    ) -> StageResult:
+        file_path = str(file_entry["path"])
+        repair_prompt = f"""The C++ file `{file_path}` failed to compile. Fix the compilation errors.
+
+Target blocks to fix: {', '.join(target_blocks)}
+
+Compilation errors:
+```
+{compile_error[:3000]}
+```
+
+Rules:
+1. Use only `read_file`, `replace_block`, `replace_in_file`, and `write_file`.
+2. Read the file first to understand the current state, then fix the errors.
+3. Focus on the specific error messages: type mismatches, missing includes, incorrect API usage, etc.
+4. Do not modify blocks that are not in the target set.
+5. Keep the fix minimal — only change what is needed to resolve the compilation errors.
+
+Fix the file now."""
+        return self._run_llm_session(state, repair_prompt, project_root)
+
+    def _ensure_cmake_attest_registration(
+        self,
+        project_root: Path,
+        file_entry: Dict[str, Any],
+    ) -> None:
+        file_path = str(file_entry.get("path", ""))
+        if not file_path.endswith("_attest.cpp"):
+            return
+        layer_id = str(file_entry.get("layer_id", ""))
+        cpp_name = Path(file_path).name
+        cmake_path = project_root / str(Path(file_path).parent / "CMakeLists.txt")
+        if not cmake_path.exists():
+            return
+        content = cmake_path.read_text(encoding="utf-8")
+        if cpp_name in content:
+            return
+        lines = content.splitlines()
+        insert_idx = None
+        footer_end_marker = "# ==== BLOCK:FOOTER END ===="
+        for i, line in enumerate(lines):
+            if footer_end_marker in line:
+                insert_idx = i
+                break
+        if insert_idx is None:
+            return
+        if layer_id == "op_api":
+            reg_lines = [
+                f"set(OP_API_TEST_SOURCES",
+                f"    {cpp_name}",
+                f")",
+                "",
+                f"if(DEFINED OP_API_MODULE_NAME)",
+                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT ${{OP_API_TEST_SOURCES}})",
+                f"endif()",
+            ]
+        else:
+            reg_lines = [
+                f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"endif()",
+            ]
+        new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
+        cmake_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+    def _build_combined_layer_prompt(
+        self,
+        state,
+        file_entries: List[Dict[str, Any]],
+        plan: Dict[str, Any],
+        project_root: Path,
+        all_target_blocks: Dict[str, List[str]],
+        cases_by_file: Dict[str, List[Dict[str, Any]]],
+        slim_context: Dict[str, Any],
+        analysis_plan: Dict[str, Any],
+        uncovered_for_layer: Dict[str, Any],
+        prev_error_context: str,
+        case_inventory_context: str,
+        generation_mode: str,
+        provider,
+    ) -> str:
+        """Build a unified prompt for processing all files of one layer in a single session."""
+        if not file_entries:
+            return ""
+
+        layer_id = str(file_entries[0].get("layer_id", ""))
+        build_plan_dict = plan.get("build_plan") or {}
+        layer_cmds = build_plan_dict.get(layer_id, {}) if isinstance(build_plan_dict, dict) else {}
+        compile_cmd_for_layer = str(layer_cmds.get("compile", ""))
+        coverage_cmd_for_layer = str(layer_cmds.get("coverage", ""))
+
+        # Build per-file sections
+        file_sections: List[str] = []
+        for fe in file_entries:
+            file_id = str(fe["file_id"])
+            target_blocks = all_target_blocks.get(file_id, [])
+            file_cases = cases_by_file.get(file_id, [])
+            block_index = build_block_index_json(project_root / str(fe["path"]))
+            file_sections.append(
+                f"### File: `{fe['path']}` (file_id={file_id}, layer={fe.get('layer_id')}, kind={fe.get('kind')})\n"
+                f"Target blocks: {', '.join(target_blocks)}\n"
+                f"Cases:\n```json\n{json.dumps(file_cases, ensure_ascii=False, indent=2)}\n```\n"
+                f"Current block index:\n```json\n{block_index}\n```\n"
+            )
+
+        # Build uncovered section for this layer
+        uncovered_section = ""
+        epoch = int(getattr(state, "epoch_current", 1) or 1)
+        if epoch > 1 and layer_id in uncovered_for_layer:
+            udata = uncovered_for_layer[layer_id]
+            files_info = udata.get("files", [])
+            parts: List[str] = []
+            for fi in files_info[:4]:
+                src_path = fi.get("source", "")
+                snippets = fi.get("snippets", [])
+                if not snippets:
+                    continue
+                parts.append(f"\n### Source: {src_path}")
+                for s in snippets[:5]:
+                    parts.append(
+                        f"\nLine {s.get('line')} is NOT covered:\n```cpp\n{s.get('context', '')}\n```"
+                    )
+            if parts:
+                uncovered_section = (
+                    f"\n## UNCOVERED CODE from previous epoch ({udata.get('total_uncovered', 0)} lines total)\n"
+                    "Design tests that specifically trigger these uncovered branches.\n"
+                    + "\n".join(parts)
+                    + "\n"
+                )
+
+        unified_section = ""
+        if compile_cmd_for_layer:
+            unified_section = f"""
+## UNIFIED GENERATE-COMPILE-TEST MODE
+
+You are processing ALL files for the `{layer_id}` layer in a SINGLE session.
+Process them in order. After completing ALL files, compile once and fix any errors.
+
+Build command (compiles AND runs tests):
+```
+exec_command(cmd="{compile_cmd_for_layer}")
+```
+
+Coverage command (run after all blocks are complete):
+```
+exec_command(cmd="{coverage_cmd_for_layer}")
+```
+
+For each file:
+1. Write all target blocks using `replace_block` / `replace_in_file` / `write_file`.
+2. After finishing ALL files, run the build command above.
+3. If compile errors → read the error, identify root cause, read source if needed, fix, re-compile.
+4. If runtime abort → read the error, find the bad input, fix, re-compile.
+5. After clean run, check coverage and add targeted tests for uncovered lines.
+
+NOTE: build.sh compiles AND runs tests automatically — no `--run` flag needed.
+"""
+
+        skill_packet = provider.get_stage_packet("generate_code", layer_id, generation_mode=generation_mode)
+
+        prompt = f"""You are generating Ascend C++ UT code for multiple files in the `{layer_id}` layer.
+
+Operator context:
+```json
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:1500]}
+```
+
+{_build_ws_sig_section(layer_id, slim_context)}
+
+Epoch: {getattr(state, 'epoch_current', 1)}/{getattr(state, 'epoch_total', 1)}
+
+## Files to process (in order):
+
+{"".join(file_sections)}
+
+Analysis plan:
+```json
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)}
+```
+
+Rules:
+1. Use only `list_files`, `read_file`, `part_read`, `search`, `replace_block`, `replace_in_file`, `write_file`, `append_to_file`, and `exec_command`.
+2. Fill only the listed target blocks for each file. Do not modify other blocks.
+3. Keep every test name traceable to its BLOCK_ID.
+4. For `*.cpp`, use `// ==== BLOCK:... ====`. For `CMakeLists.txt`, use `# ==== BLOCK:... ====`.
+5. Use relative paths rooted at the current working directory.
+6. After completing ALL files, compile and fix errors.
+7. Share fixture classes and helper functions across files in this layer (define in the first file, reference in others).
+8. Keep generated code compile-oriented and minimal.
+
+Skill packet:
+```text
+{skill_packet}
+```
+{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}
+Complete all files now, then compile and verify."""
+        return prompt
+
+    def _run_shared_layer_session(
+        self,
+        state,
+        file_entries: List[Dict[str, Any]],
+        plan: Dict[str, Any],
+        project_root: Path,
+        all_target_blocks: Dict[str, List[str]],
+        cases_by_file: Dict[str, List[Dict[str, Any]]],
+        slim_context: Dict[str, Any],
+        analysis_plan: Dict[str, Any],
+        uncovered_for_layer: Dict[str, Any],
+        prev_error_context: str,
+        case_inventory_context: str,
+        generation_mode: str,
+        provider,
+    ) -> StageResult:
+        """Run a single LLM session that processes all files of one layer together."""
+        prompt = self._build_combined_layer_prompt(
+            state, file_entries, plan, project_root,
+            all_target_blocks, cases_by_file, slim_context, analysis_plan,
+            uncovered_for_layer, prev_error_context, case_inventory_context,
+            generation_mode, provider,
+        )
+        # Give extra turns proportional to the number of files
+        turn_limit = min(240, 100 * len(file_entries))
+        return self._run_llm_session(state, prompt, project_root, turn_limit=turn_limit)
+
+    def _run_llm_session(self, state, prompt: str, project_root: Path, turn_limit: int = 120) -> StageResult:
+        messages = [{"role": "user", "content": prompt}]
+        append_message(
+            session_id=getattr(state, "workflow_id", "workflow"),
+            role="user",
+            content={"stage": self.config.name, "prompt": prompt},
+            workspace=str(state.workspace),
+            stage=self.config.name,
+        )
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        tool_schemas = self._tool_schemas()
+
+        STAGNATION_LIMIT = 8
+        _stagnation_streak = 0
+        _last_tool_calls_signature = ""
+
+        _api400_retries = 0
+
+        for turn in range(turn_limit):
+            _made_progress = False
+            _api400_response = None
+            while _api400_response is None:
+                try:
+                    _api400_response = self.llm.chat(messages, tools=tool_schemas)
+                except Exception as exc:
+                    exc_str = str(exc)
+                    if "400" in exc_str and _api400_retries < 3:
+                        _api400_retries += 1
+                        warning_msg = (
+                            f"⚠️ API returned HTTP 400 (arguments too large). "
+                            f"Retry {_api400_retries}/3. "
+                            f"Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
+                            f"then use `append_to_file` to add remaining content in batches of ~100 lines each. "
+                            f"Keep each tool call under 5000 characters."
+                        )
+                        messages.append({"role": "user", "content": warning_msg})
+                        _made_progress = True
+                        break
+                    return StageResult(False, {}, error=f"LLM call failed: {exc}")
+            if _api400_response is None:
+                continue
+            response = _api400_response
+
+            assistant_msg = {
+                "role": "assistant",
+                "content": response.content,
+                "reasoning_content": getattr(response, "reasoning_content", "") or "",
+            }
+            if response.tool_calls:
+                assistant_msg["tool_calls"] = response.tool_calls
+            messages.append(assistant_msg)
+            append_message(
+                session_id=getattr(state, "workflow_id", "workflow"),
+                role="assistant",
+                content=assistant_msg,
+                workspace=str(state.workspace),
+                stage=self.config.name,
+            )
+
+            if not response.has_tool_calls():
+                return StageResult(True, {}, message=response.content or "Generated file blocks")
+
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["function"]["name"]
+                try:
+                    tool_args = json.loads(tool_call["function"]["arguments"])
+                except json.JSONDecodeError:
+                    warning_msg = (
+                        "⚠️ Your previous tool call was rejected — the arguments were truncated (invalid JSON). "
+                        "Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
+                        "then use `append_to_file` to add remaining content in batches of ~100 lines each. "
+                        "Keep each tool call under 5000 characters."
+                    )
+                    messages.append({"role": "user", "content": warning_msg})
+                    _made_progress = True
+                    continue
+                tool_result = self.tool_runner.execute(tool_name, tool_args, ctx)
+                if tool_result.ok and tool_name in {
+                    "write_file", "replace_in_file", "replace_block", "append_to_file",
+                }:
+                    _made_progress = True
+                tool_msg = {
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "content": tool_result.output if tool_result.ok else tool_result.error or "",
+                }
+                messages.append(tool_msg)
+                append_message(
+                    session_id=getattr(state, "workflow_id", "workflow"),
+                    role="tool",
+                    content=tool_msg,
+                    workspace=str(state.workspace),
+                    stage=self.config.name,
+                )
+
+            # Stagnation detection
+            current_sig = json.dumps(
+                [
+                    {"fn": tc["function"]["name"], "args": tc["function"]["arguments"]}
+                    for tc in (response.tool_calls or [])
+                ],
+                sort_keys=True,
+            )
+            if not _made_progress and current_sig == _last_tool_calls_signature:
+                _stagnation_streak += 1
+            else:
+                _stagnation_streak = 0
+            _last_tool_calls_signature = current_sig
+
+            if _stagnation_streak >= STAGNATION_LIMIT:
+                print(
+                    f"\n  ⚠️  Early stop: {STAGNATION_LIMIT} consecutive iterations"
+                    " without progress; exiting tool-calling loop"
+                )
+                return StageResult(
+                    success=False,
+                    outputs={},
+                    error=(
+                        f"Early stop: {STAGNATION_LIMIT} consecutive iterations"
+                        " without file modifications"
+                    ),
+                )
+
+            # Sliding-window context compression: keep prompt + last 60 turns
+            if turn > 0 and turn % 100 == 0 and len(messages) > 125:
+                messages = _compress_old_messages(messages, keep_recent=60)
+
+        return StageResult(False, {}, error="Maximum tool-calling iterations reached")
+
+    def execute(self, state) -> StageResult:
+        plan = _load_json_artifact(state, "test_plan.json")
+        context = _load_json_artifact(state, "operator_context.json")
+        analysis_plan = _load_json_artifact(state, "analysis_plan.json", default=_default_analysis_plan())
+        provider = self._skill_provider(state)
+        cases_by_file = _cases_by_file(plan)
+        project_root = _llm_project_root(state, context)
+        generation_mode = _generation_mode(context)
+        coverage_mode = _coverage_mode(context)
+        if _is_enhance_mode(context):
+            project_root = self._prepare_generated_repo(state, context)
+        prompt_context = dict(context)
+        prompt_context["generated_project_root"] = str(project_root)
+        if generation_mode == "ut_generate":
+            prompt_context = _sanitize_context_for_generation(prompt_context)
+        else:
+            prompt_context = _rewrite_context_for_project_root(prompt_context, project_root)
+
+        slim_context = {
+            "op_name": prompt_context.get("op_name"),
+            "generation_mode": prompt_context.get("generation_mode"),
+            "coverage_mode": prompt_context.get("coverage_mode"),
+            "selected_soc": prompt_context.get("selected_soc"),
+            "enabled_layers": prompt_context.get("enabled_layers"),
+            "is_aclnn_exclude": prompt_context.get("is_aclnn_exclude"),
+            "dtype_candidates": prompt_context.get("dtype_candidates", [])[:20],
+            "format_candidates": prompt_context.get("format_candidates", [])[:20],
+            "build_help_summary": prompt_context.get("build_help_summary", "")[:500],
+            "build_commands": prompt_context.get("build_commands", {}),
+            "workspace_signatures": prompt_context.get("workspace_signatures", []),
+        }
+        slim_context = {k: v for k, v in slim_context.items() if v is not None}
+
+        uncovered_for_layer: Dict[str, Dict[str, Any]] = {}
+        if int(getattr(state, "epoch_current", 1) or 1) > 1:
+            try:
+                uncovered_payload = _load_json_artifact(state, "uncovered_code.json", default={})
+                for layer_data in uncovered_payload.get("layers", []):
+                    layer = str(layer_data.get("layer", ""))
+                    if layer:
+                        uncovered_for_layer[layer] = {
+                            "files": layer_data.get("files", []),
+                            "total_uncovered": layer_data.get("total_uncovered", 0),
+                        }
+            except Exception:
+                pass
+
+        # P4: load previous-epoch error log and case inventory for cross-epoch context
+        prev_error_context = ""
+        case_inventory_context = ""
+        if int(getattr(state, "epoch_current", 1) or 1) > 1:
+            try:
+                prev_error_log = state.load_artifact("prev_epoch_error_log.txt") or ""
+                if prev_error_log.strip():
+                    prev_error_context = (
+                        "\n## Previous Epoch Build/Test Errors (first 4000 chars)\n"
+                        "```\n" + str(prev_error_log)[:4000] + "\n```\n"
+                        "Do NOT repeat the same approach that caused these errors.\n"
+                    )
+            except Exception:
+                pass
+            try:
+                inv = _load_json_artifact(state, "case_inventory.json", default={})
+                blocks = inv.get("generated_blocks", [])
+                if blocks:
+                    filled = [b["block_id"] for b in blocks if b.get("status") == "filled"]
+                    placeholder = [b["block_id"] for b in blocks if b.get("status") == "placeholder"]
+                    case_inventory_context = (
+                        "\n## Previous Epoch Case Status\n"
+                        f"Already filled blocks (do NOT regenerate): {', '.join(filled[:30]) or 'none'}\n"
+                        f"Still placeholder (focus of this epoch): {', '.join(placeholder[:30]) or 'none'}\n"
+                    )
+            except Exception:
+                pass
+
+        manifest: List[Dict[str, Any]] = []
+        cross_file_notes: List[str] = []
+
+        # Check if shared-layer-session mode is enabled (Phase 2, off by default)
+        _use_shared = load_config().get("profiles", {}).get("ascend_ut", {}).get(
+            "enable_shared_layer_session", False
+        )
+
+        # First pass: ensure skeletons for all files; collect cmake entries
+        files_needing_llm: List[Dict[str, Any]] = []
+        for file_entry in _ordered_files(plan):
+            file_id = str(file_entry["file_id"])
+            file_cases = cases_by_file.get(file_id, [])
+            created = self._ensure_skeleton(project_root, file_entry, file_cases)
+            if created and str(file_entry.get("kind")) == "cmake":
+                manifest.append({
+                    "file_id": file_id,
+                    "path": file_entry["path"],
+                    "action": "updated",
+                    "target_blocks": ["HEADER", "FOOTER"],
+                })
+                continue
+            target_blocks = self._select_target_blocks(
+                project_root, state, plan, file_entry, analysis_plan,
+                created=created, uncovered_for_layer=uncovered_for_layer,
+            )
+            if not target_blocks:
+                manifest.append({"file_id": file_id, "path": file_entry["path"], "action": "skip"})
+                continue
+            files_needing_llm.append({
+                "entry": file_entry,
+                "file_id": file_id,
+                "target_blocks": target_blocks,
+                "created": created,
+            })
+
+        # Group non-cmake files by layer
+        files_by_layer: Dict[str, List[Dict[str, Any]]] = {}
+        for item in files_needing_llm:
+            layer = str(item["entry"].get("layer_id", ""))
+            files_by_layer.setdefault(layer, []).append(item)
+
+        # Process each layer group
+        for layer_id_key in sorted(files_by_layer, key=lambda l: LAYER_ORDER.get(l, 99)):
+            layer_items = files_by_layer[layer_id_key]
+
+            if _use_shared and len(layer_items) > 1:
+                # --- Shared session path (Phase 2) ---
+                all_target_blocks = {item["file_id"]: item["target_blocks"] for item in layer_items}
+                shared_result = self._run_shared_layer_session(
+                    state=state,
+                    file_entries=[item["entry"] for item in layer_items],
+                    plan=plan,
+                    project_root=project_root,
+                    all_target_blocks=all_target_blocks,
+                    cases_by_file=cases_by_file,
+                    slim_context=slim_context,
+                    analysis_plan=analysis_plan,
+                    uncovered_for_layer=uncovered_for_layer,
+                    prev_error_context=prev_error_context,
+                    case_inventory_context=case_inventory_context,
+                    generation_mode=generation_mode,
+                    provider=provider,
+                )
+                session_ok = shared_result.success
+
+                # Post-session validation for each file in the group
+                for item in layer_items:
+                    file_entry = item["entry"]
+                    file_id = item["file_id"]
+                    target_blocks = item["target_blocks"]
+                    layer_id = str(file_entry["layer_id"])
+
+                    if str(file_entry.get("kind")) == "cmake":
+                        self._ensure_cmake_attest_registration(project_root, file_entry)
+                        manifest.append({
+                            "file_id": file_id,
+                            "path": file_entry["path"],
+                            "action": "updated",
+                            "target_blocks": target_blocks,
+                        })
+                        continue
+
+                    code_violations = self._validate_generated_code(project_root, file_entry)
+                    if code_violations:
+                        violated_path = project_root / str(file_entry["path"])
+                        quarantine = violated_path.with_suffix(violated_path.suffix + ".safety_violation.bak")
+                        try:
+                            shutil.move(str(violated_path), str(quarantine))
+                        except Exception:
+                            pass
+                        cross_file_notes.append(
+                            f"{file_id}: safety violation - {'; '.join(code_violations)[:200]}; skipping"
+                        )
+                        manifest.append({
+                            "file_id": file_id,
+                            "path": file_entry["path"],
+                            "action": "error",
+                            "reason": f"safety_violations: {'; '.join(code_violations)[:300]}",
+                        })
+                        continue
+
+                    self._ensure_cmake_attest_registration(project_root, file_entry)
+
+                    MAX_REPAIR_ROUNDS = 3
+                    verified = False
+                    for repair_round in range(MAX_REPAIR_ROUNDS):
+                        compile_ok, compile_output = self._run_compile_check(project_root, layer_id, plan)
+                        if not compile_ok:
+                            error_summary = compile_output[:4000]
+                            print(f"  ⚠️  Compile check failed for {file_id} (round {repair_round + 1}); "
+                                  f"attempting LLM repair...")
+                            repair_result = self._run_repair_with_verification(
+                                state, project_root, file_entry,
+                                error_kind="compile_error",
+                                error_text=error_summary,
+                                target_blocks=target_blocks,
+                                plan=plan,
+                            )
+                            if not repair_result.success:
+                                cross_file_notes.append(
+                                    f"{file_id}: compile failed after repair round {repair_round + 1}"
+                                )
+                                break
+                            continue
+                        run_ok, run_output = self._run_binary_check(project_root, layer_id, plan)
+                        abort_keywords = ("Assertion", "Aborted", "SIGSEGV", "core dumped",
+                                          "terminate called", "Subprocess aborted")
+                        if not run_ok or any(kw in run_output for kw in abort_keywords):
+                            abort_snippet = run_output[:4000]
+                            print(f"  ⚠️  Runtime abort/assertion failure for {file_id} (round {repair_round + 1}); "
+                                  f"attempting in-session reflection fix...")
+                            repair_result = self._run_repair_with_verification(
+                                state, project_root, file_entry,
+                                error_kind="runtime_abort",
+                                error_text=abort_snippet,
+                                target_blocks=target_blocks,
+                                plan=plan,
+                            )
+                            if not repair_result.success:
+                                cross_file_notes.append(
+                                    f"{file_id}: runtime abort after repair round {repair_round + 1}"
+                                )
+                                break
+                            continue
+                        verified = True
+                        break
+                    else:
+                        if not verified:
+                            cross_file_notes.append(
+                                f"{file_id}: still failing after {MAX_REPAIR_ROUNDS} repair rounds; continuing"
+                            )
+
+                    if session_ok:
+                        cross_file_notes.append(f"{file_id}: completed successfully (shared session, {len(target_blocks)} blocks)")
+                    manifest.append({
+                        "file_id": file_id,
+                        "path": file_entry["path"],
+                        "action": "updated" if verified else "updated_unverified",
+                        "target_blocks": target_blocks,
+                    })
+
+            else:
+                # --- Original per-file session path (single file OR shared disabled) ---
+                for item in layer_items:
+                    file_entry = item["entry"]
+                    file_id = item["file_id"]
+                    target_blocks = item["target_blocks"]
+
+                    shared_harness_paths = _shared_harness_for_layer(prompt_context, layer_id)
+                    shared_helper_paths = _shared_helpers_for_layer(prompt_context, layer_id)
+                    operator_impl_paths = _operator_impl_for_layer(prompt_context, layer_id)
+                    similar_example_paths = _similar_examples_for_layer(prompt_context, layer_id)
+                    current_operator_ut_paths = _current_operator_ut_for_layer(prompt_context, layer_id)
+
+                    existing_scenarios: List[str] = []
+                    baseline_root = Path(state.project_root)
+                    for ut_path_str in current_operator_ut_paths:
+                        ut_path = baseline_root / ut_path_str
+                        existing_scenarios.extend(_extract_existing_test_scenarios(ut_path))
+                    if len(existing_scenarios) > 30:
+                        existing_scenarios = existing_scenarios[:30]
+
+                    if generation_mode == "ut_generate":
+                        mode_rules = [
+                            "9. Current-operator `op_host/op_api` UT do not exist in this mode. Generate from scratch and do not invent references to missing local UT files.",
+                            "10. Use the listed shared harness, shared helpers, operator implementation files, and similar examples before doing broad recursive searches.",
+                            "11. If you need to inspect a directory, use `list_files` or `search`. Do not call `read_file` on directories.",
+                            "12. Use relative paths rooted at the current working directory. Do not call any tool with an absolute path.",
+                        ]
+                        mode_guidance = [
+                            "- `ut_generate`: no current-operator `op_host/op_api` UT exist; generate compile-oriented tests from scratch.",
+                            "- Shared harness files and similar operators are the primary references for style and helper usage.",
+                            "- DType name mapping: DT_FLOAT→ACL_FLOAT, DT_FLOAT16→ACL_FLOAT16, DT_BF16→ACL_BF16, "
+                            "DT_INT32→ACL_INT32, DT_INT64→ACL_INT64, DT_DOUBLE→ACL_DOUBLE, DT_BOOL→ACL_BOOL, "
+                            "DT_INT8→ACL_INT8, DT_INT16→ACL_INT16, DT_UINT8→ACL_UINT8.",
+                            "- Each TEST_F block should cover multiple dtype+shape combinations for diversity (see Rule 16).",
+                        ]
+                        reference_paths = similar_example_paths
+                    else:
+                        mode_rules = [
+                            "9. Current-operator `op_host/op_api` UT exist in this snapshot and may be read as references. Do not overwrite files outside the generated snapshot.",
+                            "10. Prefer companion `*_attest.cpp` files and preserve the current operator's existing UT structure unless the target block explicitly requires otherwise.",
+                            "11. Use the listed current-operator UT, shared harness, shared helpers, and operator implementation files before doing broad recursive searches.",
+                            "12. Use relative paths rooted at the current working directory. Do not call any tool with an absolute path.",
+                        ]
+                        mode_guidance = [
+                            "- `ut_enhance`: enhance coverage in the generated snapshot while keeping the original repository untouched.",
+                            "- Current-operator UT references below are the primary style and harness references for this layer.",
+                            "- CRITICAL: NEVER call `TestPrecision()` in generated tests. `TestPrecision()` invokes the real device kernel and will segfault in the UT environment. "
+                            "Only call `TestGetWorkspaceSize(&ws)` which safely validates parameters and calculates workspace size without device execution.",
+                            "- To maximize coverage, each TEST_F block MUST contain multiple `TestGetWorkspaceSize` calls covering: "
+                            "(a) at least 3 different dtypes: ACL_FLOAT16, ACL_FLOAT, ACL_BF16, ACL_INT32, ACL_INT64 — use `aclCreateTensor` with each dtype, "
+                            "(b) at least 3 different shapes: {1}, {32,64}, {2,3,8,8}, {128,256}, {65536}, "
+                            "(c) boundary values: NaN, Inf, zeros, INT_MIN/INT_MAX, and negative values via appropriate data initialization, "
+                            "(d) dtype promotion: mixed dtype inputs (e.g. FLOAT16 input + INT32 input) where the operator supports it.",
+                            "- DType name mapping: DT_FLOAT→ACL_FLOAT, DT_FLOAT16→ACL_FLOAT16, DT_BF16→ACL_BF16, "
+                            "DT_INT32→ACL_INT32, DT_INT64→ACL_INT64, DT_DOUBLE→ACL_DOUBLE, DT_BOOL→ACL_BOOL, "
+                            "DT_INT8→ACL_INT8, DT_INT16→ACL_INT16, DT_UINT8→ACL_UINT8.",
+                            "- Read existing baseline UT files to discover the correct pattern for calling `TestGetWorkspaceSize()` with proper input/output tensor setup.",
+                        ]
+                        reference_paths = list(dict.fromkeys(current_operator_ut_paths + similar_example_paths))
+
+                    op_api_macro_rule = [
+                        "13. For op_api layers: the `OP_API_UT` / `OP_API_UT_EXPECT` macros internally token-paste `GetWorkspaceSize` (and similar helpers) onto the first argument. Always pass a plain C function name like `aclnnRealDiv`, never a function pointer or variable. If the operator header only exposes function-pointer typedefs (e.g., `const aclTensor* (*RealDiv)(...)`), first read existing op_api UT files in the same directory via `read_file` to discover the correct invocation pattern — do not guess.",
+                        "14. Do NOT duplicate test scenarios already covered by existing baseline UT. Review the existing scenarios below and generate tests that target DIFFERENT dtype/format/shape combinations, different error paths, or uncovered functions listed in the analysis plan.",
+                        "15. CRITICAL — CMakeLists.txt registration: When you generate a new `*_attest.cpp` file (FILE_02 for op_host, FILE_04 for op_api), you MUST also update the corresponding CMakeLists.txt FOOTER block to register the new file in the build system. For op_api: add the attest `.cpp` filename to the `OP_API_TEST_SOURCES` or `OP_API_MODULE_NAME_cases_obj` source list. For op_host: add the attest `.cpp` filename to `add_modules_ut_sources` or the appropriate source list. Read the existing CMakeLists.txt structure first and follow the same pattern. Without this registration, the test file will NOT be compiled and coverage will remain unchanged.",
+                        "16. DIVERSITY REQUIREMENT: Each TEST_F in a block MUST use a distinct dtype+shape+value combination. "
+                        "Cover as many different scenarios as possible within each block: "
+                        "at least 3 different dtypes (e.g. ACL_FLOAT16, ACL_FLOAT, ACL_INT32, ACL_BF16, ACL_INT64), "
+                        "at least 3 different shapes (e.g. {1}, {32,64}, {2,3,8,8}, {128,256}), "
+                        "boundary values (zeros, ones, INT_MIN/INT_MAX, negative values, FLT_MIN/FLT_MAX), "
+                        "and boundary tensor configurations (0D scalar, 1D, broadcast, high-rank 4D/5D). "
+                        "Use `TestGetWorkspaceSize` with these varied combinations to exercise different code paths in the operator. "
+                        "Do NOT generate multiple tests that only differ by a constant — vary dtype, shape, AND values together.",
+                        "17. SAFETY CONSTRAINTS: "
+                        "(a) NEVER use NaN, Inf, or -Inf as parameters to helper functions like `TensorDesc::ValueRange(low, high)` — "
+                        "NaN fails the `low <= high` assertion and crashes the entire test suite. "
+                        "NaN/Inf are only safe as raw tensor DATA (e.g. `float data[] = {NAN, INFINITY};`). "
+                        "(b) NEVER pass nullptr to the INPUT() macro (e.g. `INPUT(nullptr)`). INPUT must always receive a valid TensorDesc. "
+                        "For null-pointer validation use nullptr on the OUTPUT side only: create a TensorDesc for OUTPUT but cast it to nullptr "
+                        "when passing to the function, e.g. `OP_API_UT_EXPECT(aclnnXxx, INPUT(valid_in), OUTPUT((aclTensor*)nullptr), ...)`. "
+                        "The operator should return ACLNN_ERR_PARAM_NULLPTR when given a null output.",
+                        "18. COVERAGE-DRIVEN GENERATION (for epoch >= 2): When an 'UNCOVERED CODE' section appears below targeting this layer, "
+                        "your PRIMARY goal is to design tests that trigger those specific uncovered branches. "
+                        "For each uncovered conditional (if/switch/ternary) at the listed line number: "
+                        "(a) READ the source file via `read_file` to see the exact branch condition. "
+                        "(b) Analyze what dtype/shape/value/format/attribute combination makes the condition evaluate to the uncovered branch. "
+                        "(c) Create a dedicated TEST_F with inputs that satisfy the uncovered path. "
+                        "Name the test using the target line number for traceability (e.g. `CASE_L245_dtype_promotion_path`). "
+                        "If no `UNCOVERED CODE` section appears or the current layer is not targeted, fall back to the DIVERSITY REQUIREMENT in Rule 16.",
+                    ]
+
+                    uncovered_section = ""
+                    epoch = int(getattr(state, "epoch_current", 1) or 1)
+                    if epoch > 1 and layer_id in uncovered_for_layer:
+                        udata = uncovered_for_layer[layer_id]
+                        files_info = udata.get("files", [])
+                        snippets_text_parts: List[str] = []
+                        for fi in files_info[:4]:
+                            src = fi.get("source", "")
+                            snippets = fi.get("snippets", [])
+                            if not snippets:
+                                continue
+                            snippets_text_parts.append(f"\n### Source: {src}")
+                            for s in snippets[:5]:
+                                snippets_text_parts.append(f"\nLine {s.get('line')} is NOT covered:\n```cpp\n{s.get('context','')}\n```")
+                        uncovered_section = (
+                            f"\n## UNCOVERED CODE from previous epoch ({udata.get('total_uncovered', 0)} lines total in this layer)\n"
+                            "Read the source files via `read_file` using their full paths, then design TEST_F cases whose "
+                            "dtype/shape/attribute/value combinations specifically TRIGGER these uncovered branches or lines. "
+                            "For each uncovered conditional (if/switch/ternary), design TEST parameters that make it evaluate to "
+                            "the uncovered branch. Include the target line number in the TEST_F name for traceability."
+                            + "\n".join(snippets_text_parts)
+                            + "\n"
+                        )
+
+                    cross_file_section = ""
+                    if cross_file_notes:
+                        notes_text = "\n".join(f"- {n}" for n in cross_file_notes)
+                        cross_file_section = f"Notes from previous files in this epoch:\n{notes_text}\n"
+
+                    build_plan_dict = plan.get("build_plan") or {}
+                    layer_id_for_cmd = str(file_entry.get("layer_id", ""))
+                    layer_cmds = build_plan_dict.get(layer_id_for_cmd, {}) if isinstance(build_plan_dict, dict) else {}
+                    compile_cmd_for_layer = str(layer_cmds.get("compile", ""))
+                    coverage_cmd_for_layer = str(layer_cmds.get("coverage", ""))
+
+                    unified_section = ""
+                    if compile_cmd_for_layer and str(file_entry.get("kind")) != "cmake":
+                        unified_section = f"""
+## UNIFIED GENERATE-COMPILE-TEST MODE — REFLECTION LOOP
+
+You are NOT in a "write code then hand-off" stage. You are in a **continuous agent session**: 
+write code → compile → read the REAL errors → reason about them → read the API source → fix → re-compile. 
+All within this same conversation. Do NOT defer verification to a later stage.
+
+### Per-block loop (repeat for EACH target block):
+
+**Step 1. Write the block** via `replace_block` / `replace_in_file` / `write_file`.
+
+**Step 2. Compile immediately** via `exec_command`:
+```
+exec_command(cmd="{compile_cmd_for_layer}")
+```
+
+- If compile succeeds → go to Step 3.
+- If compile fails:
+  a. **Read the FULL error output**. Do not discard anything. Identify the exact file, line, and error message.
+  b. **Reason**: why did this fail? What assumption did I make that was wrong?
+  c. **Read the source**: if the error mentions a function / macro / type you used incorrectly, 
+     use `read_file` or `part_read` to look at its ACTUAL signature/implementation in the project. 
+     DO NOT guess the API signature — verify it.
+     Example: if `ScalarDesc(...)` fails, grep the codebase for `ScalarDesc::ScalarDesc` to see what arguments it actually accepts.
+  d. **Fix the code** via `replace_in_file`. Make the minimal correct change.
+  e. **Re-run the compile command**. Repeat (a)-(d) until compile passes.
+
+**Step 3. Run tests immediately** via `exec_command` to execute the built test binary:
+```
+exec_command(cmd="{compile_cmd_for_layer}")
+```
+(build.sh compiles AND runs tests by default — no extra `--run` flag needed. The test output will appear after the build completes.)
+
+- If tests run cleanly (no abort, no segfault, even if some EXPECT_* fail) → go to Step 4.
+- If you see **`Assertion failed`**, **`Aborted`**, **`SIGSEGV`**, **`core dumped`**, **`terminate called`**, or 
+  the log suddenly stops mid-output — this is a **RUNTIME BUG** in the generated code:
+  a. Read the exact error message. Pay attention to WHICH assertion failed and on WHAT line.
+  b. Reason: what **input value/dtype/shape** did I pass that violated the API's contract?
+  c. Read the actual source of the failing function via `read_file` to understand what inputs are valid.
+  d. Fix the code.
+  e. Re-run Step 2 (compile) + Step 3 (run).
+  f. **Do NOT move forward until tests run to completion without abort.**
+
+**Step 4. Check coverage** (at end of file, all blocks done) via `exec_command`:
+```
+exec_command(cmd="{coverage_cmd_for_layer}")
+```
+Read the coverage output. Identify uncovered lines that look reachable. For each reachable uncovered line,
+read the source to understand the branch condition, then add a TEST_F that triggers it. Re-do Step 2+3.
+
+### Reflection principles:
+- **Write ONE block, verify it, then move to the next.** Never accumulate multiple unverified blocks.
+- **NEVER guess an API signature.** If you are unsure whether a function accepts a particular dtype/shape/value,
+  `read_file` its declaration or implementation NOW — don't find out the hard way via a compile error.
+- **Runtime aborts are real bugs** even if compile passes. Treat assertion failures as a signal to RE-think the inputs,
+  not just to tweak syntax.
+- **If stuck after 2 failed repair rounds on the same issue**, write a minimal stub and move on. Do NOT loop forever.
+
+"""
+
+                    prompt = f"""You are generating Ascend C++ UT code for a single file.
+
+Target file: `{file_entry['path']}`
+Layer: `{file_entry['layer_id']}`
+Kind: `{file_entry['kind']}`
+Epoch: {getattr(state, 'epoch_current', 1)}/{getattr(state, 'epoch_total', 1)}
+Target blocks to fill or revise: {', '.join(target_blocks)}
+
+Rules:
+1. Use only `list_files`, `read_file`, `part_read`, `search`, `replace_block`, `replace_in_file`, `write_file`, `append_to_file`, and `exec_command` (for compile/test/coverage).
+   - Use `write_file` for the first ~100 lines of a file, then `append_to_file` for remaining content in batches of ~100 lines each.
+   - Use `exec_command` ONLY for build / run / coverage commands. Do not use it for arbitrary shell operations.
+2. Do not overwrite the whole file after the skeleton exists; fill only the listed blocks.
+3. Keep every generated gtest or helper name traceable to the BLOCK_ID. Include the BLOCK_ID in the test name.
+4. For `*.cpp`, use `// ==== BLOCK:... ====`.
+5. For `CMakeLists.txt`, use `# ==== BLOCK:... ====`.
+6. Prefer reading 1-2 relevant reference UT files before writing if the current file needs project-specific style.
+7. Keep the output compile-oriented and minimal. Avoid placeholders like TODO.
+8. Do not modify blocks that are not in the target set.
+{chr(10).join(mode_rules)}
+{chr(10).join(op_api_macro_rule)}
+
+Mode guidance:
+{chr(10).join(mode_guidance)}
+
+Operator context:
+```json
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:1500]}
+```
+
+{_build_ws_sig_section(str(file_entry['layer_id']), slim_context)}
+
+File plan:
+```json
+{json.dumps(file_entry, ensure_ascii=False, indent=2)}
+```
+
+Cases for this file:
+```json
+{json.dumps(file_cases, ensure_ascii=False, indent=2)}
+```
+
+Current block index:
+```json
+{build_block_index_json(project_root / str(file_entry['path']))}
+```
+
+Analysis plan:
+```json
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)}
+```
+
+Current operator UT references for this layer:
+```json
+{json.dumps(current_operator_ut_paths, ensure_ascii=False, indent=2)}
+```
+
+Existing test scenarios in baseline UT (DO NOT duplicate these):
+```json
+{json.dumps(existing_scenarios, ensure_ascii=False, indent=2)}
+```
+
+Shared harness paths for this layer:
+```json
+{json.dumps(shared_harness_paths, ensure_ascii=False, indent=2)}
+```
+
+Shared helper paths for this layer:
+```json
+{json.dumps(shared_helper_paths, ensure_ascii=False, indent=2)}
+```
+
+Operator implementation files for this layer:
+```json
+{json.dumps(operator_impl_paths, ensure_ascii=False, indent=2)}
+```
+
+Similar example UT paths:
+```json
+{json.dumps(similar_example_paths, ensure_ascii=False, indent=2)}
+```
+
+Priority reference paths:
+```json
+{json.dumps(reference_paths, ensure_ascii=False, indent=2)}
+```
+
+Coverage mode:
+`{coverage_mode}`
+
+Skill packet:
+```text
+{provider.get_stage_packet('generate_code', str(file_entry['layer_id']), generation_mode=generation_mode)}
+```
+{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}{cross_file_section}
+Complete the file now."""
+
+                    stage_result = self._run_llm_session(state, prompt, project_root)
+                    session_failed = False
+                    if not stage_result.success:
+                        session_failed = True
+                        error_msg = stage_result.error or ""
+                        cross_file_notes.append(
+                            f"{file_id}: LLM session ended early ({error_msg[:100]}); continuing with verification"
+                        )
+
+                    if str(file_entry.get("kind")) != "cmake":
+                        code_violations = self._validate_generated_code(project_root, file_entry)
+                        if code_violations:
+                            print(f"  ⚠️  Code safety violations in {file_id}: {'; '.join(code_violations)}")
+                            violated_path = project_root / file_entry["path"]
+                            if violated_path.exists():
+                                quarantine = violated_path.with_suffix(violated_path.suffix + ".safety_violation.bak")
+                                try:
+                                    shutil.move(str(violated_path), str(quarantine))
+                                except Exception:
+                                    pass
+                            cross_file_notes.append(
+                                f"{file_id}: safety violation - {'; '.join(code_violations)[:200]}; skipping"
+                            )
+                            manifest.append({
+                                "file_id": file_id,
+                                "path": file_entry["path"],
+                                "action": "error",
+                                "reason": f"safety_violations: {'; '.join(code_violations)[:300]}",
+                            })
+                            continue
+
+                    self._ensure_cmake_attest_registration(project_root, file_entry)
+
+                    if str(file_entry.get("kind")) != "cmake":
+                        layer_id = str(file_entry["layer_id"])
+                        MAX_REPAIR_ROUNDS = 3
+                        verified = False
+                        for repair_round in range(MAX_REPAIR_ROUNDS):
+                            compile_ok, compile_output = self._run_compile_check(project_root, layer_id, plan)
+                            if not compile_ok:
+                                error_summary = compile_output[:4000]
+                                print(f"  ⚠️  Compile check failed for {file_id} (round {repair_round + 1}); "
+                                      f"attempting LLM repair with exec_command access...")
+                                repair_result = self._run_repair_with_verification(
+                                    state, project_root, file_entry,
+                                    error_kind="compile_error",
+                                    error_text=error_summary,
+                                    target_blocks=target_blocks,
+                                    plan=plan,
+                                )
+                                if not repair_result.success:
+                                    cross_file_notes.append(
+                                        f"{file_id}: compile failed after repair round {repair_round + 1}"
+                                    )
+                                    break
+                                continue
+
+                            run_ok, run_output = self._run_binary_check(project_root, layer_id, plan)
+                            abort_keywords = ("Assertion", "Aborted", "SIGSEGV", "core dumped",
+                                              "terminate called", "Subprocess aborted")
+                            if not run_ok or any(kw in run_output for kw in abort_keywords):
+                                abort_snippet = run_output[:4000]
+                                print(f"  ⚠️  Runtime abort/assertion failure for {file_id} (round {repair_round + 1}); "
+                                      f"attempting in-session reflection fix...")
+                                repair_result = self._run_repair_with_verification(
+                                    state, project_root, file_entry,
+                                    error_kind="runtime_abort",
+                                    error_text=abort_snippet,
+                                    target_blocks=target_blocks,
+                                    plan=plan,
+                                )
+                                if not repair_result.success:
+                                    cross_file_notes.append(
+                                        f"{file_id}: runtime abort after repair round {repair_round + 1}"
+                                    )
+                                    break
+                                continue
+
+                            verified = True
+                            break
+                        else:
+                            if not verified:
+                                cross_file_notes.append(
+                                    f"{file_id}: still failing after {MAX_REPAIR_ROUNDS} repair rounds; continuing"
+                                )
+                    else:
+                        verified = True
+
+                    if stage_result.success and stage_result.message:
+                        cross_file_notes.append(f"{file_id}: completed successfully ({len(target_blocks)} blocks)")
+
+                    manifest.append(
+                        {
+                            "file_id": file_id,
+                            "path": file_entry["path"],
+                            "action": "updated" if verified else "updated_unverified",
+                            "target_blocks": target_blocks,
+                        }
+                    )
+
+        manifest_text = _render_json({"files": manifest, "project_root": str(project_root)})
+        state.save_artifact("generation_manifest.json", manifest_text)
+        return StageResult(
+            True,
+            {"generation_manifest.json": manifest_text},
+            message=f"Updated {len([item for item in manifest if item['action'] == 'updated'])} planned files",
+        )
+
+
+class AscendExecutionStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="execute_tests",
+            display_name="Execute Tests",
+            description="Run build.sh commands for enabled Ascend layers",
+            prompt_template="",
+            input_artifacts=["test_plan.json"],
+            output_artifacts=[
+                "execution_log.txt",
+                "baseline_execution_log.txt",
+                "generated_execution_log.txt",
+                "exit_code.txt",
+                "coverage_summary.json",
+            ],
+            tools=["exec_command"],
+            allow_skip=False,
+        )
+
+    def _use_coverage(self, state, plan: Dict[str, Any]) -> bool:
+        if _coverage_mode(plan) == "before_after_compare":
+            return True
+        if getattr(state, "epoch_current", 1) >= getattr(state, "epoch_total", 1):
+            return True
+        previous = _load_json_artifact(state, "analysis_plan.json", default=_default_analysis_plan())
+        return previous.get("status") == "success"
+
+    def _recover_ops_info_if_missing(
+        self,
+        project_root: Path,
+        ctx,
+        label: str,
+        logs: List[str],
+        build_dir: str = "build",
+    ) -> None:
+        cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
+        ops_info_path = f"{cov_root}/ops.info"
+        check_cmd = f"test -f {shlex.quote(ops_info_path)} && echo EXISTS || echo MISSING"
+        check_result = self.tool_runner.execute(
+            "exec_command", {"cmd": check_cmd}, ctx, source="framework"
+        )
+        check_output = (check_result.output or "").strip()
+        if "EXISTS" in check_output:
+            return
+        gcda_check = f"find {shlex.quote(build_dir)} -name '*.gcda' 2>/dev/null | head -1"
+        gcda_result = self.tool_runner.execute(
+            "exec_command", {"cmd": gcda_check}, ctx, source="framework"
+        )
+        if not (gcda_result.output or "").strip():
+            logs.append(f"=== {label} no .gcda files found, skipping coverage fallback ===")
+            return
+        fallback_cmd = (
+            f"mkdir -p {shlex.quote(cov_root)} && "
+            f"rm -f {shlex.quote(ops_info_path)} && "
+            f"timeout 300 lcov -c -d {shlex.quote(build_dir)} -o {shlex.quote(ops_info_path)} "
+            f"--rc lcov_branch_coverage=1 2>&1 || true"
+        )
+        fallback_result = self.tool_runner.execute(
+            "exec_command", {"cmd": fallback_cmd}, ctx, source="framework"
+        )
+        fallback_output = fallback_result.output if fallback_result.output else fallback_result.error or ""
+        logs.append(f"=== {label} coverage recovery (direct lcov) ===\n{fallback_output[-2000:]}")
+
+    def _default_layer_summary(
+        self,
+        value: float = 0.0,
+        threshold: float = 80.0,
+        function_coverage: Optional[float] = None,
+        branch_coverage: Optional[float] = None,
+        coverage_valid: bool = True,
+        error_reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "line_coverage": value,
+            "function_coverage": function_coverage,
+            "branch_coverage": branch_coverage,
+            "meets_threshold": value >= threshold,
+            "coverage_valid": coverage_valid,
+            "coverage_error_reason": error_reason,
+        }
+
+    def _extract_summary_json(self, log_text: str) -> Dict[str, Any]:
+        matches = re.findall(r"COVERAGE_SUMMARY\s+({.*})", log_text)
+        for raw in reversed(matches):
+            summary = _json_load(raw, {})
+            if summary:
+                return summary
+        return {}
+
+    def _extract_layer_coverage_from_text(
+        self,
+        log_text: str,
+        layer: str,
+        *,
+        allow_generic: bool = True,
+    ) -> Optional[float]:
+        summary = self._extract_summary_json(log_text)
+        if isinstance(summary.get("per_layer"), dict):
+            layer_meta = summary["per_layer"].get(layer)
+            if isinstance(layer_meta, dict) and layer_meta.get("line_coverage") is not None:
+                try:
+                    return float(layer_meta["line_coverage"])
+                except Exception:
+                    pass
+
+        explicit_pattern = re.compile(r"COVERAGE_LAYER\s+([A-Za-z0-9_]+)\s+([0-9]+(?:\.[0-9]+)?)")
+        for match in explicit_pattern.finditer(log_text):
+            if match.group(1) == layer:
+                return float(match.group(2))
+
+        if not allow_generic:
+            return None
+        generic = re.findall(r"([0-9]+(?:\.[0-9]+)?)%", log_text)
+        if generic:
+            return float(generic[-1])
+        return None
+
+    def _extract_lcov_coverage(
+        self,
+        ctx: ToolContext,
+        build_dir: str = "build",
+    ) -> tuple[Optional[float], Optional[float], Optional[float], str]:
+        cov_path = f"{build_dir}/tests/ut/cov_report/cpp_utest/ops.info"
+        result = self.tool_runner.execute(
+            "exec_command",
+            {"cmd": f"if [ -f {shlex.quote(cov_path)} ]; then "
+             f"lcov --summary {shlex.quote(cov_path)}; fi"},
+            ctx,
+        )
+        output = result.output if result.output else result.error or ""
+        line_match = re.search(r"lines\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        func_match = re.search(r"functions\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        branch_match = re.search(r"branches\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        if line_match:
+            return (
+                float(line_match.group(1)),
+                float(func_match.group(1)) if func_match else None,
+                float(branch_match.group(1)) if branch_match else None,
+                output,
+            )
+        return None, None, None, output
+
+    def _extract_operator_lcov_coverage(
+        self,
+        ctx: ToolContext,
+        plan: Dict[str, Any],
+        layer: str,
+        build_dir: str = "build",
+    ) -> tuple[Optional[float], Optional[float], Optional[float], str, bool, Optional[str]]:
+        include_patterns = _operator_source_patterns(plan, layer)
+        if not include_patterns:
+            return None, None, None, "", False, "operator source pattern is unavailable"
+
+        remove_patterns = _operator_remove_patterns(plan, layer)
+        cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
+        source_info = f"{cov_root}/ops.info"
+        extract_info = f"{cov_root}/attest_{layer}_extract.info"
+        filtered_info = f"{cov_root}/attest_{layer}_filtered.info"
+        include_args = " ".join(shlex.quote(pattern) for pattern in include_patterns)
+        remove_args = " ".join(shlex.quote(pattern) for pattern in remove_patterns)
+
+        cmd_parts = [
+            f"if [ ! -f {shlex.quote(source_info)} ]; then",
+            f"echo 'LCOV_SOURCE_MISSING {shlex.quote(source_info)}';",
+            "else",
+            f"rm -f {shlex.quote(extract_info)} {shlex.quote(filtered_info)};",
+            f"if lcov --extract {shlex.quote(source_info)} {include_args} -o {shlex.quote(extract_info)} >/dev/null 2>&1; then",
+        ]
+        if remove_patterns:
+            cmd_parts.append(
+                f"if lcov --remove {shlex.quote(extract_info)} {remove_args} -o {shlex.quote(filtered_info)} >/dev/null 2>&1; then"
+            )
+            cmd_parts.append(f"lcov --summary {shlex.quote(filtered_info)} || true;")
+            cmd_parts.append("else")
+            cmd_parts.append(f"echo 'LCOV_REMOVE_NO_MATCH layer={shlex.quote(layer)}';")
+            cmd_parts.append(f"lcov --summary {shlex.quote(extract_info)} || true;")
+            cmd_parts.append("fi;")
+        else:
+            cmd_parts.append(f"lcov --summary {shlex.quote(extract_info)} || true;")
+        cmd_parts.append("else")
+        cmd_parts.append(f"echo 'LCOV_EXTRACT_NO_MATCH layer={shlex.quote(layer)}';")
+        cmd_parts.append("fi;")
+        cmd_parts.append("fi")
+
+        result = self.tool_runner.execute("exec_command", {"cmd": " ".join(cmd_parts)}, ctx, source="framework")
+        output = result.output if result.output else result.error or ""
+        error_reason = _coverage_error_reason(output)
+        line_match = re.search(r"lines\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        func_match = re.search(r"functions\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        branch_match = re.search(r"branches\.+:\s*([0-9]+(?:\.[0-9]+)?)%", output, flags=re.IGNORECASE)
+        if line_match:
+            return (
+                float(line_match.group(1)),
+                float(func_match.group(1)) if func_match else None,
+                float(branch_match.group(1)) if branch_match else None,
+                output,
+                True,
+                None,
+            )
+        return None, None, None, output, False, error_reason or "operator lcov summary has no line coverage"
+
+    def _extract_uncovered_lines(
+        self,
+        ctx: ToolContext,
+        plan: Dict[str, Any],
+        layer: str,
+        build_dir: str = "build",
+        max_lines_per_file: int = 40,
+    ) -> List[Dict[str, Any]]:
+        include_patterns = _operator_source_patterns(plan, layer)
+        if not include_patterns:
+            return []
+        cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
+        source_info = f"{cov_root}/ops.info"
+        extract_info = f"{cov_root}/attest_{layer}_extract.info"
+        filtered_info = f"{cov_root}/attest_{layer}_filtered.info"
+        target_info = filtered_info if _operator_remove_patterns(plan, layer) else extract_info
+
+        cmd = (
+            f"if [ -f {shlex.quote(target_info)} ]; then "
+            f"grep -E '^SF:|^DA:[0-9]+,0($|,)' {shlex.quote(target_info)}; fi"
+        )
+        result = self.tool_runner.execute("exec_command", {"cmd": cmd}, ctx, source="framework")
+        output = (result.output if result.output else result.error or "") if result else ""
+
+        files: Dict[str, Dict[str, Any]] = {}
+        current_file = ""
+        for raw in output.splitlines():
+            line = raw.strip()
+            if line.startswith("SF:"):
+                current_file = line[3:]
+                files.setdefault(current_file, {"path": current_file, "uncovered_lines": []})
+            elif line.startswith("DA:") and current_file:
+                parts = line[3:].split(",")
+                if len(parts) >= 2:
+                    try:
+                        lineno = int(parts[0])
+                        hit = int(parts[1])
+                        if hit == 0:
+                            if len(files[current_file]["uncovered_lines"]) < max_lines_per_file:
+                                files[current_file]["uncovered_lines"].append(lineno)
+                            files[current_file]["total_uncovered"] = files[current_file].get("total_uncovered", 0) + 1
+                    except (ValueError, IndexError):
+                        continue
+        ordered = list(files.values())
+        ordered.sort(key=lambda e: e.get("total_uncovered", 0), reverse=True)
+        return ordered
+
+    def _extract_uncovered_functions(
+        self,
+        ctx: ToolContext,
+        plan: Dict[str, Any],
+        layer: str,
+        build_dir: str = "build",
+    ) -> List[str]:
+        include_patterns = _operator_source_patterns(plan, layer)
+        if not include_patterns:
+            return []
+        remove_patterns = _operator_remove_patterns(plan, layer)
+        cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
+        source_info = f"{cov_root}/ops.info"
+        extract_info = f"{cov_root}/attest_{layer}_extract.info"
+        filtered_info = f"{cov_root}/attest_{layer}_filtered.info"
+        target_info = filtered_info if remove_patterns else extract_info
+        include_args = " ".join(shlex.quote(p) for p in include_patterns)
+        remove_args = " ".join(shlex.quote(p) for p in remove_patterns)
+
+        if remove_patterns:
+            cmd = (
+                f"if [ -f {shlex.quote(target_info)} ]; then "
+                f"grep -E '^SF:|^FNDA:' {shlex.quote(target_info)}; fi"
+            )
+        else:
+            cmd = (
+                f"if [ -f {shlex.quote(target_info)} ]; then "
+                f"grep -E '^SF:|^FNDA:' {shlex.quote(target_info)}; fi"
+            )
+
+        result = self.tool_runner.execute("exec_command", {"cmd": cmd}, ctx, source="framework")
+        output = result.output if result.output else result.error or ""
+        if not output.strip():
+            if remove_patterns:
+                fallback = extract_info
+            else:
+                fallback = target_info
+            cmd = (
+                f"if [ -f {shlex.quote(fallback)} ]; then "
+                f"grep -E '^SF:|^FNDA:' {shlex.quote(fallback)}; fi"
+            )
+            result = self.tool_runner.execute("exec_command", {"cmd": cmd}, ctx, source="framework")
+            output = result.output if result.output else result.error or ""
+
+        current_file = ""
+        uncovered = []
+        for line in output.splitlines():
+            line = line.strip()
+            if line.startswith("SF:"):
+                current_file = line[3:]
+            elif line.startswith("FNDA:"):
+                parts = line[5:].split(",")
+                if len(parts) == 2:
+                    try:
+                        hit_count = int(parts[0])
+                        func_name = parts[1]
+                        if hit_count == 0:
+                            short_file = current_file.split("/")[-1] if current_file else "?"
+                            uncovered.append(f"{short_file}:{func_name}")
+                    except (ValueError, IndexError):
+                        pass
+        return uncovered[:20]
+
+    def _build_run_summary(
+        self,
+        plan: Dict[str, Any],
+        project_root: Path,
+        per_layer: Dict[str, Dict[str, Any]],
+        exit_code: int,
+    ) -> Dict[str, Any]:
+        layer_threshold = _layer_coverage_threshold(plan)
+        overall_threshold = _overall_coverage_threshold(plan)
+        normalized: Dict[str, Dict[str, Any]] = {}
+        invalid_layers: Dict[str, str] = {}
+        for layer in plan.get("enabled_layers", []):
+            layer_meta = per_layer.get(str(layer)) or self._default_layer_summary(
+                threshold=layer_threshold,
+                coverage_valid=False,
+                error_reason="coverage was not collected for this layer",
+            )
+            value = float(layer_meta.get("line_coverage", 0.0))
+            coverage_valid = bool(layer_meta.get("coverage_valid", True))
+            error_reason = layer_meta.get("coverage_error_reason")
+            normalized[str(layer)] = self._default_layer_summary(
+                value,
+                layer_threshold,
+                function_coverage=layer_meta.get("function_coverage"),
+                branch_coverage=layer_meta.get("branch_coverage"),
+                coverage_valid=coverage_valid,
+                error_reason=error_reason,
+            )
+            if layer_meta.get("uncovered_lines"):
+                normalized[str(layer)]["uncovered_lines"] = layer_meta["uncovered_lines"]
+            if layer_meta.get("uncovered_functions"):
+                normalized[str(layer)]["uncovered_functions"] = layer_meta["uncovered_functions"]
+            if not coverage_valid:
+                invalid_layers[str(layer)] = str(error_reason or "coverage is invalid")
+
+        overall = 0.0
+        valid_layers = [item for item in normalized.values() if item.get("coverage_valid", True)]
+        if valid_layers:
+            overall = sum(item["line_coverage"] for item in valid_layers) / len(valid_layers)
+        coverage_valid = len(valid_layers) == len(normalized) and not invalid_layers
+
+        return {
+            "project_root": str(project_root),
+            "exit_code": exit_code,
+            "coverage_valid": coverage_valid,
+            "coverage_errors": invalid_layers,
+            "threshold": overall_threshold,
+            "thresholds": {
+                "overall": overall_threshold,
+                "per_layer": layer_threshold,
+            },
+            "per_layer": normalized,
+            "overall": {
+                "line_coverage": overall,
+                "meets_threshold": coverage_valid and overall >= overall_threshold,
+                "coverage_valid": coverage_valid,
+            },
+        }
+
+    def _run_for_root(
+        self,
+        plan: Dict[str, Any],
+        project_root: Path,
+        use_coverage: bool,
+        label: str,
+        state_obj: Any = None,
+    ) -> Dict[str, Any]:
+        build_plan = plan.get("build_plan") or {}
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        logs: List[str] = []
+        exit_code = 0
+        per_layer: Dict[str, Dict[str, Any]] = {}
+
+        op_name = plan.get("op_name", "")
+        if op_name:
+            build_dir = f"build_{label}_{op_name}"
+        else:
+            build_dir = "build"
+        build_env_prefix = ""
+        build_sh_patched = False
+        build_sh_path = project_root / "build.sh"
+        build_sh_backup: Optional[Path] = None
+        if build_dir != "build":
+            build_out_dir = f"build_out_{label}_{op_name}"
+            build_env_prefix = (
+                f"BUILD_PATH={shlex.quote(str(project_root / build_dir))} "
+                f"BUILD_OUT_PATH={shlex.quote(str(project_root / build_out_dir))} "
+            )
+            logs.append(f"=== {label} using isolated build dir: {build_dir} ===")
+            # Backup build.sh before patching (restore in finally block)
+            if build_sh_path.exists():
+                build_sh_backup = build_sh_path.with_suffix(".sh.v9.bak")
+                shutil.copy2(build_sh_path, build_sh_backup)
+            _patch_build_sh_for_isolation(project_root)
+            build_sh_patched = build_sh_backup is not None
+            if _ensure_cann_cmake_available(project_root):
+                logs.append(f"=== {label} ensured local cann-cmake in third_party/ ===")
+            else:
+                logs.append(f"=== {label} WARNING: local cann-cmake not available, build may need git clone ===")
+
+        # Phase 1: compile (skipped when combined coverage will rebuild anyway)
+        combined = build_plan.get("_combined", {})
+        combined_compile_cmd = combined.get("combined_compile", "")
+        combined_cov_cmd = combined.get("combined_coverage", "")
+        compile_failed = False
+        if combined_compile_cmd and not (use_coverage and combined_cov_cmd):
+            result = self.tool_runner.execute(
+                "exec_command", {"cmd": f"{build_env_prefix}{combined_compile_cmd}"}, ctx, source="framework"
+            )
+            logs.append(f"=== {label} combined compile ===\n{result.output if result.output else result.error or ''}")
+            if not result.ok:
+                exit_code = 1
+                compile_failed = True
+        elif not combined_compile_cmd:
+            for layer in plan.get("enabled_layers", []):
+                commands = build_plan.get(layer)
+                if not commands:
+                    continue
+                compile_cmd = commands.get("compile", "")
+                if compile_cmd:
+                    result = self.tool_runner.execute(
+                        "exec_command", {"cmd": f"{build_env_prefix}{compile_cmd}"}, ctx, source="framework"
+                    )
+                    logs.append(f"=== {label} {layer} compile ===\n{result.output if result.output else result.error or ''}")
+                    if not result.ok:
+                        exit_code = 1
+                        compile_failed = True
+
+        # Phase 1.5: If compile failed, isolate generated attest files to prevent them from
+        # breaking the overall coverage target. Move problematic *_attest.cpp files aside
+        # and retry compile with --noexec to extract coverage from whatever still compiles.
+        attest_files_quarantined: list = []
+        if compile_failed:
+            attest_dir = project_root / "math" / plan.get("op_name", "") / "tests" / "ut"
+            if attest_dir.exists():
+                for cpp_file in attest_dir.rglob("*_attest.cpp"):
+                    backup = cpp_file.with_suffix(".cpp.bak")
+                    shutil.move(str(cpp_file), str(backup))
+                    attest_files_quarantined.append((cpp_file, backup))
+            if attest_files_quarantined:
+                logs.append(
+                    f"=== {label} quarantined {len(attest_files_quarantined)} attest files "
+                    f"to retry compile ==="
+                )
+                if combined_compile_cmd:
+                    result = self.tool_runner.execute(
+                        "exec_command", {"cmd": f"{build_env_prefix}{combined_compile_cmd}"}, ctx, source="framework"
+                    )
+                    logs.append(f"=== {label} retry compile (quarantined) ===\n{result.output if result.output else result.error or ''}")
+                    if result.ok:
+                        exit_code = 0
+                        compile_failed = False
+
+        try:
+            # Phase 2: combined coverage build (single invocation preserves all layers)
+            if use_coverage and combined_cov_cmd:
+                clean_gcda = f"find {shlex.quote(build_dir)} -name '*.gcda' -delete 2>/dev/null; true"
+                self.tool_runner.execute("exec_command", {"cmd": clean_gcda}, ctx, source="framework")
+                if not compile_failed:
+                    cov_result = self.tool_runner.execute(
+                        "exec_command", {"cmd": f"{build_env_prefix}{combined_cov_cmd}"}, ctx, source="framework"
+                    )
+                    cov_output = cov_result.output if cov_result.output else cov_result.error or ""
+                    logs.append(f"=== {label} combined coverage ===\n{cov_output}")
+                    coverage_error = _coverage_error_reason(cov_output)
+                    cov_ok = bool(cov_result.ok)
+                    if not cov_ok:
+                        if not coverage_error:
+                            exit_code = 1
+                            coverage_error = "coverage command failed"
+                        self._recover_ops_info_if_missing(
+                            project_root, ctx, label, logs, build_dir=build_dir
+                        )
+                else:
+                    cov_result = None
+                    cov_output = ""
+                    coverage_error = "compile failed, coverage skipped"
+                    cov_ok = False
+            else:
+                cov_result = None
+                cov_output = ""
+                coverage_error = None
+                cov_ok = True
+
+            # Phase 3: per-layer lcov extraction from the combined ops.info
+            for layer in plan.get("enabled_layers", []):
+                commands = build_plan.get(layer)
+                if not commands:
+                    continue
+
+                if use_coverage and (combined_cov_cmd or commands.get("coverage")):
+                    if not combined_cov_cmd:
+                        # Fallback: per-layer coverage (no combined command available)
+                        clean_gcda = f"find {shlex.quote(build_dir)} -name '*.gcda' -delete 2>/dev/null; true"
+                        self.tool_runner.execute("exec_command", {"cmd": clean_gcda}, ctx, source="framework")
+                        cov_result_local = self.tool_runner.execute(
+                            "exec_command", {"cmd": f"{build_env_prefix}{commands['coverage']}"}, ctx, source="framework"
+                        )
+                        cov_output_local = cov_result_local.output if cov_result_local.output else cov_result_local.error or ""
+                        logs.append(f"=== {label} {layer} coverage ===\n{cov_output_local}")
+                        coverage_error = _coverage_error_reason(cov_output_local)
+                        cov_ok = bool(cov_result_local.ok)
+                        if not cov_ok:
+                            if not coverage_error:
+                                exit_code = 1
+                                coverage_error = "coverage command failed"
+                            self._recover_ops_info_if_missing(
+                                project_root, ctx, label, logs, build_dir=build_dir
+                            )
+                    else:
+                        cov_result_local = cov_result
+                        coverage_error = _coverage_error_reason(cov_output)
+
+                    layer_value = None
+                    function_value = None
+                    branch_value = None
+                    layer_source = ""
+                    operator_lcov_valid = False
+                    operator_lcov_error = None
+                    (
+                        layer_value,
+                        function_value,
+                        branch_value,
+                        operator_lcov_output,
+                        operator_lcov_valid,
+                        operator_lcov_error,
+                    ) = self._extract_operator_lcov_coverage(ctx, plan, str(layer), build_dir=build_dir)
+                    if layer_value is not None:
+                        layer_source = "operator_lcov"
+                    if operator_lcov_output.strip():
+                        logs.append(f"=== {label} {layer} operator lcov summary ===\n{operator_lcov_output}")
+
+                    if layer_value is None:
+                        layer_value = self._extract_layer_coverage_from_text(cov_output, str(layer), allow_generic=False)
+                        if layer_value is not None:
+                            layer_source = "explicit_log"
+                    lcov_output = ""
+                    if layer_value is None and not operator_lcov_error and not coverage_error:
+                        layer_value, function_value, branch_value, lcov_output = self._extract_lcov_coverage(ctx, build_dir=build_dir)
+                        if layer_value is not None:
+                            layer_source = "global_lcov"
+                        if lcov_output.strip():
+                            logs.append(f"=== {label} {layer} lcov summary ===\n{lcov_output}")
+                        coverage_error = _coverage_error_reason(lcov_output)
+                    if layer_value is not None:
+                        layer_valid = (cov_ok or operator_lcov_valid) and (
+                            layer_source == "operator_lcov"
+                            or layer_source == "explicit_log"
+                            or (layer_source == "global_lcov" and not coverage_error)
+                        )
+                        per_layer[str(layer)] = self._default_layer_summary(
+                            layer_value,
+                            function_coverage=function_value,
+                            branch_coverage=branch_value,
+                            coverage_valid=layer_valid,
+                            error_reason=None if layer_valid else coverage_error or operator_lcov_error,
+                        )
+                    else:
+                        per_layer[str(layer)] = self._default_layer_summary(
+                            threshold=_layer_coverage_threshold(plan),
+                            coverage_valid=False,
+                            error_reason=coverage_error or operator_lcov_error or "coverage was not found for this layer",
+                        )
+
+                    uncovered_funcs = self._extract_uncovered_functions(ctx, plan, str(layer), build_dir=build_dir)
+                    if uncovered_funcs:
+                        per_layer[str(layer)]["uncovered_functions"] = uncovered_funcs
+                    uncovered_lines = self._extract_uncovered_lines(ctx, plan, str(layer), build_dir=build_dir)
+                    if uncovered_lines:
+                        per_layer[str(layer)]["uncovered_lines"] = uncovered_lines
+                        total_uncovered = sum(e.get("total_uncovered", 0) for e in uncovered_lines)
+                        logs.append(
+                            f"=== {label} {layer} uncovered_lines: {total_uncovered} lines across {len(uncovered_lines)} file(s) ==="
+                        )
+            # Phase 2.55: Preserve lcov info files for analyze_results (data-driven next epoch)
+            lcov_info_artifacts: Dict[str, str] = {}
+            if state_obj is not None and getattr(state_obj, "artifacts_dir", None):
+                for layer in plan.get("enabled_layers", []):
+                    cov_root = Path(project_root) / build_dir / "tests" / "ut" / "cov_report" / "cpp_utest"
+                    for suffix in ("filtered", "extract"):
+                        info_file = cov_root / f"attest_{layer}_{suffix}.info"
+                        if info_file.exists():
+                            epoch = max(1, int(getattr(state_obj, "epoch_current", 1) or 1))
+                            rel_artifact = f"generated_{layer}_{suffix}.ep{epoch}.lcov.info"
+                            try:
+                                shutil.copy2(str(info_file), str(state_obj.artifacts_dir / rel_artifact))
+                                lcov_info_artifacts[f"{layer}_{suffix}"] = {
+                                    "artifact": rel_artifact,
+                                    "absolute_path": str(state_obj.artifacts_dir / rel_artifact),
+                                }
+                            except Exception as e:
+                                logs.append(f"=== {label} WARNING: failed to preserve {info_file}: {e} ===")
+            if lcov_info_artifacts:
+                logs.append(f"=== {label} preserved lcov info artifacts: {list(lcov_info_artifacts.keys())} ===")
+        finally:
+            # Phase 2.5: Restore quarantined attest files
+            for cpp_file, backup in attest_files_quarantined:
+                if backup.exists():
+                    if cpp_file.exists():
+                        cpp_file.unlink()
+                    shutil.move(str(backup), str(cpp_file))
+            if attest_files_quarantined:
+                logs.append(
+                    f"=== {label} restored {len(attest_files_quarantined)} quarantined attest files ==="
+                )
+            # Phase 2.6: Restore original build.sh if it was patched
+            if build_sh_patched and build_sh_backup and build_sh_backup.exists():
+                try:
+                    shutil.copy2(build_sh_backup, build_sh_path)
+                    build_sh_backup.unlink()
+                    logs.append(f"=== {label} restored original build.sh ===")
+                except Exception as e:
+                    logs.append(f"=== {label} WARNING: failed to restore build.sh: {e} ===")
+            if build_dir != "build":
+                build_out_dir = f"build_out_{label}_{op_name}"
+                cleanup_cmd = f"rm -rf {shlex.quote(build_dir)} {shlex.quote(build_out_dir)}"
+                self.tool_runner.execute("exec_command", {"cmd": cleanup_cmd}, ctx, source="framework")
+                logs.append(f"=== {label} cleaned up isolated build dir: {build_dir} ===")
+
+        log_text = "\n\n".join(logs)
+        operator_lcov_recovered = bool(per_layer) and all(
+            layer_meta.get("coverage_valid", False) and layer_meta.get("line_coverage", 0) > 0
+            for layer_meta in per_layer.values()
+        )
+        if exit_code != 0 and operator_lcov_recovered:
+            exit_code = 0
+        return {
+            "log_text": log_text,
+            "exit_code": exit_code,
+            "summary": self._build_run_summary(plan, project_root, per_layer, exit_code),
+        }
+
+    def _build_compare_summary(
+        self,
+        plan: Dict[str, Any],
+        baseline: Dict[str, Any],
+        generated: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        layer_threshold = _layer_coverage_threshold(plan)
+        overall_threshold = _overall_coverage_threshold(plan)
+        per_layer: Dict[str, Dict[str, Any]] = {}
+        baseline_values: List[float] = []
+        generated_values: List[float] = []
+        generated_meets_layer_threshold = True
+        generated_ge_baseline = True
+        invalid_layers: Dict[str, Dict[str, str]] = {}
+        skipped_layers: Dict[str, str] = {}
+
+        for layer in plan.get("enabled_layers", []):
+            baseline_meta = dict(
+                (baseline.get("summary") or {}).get("per_layer", {}).get(layer)
+                or self._default_layer_summary(threshold=layer_threshold)
+            )
+            generated_meta = dict(
+                (generated.get("summary") or {}).get("per_layer", {}).get(layer)
+                or self._default_layer_summary(threshold=layer_threshold)
+            )
+            baseline_value = float(baseline_meta.get("line_coverage", 0.0))
+            generated_value = float(generated_meta.get("line_coverage", 0.0))
+            baseline_func = baseline_meta.get("function_coverage")
+            generated_func = generated_meta.get("function_coverage")
+            baseline_branch = baseline_meta.get("branch_coverage")
+            generated_branch = generated_meta.get("branch_coverage")
+            baseline_valid = bool(baseline_meta.get("coverage_valid", True))
+            generated_valid = bool(generated_meta.get("coverage_valid", True))
+            baseline_uncovered = not baseline_valid and baseline_value == 0.0
+            if baseline_valid and generated_valid:
+                baseline_values.append(baseline_value)
+                generated_values.append(generated_value)
+            elif baseline_uncovered:
+                skipped_layers[str(layer)] = "baseline has no instrumented code for this layer"
+                if generated_valid and baseline_value > 0:
+                    baseline_values.append(baseline_value)
+                    generated_values.append(generated_value)
+            else:
+                invalid_layers[str(layer)] = {
+                    "baseline": str(baseline_meta.get("coverage_error_reason") or ""),
+                    "generated": str(generated_meta.get("coverage_error_reason") or ""),
+                }
+            if not baseline_uncovered:
+                generated_meets_layer_threshold = (
+                    generated_meets_layer_threshold and generated_valid and generated_value >= layer_threshold
+                )
+                generated_ge_baseline = (
+                    generated_ge_baseline and baseline_valid and generated_valid and generated_value >= baseline_value
+                )
+            per_layer[str(layer)] = {
+                "baseline": self._default_layer_summary(
+                    baseline_value,
+                    layer_threshold,
+                    baseline_func,
+                    baseline_branch,
+                    baseline_valid,
+                    baseline_meta.get("coverage_error_reason"),
+                ),
+                "generated": self._default_layer_summary(
+                    generated_value,
+                    layer_threshold,
+                    generated_func,
+                    generated_branch,
+                    generated_valid,
+                    generated_meta.get("coverage_error_reason"),
+                ),
+                "delta_line_coverage": round(generated_value - baseline_value, 4),
+                "delta_function_coverage": (
+                    round(float(generated_func) - float(baseline_func), 4)
+                    if baseline_func is not None and generated_func is not None
+                    else None
+                ),
+                "delta_branch_coverage": (
+                    round(float(generated_branch) - float(baseline_branch), 4)
+                    if baseline_branch is not None and generated_branch is not None
+                    else None
+                ),
+            }
+            if baseline_meta.get("uncovered_lines"):
+                per_layer[str(layer)]["baseline_uncovered_lines"] = baseline_meta["uncovered_lines"]
+            if generated_meta.get("uncovered_lines"):
+                per_layer[str(layer)]["generated_uncovered_lines"] = generated_meta["uncovered_lines"]
+            if baseline_meta.get("uncovered_functions"):
+                per_layer[str(layer)]["baseline_uncovered_functions"] = baseline_meta["uncovered_functions"]
+            if generated_meta.get("uncovered_functions"):
+                per_layer[str(layer)]["generated_uncovered_functions"] = generated_meta["uncovered_functions"]
+
+        baseline_avg = sum(baseline_values) / len(baseline_values) if baseline_values else 0.0
+        generated_avg = sum(generated_values) / len(generated_values) if generated_values else 0.0
+        coverage_valid = not invalid_layers and bool(baseline_values)
+        generated_meets_overall_threshold = coverage_valid and generated_avg >= overall_threshold
+        generated_meets_threshold = generated_meets_layer_threshold and generated_meets_overall_threshold
+
+        return {
+            "mode": "before_after_compare",
+            "coverage_valid": coverage_valid,
+            "coverage_errors": invalid_layers,
+            "skipped_layers": skipped_layers,
+            "threshold": overall_threshold,
+            "thresholds": {
+                "overall": overall_threshold,
+                "per_layer": layer_threshold,
+            },
+            "compare_scope": plan.get("compare_scope", []),
+            "baseline_root": baseline.get("summary", {}).get("project_root", ""),
+            "generated_root": generated.get("summary", {}).get("project_root", ""),
+            "runs": {
+                "baseline": baseline.get("summary", {}),
+                "generated": generated.get("summary", {}),
+            },
+            "per_layer": per_layer,
+            "overall": {
+                "baseline_avg": baseline_avg,
+                "generated_avg": generated_avg,
+                "delta_line_coverage": round(generated_avg - baseline_avg, 4),
+                "generated_meets_threshold": generated_meets_threshold,
+                "generated_meets_overall_threshold": generated_meets_overall_threshold,
+                "generated_meets_layer_threshold": generated_meets_layer_threshold,
+                "generated_ge_baseline": generated_ge_baseline,
+                "coverage_valid": coverage_valid,
+            },
+        }
+
+    def execute(self, state) -> StageResult:
+        plan = _load_json_artifact(state, "test_plan.json")
+        if not (plan.get("build_plan") or {}):
+            return StageResult(False, {}, error="Missing build_plan in test_plan.json")
+
+        use_coverage = self._use_coverage(state, plan)
+        compare_mode = _coverage_mode(plan) == "before_after_compare"
+
+        if compare_mode:
+            baseline_root = Path((plan.get("baseline") or {}).get("project_root") or state.project_root)
+            generated_root = Path((plan.get("generated") or {}).get("project_root") or _generated_repo_root(state))
+
+            baseline_run = self._run_for_root(plan, baseline_root, use_coverage, "baseline", state)
+            generated_run = self._run_for_root(plan, generated_root, use_coverage, "generated", state)
+
+            combined_log = "\n\n".join(
+                [
+                    baseline_run["log_text"],
+                    generated_run["log_text"],
+                ]
+            ).strip()
+            exit_payload = {
+                "baseline": int(baseline_run["exit_code"]),
+                "generated": int(generated_run["exit_code"]),
+                "overall": 0 if baseline_run["exit_code"] == 0 and generated_run["exit_code"] == 0 else 1,
+            }
+            coverage_summary = self._build_compare_summary(plan, baseline_run, generated_run)
+
+            state.save_artifact("baseline_execution_log.txt", baseline_run["log_text"])
+            state.save_artifact("generated_execution_log.txt", generated_run["log_text"])
+        else:
+            generated_root = Path((plan.get("generated") or {}).get("project_root") or state.project_root)
+            run_result = self._run_for_root(plan, generated_root, use_coverage, "generated", state)
+            combined_log = run_result["log_text"]
+            exit_payload = {"overall": int(run_result["exit_code"])}
+            coverage_summary = run_result["summary"]
+
+        coverage_text = _render_json(coverage_summary)
+        state.save_artifact("execution_log.txt", combined_log)
+        state.save_artifact("exit_code.txt", _render_json(exit_payload))
+        state.save_artifact("coverage_summary.json", coverage_text)
+        # Save first 8000 chars of error log for next-epoch context (P4)
+        if exit_payload.get("overall", 1) != 0:
+            state.save_artifact("prev_epoch_error_log.txt", combined_log[:8000])
+        else:
+            state.save_artifact("prev_epoch_error_log.txt", "")
+        outputs = {
+            "execution_log.txt": combined_log,
+            "exit_code.txt": _render_json(exit_payload),
+            "coverage_summary.json": coverage_text,
+        }
+        if compare_mode:
+            outputs["baseline_execution_log.txt"] = baseline_run["log_text"]
+            outputs["generated_execution_log.txt"] = generated_run["log_text"]
+        coverage_recovered = (
+            not exit_payload.get("overall", 1) == 0
+            and coverage_summary.get("coverage_valid", False)
+        )
+        if exit_payload.get("overall", 1) == 0:
+            message = "All configured build commands passed"
+        elif coverage_recovered:
+            message = "Coverage recovered via lcov extraction; build.sh --cov had non-zero exit"
+        else:
+            message = "Build or test commands reported failures"
+        return StageResult(
+            True,
+            outputs,
+            message=message,
+        )
+
+
+class AscendAnalysisStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="analyze_results",
+            display_name="Analyze Results",
+            description="Analyze Ascend build/gtest logs and coverage summary",
+            prompt_template="",
+            input_artifacts=["execution_log.txt", "exit_code.txt", "coverage_summary.json", "test_plan.json"],
+            output_artifacts=["analysis.md", "analysis_plan.json"],
+            tools=[],
+            allow_skip=False,
+        )
+
+    def _collect_uncovered_code(
+        self,
+        state,
+        plan: Dict[str, Any],
+        coverage: Dict[str, Any],
+        context_window: int = 6,
+    ) -> Dict[str, Any]:
+        compare_mode = coverage.get("mode") == "before_after_compare"
+        generated_meta_lookup = (coverage.get("runs") or {}).get("generated") or {}
+        per_layer_generated = generated_meta_lookup.get("per_layer", {}) if compare_mode else coverage.get("per_layer", {})
+
+        generated_root_str = (
+            (plan.get("generated") or {}).get("project_root") or str(_generated_repo_root(state))
+        )
+        generated_root = Path(generated_root_str)
+
+        result: Dict[str, Any] = {"layers": [], "total_uncovered_lines": 0, "total_files": 0}
+
+        for layer in plan.get("enabled_layers", []):
+            layer = str(layer)
+            layer_data = per_layer_generated.get(layer) or {}
+            uncovered_entries = (
+                layer_data.get("generated_uncovered_lines")
+                or layer_data.get("uncovered_lines")
+                or []
+            )
+            if not uncovered_entries:
+                continue
+            layer_files: List[Dict[str, Any]] = []
+            layer_total = 0
+            for entry in uncovered_entries:
+                if not isinstance(entry, dict):
+                    continue
+                source_path = entry.get("path") or ""
+                uncovered_lines = entry.get("uncovered_lines") or []
+                if not source_path or not uncovered_lines:
+                    continue
+                resolved = self._resolve_source_path(generated_root, source_path, plan)
+                if not resolved or not resolved.exists():
+                    layer_files.append({
+                        "source": source_path,
+                        "resolved": str(resolved) if resolved else None,
+                        "uncovered_count": entry.get("total_uncovered", len(uncovered_lines)),
+                        "uncovered_lines": uncovered_lines,
+                        "snippets": [],
+                    })
+                    continue
+                try:
+                    all_lines = resolved.read_text(encoding="utf-8", errors="replace").splitlines()
+                except Exception:
+                    all_lines = []
+                snippets: List[Dict[str, Any]] = []
+                for lineno in sorted(set(uncovered_lines))[:20]:
+                    start = max(0, int(lineno) - context_window - 1)
+                    end = min(len(all_lines), int(lineno) + context_window)
+                    snippet = "\n".join(
+                        f"{i+1:4d}{'>' if (i+1) == int(lineno) else ' '} {all_lines[i]}"
+                        for i in range(start, end)
+                    )
+                    snippets.append({"line": int(lineno), "context": snippet})
+                total_uncovered = entry.get("total_uncovered", len(uncovered_lines))
+                layer_files.append({
+                    "source": source_path,
+                    "resolved": str(resolved),
+                    "uncovered_count": total_uncovered,
+                    "uncovered_lines": uncovered_lines,
+                    "snippets": snippets,
+                })
+                layer_total += total_uncovered
+            if layer_files:
+                result["layers"].append({
+                    "layer": layer,
+                    "files": layer_files,
+                    "total_uncovered": layer_total,
+                })
+                result["total_uncovered_lines"] += layer_total
+                result["total_files"] += len(layer_files)
+        return result
+
+    def _resolve_source_path(
+        self,
+        generated_root: Path,
+        source_path: str,
+        plan: Dict[str, Any],
+    ) -> Optional[Path]:
+        normalized = source_path.replace("\\", "/")
+        candidates = [
+            generated_root / normalized,
+            Path(normalized),
+        ]
+        op_name = plan.get("op_name", "")
+        category = plan.get("category", "")
+        for anchor in (f"{category}/{op_name}/", f"math/{op_name}/"):
+            idx = normalized.find(anchor)
+            if idx >= 0:
+                rel = normalized[idx:]
+                candidates.append(generated_root / rel)
+        if "/op_host/" in normalized:
+            idx = normalized.find("/op_host/")
+            candidates.append(generated_root / f"math/{op_name}{normalized[idx:]}")
+        if "/op_api/" in normalized:
+            idx = normalized.find("/op_api/")
+            candidates.append(generated_root / f"math/{op_name}{normalized[idx:]}")
+        seen: set = set()
+        for c in candidates:
+            if c and str(c) not in seen:
+                seen.add(str(c))
+                if c.exists():
+                    return c
+        return candidates[0] if candidates else None
+
+    def _map_failure(self, state, plan: Dict[str, Any], log_text: str) -> Dict[str, Any]:
+        path_to_file_id = _path_to_file_id(plan)
+        cases = {str(item["block_id"]): item for item in plan.get("cases", []) if isinstance(item, dict)}
+        block_match = re.search(r"(CASE_[0-9A-Za-z_]+)", log_text)
+        block_id = _normalize_case_block_id(block_match.group(1)) if block_match else "HEADER"
+        case = cases.get(block_id, {})
+        file_id = case.get("file_id", "")
+        layer_id = case.get("layer_id", "")
+
+        if not file_id:
+            for path, candidate_file_id in path_to_file_id.items():
+                if path in log_text:
+                    file_id = candidate_file_id
+                    break
+        if not layer_id and file_id:
+            for entry in plan.get("files", []):
+                if entry.get("file_id") == file_id:
+                    layer_id = entry.get("layer_id", "")
+                    break
+        if not file_id:
+            file_id = next((entry.get("file_id") for entry in plan.get("files", []) if isinstance(entry, dict)), "")
+        if not layer_id:
+            layer_id = next((layer for layer in plan.get("enabled_layers", [])), "")
+
+        error_type = _infer_execution_error_type(log_text)
+
+        test_name = ""
+        failed_match = re.search(r"\[\s*FAILED\s*\]\s+([^\s]+)", log_text)
+        if failed_match:
+            test_name = failed_match.group(1)
+
+        return {
+            "test": test_name or block_id,
+            "block_id": block_id,
+            "file_id": file_id,
+            "layer_id": layer_id,
+            "error_type": error_type,
+            "action": "rewrite_block" if block_id.startswith("CASE_") else "fix_dependency",
+            "note": "failure mapped from execution log",
+        }
+
+    def _generated_project_root(self, state, plan: Dict[str, Any], coverage: Dict[str, Any]) -> Path:
+        if coverage.get("mode") == "before_after_compare":
+            generated_root = str(coverage.get("generated_root") or (plan.get("generated") or {}).get("project_root") or "")
+            if generated_root:
+                return Path(generated_root)
+        generated_root = str((plan.get("generated") or {}).get("project_root") or "")
+        if generated_root:
+            return Path(generated_root)
+        return Path(state.project_root)
+
+    def _coverage_failures(self, state, plan: Dict[str, Any], coverage: Dict[str, Any]) -> List[Dict[str, Any]]:
+        failures: List[Dict[str, Any]] = []
+        deferred = set(_deferred_set(plan))
+        block_status: Dict[str, Dict[str, Any]] = {}
+        project_root = self._generated_project_root(state, plan, coverage)
+        layer_threshold = _layer_coverage_threshold(coverage if coverage else plan)
+        overall_threshold = _overall_coverage_threshold(coverage if coverage else plan)
+        for file_entry in plan.get("files", []):
+            path = project_root / str(file_entry.get("path", ""))
+            for entry in build_block_entries(path):
+                block_status[str(entry["block_id"])] = entry
+
+        context = _load_json_artifact(state, "operator_context.json", default={})
+        is_aclnn_exclude = bool(context.get("is_aclnn_exclude"))
+
+        compare_mode = coverage.get("mode") == "before_after_compare"
+        for layer in plan.get("enabled_layers", []):
+            layer = str(layer)
+            if is_aclnn_exclude and layer == "op_host":
+                continue
+            meta = (coverage.get("per_layer") or {}).get(layer, {})
+            if compare_mode:
+                generated_meta = meta.get("generated", {}) if isinstance(meta, dict) else {}
+                baseline_meta = meta.get("baseline", {}) if isinstance(meta, dict) else {}
+                generated_cov = float(generated_meta.get("line_coverage", 0.0))
+                baseline_cov = float(baseline_meta.get("line_coverage", 0.0))
+                if generated_cov >= layer_threshold and generated_cov >= baseline_cov:
+                    continue
+                note = (
+                    f"generated layer coverage {generated_cov}% below "
+                    f"required max({layer_threshold}%, baseline {baseline_cov}%)"
+                )
+                uncovered = generated_meta.get("uncovered_functions") or []
+                if uncovered:
+                    note += f". Uncovered functions: {', '.join(uncovered[:5])}"
+            else:
+                generated_cov = float(meta.get("line_coverage", 0.0)) if isinstance(meta, dict) else 0.0
+                if generated_cov >= layer_threshold:
+                    continue
+                note = f"line coverage {generated_cov}% below threshold"
+                uncovered = meta.get("uncovered_functions") or []
+                if uncovered:
+                    note += f". Uncovered functions: {', '.join(uncovered[:5])}"
+
+            selected_case: Optional[Dict[str, Any]] = None
+            fallback_case: Optional[Dict[str, Any]] = None
+            for case in plan.get("cases", []):
+                if not isinstance(case, dict):
+                    continue
+                if case.get("layer_id") != layer:
+                    continue
+                fallback_case = fallback_case or case
+                block_id = str(case.get("block_id", ""))
+                if block_id not in deferred:
+                    continue
+                entry = block_status.get(block_id)
+                if entry and entry.get("status") == "placeholder":
+                    selected_case = case
+                    break
+
+            selected_case = selected_case or fallback_case
+            if selected_case:
+                block_id = str(selected_case.get("block_id", "HEADER"))
+                failures.append(
+                    {
+                        "test": selected_case.get("test_name_hint", block_id),
+                        "block_id": block_id,
+                        "file_id": selected_case.get("file_id", ""),
+                        "layer_id": layer,
+                        "error_type": "CoverageGap",
+                        "action": "add_case",
+                        "note": note,
+                    }
+                )
+
+        if compare_mode and not failures:
+            generated_avg = float((coverage.get("overall") or {}).get("generated_avg", 0.0))
+            if generated_avg < overall_threshold:
+                weakest_layer = ""
+                weakest_value = float("inf")
+                for layer in plan.get("enabled_layers", []):
+                    layer_meta = (coverage.get("per_layer") or {}).get(str(layer), {})
+                    generated_meta = layer_meta.get("generated", {}) if isinstance(layer_meta, dict) else {}
+                    value = float(generated_meta.get("line_coverage", 0.0))
+                    if value < weakest_value:
+                        weakest_value = value
+                        weakest_layer = str(layer)
+
+                selected_case = next(
+                    (
+                        case for case in plan.get("cases", [])
+                        if isinstance(case, dict) and case.get("layer_id") == weakest_layer
+                    ),
+                    None,
+                )
+                if selected_case:
+                    block_id = str(selected_case.get("block_id", "HEADER"))
+                    failures.append(
+                        {
+                            "test": selected_case.get("test_name_hint", block_id),
+                            "block_id": block_id,
+                            "file_id": selected_case.get("file_id", ""),
+                            "layer_id": weakest_layer,
+                            "error_type": "CoverageGap",
+                            "action": "add_case",
+                            "note": (
+                                f"overall generated coverage {generated_avg}% below "
+                                f"threshold {overall_threshold}%"
+                            ),
+                        }
+                    )
+        return failures[:6]
+
+    def _coverage_progress_metrics(self, plan: Dict[str, Any], coverage: Dict[str, Any]) -> Dict[str, float]:
+        metrics: Dict[str, float] = {}
+        if coverage.get("mode") == "before_after_compare":
+            overall = coverage.get("overall") or {}
+            metrics["overall.line"] = float(overall.get("generated_avg", 0.0) or 0.0)
+            for layer in plan.get("enabled_layers", []):
+                layer_meta = (coverage.get("per_layer") or {}).get(str(layer), {})
+                generated_meta = layer_meta.get("generated", {}) if isinstance(layer_meta, dict) else {}
+                metrics[f"{layer}.line"] = float(generated_meta.get("line_coverage", 0.0) or 0.0)
+                function_coverage = generated_meta.get("function_coverage")
+                if function_coverage is not None:
+                    metrics[f"{layer}.function"] = float(function_coverage)
+                branch_coverage = generated_meta.get("branch_coverage")
+                if branch_coverage is not None:
+                    metrics[f"{layer}.branch"] = float(branch_coverage)
+            return metrics
+
+        overall = coverage.get("overall") or {}
+        metrics["overall.line"] = float(overall.get("line_coverage", 0.0) or 0.0)
+        for layer in plan.get("enabled_layers", []):
+            layer_meta = (coverage.get("per_layer") or {}).get(str(layer), {})
+            if not isinstance(layer_meta, dict):
+                continue
+            metrics[f"{layer}.line"] = float(layer_meta.get("line_coverage", 0.0) or 0.0)
+            function_coverage = layer_meta.get("function_coverage")
+            if function_coverage is not None:
+                metrics[f"{layer}.function"] = float(function_coverage)
+            branch_coverage = layer_meta.get("branch_coverage")
+            if branch_coverage is not None:
+                metrics[f"{layer}.branch"] = float(branch_coverage)
+        return metrics
+
+    def _update_coverage_progress(self, state, plan: Dict[str, Any], coverage: Dict[str, Any]) -> Dict[str, Any]:
+        metrics = self._coverage_progress_metrics(plan, coverage)
+        previous_best = getattr(state, "best_coverage_metrics", {}) or {}
+        if not isinstance(previous_best, dict):
+            previous_best = {}
+
+        epsilon = 1e-6
+        improved = False
+        regressions: Dict[str, Dict[str, float]] = {}
+        for key, value in metrics.items():
+            try:
+                previous_value = float(previous_best.get(key, -1.0))
+            except (TypeError, ValueError):
+                previous_value = -1.0
+            if float(value) > previous_value + epsilon:
+                improved = True
+            elif key in previous_best and float(value) < previous_value - epsilon:
+                regressions[key] = {
+                    "current": float(value),
+                    "best": previous_value,
+                }
+
+        if improved or not previous_best:
+            state.best_coverage_metrics = {
+                key: max(float(value), float(previous_best.get(key, -1.0) or -1.0))
+                for key, value in metrics.items()
+            }
+            state.coverage_no_improvement_rounds = 0
+        else:
+            state.coverage_no_improvement_rounds = int(getattr(state, "coverage_no_improvement_rounds", 0) or 0) + 1
+
+        return {
+            "metrics": metrics,
+            "improved": improved or not previous_best,
+            "regressions": regressions,
+            "no_improvement_rounds": state.coverage_no_improvement_rounds,
+            "best_metrics": getattr(state, "best_coverage_metrics", {}) or {},
+        }
+
+    def _coverage_regression_failures(
+        self,
+        plan: Dict[str, Any],
+        coverage_progress: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        regressions = coverage_progress.get("regressions") or {}
+        if not isinstance(regressions, dict) or not regressions:
+            return []
+
+        failures: List[Dict[str, Any]] = []
+        enabled_layers = [str(layer) for layer in plan.get("enabled_layers", [])]
+        for metric_name, meta in regressions.items():
+            layer = metric_name.split(".", 1)[0]
+            if layer == "overall" or layer not in enabled_layers:
+                layer = enabled_layers[0] if enabled_layers else ""
+            selected_case = next(
+                (
+                    case for case in plan.get("cases", [])
+                    if isinstance(case, dict) and case.get("layer_id") == layer
+                ),
+                None,
+            )
+            block_id = str((selected_case or {}).get("block_id", "HEADER"))
+            failures.append(
+                {
+                    "test": (selected_case or {}).get("test_name_hint", block_id),
+                    "block_id": block_id,
+                    "file_id": (selected_case or {}).get("file_id", ""),
+                    "layer_id": layer,
+                    "error_type": "CoverageRegression",
+                    "action": "rewrite_block",
+                    "note": (
+                        f"{metric_name} regressed from {meta.get('best')}% "
+                        f"to {meta.get('current')}%; restore or improve the previous best coverage"
+                    ),
+                }
+            )
+        return failures[:6]
+
+    def execute(self, state) -> StageResult:
+        log_text = str(state.load_artifact("execution_log.txt") or "")
+        exit_payload = _parse_exit_payload(state.load_artifact("exit_code.txt"))
+        coverage = _load_json_artifact(state, "coverage_summary.json", default={})
+        plan = _load_json_artifact(state, "test_plan.json")
+        generated_log = str(state.load_artifact("generated_execution_log.txt") or log_text)
+        compare_mode = coverage.get("mode") == "before_after_compare" or _coverage_mode(plan) == "before_after_compare"
+
+        analysis = _default_analysis_plan()
+        passed = 0
+        failed = 0
+        errors = 0
+        coverage_progress: Dict[str, Any] = {}
+
+        if compare_mode and exit_payload.get("baseline", 0) != 0:
+            analysis["status"] = "blocked"
+            analysis["stop_recommended"] = True
+            analysis["stop_reason"] = "Baseline op_host/op_api UT failed; coverage comparison is unavailable"
+            state.auto_stop_reason = analysis["stop_reason"]
+            errors = 1
+        elif compare_mode and not ((coverage.get("runs") or {}).get("baseline") or {}).get("coverage_valid", True):
+            baseline_errors = ((coverage.get("runs") or {}).get("baseline") or {}).get("coverage_errors") or {}
+            ordered = _ordered_files(plan)
+            first_test_file_id = next((f["file_id"] for f in ordered if f.get("kind") != "cmake"), "")
+            first_layer_id = next((f["layer_id"] for f in ordered if f.get("kind") != "cmake"), "")
+            analysis["status"] = "failed"
+            failed = 1
+            errors = 1
+            analysis["stop_reason"] = (
+                "Baseline op_host/op_api coverage collection failed; "
+                f"coverage comparison is unavailable: {baseline_errors}"
+            )
+            analysis["failures"] = [
+                {
+                    "test": "coverage_collection",
+                    "block_id": "HEADER",
+                    "file_id": str(first_test_file_id),
+                    "layer_id": str(first_layer_id),
+                    "error_type": "CoverageCollectionError",
+                    "action": "fix_dependency",
+                    "note": f"no coverage data collected; check that tests register and exercise the operator code: {baseline_errors}",
+                }
+            ]
+        elif (compare_mode and exit_payload.get("generated", 0) != 0) or exit_payload.get("overall", 0) != 0:
+            failure = self._map_failure(state, plan, generated_log if compare_mode else log_text)
+            analysis["failures"] = [failure]
+            failed = 1
+            if failure["error_type"] in {"CompilationError", "CoverageCollectionError", "CoverageInstrumentationError"}:
+                errors = 1
+            analysis["status"] = "failed"
+        elif not coverage.get("coverage_valid", True):
+            ordered = _ordered_files(plan)
+            first_test_file_id = next((f["file_id"] for f in ordered if f.get("kind") != "cmake"), "")
+            first_layer_id = next((f["layer_id"] for f in ordered if f.get("kind") != "cmake"), "")
+            failure = {
+                "test": "coverage_collection",
+                "block_id": "HEADER",
+                "file_id": str(first_test_file_id),
+                "layer_id": str(first_layer_id),
+                "error_type": "CoverageCollectionError",
+                "action": "fix_dependency",
+                "note": f"coverage collection is invalid: {coverage.get('coverage_errors') or {}}",
+            }
+            analysis["failures"] = [failure]
+            failed = 1
+            errors = 1
+            analysis["status"] = "failed"
+        else:
+            coverage_progress = self._update_coverage_progress(state, plan, coverage)
+            coverage_failures = self._coverage_failures(state, plan, coverage)
+            if not coverage_failures:
+                coverage_failures = self._coverage_regression_failures(plan, coverage_progress)
+            if coverage_failures:
+                analysis["failures"] = coverage_failures
+                failed = len(coverage_failures)
+                analysis["status"] = "not_fully_passed"
+            else:
+                analysis["status"] = "success"
+                passed = len(plan.get("cases", []))
+                stop_policy = _coverage_stop_policy(plan)
+                if stop_policy["stop_on_threshold"]:
+                    analysis["stop_recommended"] = True
+                    if compare_mode:
+                        analysis["stop_reason"] = (
+                            "Generated op_host/op_api coverage meets the enhance thresholds "
+                            "(overall >= 90%, per layer >= 85%) and is not lower than the baseline"
+                        )
+                    else:
+                        analysis["stop_reason"] = "All enabled layers passed and reached the coverage threshold"
+                    state.auto_stop_reason = analysis["stop_reason"]
+                elif coverage_progress.get("no_improvement_rounds", 0) >= stop_policy["patience_no_improvement"]:
+                    analysis["stop_recommended"] = True
+                    analysis["stop_reason"] = (
+                        "Enhanced coverage did not improve for "
+                        f"{coverage_progress['no_improvement_rounds']} consecutive rounds; "
+                        "stop at the current best coverage"
+                    )
+                    state.auto_stop_reason = analysis["stop_reason"]
+
+        analysis["passed"] = passed
+        analysis["failed"] = failed
+        analysis["errors"] = errors
+        if coverage_progress:
+            analysis["coverage_progress"] = coverage_progress
+
+        uncovered_analysis: Optional[Dict[str, Any]] = None
+        try:
+            uncovered_analysis = self._collect_uncovered_code(state, plan, coverage)
+        except Exception as e:
+            analysis["uncovered_collection_error"] = str(e)[:200]
+        if uncovered_analysis and uncovered_analysis.get("total_files", 0) > 0:
+            analysis["uncovered_analysis"] = {
+                "total_files": uncovered_analysis.get("total_files"),
+                "total_uncovered_lines": uncovered_analysis.get("total_uncovered_lines"),
+                "layers": [
+                    {
+                        "layer": layer_data.get("layer"),
+                        "total_uncovered": layer_data.get("total_uncovered"),
+                        "files": [
+                            {
+                                "source": f.get("source"),
+                                "uncovered_count": f.get("uncovered_count"),
+                                "sample_lines": (f.get("uncovered_lines") or [])[:10],
+                            }
+                            for f in layer_data.get("files", [])
+                        ],
+                    }
+                    for layer_data in uncovered_analysis.get("layers", [])
+                ],
+            }
+            state.save_artifact("uncovered_code.json", _render_json(uncovered_analysis))
+        analysis_text = _render_json(analysis)
+
+        md_lines = [
+            f"# Ascend UT Analysis - {state.target}",
+            "",
+            f"- Status: `{analysis['status']}`",
+            f"- Passed: `{analysis['passed']}`",
+            f"- Failed: `{analysis['failed']}`",
+            f"- Errors: `{analysis['errors']}`",
+            "",
+        ]
+        if compare_mode:
+            md_lines.append("## Coverage Delta")
+            for layer in plan.get("enabled_layers", []):
+                meta = (coverage.get("per_layer") or {}).get(str(layer), {})
+                baseline_cov = float((meta.get("baseline") or {}).get("line_coverage", 0.0)) if isinstance(meta, dict) else 0.0
+                generated_cov = float((meta.get("generated") or {}).get("line_coverage", 0.0)) if isinstance(meta, dict) else 0.0
+                delta = float(meta.get("delta_line_coverage", 0.0)) if isinstance(meta, dict) else 0.0
+                md_lines.append(
+                    f"- `{layer}`: baseline {baseline_cov}% -> generated {generated_cov}% (delta {delta:+.2f}%)"
+                )
+            md_lines.append("")
+        md_lines.append("## Blocks To Fix")
+        if analysis["failures"]:
+            for item in analysis["failures"]:
+                md_lines.append(
+                    f"- `{item['block_id']}` ({item['layer_id']}/{item['file_id']}): `{item['action']}` because `{item['error_type']}`"
+                )
+        else:
+            md_lines.append("- None")
+        md_lines.extend(
+            [
+                "",
+                f"- stop_recommended: `{analysis['stop_recommended']}`",
+                f"- stop_reason: `{analysis['stop_reason'] or 'none'}`",
+            ]
+        )
+        analysis_md = "\n".join(md_lines)
+
+        state.save_artifact("analysis_plan.json", analysis_text)
+        state.save_artifact("analysis.md", analysis_md)
+
+        # Save case inventory for next-epoch context (P4)
+        try:
+            generated_root = self._generated_project_root(state, plan, coverage)
+            inventory_blocks: List[Dict[str, Any]] = []
+            for file_entry in plan.get("files", []):
+                if not isinstance(file_entry, dict):
+                    continue
+                file_id = str(file_entry.get("file_id", ""))
+                fpath = generated_root / str(file_entry.get("path", ""))
+                for blk in build_block_entries(fpath):
+                    inventory_blocks.append({
+                        "block_id": blk["block_id"],
+                        "file_id": file_id,
+                        "status": blk["status"],
+                    })
+            case_inventory = {
+                "epoch": getattr(state, "epoch_current", 1),
+                "generated_blocks": inventory_blocks,
+            }
+            state.save_artifact("case_inventory.json", _render_json(case_inventory))
+        except Exception:
+            pass
+
+        return StageResult(
+            True,
+            {"analysis_plan.json": analysis_text, "analysis.md": analysis_md},
+            message=f"Analysis status: {analysis['status']}",
+        )
+
+
+class AscendGenerationAgentLoopStage(AscendBaseStage):
+    """
+    Continuous agent loop that fuses generate_code + execute_tests + analyze_results
+    into a single LLM session. The LLM autonomously iterates: write → compile → run
+    → check coverage → fill gaps → repeat until satisfied or turns exhausted.
+
+    Replaces stages 4+5+6 in the `ascend_ut_continuous` profile. Produces the same
+    artifact set as the three separate stages so that generate_report (stage 7) works
+    without any modification.
+    """
+
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="generate_code",
+            display_name="Generation Agent Loop (Continuous)",
+            description="Single continuous LLM session: generate + compile + coverage + analyze",
+            prompt_template="",
+            input_artifacts=[
+                "operator_context.json", "requirements.md", "test_plan.json",
+                "analysis_plan.json",
+            ],
+            output_artifacts=[
+                "generation_manifest.json",
+                "execution_log.txt",
+                "coverage_summary.json",
+                "analysis_plan.json",
+                "analysis.md",
+            ],
+            tools=[
+                "list_files", "read_file", "part_read", "search",
+                "write_file", "replace_in_file", "replace_block", "append_to_file",
+                "exec_command",
+            ],
+            allow_skip=False,
+        )
+        # Mark this stage as an epoch boundary so engine.py's epoch loop fires on it
+        self.is_epoch_boundary = True
+
+    # ------------------------------------------------------------------
+    # Build commands helpers (reuse AscendBaseStage infrastructure)
+    # ------------------------------------------------------------------
+
+    def _build_layer_cmd_section(
+        self,
+        plan: Dict[str, Any],
+        project_root: Path,
+    ) -> str:
+        build_plan = plan.get("build_plan") or {}
+        if not isinstance(build_plan, dict):
+            return ""
+        lines: List[str] = ["## Build and coverage commands per layer\n"]
+        for layer, cmds in build_plan.items():
+            if not isinstance(cmds, dict):
+                continue
+            compile_cmd = (cmds.get("compile_cmd") or "").replace("{project_root}", str(project_root))
+            coverage_cmd = (cmds.get("coverage_cmd") or "").replace("{project_root}", str(project_root))
+            if compile_cmd:
+                lines.append(f"**{layer}** compile+run:  `{compile_cmd}`")
+            if coverage_cmd:
+                lines.append(f"**{layer}** coverage:      `{coverage_cmd}`")
+        return "\n".join(lines) + "\n"
+
+    # ------------------------------------------------------------------
+    # Prompt construction
+    # ------------------------------------------------------------------
+
+    def _build_agent_loop_prompt(
+        self,
+        state,
+        plan: Dict[str, Any],
+        context: Dict[str, Any],
+        project_root: Path,
+        slim_context: Dict[str, Any],
+        analysis_plan: Dict[str, Any],
+        prev_error_context: str,
+        case_inventory_context: str,
+        provider,
+        generation_mode: str,
+        coverage_mode: str,
+    ) -> str:
+        epoch = getattr(state, "epoch_current", 1)
+        epoch_total = getattr(state, "epoch_total", 1)
+        enabled_layers = plan.get("enabled_layers", [])
+        files_info = [
+            f"  - {f.get('path', '?')} (layer={f.get('layer_id','?')}, kind={f.get('kind','?')})"
+            for f in plan.get("files", [])
+            if isinstance(f, dict)
+        ]
+        cmd_section = self._build_layer_cmd_section(plan, project_root)
+        skill_text = ""
+        for layer in enabled_layers:
+            pkt = provider.get_stage_packet("generate_code", str(layer), generation_mode=generation_mode)
+            if pkt:
+                skill_text += f"\n### Skill [{layer}]\n{pkt}\n"
+
+        return f"""You are an Ascend C++ unit-test generation agent with FULL autonomy.
+Epoch {epoch}/{epoch_total}. Operator: {slim_context.get('operator_name', '?')}
+
+## Your mission
+Generate thorough GTest unit-tests that maximise LINE coverage of the operator source code.
+Work completely within this conversation — write code, compile, run, check coverage, fill gaps,
+repeat — until you are satisfied or turns are exhausted.
+
+## Files to write (project root: {project_root})
+{chr(10).join(files_info)}
+
+{cmd_section}
+
+## Mandatory workflow (loop until coverage stabilises or turns run out)
+
+1. **For each file** (in order of layer priority: op_api first, then op_host):
+   a. Read the current block index to see what's already filled vs placeholder.
+   b. Fill every placeholder block with meaningful test cases.
+      - Use `write_file` for first ~100 lines, then `append_to_file` for the rest.
+      - Use `replace_block` / `replace_in_file` to update existing blocks.
+   c. Immediately compile+run: `exec_command(cmd="<compile_cmd_for_layer>")`
+   d. If compile fails: read the error → reason → read API source → fix → recompile.
+   e. If runtime abort/SIGSEGV: same loop. Do NOT move on until tests run cleanly.
+
+2. **After all files are done**, run coverage for each enabled layer and read the output.
+
+3. **Identify uncovered lines** — read the operator source around each uncovered line,
+   understand the branch condition, write a new TEST_F that exercises that path.
+
+4. **Recompile and re-run** after each gap-filling round. Repeat steps 2-4 until
+   coverage no longer improves or you have fewer than 20 turns remaining.
+
+5. **At the very end**, output a JSON block (surrounded by ```json ... ```) with this schema:
+```json
+{{
+  "status": "success" | "partial" | "compile_failed",
+  "coverage_per_layer": {{"op_api": 0.0, "op_host": 0.0}},
+  "failures": [],
+  "stop_reason": "coverage_plateau | turns_exhausted | compile_error"
+}}
+```
+
+## Key rules
+- NEVER guess an API signature. Always `read_file` / grep the implementation before using a type.
+- Keep every test traceable to its BLOCK_ID marker.
+- Do NOT regenerate already-filled blocks unless you are improving them.
+- Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
+
+## Operator context
+```json
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:2000]}
+```
+
+## Test plan (files + cases)
+```json
+{json.dumps(plan, ensure_ascii=False, indent=2)[:3000]}
+```
+
+## Prior analysis plan (from previous epoch, if any)
+```json
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
+```
+{prev_error_context}{case_inventory_context}
+{skill_text}
+Begin now. Start with the first file."""
+
+    # ------------------------------------------------------------------
+    # Post-session: parse summary JSON from LLM response text
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_agent_summary(llm_text: str) -> Dict[str, Any]:
+        """Extract the final JSON summary block from LLM output."""
+        import re
+        m = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", llm_text or "")
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except Exception:
+                pass
+        return {}
+
+    # ------------------------------------------------------------------
+    # execute()
+    # ------------------------------------------------------------------
+
+    def execute(self, state) -> StageResult:
+        plan = _load_json_artifact(state, "test_plan.json")
+        context = _load_json_artifact(state, "operator_context.json")
+        analysis_plan = _load_json_artifact(state, "analysis_plan.json", default=_default_analysis_plan())
+        provider = self._skill_provider(state)
+        project_root = _llm_project_root(state, context)
+        generation_mode = _generation_mode(context)
+        coverage_mode = _coverage_mode(context)
+        slim_context = _slim_context(context)
+
+        if _is_enhance_mode(context):
+            project_root = self._prepare_generated_repo(state, context)
+
+        # Load cross-epoch context artifacts (P4)
+        epoch = int(getattr(state, "epoch_current", 1) or 1)
+        prev_error_context = ""
+        case_inventory_context = ""
+        if epoch > 1:
+            prev_error_log = state.load_artifact("prev_epoch_error_log.txt") or ""
+            if prev_error_log.strip():
+                prev_error_context = (
+                    f"\n## Previous epoch compile/run errors (up to 4000 chars)\n"
+                    f"```\n{prev_error_log[:4000]}\n```\n"
+                )
+            inv = _load_json_artifact(state, "case_inventory.json", default={})
+            if inv.get("generated_blocks"):
+                filled = [b["block_id"] for b in inv["generated_blocks"] if b["status"] == "filled"]
+                placeholder = [b["block_id"] for b in inv["generated_blocks"] if b["status"] == "placeholder"]
+                case_inventory_context = (
+                    f"\n## Previous epoch case status\n"
+                    f"Already filled (do NOT regenerate): {', '.join(filled[:30]) or 'none'}\n"
+                    f"Still placeholder (focus of this epoch): {', '.join(placeholder[:30]) or 'none'}\n"
+                )
+
+        # Ensure file skeletons exist
+        cases_by_file = _cases_by_file(plan)
+        for file_entry in _ordered_files(plan):
+            self._ensure_skeleton(project_root, file_entry, cases_by_file.get(str(file_entry["file_id"]), []))
+
+        prompt = self._build_agent_loop_prompt(
+            state, plan, context, project_root, slim_context, analysis_plan,
+            prev_error_context, case_inventory_context,
+            provider, generation_mode, coverage_mode,
+        )
+
+        stage_result = self._run_llm_session(state, prompt, project_root, turn_limit=300)
+        llm_text = stage_result.message or ""
+        agent_summary = self._parse_agent_summary(llm_text)
+
+        # ------------------------------------------------------------------
+        # Save generation_manifest.json (record all files as updated)
+        # ------------------------------------------------------------------
+        manifest = [
+            {
+                "file_id": str(f.get("file_id", "")),
+                "path": f.get("path", ""),
+                "action": "updated",
+                "target_blocks": ["ALL"],
+            }
+            for f in plan.get("files", [])
+            if isinstance(f, dict)
+        ]
+        manifest_text = _render_json({"files": manifest, "project_root": str(project_root)})
+        state.save_artifact("generation_manifest.json", manifest_text)
+
+        # ------------------------------------------------------------------
+        # Run build + coverage collection (reuse ExecutionStage logic)
+        # ------------------------------------------------------------------
+        exec_stage = AscendExecutionStage(self.llm, self.tool_runner)
+        exec_result = exec_stage.execute(state)
+
+        # ------------------------------------------------------------------
+        # Run analysis (reuse AnalysisStage logic)
+        # ------------------------------------------------------------------
+        analysis_stage = AscendAnalysisStage(self.llm, self.tool_runner)
+        analysis_result = analysis_stage.execute(state)
+
+        # ------------------------------------------------------------------
+        # Return combined result
+        # ------------------------------------------------------------------
+        success = stage_result.success or exec_result.success
+        combined_outputs: Dict[str, Any] = {}
+        combined_outputs.update(stage_result.outputs or {})
+        combined_outputs["generation_manifest.json"] = manifest_text
+        combined_outputs.update(exec_result.outputs or {})
+        combined_outputs.update(analysis_result.outputs or {})
+
+        cov_summary = _load_json_artifact(state, "coverage_summary.json", default={})
+        cov_note = ""
+        for layer in plan.get("enabled_layers", []):
+            ldata = cov_summary.get("per_layer", {}).get(str(layer), {})
+            lc = ldata.get("line_coverage")
+            if lc is not None:
+                cov_note += f" {layer}={lc:.1f}%"
+
+        return StageResult(
+            success,
+            combined_outputs,
+            message=f"Continuous agent loop complete.{cov_note}",
+        )
+
+
+class AscendReportStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="generate_report",
+            display_name="Generate Report",
+            description="Summarize Ascend UT generation outputs",
+            prompt_template="",
+            input_artifacts=["operator_context.json", "requirements.md", "test_plan.json", "analysis.md", "coverage_summary.json"],
+            output_artifacts=["final_report.md"],
+            tools=[],
+            allow_skip=False,
+        )
+
+    def execute(self, state) -> StageResult:
+        context = _load_json_artifact(state, "operator_context.json")
+        plan = _load_json_artifact(state, "test_plan.json")
+        coverage = _load_json_artifact(state, "coverage_summary.json", default={})
+        analysis_md = str(state.load_artifact("analysis.md") or "")
+        provider = self._skill_provider(state)
+
+        lines = [
+            f"# Final Report - {context.get('op_path', state.target)}",
+            "",
+            "## Summary",
+            f"- Generation mode: `{context.get('generation_mode', 'unknown')}`",
+            f"- Coverage mode: `{plan.get('coverage_mode', context.get('coverage_mode', 'unknown'))}`",
+            f"- Enabled layers: {', '.join(context.get('enabled_layers', [])) or 'none'}",
+            f"- Selected SoC: `{context.get('selected_soc', state.soc)}`",
+            f"- Auto-stop reason: `{getattr(state, 'auto_stop_reason', '') or 'none'}`",
+            "",
+            "## Generated Files",
+        ]
+        for entry in _ordered_files(plan):
+            lines.append(f"- `{entry['path']}` ({entry['layer_id']}, {entry['kind']})")
+
+        lines.extend(["", "## Coverage"])
+        if coverage.get("mode") == "before_after_compare":
+            lines.append(f"- Baseline root: `{coverage.get('baseline_root', plan.get('baseline', {}).get('project_root', ''))}`")
+            lines.append(f"- Generated root: `{coverage.get('generated_root', plan.get('generated', {}).get('project_root', ''))}`")
+            for layer, meta in (coverage.get("per_layer") or {}).items():
+                baseline_meta = (meta.get("baseline") or {}) if isinstance(meta, dict) else {}
+                generated_meta = (meta.get("generated") or {}) if isinstance(meta, dict) else {}
+                baseline_cov = float(baseline_meta.get("line_coverage", 0.0))
+                generated_cov = float(generated_meta.get("line_coverage", 0.0))
+                delta = float(meta.get("delta_line_coverage", 0.0)) if isinstance(meta, dict) else 0.0
+                branch_text = ""
+                if baseline_meta.get("branch_coverage") is not None or generated_meta.get("branch_coverage") is not None:
+                    baseline_branch = baseline_meta.get("branch_coverage")
+                    generated_branch = generated_meta.get("branch_coverage")
+                    delta_branch = meta.get("delta_branch_coverage") if isinstance(meta, dict) else None
+                    branch_text = (
+                        f"; branch {baseline_branch}% -> {generated_branch}%"
+                        f" (delta {float(delta_branch):+.2f}%)"
+                        if delta_branch is not None
+                        else f"; branch {baseline_branch}% -> {generated_branch}%"
+                    )
+                lines.append(
+                    f"- `{layer}`: line baseline {baseline_cov}% -> generated {generated_cov}% "
+                    f"(delta {delta:+.2f}%){branch_text}"
+                )
+            overall = coverage.get("overall", {})
+            lines.append(
+                f"- Overall generated>=baseline: `{overall.get('generated_ge_baseline', False)}`; "
+                f"generated meets threshold: `{overall.get('generated_meets_threshold', False)}`"
+            )
+        else:
+            for layer, meta in (coverage.get("per_layer") or {}).items():
+                branch_text = (
+                    f", branch {meta.get('branch_coverage')}%"
+                    if meta.get("branch_coverage") is not None
+                    else ""
+                )
+                lines.append(
+                    f"- `{layer}`: line {meta.get('line_coverage', 0.0)}%{branch_text} "
+                    f"(meets threshold: {meta.get('meets_threshold', False)})"
+                )
+
+        lines.extend(
+            [
+                "",
+                "## Analysis Snapshot",
+                analysis_md,
+                "",
+                "## Skill Summary",
+                "```text",
+                provider.get_stage_packet(
+                    "generate_report",
+                    generation_mode=plan.get("generation_mode", context.get("generation_mode", "ut_generate")),
+                ),
+                "```",
+            ]
+        )
+
+        content = "\n".join(lines)
+        state.save_artifact("final_report.md", content)
+        return StageResult(True, {"final_report.md": content}, message="Final Ascend UT report generated")
+
+
+def build_ascend_stages(llm, tool_runner):
+    return {
+        "understand_function": AscendInspectOperatorStage(llm, tool_runner),
+        "generate_requirements": AscendRequirementsStage(llm, tool_runner),
+        "design_test_plan": AscendTestPlanStage(llm, tool_runner),
+        "generate_code": AscendCodeGenStage(llm, tool_runner),
+        "execute_tests": AscendExecutionStage(llm, tool_runner),
+        "analyze_results": AscendAnalysisStage(llm, tool_runner),
+        "generate_report": AscendReportStage(llm, tool_runner),
+    }
+
+
+def build_ascend_continuous_stages(llm, tool_runner):
+    """Stage map for the `ascend_ut_continuous` profile.
+
+    Stages 4+5+6 are replaced by a single AscendGenerationAgentLoopStage that
+    runs in one continuous LLM session. Stage 7 (generate_report) is unchanged.
+    """
+    return {
+        "understand_function": AscendInspectOperatorStage(llm, tool_runner),
+        "generate_requirements": AscendRequirementsStage(llm, tool_runner),
+        "design_test_plan": AscendTestPlanStage(llm, tool_runner),
+        "generate_code": AscendGenerationAgentLoopStage(llm, tool_runner),
+        "generate_report": AscendReportStage(llm, tool_runner),
+    }

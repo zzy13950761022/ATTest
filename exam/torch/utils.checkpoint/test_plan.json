@@ -1,0 +1,282 @@
+{
+  "plan_version": 2,
+  "target": "torch.utils.checkpoint",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_utils_checkpoint.py",
+    "all_pattern": "tests/test_torch_utils_checkpoint_*.py",
+    "groups": {
+      "G1": "tests/test_torch_utils_checkpoint_basic.py",
+      "G2": "tests/test_torch_utils_checkpoint_gradients.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础功能验证",
+      "entrypoints": ["checkpoint"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_04"],
+      "note": "验证checkpoint基本功能、参数支持和异常处理"
+    },
+    {
+      "group_id": "G2",
+      "title": "梯度与RNG验证",
+      "entrypoints": ["checkpoint"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "验证梯度正确性、RNG状态管理和内存使用"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基础检查点功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "simple_linear",
+          "input_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "use_reentrant": true,
+          "preserve_rng_state": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "output_value_finite", "no_exception"],
+        "strong": ["approx_equal_direct", "gradient_correctness", "memory_usage_improved"]
+      },
+      "oracle": "direct_function_call",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "use_reentrant模式参数验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "simple_linear",
+          "input_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "use_reentrant": false,
+          "preserve_rng_state": true,
+          "has_kwargs": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "kwargs_supported", "no_exception"],
+        "strong": ["approx_equal_direct", "gradient_correctness", "kwargs_preserved"]
+      },
+      "oracle": "direct_function_call",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "梯度正确性验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "simple_linear",
+          "input_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "use_reentrant": true,
+          "preserve_rng_state": true,
+          "requires_grad": true
+        }
+      ],
+      "asserts": {
+        "weak": ["gradient_exists", "gradient_shape", "gradient_finite", "no_exception"],
+        "strong": ["gradient_approx_equal", "gradient_precision", "backward_compatibility"]
+      },
+      "oracle": "direct_gradient_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "异常场景处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function_type": "invalid_callable",
+          "use_reentrant": true,
+          "has_kwargs": true,
+          "expected_exception": "RuntimeError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type", "exception_message_contains"],
+        "strong": ["exception_context", "error_recovery"]
+      },
+      "oracle": "expected_exception",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "torch.utils.checkpoint.CheckpointFunction.apply",
+        "torch.utils.checkpoint._checkpoint_without_reentrant"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "RNG状态管理验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "function_type": "random_operation",
+          "input_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "use_reentrant": true,
+          "preserve_rng_state": true
+        }
+      ],
+      "asserts": {
+        "weak": ["rng_state_consistent", "output_deterministic", "no_exception"],
+        "strong": ["rng_state_precision", "multi_device_rng", "nested_rng"]
+      },
+      "oracle": "direct_random_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "torch.get_rng_state",
+        "torch.set_rng_state",
+        "torch.cuda.get_rng_state",
+        "torch.cuda.set_rng_state"
+      ]
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "嵌套输出结构处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "function_type": "nested_output",
+          "input_shape": [2, 3],
+          "dtype": "float32",
+          "device": "cpu",
+          "use_reentrant": true,
+          "preserve_rng_state": true
+        }
+      ],
+      "asserts": {
+        "weak": ["output_structure", "tensor_in_structure", "non_tensor_preserved", "no_exception"],
+        "strong": ["gradient_in_structure", "deep_nesting", "custom_object"]
+      },
+      "oracle": "direct_nested_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "input_shape": [4, 4],
+        "use_reentrant": true
+      },
+      "note": "作为参数扩展：float64精度测试"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "device": "cuda",
+        "input_shape": [2, 3],
+        "use_reentrant": true
+      },
+      "note": "作为参数扩展：CUDA设备测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "use_reentrant": false,
+        "preserve_rng_state": false,
+        "has_kwargs": true
+      },
+      "note": "作为参数扩展：preserve_rng_state=False测试"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "use_reentrant": false,
+        "requires_grad": true
+      },
+      "note": "作为参数扩展：use_reentrant=False梯度测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_06"]
+}

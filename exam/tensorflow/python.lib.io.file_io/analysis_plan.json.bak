@@ -1,0 +1,71 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 12,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[/tmp/test_file.txt-True]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_pywrap_file_io fixture 尝试mock不存在的FileIO属性"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[/tmp/nonexistent.txt-False]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_pywrap_file_io fixture 尝试mock不存在的FileIO属性"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_exists_basic[-False]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock_pywrap_file_io fixture 尝试mock不存在的FileIO属性"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_stat_basic[/tmp/test_file.txt-expected_fields0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/test_text.txt-Hello TensorFlow-w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/empty.txt--w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_file_read_write_string[/tmp/unicode.txt-\\u4e2d\\u6587\\u6d4b\\u8bd5 \\U0001f680-w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_fileio_basic_read_write[/tmp/test_io.bin-binary_data-wb]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_list_directory_basic[/tmp/test_dir-expected_files0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_list_directory_basic[/tmp/empty_dir-expected_files1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_copy_basic[/tmp/source.txt-/tmp/destination.txt-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_lib_io_file_io.py::test_copy_basic[/tmp/source.txt-/tmp/destination.txt-True]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

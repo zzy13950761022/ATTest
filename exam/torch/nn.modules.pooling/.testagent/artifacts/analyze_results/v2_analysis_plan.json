@@ -1,0 +1,17 @@
+{
+  "status": "成功",
+  "passed": 1,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "test_adaptive_avgpool2d_basic",
+      "reason": "测试已通过，无需修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

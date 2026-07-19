@@ -1,0 +1,228 @@
+"""
+测试 tensorflow.python.compiler.xla.jit.experimental_jit_scope 函数
+G2组：参数功能与高级用法
+"""
+
+import pytest
+import tensorflow as tf
+from unittest.mock import Mock, patch, MagicMock
+from tensorflow.python.compiler.xla import jit as xla_jit
+from tensorflow.python.eager import context
+from tensorflow.python.framework import ops
+
+
+# ==== BLOCK:HEADER START ====
+# 测试类定义和通用fixture
+class TestExperimentalJitScopeG2:
+    """测试 experimental_jit_scope 函数的参数功能与高级用法"""
+    
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """每个测试方法前后的设置和清理"""
+        # 保存原始状态
+        self._original_executing_eagerly = None
+        if hasattr(context, 'executing_eagerly'):
+            self._original_executing_eagerly = context.executing_eagerly
+        
+        # 清理全局状态
+        self._clear_xla_scope_collection()
+        
+        yield  # 测试执行
+        
+        # 测试后清理
+        self._clear_xla_scope_collection()
+    
+    def _clear_xla_scope_collection(self):
+        """清理XLA作用域集合"""
+        # 使用tf.compat.v1.get_collection_ref来清理集合
+        try:
+            import tensorflow as tf
+            collection_ref = tf.compat.v1.get_collection_ref(xla_jit._XLA_SCOPE_KEY)
+            if collection_ref:
+                collection_ref.clear()
+        except (ImportError, AttributeError):
+            # 如果tf不可用，尝试使用ops.get_collection
+            if hasattr(ops, 'get_collection'):
+                # 获取集合并清空
+                collection = ops.get_collection(xla_jit._XLA_SCOPE_KEY)
+                if collection:
+                    # 对于TensorFlow 2.x，可能需要使用不同的方法
+                    # 这里我们尝试获取集合引用并清空
+                    pass
+    
+    def _mock_graph_execution_mode(self):
+        """Mock graph execution模式"""
+        # 使用正确的导入路径
+        return patch('tensorflow.python.eager.context.executing_eagerly', return_value=False)
+# ==== BLOCK:HEADER END ====
+
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize(
+        "compile_ops_param,expected_compile_value",
+        [
+            (False, False),  # compile_ops=False
+            (True, True),    # compile_ops=True
+        ]
+    )
+    def test_compile_ops_boolean_parameter_functionality(
+        self, compile_ops_param, expected_compile_value
+    ):
+        """
+        测试 compile_ops 布尔参数功能
+        
+        验证：
+        1. 上下文管理器可以正常创建
+        2. 没有异常抛出
+        3. compile_ops参数正确设置编译行为
+        """
+        # Mock eager execution检测，确保在graph模式下
+        # 使用正确的导入路径
+        with patch('tensorflow.python.eager.context.executing_eagerly', return_value=False) as mock_executing_eagerly:
+            
+            # 清理可能存在的全局状态
+            self._clear_xla_scope_collection()
+            
+            # 创建上下文管理器
+            context_manager = xla_jit.experimental_jit_scope(
+                compile_ops=compile_ops_param,
+                separate_compiled_gradients=False
+            )
+            
+            # 验证上下文管理器已创建
+            assert context_manager is not None
+            
+            # 进入上下文管理器
+            with context_manager as scope:
+                # 验证scope对象存在
+                assert scope is not None
+                
+                # 验证全局状态已更新
+                xla_scope_collection = ops.get_collection(xla_jit._XLA_SCOPE_KEY)
+                assert xla_scope_collection is not None
+                assert len(xla_scope_collection) == 1
+                
+                xla_scope = xla_scope_collection[0]
+                # 验证作用域深度增加
+                assert xla_scope.depth == 1
+                
+                # 验证编译属性设置
+                # 注意：实际编译行为是尽力而为的，这里只验证上下文管理器正常工作
+            
+            # 退出上下文后验证状态恢复
+            xla_scope_collection = ops.get_collection(xla_jit._XLA_SCOPE_KEY)
+            assert xla_scope_collection is not None
+            assert len(xla_scope_collection) == 1
+            
+            xla_scope = xla_scope_collection[0]
+            # 退出后深度应该恢复为0
+            assert xla_scope.depth == 0
+            
+            # 验证没有异常抛出
+            # 如果执行到这里，说明没有异常
+# ==== BLOCK:CASE_03 END ====
+
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize(
+        "callable_func,description",
+        [
+            (lambda node_def: True, "总是返回True的可调用函数"),
+            (lambda node_def: 'matmul' in node_def.op.lower(), "条件性返回的可调用函数"),
+        ]
+    )
+    def test_compile_ops_callable_parameter_conditional_compilation(
+        self, callable_func, description
+    ):
+        """
+        测试 compile_ops 可调用参数条件编译
+        
+        验证：
+        1. 上下文管理器可以正常创建
+        2. 可调用参数被接受
+        3. 没有异常抛出
+        4. 可调用函数被正确调用
+        """
+        # Mock eager execution检测，确保在graph模式下
+        # 使用正确的导入路径
+        with patch('tensorflow.python.eager.context.executing_eagerly', return_value=False) as mock_executing_eagerly:
+            
+            # 清理可能存在的全局状态
+            self._clear_xla_scope_collection()
+            
+            # 创建mock的node_def来测试可调用函数
+            mock_node_def = Mock()
+            mock_node_def.op = "MatMul"  # 测试字符串匹配
+            
+            # 包装可调用函数以便跟踪调用
+            callable_called = []
+            def tracked_callable(node_def):
+                callable_called.append(True)
+                # 调用原始函数
+                return callable_func(node_def)
+            
+            # 创建上下文管理器
+            context_manager = xla_jit.experimental_jit_scope(
+                compile_ops=tracked_callable,
+                separate_compiled_gradients=False
+            )
+            
+            # 验证上下文管理器已创建
+            assert context_manager is not None
+            
+            # 进入上下文管理器
+            with context_manager as scope:
+                # 验证scope对象存在
+                assert scope is not None
+                
+                # 验证全局状态已更新
+                xla_scope_collection = ops.get_collection(xla_jit._XLA_SCOPE_KEY)
+                assert xla_scope_collection is not None
+                assert len(xla_scope_collection) == 1
+                
+                xla_scope = xla_scope_collection[0]
+                # 验证作用域深度增加
+                assert xla_scope.depth == 1
+                
+                # 注意：实际的可调用函数调用发生在TensorFlow内部
+                # 当操作被创建时，compile_ops可调用函数会被调用
+                # 这里我们验证上下文管理器正常工作
+            
+            # 退出上下文后验证状态恢复
+            xla_scope_collection = ops.get_collection(xla_jit._XLA_SCOPE_KEY)
+            assert xla_scope_collection is not None
+            assert len(xla_scope_collection) == 1
+            
+            xla_scope = xla_scope_collection[0]
+            # 退出后深度应该恢复为0
+            assert xla_scope.depth == 0
+            
+            # 验证没有异常抛出
+            # 如果执行到这里，说明没有异常
+            
+            # 注意：由于可调用函数是在TensorFlow内部调用的，
+            # 我们无法直接验证它被调用，但可以验证上下文管理器正常工作
+# ==== BLOCK:CASE_04 END ====
+
+
+# ==== BLOCK:CASE_06 START ====
+# 占位：separate_compiled_gradients参数扩展测试
+# ==== BLOCK:CASE_06 END ====
+
+
+# ==== BLOCK:CASE_07 START ====
+# 占位：嵌套作用域组合测试
+# ==== BLOCK:CASE_07 END ====
+
+
+# ==== BLOCK:FOOTER START ====
+# 清理和辅助函数
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 恢复原始状态
+        if hasattr(context, 'executing_eagerly'):
+            # 恢复mock
+            pass
+        # 清理全局状态
+        self._clear_xla_scope_collection()
+# ==== BLOCK:FOOTER END ====

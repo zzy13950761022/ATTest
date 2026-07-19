@@ -1,0 +1,1759 @@
+=== Run Tests ===
+FFFFFFFFFFFFFFFFEEEEEEEEEEEE.                                            [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestEmptyAndNonexistentDirectory.test_empty_and_nonexistent_directory[/tmp/nonexistent-None-directory_not_exists] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestEmptyAndNonexistentDirectory.test_empty_and_nonexistent_directory[-None-empty_string_directory] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestEmptyAndNonexistentDirectory.test_get_checkpoint_state_empty_directory _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestCorruptedCheckpointFile.test_corrupted_checkpoint_file[/tmp/corrupted_checkpoints-checkpoint-corrupted_state_file] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestCorruptedCheckpointFile.test_corrupted_checkpoint_with_op_error _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestCorruptedCheckpointFile.test_latest_checkpoint_with_corrupted_state _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestCorruptedCheckpointFile.test_checkpoint_exists_with_corrupted_files _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_______ ERROR at setup of TestCheckpointExists.test_checkpoint_exists_v2 _______
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_______ ERROR at setup of TestCheckpointExists.test_checkpoint_exists_v1 _______
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+______ ERROR at setup of TestCheckpointExists.test_checkpoint_exists_none ______
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ ERROR at setup of TestUpdateCheckpointState.test_update_checkpoint_state_basic _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_____ ERROR at setup of TestRemoveCheckpoint.test_remove_checkpoint_basic ______
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_file_io():
+        """Mock the file_io module to avoid actual file system operations."""
+>       with mock.patch('tensorflow.python.lib.io.file_io') as mock_io:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+=================================== FAILURES ===================================
+_ TestLatestCheckpoint.test_latest_checkpoint_basic[/tmp/test_checkpoints-None-v2_checkpoint_exists] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestLatestCheckpoint object at 0x16f515b40>
+checkpoint_dir = '/tmp/test_checkpoints', latest_filename = None
+scenario = 'v2_checkpoint_exists'
+
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", None, "v2_checkpoint_exists"),
+        ("/tmp/test_checkpoints_v1", "checkpoint", "v1_checkpoint_only"),
+        ("/tmp/test_checkpoints_mixed", None, "v2_and_v1_mixed"),
+    ])
+    def test_latest_checkpoint_basic(self, checkpoint_dir, latest_filename, scenario):
+        """Test basic functionality of latest_checkpoint with different scenarios."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+    
+        # Mock get_checkpoint_state function
+>       with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestLatestCheckpoint.test_latest_checkpoint_basic[/tmp/test_checkpoints_v1-checkpoint-v1_checkpoint_only] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestLatestCheckpoint object at 0x16f515cf0>
+checkpoint_dir = '/tmp/test_checkpoints_v1', latest_filename = 'checkpoint'
+scenario = 'v1_checkpoint_only'
+
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", None, "v2_checkpoint_exists"),
+        ("/tmp/test_checkpoints_v1", "checkpoint", "v1_checkpoint_only"),
+        ("/tmp/test_checkpoints_mixed", None, "v2_and_v1_mixed"),
+    ])
+    def test_latest_checkpoint_basic(self, checkpoint_dir, latest_filename, scenario):
+        """Test basic functionality of latest_checkpoint with different scenarios."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+    
+        # Mock get_checkpoint_state function
+>       with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestLatestCheckpoint.test_latest_checkpoint_basic[/tmp/test_checkpoints_mixed-None-v2_and_v1_mixed] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestLatestCheckpoint object at 0x16f515ea0>
+checkpoint_dir = '/tmp/test_checkpoints_mixed', latest_filename = None
+scenario = 'v2_and_v1_mixed'
+
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", None, "v2_checkpoint_exists"),
+        ("/tmp/test_checkpoints_v1", "checkpoint", "v1_checkpoint_only"),
+        ("/tmp/test_checkpoints_mixed", None, "v2_and_v1_mixed"),
+    ])
+    def test_latest_checkpoint_basic(self, checkpoint_dir, latest_filename, scenario):
+        """Test basic functionality of latest_checkpoint with different scenarios."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+    
+        # Mock get_checkpoint_state function
+>       with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+__________ TestLatestCheckpoint.test_latest_checkpoint_no_checkpoint ___________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestLatestCheckpoint object at 0x16f516140>
+
+    def test_latest_checkpoint_no_checkpoint(self):
+        """Test latest_checkpoint when no checkpoint exists."""
+        # Mock get_checkpoint_state to return None
+>       with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+________ TestLatestCheckpoint.test_latest_checkpoint_no_matching_files _________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestLatestCheckpoint object at 0x16f516410>
+
+    def test_latest_checkpoint_no_matching_files(self):
+        """Test latest_checkpoint when checkpoint state exists but files don't."""
+        # Mock get_checkpoint_state to return a valid checkpoint state
+        checkpoint_state = create_checkpoint_state_proto(
+            model_checkpoint_path="model.ckpt-1000"
+        )
+    
+>       with mock.patch('tensorflow.python.training.checkpoint_management.get_checkpoint_state') as mock_get_state:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestGetCheckpointState.test_get_checkpoint_state_valid[/tmp/test_checkpoints-checkpoint-valid_state_file] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestGetCheckpointState object at 0x16f516800>
+checkpoint_dir = '/tmp/test_checkpoints', latest_filename = 'checkpoint'
+scenario = 'valid_state_file'
+
+    @pytest.mark.parametrize("checkpoint_dir,latest_filename,scenario", [
+        ("/tmp/test_checkpoints", "checkpoint", "valid_state_file"),
+    ])
+    def test_get_checkpoint_state_valid(self, checkpoint_dir, latest_filename, scenario):
+        """Test get_checkpoint_state with valid state file."""
+        # Mock file_io.file_exists to return True
+>       with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_______ TestGetCheckpointState.test_get_checkpoint_state_file_not_exists _______
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestGetCheckpointState object at 0x16f516bc0>
+
+    def test_get_checkpoint_state_file_not_exists(self):
+        """Test get_checkpoint_state when state file doesn't exist."""
+        # Mock file_io.file_exists to return False
+>       with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:228: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_______ TestGetCheckpointState.test_get_checkpoint_state_absolute_paths ________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestGetCheckpointState object at 0x16f516e90>
+
+    def test_get_checkpoint_state_absolute_paths(self):
+        """Test get_checkpoint_state with absolute paths in state file."""
+        # Mock file_io.file_exists to return True
+>       with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+__________ TestGetCheckpointState.test_get_checkpoint_state_op_error ___________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestGetCheckpointState object at 0x16f517160>
+
+    def test_get_checkpoint_state_op_error(self):
+        """Test get_checkpoint_state when file_io raises OpError."""
+        # Mock file_io.file_exists to return True
+>       with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_________ TestGetCheckpointState.test_get_checkpoint_state_parse_error _________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestGetCheckpointState object at 0x16f517430>
+
+    def test_get_checkpoint_state_parse_error(self):
+        """Test get_checkpoint_state when state file has parse error."""
+        # Mock file_io.file_exists to return True
+>       with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:300: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestCheckpointManager.test_checkpoint_manager_basic[/tmp/test_manager-3-1-basic_retention] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f517820>
+directory = '/tmp/test_manager', max_to_keep = 3, checkpoint_interval = 1
+scenario = 'basic_retention'
+
+    @pytest.mark.parametrize("directory,max_to_keep,checkpoint_interval,scenario", [
+        ("/tmp/test_manager", 3, 1, "basic_retention"),
+        ("/tmp/test_manager_unlimited", 0, 5, "unlimited_retention"),
+        ("/tmp/test_manager_single", 1, 10, "single_checkpoint_retention"),
+    ])
+    def test_checkpoint_manager_basic(self, directory, max_to_keep, checkpoint_interval, scenario):
+        """Test basic CheckpointManager functionality with different retention policies."""
+        # Create a mock checkpoint object
+        mock_ckpt = mock.MagicMock()
+    
+        # Mock tensorflow.train.Checkpoint to return our mock
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock file_io functions
+>           with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:335: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestCheckpointManager.test_checkpoint_manager_basic[/tmp/test_manager_unlimited-0-5-unlimited_retention] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f517a00>
+directory = '/tmp/test_manager_unlimited', max_to_keep = 0
+checkpoint_interval = 5, scenario = 'unlimited_retention'
+
+    @pytest.mark.parametrize("directory,max_to_keep,checkpoint_interval,scenario", [
+        ("/tmp/test_manager", 3, 1, "basic_retention"),
+        ("/tmp/test_manager_unlimited", 0, 5, "unlimited_retention"),
+        ("/tmp/test_manager_single", 1, 10, "single_checkpoint_retention"),
+    ])
+    def test_checkpoint_manager_basic(self, directory, max_to_keep, checkpoint_interval, scenario):
+        """Test basic CheckpointManager functionality with different retention policies."""
+        # Create a mock checkpoint object
+        mock_ckpt = mock.MagicMock()
+    
+        # Mock tensorflow.train.Checkpoint to return our mock
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock file_io functions
+>           with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:335: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_ TestCheckpointManager.test_checkpoint_manager_basic[/tmp/test_manager_single-1-10-single_checkpoint_retention] _
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f517be0>
+directory = '/tmp/test_manager_single', max_to_keep = 1
+checkpoint_interval = 10, scenario = 'single_checkpoint_retention'
+
+    @pytest.mark.parametrize("directory,max_to_keep,checkpoint_interval,scenario", [
+        ("/tmp/test_manager", 3, 1, "basic_retention"),
+        ("/tmp/test_manager_unlimited", 0, 5, "unlimited_retention"),
+        ("/tmp/test_manager_single", 1, 10, "single_checkpoint_retention"),
+    ])
+    def test_checkpoint_manager_basic(self, directory, max_to_keep, checkpoint_interval, scenario):
+        """Test basic CheckpointManager functionality with different retention policies."""
+        # Create a mock checkpoint object
+        mock_ckpt = mock.MagicMock()
+    
+        # Mock tensorflow.train.Checkpoint to return our mock
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock file_io functions
+>           with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:335: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+___ TestCheckpointManager.test_checkpoint_manager_with_existing_checkpoints ____
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f5175e0>
+
+    def test_checkpoint_manager_with_existing_checkpoints(self):
+        """Test CheckpointManager with existing checkpoints."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+    
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock existing checkpoint files
+            existing_files = [
+                "/tmp/test_manager/ckpt-1.index",
+                "/tmp/test_manager/ckpt-2.index",
+                "/tmp/test_manager/ckpt-3.index"
+            ]
+    
+>           with mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:399: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+_________ TestCheckpointManager.test_checkpoint_manager_save_interval __________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f517040>
+
+    def test_checkpoint_manager_save_interval(self):
+        """Test CheckpointManager checkpoint interval functionality."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+    
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock file_io and gfile functions
+>           with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files, \
+                 mock.patch('tensorflow.python.platform.gfile.MakeDirs') as mock_makedirs, \
+                 mock.patch('tensorflow.python.platform.gfile.Exists') as mock_gfile_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:446: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+____________ TestCheckpointManager.test_checkpoint_manager_init_fn _____________
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1248: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_tensorflow_python_training_checkpoint_management.TestCheckpointManager object at 0x16f516cb0>
+
+    def test_checkpoint_manager_init_fn(self):
+        """Test CheckpointManager with init_fn parameter."""
+        # Mock checkpoint
+        mock_ckpt = mock.MagicMock()
+    
+        with mock.patch('tensorflow.train.Checkpoint') as mock_checkpoint_class:
+            mock_checkpoint_class.return_value = mock_ckpt
+    
+            # Mock file_io and gfile functions
+>           with mock.patch('tensorflow.python.lib.io.file_io.file_exists') as mock_file_exists, \
+                 mock.patch('tensorflow.python.lib.io.file_io.get_matching_files') as mock_get_matching_files, \
+                 mock.patch('tensorflow.python.platform.gfile.MakeDirs') as mock_makedirs, \
+                 mock.patch('tensorflow.python.platform.gfile.Exists') as mock_gfile_exists:
+
+tests/test_tensorflow_python_training_checkpoint_management.py:492: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+thing = <module 'tensorflow' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1251: AttributeError
+=============================== warnings summary ===============================
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO_DIM = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27: DeprecationWarning: Call to deprecated create function EnumDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _DATATYPE = _descriptor.EnumDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO_DTYPEANDSHAPE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _VARIANTTENSORDATAPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _ATTRVALUE_LISTVALUE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19: DeprecationWarning: the imp module is deprecated in favour of importlib and slated for removal in Python 3.12; see the module's documentation for alternative uses
+    import imp
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                             Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------------------
+tests/test_tensorflow_python_training_checkpoint_management.py     292    196     40      2    30%   17-18, 25, 31-32, 38-39, 45-46, 54, 76-119, 128-136, 146-161, 175-223, 229-237, 248-271, 280-295, 301-313, 338-382, 400-432, 451-481, 497-514, 531-566, 574-593, 607-639, 644-658, 663-672, 677-684, 696-708, 713-726, 731-738, 747-767, 776-788, 806
+------------------------------------------------------------------------------------------------------------
+TOTAL                                                              292    196     40      2    30%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestLatestCheckpoint::test_latest_checkpoint_basic[/tmp/test_checkpoints-None-v2_checkpoint_exists]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestLatestCheckpoint::test_latest_checkpoint_basic[/tmp/test_checkpoints_v1-checkpoint-v1_checkpoint_only]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestLatestCheckpoint::test_latest_checkpoint_basic[/tmp/test_checkpoints_mixed-None-v2_and_v1_mixed]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestLatestCheckpoint::test_latest_checkpoint_no_checkpoint
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestLatestCheckpoint::test_latest_checkpoint_no_matching_files
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestGetCheckpointState::test_get_checkpoint_state_valid[/tmp/test_checkpoints-checkpoint-valid_state_file]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestGetCheckpointState::test_get_checkpoint_state_file_not_exists
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestGetCheckpointState::test_get_checkpoint_state_absolute_paths
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestGetCheckpointState::test_get_checkpoint_state_op_error
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestGetCheckpointState::test_get_checkpoint_state_parse_error
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_basic[/tmp/test_manager-3-1-basic_retention]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_basic[/tmp/test_manager_unlimited-0-5-unlimited_retention]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_basic[/tmp/test_manager_single-1-10-single_checkpoint_retention]
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_with_existing_checkpoints
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_save_interval
+FAILED tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointManager::test_checkpoint_manager_init_fn
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestEmptyAndNonexistentDirectory::test_empty_and_nonexistent_directory[/tmp/nonexistent-None-directory_not_exists]
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestEmptyAndNonexistentDirectory::test_empty_and_nonexistent_directory[-None-empty_string_directory]
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestEmptyAndNonexistentDirectory::test_get_checkpoint_state_empty_directory
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCorruptedCheckpointFile::test_corrupted_checkpoint_file[/tmp/corrupted_checkpoints-checkpoint-corrupted_state_file]
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCorruptedCheckpointFile::test_corrupted_checkpoint_with_op_error
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCorruptedCheckpointFile::test_latest_checkpoint_with_corrupted_state
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCorruptedCheckpointFile::test_checkpoint_exists_with_corrupted_files
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointExists::test_checkpoint_exists_v2
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointExists::test_checkpoint_exists_v1
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestCheckpointExists::test_checkpoint_exists_none
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestUpdateCheckpointState::test_update_checkpoint_state_basic
+ERROR tests/test_tensorflow_python_training_checkpoint_management.py::TestRemoveCheckpoint::test_remove_checkpoint_basic
+16 failed, 1 passed, 103 warnings, 12 errors in 4.41s
+
+Error: exit 1

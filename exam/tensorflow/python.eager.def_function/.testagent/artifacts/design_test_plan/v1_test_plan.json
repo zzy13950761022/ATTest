@@ -1,0 +1,255 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.eager.def_function",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_eager_def_function.py",
+    "all_pattern": "tests/test_tensorflow_python_eager_def_function_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_eager_def_function_g1.py",
+      "G2": "tests/test_tensorflow_python_eager_def_function_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心装饰器与基本功能",
+      "entrypoints": ["function", "tf.function"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试基本装饰器用法和函数编译"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级特性与边界情况",
+      "entrypoints": ["function"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试重跟踪、变量、控制流等高级特性"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本装饰器用法",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_math",
+          "input_signature": null,
+          "autograph": true,
+          "jit_compile": null,
+          "use_decorator": true
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_generic_function", "callable", "basic_execution", "result_shape"],
+        "strong": ["numerical_accuracy", "performance_improvement", "graph_traces"]
+      },
+      "oracle": "eager_execution",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "带input_signature限制重跟踪",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "simple_math",
+          "input_signature": "tensor_spec_2d",
+          "autograph": true,
+          "jit_compile": null,
+          "use_decorator": false
+        }
+      ],
+      "asserts": {
+        "weak": ["signature_enforced", "no_retrace_within_spec", "retrace_on_mismatch", "basic_execution"],
+        "strong": ["trace_count_control", "performance_optimization", "type_safety"]
+      },
+      "oracle": "eager_execution",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "变量创建与状态保持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "stateful_counter",
+          "input_signature": null,
+          "autograph": true,
+          "jit_compile": null,
+          "use_decorator": true
+        }
+      ],
+      "asserts": {
+        "weak": ["variable_created_once", "state_preserved", "callable", "basic_execution"],
+        "strong": ["variable_scope_isolation", "initializer_behavior", "side_effect_control"]
+      },
+      "oracle": "eager_execution",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "控制流语句支持",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "conditional_flow",
+          "input_signature": null,
+          "autograph": true,
+          "jit_compile": null,
+          "use_decorator": true
+        }
+      ],
+      "asserts": {
+        "weak": ["if_statement_works", "loop_execution", "data_dependent_flow", "basic_execution"],
+        "strong": ["graph_optimization", "control_flow_accuracy", "complex_flow_patterns"]
+      },
+      "oracle": "eager_execution",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "装饰器工厂模式",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "func_type": "simple_math",
+          "input_signature": null,
+          "autograph": true,
+          "jit_compile": null,
+          "use_decorator": false,
+          "func_as_none": true
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_decorator", "decorator_callable", "decorator_creates_function", "basic_execution"],
+        "strong": ["decorator_flexibility", "parameter_passing", "factory_pattern"]
+      },
+      "oracle": "eager_execution",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "func_type": "simple_math",
+        "input_signature": null,
+        "autograph": false,
+        "jit_compile": null,
+        "use_decorator": true
+      },
+      "note": "测试autograph=False模式"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "func_type": "simple_math",
+        "input_signature": null,
+        "autograph": true,
+        "jit_compile": true,
+        "use_decorator": true
+      },
+      "note": "测试XLA编译模式"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "func_type": "simple_math",
+        "input_signature": "tensor_spec_scalar",
+        "autograph": true,
+        "jit_compile": null,
+        "use_decorator": false
+      },
+      "note": "测试标量input_signature"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "func_type": "stateful_counter",
+        "input_signature": null,
+        "autograph": true,
+        "jit_compile": null,
+        "use_decorator": false
+      },
+      "note": "测试非装饰器模式的变量创建"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "func_type": "nested_flow",
+        "input_signature": null,
+        "autograph": true,
+        "jit_compile": null,
+        "use_decorator": true
+      },
+      "note": "测试嵌套控制流"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

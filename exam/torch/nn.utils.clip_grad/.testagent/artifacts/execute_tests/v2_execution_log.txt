@@ -1,0 +1,29 @@
+=== Run Tests ===
+..F...                                                                   [100%]
+=================================== FAILURES ===================================
+___________________ test_clip_grad_value_invalid_clip_value ____________________
+
+    def test_clip_grad_value_invalid_clip_value():
+        """Test clip_grad_value_ with invalid clip_value"""
+        tensor = torch.randn(2, 3, requires_grad=True)
+        tensor.grad = torch.randn_like(tensor)
+    
+>       with pytest.raises(RuntimeError, match="clip_value must be greater than 0"):
+E       Failed: DID NOT RAISE <class 'RuntimeError'>
+
+tests/test_torch_nn_utils_clip_grad_g2.py:141: Failed
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                        Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------
+test_actual_behavior.py                         0      0      0      0   100%
+tests/test_torch_nn_utils_clip_grad_g2.py      92      3     18      5    93%   30, 60->59, 67->71, 72->76, 144-145, 164->168, 169->exit
+---------------------------------------------------------------------------------------
+TOTAL                                          92      3     18      5    93%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_utils_clip_grad_g2.py::test_clip_grad_value_invalid_clip_value
+1 failed, 5 passed in 0.53s
+
+Error: exit 1

@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 57,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_cuda_random_g2_cuda_unavailable.py::TestTorchCudaRandomG2CudaUnavailable::test_multi_device_batch_management_cuda_unavailable",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "测试期望抛出AssertionError但未抛出，需要修复断言逻辑或模拟行为"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

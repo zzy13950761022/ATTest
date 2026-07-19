@@ -1,0 +1,286 @@
+import math
+import pytest
+import torch
+import warnings
+from torch.nn.utils import clip_grad_norm_, clip_grad_value_, clip_grad_norm
+
+# ==== BLOCK:HEADER START ====
+# Test class and fixtures
+class TestClipGradNorm:
+    """Test cases for clip_grad_norm_ function"""
+    
+    @pytest.fixture
+    def fixed_seed(self):
+        """Fix random seed for reproducibility"""
+        torch.manual_seed(42)
+        return None
+    
+    def _create_gradients(self, shape, num_params, dtype=torch.float32, device='cpu'):
+        """Helper to create gradients with random values"""
+        params = []
+        for i in range(num_params):
+            p = torch.randn(shape, dtype=dtype, device=device, requires_grad=True)
+            # Set gradient
+            p.grad = torch.randn_like(p) * 2.0  # Scale to ensure some gradients need clipping
+            params.append(p)
+        return params
+    
+    def _compute_total_norm(self, parameters, norm_type=2.0):
+        """Helper to compute total norm manually"""
+        if norm_type == 'inf':
+            norms = [p.grad.data.abs().max() for p in parameters]
+            total_norm = max(norms) if norms else torch.tensor(0.0)
+        else:
+            norms = [torch.norm(p.grad.data, norm_type) for p in parameters]
+            total_norm = torch.norm(torch.stack(norms), norm_type)
+        return total_norm
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("dtype,device,shape,num_params,max_norm,norm_type,error_if_nonfinite", [
+        (torch.float32, 'cpu', (2, 3), 3, 1.0, 2.0, False),
+    ])
+    def test_clip_grad_norm_basic(self, fixed_seed, dtype, device, shape, num_params, 
+                                  max_norm, norm_type, error_if_nonfinite):
+        """TC-01: clip_grad_norm_ 基本功能"""
+        # Create parameters with gradients
+        parameters = self._create_gradients(shape, num_params, dtype, device)
+        
+        # Store original gradients for comparison
+        original_grads = [p.grad.clone() for p in parameters]
+        
+        # Compute total norm before clipping
+        total_norm_before = self._compute_total_norm(parameters, norm_type)
+        
+        # Apply gradient clipping
+        total_norm = clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+        
+        # Weak assertions
+        # 1. total_norm_shape: should be scalar tensor
+        assert total_norm.shape == torch.Size([]), "Total norm should be a scalar"
+        
+        # 2. total_norm_dtype: should match input dtype
+        assert total_norm.dtype == dtype, f"Total norm dtype {total_norm.dtype} should match input dtype {dtype}"
+        
+        # 3. gradients_modified: gradients should be modified (clipped)
+        for i, p in enumerate(parameters):
+            assert not torch.allclose(p.grad, original_grads[i]), f"Gradient {i} should be modified"
+        
+        # 4. norm_within_limit: after clipping, norm should be <= max_norm
+        total_norm_after = self._compute_total_norm(parameters, norm_type)
+        assert total_norm_after <= max_norm + 1e-6, f"Norm after clipping {total_norm_after} should be <= max_norm {max_norm}"
+        
+        # 5. total_norm should equal total_norm_before
+        assert torch.allclose(total_norm, total_norm_before, rtol=1e-5), \
+            f"Returned norm {total_norm} should equal computed norm before clipping {total_norm_before}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("dtype,device,shape,num_params,max_norm,norm_type,error_if_nonfinite", [
+        (torch.float32, 'cpu', (3, 4), 2, 2.0, 1.0, False),
+        (torch.float32, 'cpu', (3, 4), 2, 2.0, 'inf', False),
+    ])
+    def test_clip_grad_norm_different_norms(self, fixed_seed, dtype, device, shape, num_params,
+                                           max_norm, norm_type, error_if_nonfinite):
+        """TC-02: clip_grad_norm_ 多范数类型"""
+        # Create parameters with gradients
+        parameters = self._create_gradients(shape, num_params, dtype, device)
+        
+        # Store original gradients for comparison
+        original_grads = [p.grad.clone() for p in parameters]
+        
+        # Apply gradient clipping
+        total_norm = clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+        
+        # Weak assertions
+        # 1. total_norm_shape: should be scalar tensor
+        assert total_norm.shape == torch.Size([]), "Total norm should be a scalar"
+        
+        # 2. norm_type_applied: norm should be computed correctly based on norm_type
+        if norm_type == 'inf':
+            # For inf norm, check that max absolute value is within limit
+            max_abs_grad = max(p.grad.abs().max() for p in parameters)
+            assert max_abs_grad <= max_norm + 1e-6, f"Max abs gradient {max_abs_grad} should be <= max_norm {max_norm}"
+        else:
+            # For L1 or L2 norm, compute total norm after clipping
+            total_norm_after = self._compute_total_norm(parameters, norm_type)
+            assert total_norm_after <= max_norm + 1e-6, f"Norm after clipping {total_norm_after} should be <= max_norm {max_norm}"
+        
+        # 3. gradients_modified: gradients should be modified (clipped)
+        gradients_modified = False
+        for i, p in enumerate(parameters):
+            if not torch.allclose(p.grad, original_grads[i], rtol=1e-5):
+                gradients_modified = True
+                break
+        assert gradients_modified, "At least some gradients should be modified"
+        
+        # 4. total_norm should be positive (unless all gradients are zero)
+        assert total_norm > 0 or torch.allclose(total_norm, torch.tensor(0.0)), \
+            f"Total norm {total_norm} should be positive or zero"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: clip_grad_value_ 基本功能 (G2 group - will be implemented in test_torch_nn_utils_clip_grad_g2.py)
+# This test belongs to G2 group and will be implemented in the corresponding file
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: clip_grad_norm 弃用警告 (G2 group - will be implemented in test_torch_nn_utils_clip_grad_g2.py)
+# This test belongs to G2 group and will be implemented in the corresponding file
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("dtype,device,shape,num_params,max_norm,norm_type,error_if_nonfinite,gradient_contains_nan,gradient_contains_inf", [
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, True, True, False),
+        (torch.float32, 'cpu', (2, 2), 2, 1.0, 2.0, False, False, True),
+    ])
+    def test_clip_grad_norm_nonfinite_gradients(self, fixed_seed, dtype, device, shape, num_params,
+                                               max_norm, norm_type, error_if_nonfinite,
+                                               gradient_contains_nan, gradient_contains_inf):
+        """TC-05: 非有限梯度处理"""
+        # Create parameters with gradients
+        parameters = []
+        for i in range(num_params):
+            p = torch.randn(shape, dtype=dtype, device=device, requires_grad=True)
+            # Create gradient with normal values
+            grad = torch.randn_like(p) * 2.0
+            
+            # Add NaN or Inf values based on test parameters
+            if gradient_contains_nan:
+                # Add NaN values to gradient
+                grad[0, 0] = float('nan')
+            elif gradient_contains_inf:
+                # Add Inf values to gradient
+                grad[0, 0] = float('inf')
+            
+            p.grad = grad
+            parameters.append(p)
+        
+        # Store original gradients for comparison
+        original_grads = [p.grad.clone() for p in parameters]
+        
+        # Weak assertions
+        if error_if_nonfinite and (gradient_contains_nan or gradient_contains_inf):
+            # 1. error_raised_when_required: should raise RuntimeError when error_if_nonfinite=True
+            with pytest.raises(RuntimeError) as exc_info:
+                clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+            
+            # Check error message contains expected text
+            error_msg = str(exc_info.value)
+            assert any(keyword in error_msg.lower() for keyword in ["non-finite", "nan", "inf"]), \
+                f"Error message should mention non-finite values. Got: {error_msg}"
+            
+            # 2. gradients_unchanged_on_error: gradients should not be modified when error is raised
+            for i, p in enumerate(parameters):
+                # NaN values can't be compared directly, so we check if gradients are the same object
+                # or compare non-NaN/Inf parts
+                if gradient_contains_nan:
+                    # For NaN case, we can check that other values are unchanged
+                    mask = ~torch.isnan(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Non-NaN gradient values should be unchanged when error is raised"
+                elif gradient_contains_inf:
+                    # For Inf case, we can check that other values are unchanged
+                    mask = torch.isfinite(original_grads[i])
+                    if mask.any():
+                        assert torch.allclose(p.grad[mask], original_grads[i][mask], rtol=1e-5), \
+                            "Finite gradient values should be unchanged when error is raised"
+        else:
+            # 3. no_error_when_disabled: should not raise error when error_if_nonfinite=False
+            try:
+                total_norm = clip_grad_norm_(parameters, max_norm, norm_type, error_if_nonfinite)
+                # Should return a tensor (might be NaN or Inf)
+                assert isinstance(total_norm, torch.Tensor), "Should return a tensor"
+                
+                # Check if total_norm is NaN or Inf
+                if gradient_contains_nan or gradient_contains_inf:
+                    # When gradients contain NaN/Inf and error_if_nonfinite=False,
+                    # the function should still compute a norm (which will be NaN or Inf)
+                    # and apply clipping (which won't change NaN/Inf values)
+                    assert torch.isnan(total_norm) or torch.isinf(total_norm), \
+                        f"Total norm should be NaN or Inf when gradients contain NaN/Inf. Got: {total_norm}"
+                    
+                    # Check that gradients are still NaN/Inf where they were before
+                    for i, p in enumerate(parameters):
+                        if gradient_contains_nan:
+                            assert torch.isnan(p.grad[0, 0]), "NaN value should remain NaN"
+                        elif gradient_contains_inf:
+                            assert torch.isinf(p.grad[0, 0]), "Inf value should remain Inf"
+                else:
+                    # Normal case: gradients are finite
+                    assert torch.isfinite(total_norm), f"Total norm should be finite. Got: {total_norm}"
+                    
+            except Exception as e:
+                pytest.fail(f"Unexpected exception with error_if_nonfinite=False: {e}")
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: (deferred - will be implemented in later iteration)
+# This test case is deferred and will be implemented in a later iteration
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: (deferred - G2 group - will be implemented in test_torch_nn_utils_clip_grad_g2.py)
+# This test case belongs to G2 group and will be implemented in the corresponding file
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: (deferred - G2 group - will be implemented in test_torch_nn_utils_clip_grad_g2.py)
+# This test case belongs to G2 group and will be implemented in the corresponding file
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases for edge scenarios
+
+def test_clip_grad_norm_empty_parameters():
+    """Test clip_grad_norm_ with empty parameters list"""
+    parameters = []
+    total_norm = clip_grad_norm_(parameters, max_norm=1.0)
+    assert torch.allclose(total_norm, torch.tensor(0.0)), "Empty parameters should return 0 norm"
+    assert total_norm.shape == torch.Size([]), "Should return scalar tensor"
+
+def test_clip_grad_norm_single_tensor():
+    """Test clip_grad_norm_ with single tensor (not list)"""
+    tensor = torch.randn(2, 3, requires_grad=True)
+    tensor.grad = torch.randn_like(tensor) * 3.0
+    
+    original_grad = tensor.grad.clone()
+    total_norm = clip_grad_norm_(tensor, max_norm=1.0)
+    
+    # Check norm was computed
+    assert total_norm > 0, "Should compute positive norm"
+    
+    # Check gradient was modified if needed
+    norm_after = torch.norm(tensor.grad, 2.0)
+    assert norm_after <= 1.0 + 1e-6, f"Norm after clipping {norm_after} should be <= 1.0"
+
+def test_clip_grad_norm_invalid_max_norm():
+    """Test clip_grad_norm_ with invalid max_norm"""
+    tensor = torch.randn(2, 3, requires_grad=True)
+    tensor.grad = torch.randn_like(tensor)
+    
+    # Note: According to actual implementation, clip_grad_norm_ does NOT validate max_norm > 0
+    # The function will still work with max_norm <= 0, but the behavior might not be meaningful
+    # We test that no exception is raised (which is the actual behavior)
+    
+    # Test with max_norm = 0
+    try:
+        result = clip_grad_norm_(tensor, max_norm=0)
+        # Should not raise exception
+        assert isinstance(result, torch.Tensor), "Should return a tensor"
+    except Exception as e:
+        pytest.fail(f"Unexpected exception with max_norm=0: {e}")
+    
+    # Test with max_norm = -1.0
+    try:
+        result = clip_grad_norm_(tensor, max_norm=-1.0)
+        # Should not raise exception
+        assert isinstance(result, torch.Tensor), "Should return a tensor"
+    except Exception as e:
+        pytest.fail(f"Unexpected exception with max_norm=-1.0: {e}")
+    
+    # Test with positive max_norm for comparison
+    result = clip_grad_norm_(tensor, max_norm=0.5)
+    assert isinstance(result, torch.Tensor), "Should return a tensor with positive max_norm"
+# ==== BLOCK:FOOTER END ====

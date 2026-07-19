@@ -1,0 +1,1523 @@
+=== Run Tests ===
+FFF...FFFF.FFFF..........F...                                            [100%]
+=================================== FAILURES ===================================
+_________ TestBatchFunction.test_batch_basic_functionality[2-32-False] _________
+
+self = <test_tensorflow_python_training_input.TestBatchFunction object at 0x15ad4e3b0>
+batch_size = 2, capacity = 32, enqueue_many = False
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5819620928'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5819628944'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5819629088'>
+mock_warnings = <MagicMock name='warn' id='5819653504'>
+
+    @pytest.mark.parametrize("batch_size,capacity,enqueue_many", [
+        (2, 32, False),  # Basic case from test plan
+        (4, 64, True),   # Parameter extension: batch enqueue mode
+        (1, 10, False),  # Parameter extension: allow smaller final batch
+    ])
+    def test_batch_basic_functionality(
+        self,
+        batch_size,
+        capacity,
+        enqueue_many,
+        simple_tensor_list,
+        mock_queue_runner,
+        mock_fifo_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test basic batch functionality with various parameters."""
+        # Setup mock queue
+        mock_queue = mock_fifo_queue
+        mock_dequeue_op = mock.Mock()
+        # Create mock output tensors with correct shape
+        mock_output1 = mock.Mock()
+        mock_output1.shape = tf.TensorShape([batch_size, 2, 3])
+        mock_output2 = mock.Mock()
+        mock_output2.shape = tf.TensorShape([batch_size, 2, 3])
+    
+        # Return mock tensors instead of real tensors
+        mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+        # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+        mock_size_tensor = mock.Mock()
+        mock_size_tensor.__sub__ = lambda self, other: mock.Mock()  # Allow subtraction
+        mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()  # Allow reverse subtraction
+        mock_queue.size.return_value = mock_size_tensor
+    
+        # Call the batch function
+        with tf.Graph().as_default():
+            # Prepare input tensors
+            if enqueue_many:
+                # For enqueue_many=True, we need to add a batch dimension
+                input_tensors = [
+                    tf.expand_dims(tensor, 0) for tensor in simple_tensor_list
+                ]
+            else:
+                input_tensors = simple_tensor_list
+    
+            # Call the function
+>           output_tensors = batch(
+                tensors=input_tensors,
+                batch_size=batch_size,
+                capacity=capacity,
+                enqueue_many=enqueue_many,
+                dynamic_pad=False,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1006: in batch
+    return _batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:781: in _batch
+    math_ops.cast(queue.size(), dtypes.float32) * (1. / capacity))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='FIFOQueue().size()._as_graph_element().graph.as_default()' id='5819706064'>
+name = '__enter__'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+                raise AttributeError("Mock object has no attribute %r" % name)
+        elif _is_magic(name):
+>           raise AttributeError(name)
+E           AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:645: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  tensorflow:deprecation.py:350 From /Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/tensorflow/python.training.input/tests/test_tensorflow_python_training_input.py:170: batch (from tensorflow.python.training.input) is deprecated and will be removed in a future version.
+Instructions for updating:
+Queue-based input pipelines have been replaced by `tf.data`. Use `tf.data.Dataset.batch(batch_size)` (or `padded_batch(...)` if `dynamic_pad=True`).
+_________ TestBatchFunction.test_batch_basic_functionality[4-64-True] __________
+
+self = <test_tensorflow_python_training_input.TestBatchFunction object at 0x15ad4e4a0>
+batch_size = 4, capacity = 64, enqueue_many = True
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='4343702832'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5821435040'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5821434752'>
+mock_warnings = <MagicMock name='warn' id='5821446272'>
+
+    @pytest.mark.parametrize("batch_size,capacity,enqueue_many", [
+        (2, 32, False),  # Basic case from test plan
+        (4, 64, True),   # Parameter extension: batch enqueue mode
+        (1, 10, False),  # Parameter extension: allow smaller final batch
+    ])
+    def test_batch_basic_functionality(
+        self,
+        batch_size,
+        capacity,
+        enqueue_many,
+        simple_tensor_list,
+        mock_queue_runner,
+        mock_fifo_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test basic batch functionality with various parameters."""
+        # Setup mock queue
+        mock_queue = mock_fifo_queue
+        mock_dequeue_op = mock.Mock()
+        # Create mock output tensors with correct shape
+        mock_output1 = mock.Mock()
+        mock_output1.shape = tf.TensorShape([batch_size, 2, 3])
+        mock_output2 = mock.Mock()
+        mock_output2.shape = tf.TensorShape([batch_size, 2, 3])
+    
+        # Return mock tensors instead of real tensors
+        mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+        # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+        mock_size_tensor = mock.Mock()
+        mock_size_tensor.__sub__ = lambda self, other: mock.Mock()  # Allow subtraction
+        mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()  # Allow reverse subtraction
+        mock_queue.size.return_value = mock_size_tensor
+    
+        # Call the batch function
+        with tf.Graph().as_default():
+            # Prepare input tensors
+            if enqueue_many:
+                # For enqueue_many=True, we need to add a batch dimension
+                input_tensors = [
+                    tf.expand_dims(tensor, 0) for tensor in simple_tensor_list
+                ]
+            else:
+                input_tensors = simple_tensor_list
+    
+            # Call the function
+>           output_tensors = batch(
+                tensors=input_tensors,
+                batch_size=batch_size,
+                capacity=capacity,
+                enqueue_many=enqueue_many,
+                dynamic_pad=False,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1006: in batch
+    return _batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:781: in _batch
+    math_ops.cast(queue.size(), dtypes.float32) * (1. / capacity))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='FIFOQueue().size()._as_graph_element().graph.as_default()' id='5820496576'>
+name = '__enter__'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+                raise AttributeError("Mock object has no attribute %r" % name)
+        elif _is_magic(name):
+>           raise AttributeError(name)
+E           AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:645: AttributeError
+_________ TestBatchFunction.test_batch_basic_functionality[1-10-False] _________
+
+self = <test_tensorflow_python_training_input.TestBatchFunction object at 0x15ad4e680>
+batch_size = 1, capacity = 10, enqueue_many = False
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5820838096'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5824722928'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5824722448'>
+mock_warnings = <MagicMock name='warn' id='5824714480'>
+
+    @pytest.mark.parametrize("batch_size,capacity,enqueue_many", [
+        (2, 32, False),  # Basic case from test plan
+        (4, 64, True),   # Parameter extension: batch enqueue mode
+        (1, 10, False),  # Parameter extension: allow smaller final batch
+    ])
+    def test_batch_basic_functionality(
+        self,
+        batch_size,
+        capacity,
+        enqueue_many,
+        simple_tensor_list,
+        mock_queue_runner,
+        mock_fifo_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test basic batch functionality with various parameters."""
+        # Setup mock queue
+        mock_queue = mock_fifo_queue
+        mock_dequeue_op = mock.Mock()
+        # Create mock output tensors with correct shape
+        mock_output1 = mock.Mock()
+        mock_output1.shape = tf.TensorShape([batch_size, 2, 3])
+        mock_output2 = mock.Mock()
+        mock_output2.shape = tf.TensorShape([batch_size, 2, 3])
+    
+        # Return mock tensors instead of real tensors
+        mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+        # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+        mock_size_tensor = mock.Mock()
+        mock_size_tensor.__sub__ = lambda self, other: mock.Mock()  # Allow subtraction
+        mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()  # Allow reverse subtraction
+        mock_queue.size.return_value = mock_size_tensor
+    
+        # Call the batch function
+        with tf.Graph().as_default():
+            # Prepare input tensors
+            if enqueue_many:
+                # For enqueue_many=True, we need to add a batch dimension
+                input_tensors = [
+                    tf.expand_dims(tensor, 0) for tensor in simple_tensor_list
+                ]
+            else:
+                input_tensors = simple_tensor_list
+    
+            # Call the function
+>           output_tensors = batch(
+                tensors=input_tensors,
+                batch_size=batch_size,
+                capacity=capacity,
+                enqueue_many=enqueue_many,
+                dynamic_pad=False,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1006: in batch
+    return _batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:781: in _batch
+    math_ops.cast(queue.size(), dtypes.float32) * (1. / capacity))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='FIFOQueue().size()._as_graph_element().graph.as_default()' id='5822230064'>
+name = '__enter__'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+                raise AttributeError("Mock object has no attribute %r" % name)
+        elif _is_magic(name):
+>           raise AttributeError(name)
+E           AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:645: AttributeError
+______________ TestBatchFunction.test_batch_with_dictionary_input ______________
+
+self = <test_tensorflow_python_training_input.TestBatchFunction object at 0x15ad4ef80>
+mock_warnings = <MagicMock name='warn' id='5821453488'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5821462848'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5821463184'>
+
+    def test_batch_with_dictionary_input(self, mock_warnings, mock_fifo_queue, mock_add_queue_runner):
+        """Test batch function with dictionary input."""
+        with tf.Graph().as_default():
+            # Create dictionary of tensors
+            tensor_dict = {
+                'features': tf.constant([[1.0, 2.0], [3.0, 4.0]], dtype=tf.float32),
+                'labels': tf.constant([0, 1], dtype=tf.int32)
+            }
+    
+            # Setup mock
+            mock_queue = mock_fifo_queue
+    
+            # Create mock output tensors
+            mock_output1 = mock.Mock()
+            mock_output1.shape = tf.TensorShape([2, 2, 2])
+            mock_output2 = mock.Mock()
+            mock_output2.shape = tf.TensorShape([2, 2])
+            mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+            # Call batch with dictionary
+>           output_dict = batch(
+                tensors=tensor_dict,
+                batch_size=2,
+                capacity=32,
+                enqueue_many=False,
+                dynamic_pad=False
+            )
+
+tests/test_tensorflow_python_training_input.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1006: in batch
+    return _batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:781: in _batch
+    math_ops.cast(queue.size(), dtypes.float32) * (1. / capacity))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='FIFOQueue().size()._as_graph_element().graph.as_default()' id='5820855104'>
+name = '__enter__'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+                raise AttributeError("Mock object has no attribute %r" % name)
+        elif _is_magic(name):
+>           raise AttributeError(name)
+E           AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:645: AttributeError
+__ TestShuffleBatchFunction.test_shuffle_batch_basic_functionality[2-32-8-42] __
+
+self = <test_tensorflow_python_training_input.TestShuffleBatchFunction object at 0x15ad4f460>
+batch_size = 2, capacity = 32, min_after_dequeue = 8, seed = 42
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5820837376'>
+mock_random_shuffle_queue = <Mock name='RandomShuffleQueue()' id='5822229968'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5822222336'>
+mock_warnings = <MagicMock name='warn' id='5822223632'>
+
+    @pytest.mark.parametrize("batch_size,capacity,min_after_dequeue,seed", [
+        (2, 32, 8, 42),      # Basic case from test plan
+        (2, 32, 16, 123),    # Parameter extension: different seed and queue params
+    ])
+    def test_shuffle_batch_basic_functionality(
+        self,
+        batch_size,
+        capacity,
+        min_after_dequeue,
+        seed,
+        simple_tensor_list,
+        mock_queue_runner,
+        mock_random_shuffle_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test shuffle batch functionality with various parameters."""
+        # Setup mock queue
+        mock_queue = mock_random_shuffle_queue
+        mock_dequeue_op = mock.Mock()
+        # Create mock output tensors with correct shape
+        mock_output1 = mock.Mock()
+        mock_output1.shape = tf.TensorShape([batch_size, 2, 3])
+        mock_output2 = mock.Mock()
+        mock_output2.shape = tf.TensorShape([batch_size, 2, 3])
+    
+        # Return mock tensors instead of real tensors
+        mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+        # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+        mock_size_tensor = mock.Mock()
+        mock_size_tensor.__sub__ = lambda self, other: mock.Mock()  # Allow subtraction
+        mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()  # Allow reverse subtraction
+        mock_queue.size.return_value = mock_size_tensor
+    
+        # Call the shuffle_batch function
+        with tf.Graph().as_default():
+>           output_tensors = shuffle_batch(
+                tensors=simple_tensor_list,
+                batch_size=batch_size,
+                capacity=capacity,
+                min_after_dequeue=min_after_dequeue,
+                seed=seed,
+                enqueue_many=False,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:333: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1332: in shuffle_batch
+    return _shuffle_batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:859: in _shuffle_batch
+    math_ops.maximum(0, queue.size() - min_after_dequeue), dtypes.float32) *
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_math_ops.py:6209: in maximum
+    _, _, _op, _outputs = _op_def_library._apply_op_helper(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_type_name = 'Maximum', name = 'Maximum'
+keywords = {'x': 0, 'y': <Mock id='4343977664'>}
+op_def = name: "Maximum"
+input_arg {
+  name: "x"
+  type_attr: "T"
+}
+input_arg {
+  name: "y"
+  type_attr: "T"
+}
+output_arg {
+  n...     type: DT_UINT16
+      type: DT_INT32
+      type: DT_UINT32
+      type: DT_INT64
+      type: DT_UINT64
+    }
+  }
+}
+
+g = <Mock name='mock._as_graph_element().graph' id='4343975504'>
+producer = <Mock name='mock._as_graph_element().graph.graph_def_versions.producer' id='4343975744'>
+attrs = {}, attr_protos = {}, default_type_attr_map = {}
+allowed_list_attr_map = {'T': [14, 19, 1, 2, 6, 4, 5, 17, 3, 22, 9, 23]}
+
+    def _apply_op_helper(op_type_name, name=None, **keywords):  # pylint: disable=invalid-name
+      """Implementation of apply_op that returns output_structure, op."""
+    
+      op_def, g, producer = _GetOpDef(op_type_name, keywords)
+      name = name if name else op_type_name
+    
+      attrs, attr_protos = {}, {}
+      default_type_attr_map, allowed_list_attr_map = {}, {}
+      inputs, input_types, output_structure = [], [], []
+      fallback = True
+    
+      if (_CanExtractAttrsFastPath(op_def, keywords) and
+          flags.config().graph_building_optimization.value()):
+        fallback = False
+        attr_protos, inputs, input_types, output_structure = (
+            op_def_library_pybind.process_inputs(op_type_name, producer, keywords))
+    
+      if fallback:
+        _CheckOpDeprecation(op_type_name, op_def, producer)
+        _ExtractDefaultTypesAndAllowedTypes(op_def, default_type_attr_map,
+                                            allowed_list_attr_map)
+    
+      # Requires that op_def has passed validation (using the C++
+      # ValidateOpDef() from ../framework/op_def_util.h).
+>     with g.as_default(), ops.name_scope(name) as scope:
+E     AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/op_def_library.py:777: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  tensorflow:deprecation.py:350 From /Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/tensorflow/python.training.input/tests/test_tensorflow_python_training_input.py:333: shuffle_batch (from tensorflow.python.training.input) is deprecated and will be removed in a future version.
+Instructions for updating:
+Queue-based input pipelines have been replaced by `tf.data`. Use `tf.data.Dataset.shuffle(min_after_dequeue).batch(batch_size)`.
+_ TestShuffleBatchFunction.test_shuffle_batch_basic_functionality[2-32-16-123] _
+
+self = <test_tensorflow_python_training_input.TestShuffleBatchFunction object at 0x15ad4f640>
+batch_size = 2, capacity = 32, min_after_dequeue = 16, seed = 123
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5821459632'>
+mock_random_shuffle_queue = <Mock name='RandomShuffleQueue()' id='5821449312'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5821449168'>
+mock_warnings = <MagicMock name='warn' id='5821599024'>
+
+    @pytest.mark.parametrize("batch_size,capacity,min_after_dequeue,seed", [
+        (2, 32, 8, 42),      # Basic case from test plan
+        (2, 32, 16, 123),    # Parameter extension: different seed and queue params
+    ])
+    def test_shuffle_batch_basic_functionality(
+        self,
+        batch_size,
+        capacity,
+        min_after_dequeue,
+        seed,
+        simple_tensor_list,
+        mock_queue_runner,
+        mock_random_shuffle_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test shuffle batch functionality with various parameters."""
+        # Setup mock queue
+        mock_queue = mock_random_shuffle_queue
+        mock_dequeue_op = mock.Mock()
+        # Create mock output tensors with correct shape
+        mock_output1 = mock.Mock()
+        mock_output1.shape = tf.TensorShape([batch_size, 2, 3])
+        mock_output2 = mock.Mock()
+        mock_output2.shape = tf.TensorShape([batch_size, 2, 3])
+    
+        # Return mock tensors instead of real tensors
+        mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+        # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+        mock_size_tensor = mock.Mock()
+        mock_size_tensor.__sub__ = lambda self, other: mock.Mock()  # Allow subtraction
+        mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()  # Allow reverse subtraction
+        mock_queue.size.return_value = mock_size_tensor
+    
+        # Call the shuffle_batch function
+        with tf.Graph().as_default():
+>           output_tensors = shuffle_batch(
+                tensors=simple_tensor_list,
+                batch_size=batch_size,
+                capacity=capacity,
+                min_after_dequeue=min_after_dequeue,
+                seed=seed,
+                enqueue_many=False,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:333: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1332: in shuffle_batch
+    return _shuffle_batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:859: in _shuffle_batch
+    math_ops.maximum(0, queue.size() - min_after_dequeue), dtypes.float32) *
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_math_ops.py:6209: in maximum
+    _, _, _op, _outputs = _op_def_library._apply_op_helper(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_type_name = 'Maximum', name = 'Maximum'
+keywords = {'x': 0, 'y': <Mock id='5819615312'>}
+op_def = name: "Maximum"
+input_arg {
+  name: "x"
+  type_attr: "T"
+}
+input_arg {
+  name: "y"
+  type_attr: "T"
+}
+output_arg {
+  n...     type: DT_UINT16
+      type: DT_INT32
+      type: DT_UINT32
+      type: DT_INT64
+      type: DT_UINT64
+    }
+  }
+}
+
+g = <Mock name='mock._as_graph_element().graph' id='5819622704'>
+producer = <Mock name='mock._as_graph_element().graph.graph_def_versions.producer' id='5819622512'>
+attrs = {}, attr_protos = {}, default_type_attr_map = {}
+allowed_list_attr_map = {'T': [14, 19, 1, 2, 6, 4, 5, 17, 3, 22, 9, 23]}
+
+    def _apply_op_helper(op_type_name, name=None, **keywords):  # pylint: disable=invalid-name
+      """Implementation of apply_op that returns output_structure, op."""
+    
+      op_def, g, producer = _GetOpDef(op_type_name, keywords)
+      name = name if name else op_type_name
+    
+      attrs, attr_protos = {}, {}
+      default_type_attr_map, allowed_list_attr_map = {}, {}
+      inputs, input_types, output_structure = [], [], []
+      fallback = True
+    
+      if (_CanExtractAttrsFastPath(op_def, keywords) and
+          flags.config().graph_building_optimization.value()):
+        fallback = False
+        attr_protos, inputs, input_types, output_structure = (
+            op_def_library_pybind.process_inputs(op_type_name, producer, keywords))
+    
+      if fallback:
+        _CheckOpDeprecation(op_type_name, op_def, producer)
+        _ExtractDefaultTypesAndAllowedTypes(op_def, default_type_attr_map,
+                                            allowed_list_attr_map)
+    
+      # Requires that op_def has passed validation (using the C++
+      # ValidateOpDef() from ../framework/op_def_util.h).
+>     with g.as_default(), ops.name_scope(name) as scope:
+E     AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/op_def_library.py:777: AttributeError
+____ TestShuffleBatchFunction.test_shuffle_batch_with_seed_reproducibility _____
+
+self = <test_tensorflow_python_training_input.TestShuffleBatchFunction object at 0x15ad4fa30>
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_random_shuffle_queue = <Mock name='RandomShuffleQueue()' id='5822230208'>
+mock_warnings = <MagicMock name='warn' id='5822218640'>
+
+    def test_shuffle_batch_with_seed_reproducibility(
+        self,
+        simple_tensor_list,
+        mock_random_shuffle_queue,
+        mock_warnings
+    ):
+        """Test that shuffle batch with same seed produces same results."""
+        with tf.Graph().as_default():
+            # First call with seed=42
+            mock_queue1 = mock.Mock()
+            mock_random_shuffle_queue.return_value = mock_queue1
+    
+            # Create mock output tensors
+            mock_output1 = mock.Mock()
+            mock_output1.shape = tf.TensorShape([2, 2, 3])
+            mock_output2 = mock.Mock()
+            mock_output2.shape = tf.TensorShape([2, 2, 3])
+            mock_queue1.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+            # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+            mock_size_tensor1 = mock.Mock()
+            mock_size_tensor1.__sub__ = lambda self, other: mock.Mock()
+            mock_size_tensor1.__rsub__ = lambda self, other: mock.Mock()
+            mock_queue1.size.return_value = mock_size_tensor1
+    
+>           output1 = shuffle_batch(
+                tensors=simple_tensor_list,
+                batch_size=2,
+                capacity=32,
+                min_after_dequeue=8,
+                seed=42,
+                enqueue_many=False
+            )
+
+tests/test_tensorflow_python_training_input.py:392: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1332: in shuffle_batch
+    return _shuffle_batch(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tensors = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+batch_size = 2, capacity = 32, min_after_dequeue = 8
+keep_input = <tf.Tensor 'shuffle_batch/Const:0' shape=() dtype=bool>
+num_threads = 1, seed = 42, enqueue_many = False, shapes = [[2, 3], [2, 3]]
+allow_smaller_final_batch = False, shared_name = None, name = 'shuffle_batch/'
+
+    def _shuffle_batch(tensors, batch_size, capacity, min_after_dequeue,
+                       keep_input, num_threads=1, seed=None, enqueue_many=False,
+                       shapes=None, allow_smaller_final_batch=False,
+                       shared_name=None, name=None):
+      """Helper function for `shuffle_batch` and `maybe_shuffle_batch`."""
+      if context.executing_eagerly():
+        raise ValueError(
+            "Input pipelines based on Queues are not supported when eager execution"
+            " is enabled. Please use tf.data to ingest data into your model"
+            " instead.")
+      tensor_list = _as_tensor_list(tensors)
+      with ops.name_scope(name, "shuffle_batch",
+                          list(tensor_list) + [keep_input]) as name:
+        if capacity <= min_after_dequeue:
+          raise ValueError("capacity %d must be bigger than min_after_dequeue %d."
+                           % (capacity, min_after_dequeue))
+        tensor_list = _validate(tensor_list)
+        keep_input = _validate_keep_input(keep_input, enqueue_many)
+        tensor_list, sparse_info = _store_sparse_tensors(
+            tensor_list, enqueue_many, keep_input)
+        types = _dtypes([tensor_list])
+        shapes = _shapes([tensor_list], shapes, enqueue_many)
+        queue = data_flow_ops.RandomShuffleQueue(
+            capacity=capacity, min_after_dequeue=min_after_dequeue, seed=seed,
+            dtypes=types, shapes=shapes, shared_name=shared_name)
+        _enqueue(queue, tensor_list, num_threads, enqueue_many, keep_input)
+        full = (math_ops.cast(
+>           math_ops.maximum(0, queue.size() - min_after_dequeue), dtypes.float32) *
+                (1. / (capacity - min_after_dequeue)))
+E       TypeError: unsupported operand type(s) for -: 'Mock' and 'int'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:859: TypeError
+________ TestShuffleBatchFunction.test_shuffle_batch_with_enqueue_many _________
+
+self = <test_tensorflow_python_training_input.TestShuffleBatchFunction object at 0x15ad84130>
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_random_shuffle_queue = <Mock name='RandomShuffleQueue()' id='5822146512'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5822141088'>
+mock_warnings = <MagicMock name='warn' id='5822150352'>
+
+    def test_shuffle_batch_with_enqueue_many(
+        self,
+        simple_tensor_list,
+        mock_random_shuffle_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test shuffle batch with enqueue_many=True."""
+        with tf.Graph().as_default():
+            # Prepare input tensors with batch dimension
+            input_tensors = [
+                tf.expand_dims(tensor, 0) for tensor in simple_tensor_list
+            ]
+    
+            # Setup mock
+            mock_queue = mock_random_shuffle_queue
+    
+            # Create mock output tensors
+            mock_output1 = mock.Mock()
+            mock_output1.shape = tf.TensorShape([2, 1, 2, 3])
+            mock_output2 = mock.Mock()
+            mock_output2.shape = tf.TensorShape([2, 1, 2, 3])
+            mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+            # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+            mock_size_tensor = mock.Mock()
+            mock_size_tensor.__sub__ = lambda self, other: mock.Mock()
+            mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()
+            mock_queue.size.return_value = mock_size_tensor
+    
+            # Call shuffle_batch with enqueue_many=True
+>           output_tensors = shuffle_batch(
+                tensors=input_tensors,
+                batch_size=2,
+                capacity=32,
+                min_after_dequeue=8,
+                seed=42,
+                enqueue_many=True,
+                allow_smaller_final_batch=False
+            )
+
+tests/test_tensorflow_python_training_input.py:491: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1332: in shuffle_batch
+    return _shuffle_batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:859: in _shuffle_batch
+    math_ops.maximum(0, queue.size() - min_after_dequeue), dtypes.float32) *
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_math_ops.py:6209: in maximum
+    _, _, _op, _outputs = _op_def_library._apply_op_helper(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_type_name = 'Maximum', name = 'Maximum'
+keywords = {'x': 0, 'y': <Mock id='5820822192'>}
+op_def = name: "Maximum"
+input_arg {
+  name: "x"
+  type_attr: "T"
+}
+input_arg {
+  name: "y"
+  type_attr: "T"
+}
+output_arg {
+  n...     type: DT_UINT16
+      type: DT_INT32
+      type: DT_UINT32
+      type: DT_INT64
+      type: DT_UINT64
+    }
+  }
+}
+
+g = <Mock name='mock._as_graph_element().graph' id='5820822288'>
+producer = <Mock name='mock._as_graph_element().graph.graph_def_versions.producer' id='5820822672'>
+attrs = {}, attr_protos = {}, default_type_attr_map = {}
+allowed_list_attr_map = {'T': [14, 19, 1, 2, 6, 4, 5, 17, 3, 22, 9, 23]}
+
+    def _apply_op_helper(op_type_name, name=None, **keywords):  # pylint: disable=invalid-name
+      """Implementation of apply_op that returns output_structure, op."""
+    
+      op_def, g, producer = _GetOpDef(op_type_name, keywords)
+      name = name if name else op_type_name
+    
+      attrs, attr_protos = {}, {}
+      default_type_attr_map, allowed_list_attr_map = {}, {}
+      inputs, input_types, output_structure = [], [], []
+      fallback = True
+    
+      if (_CanExtractAttrsFastPath(op_def, keywords) and
+          flags.config().graph_building_optimization.value()):
+        fallback = False
+        attr_protos, inputs, input_types, output_structure = (
+            op_def_library_pybind.process_inputs(op_type_name, producer, keywords))
+    
+      if fallback:
+        _CheckOpDeprecation(op_type_name, op_def, producer)
+        _ExtractDefaultTypesAndAllowedTypes(op_def, default_type_attr_map,
+                                            allowed_list_attr_map)
+    
+      # Requires that op_def has passed validation (using the C++
+      # ValidateOpDef() from ../framework/op_def_util.h).
+>     with g.as_default(), ops.name_scope(name) as scope:
+E     AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/op_def_library.py:777: AttributeError
+____ TestShuffleBatchFunction.test_shuffle_batch_allow_smaller_final_batch _____
+
+self = <test_tensorflow_python_training_input.TestShuffleBatchFunction object at 0x15ad84490>
+simple_tensor_list = [<tf.Tensor 'Const:0' shape=(2, 3) dtype=float32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=float32>]
+mock_random_shuffle_queue = <Mock name='RandomShuffleQueue()' id='5825360128'>
+mock_warnings = <MagicMock name='warn' id='5825358304'>
+
+    def test_shuffle_batch_allow_smaller_final_batch(
+        self,
+        simple_tensor_list,
+        mock_random_shuffle_queue,
+        mock_warnings
+    ):
+        """Test shuffle batch with allow_smaller_final_batch=True."""
+        with tf.Graph().as_default():
+            # Setup mock
+            mock_queue = mock_random_shuffle_queue
+    
+            # Create mock output tensors with smaller batch size
+            mock_output1 = mock.Mock()
+            mock_output1.shape = tf.TensorShape([1, 2, 3])  # Smaller batch
+            mock_output2 = mock.Mock()
+            mock_output2.shape = tf.TensorShape([1, 2, 3])  # Smaller batch
+            mock_queue.dequeue_many.return_value = [mock_output1, mock_output2]
+    
+            # Mock queue.size() to return a Tensor that can be used in arithmetic operations
+            mock_size_tensor = mock.Mock()
+            mock_size_tensor.__sub__ = lambda self, other: mock.Mock()
+            mock_size_tensor.__rsub__ = lambda self, other: mock.Mock()
+            mock_queue.size.return_value = mock_size_tensor
+    
+            # Call shuffle_batch with allow_smaller_final_batch=True
+>           output_tensors = shuffle_batch(
+                tensors=simple_tensor_list,
+                batch_size=2,
+                capacity=32,
+                min_after_dequeue=8,
+                seed=42,
+                enqueue_many=False,
+                allow_smaller_final_batch=True
+            )
+
+tests/test_tensorflow_python_training_input.py:535: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1332: in shuffle_batch
+    return _shuffle_batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:859: in _shuffle_batch
+    math_ops.maximum(0, queue.size() - min_after_dequeue), dtypes.float32) *
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/gen_math_ops.py:6209: in maximum
+    _, _, _op, _outputs = _op_def_library._apply_op_helper(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+op_type_name = 'Maximum', name = 'Maximum'
+keywords = {'x': 0, 'y': <Mock id='5821449312'>}
+op_def = name: "Maximum"
+input_arg {
+  name: "x"
+  type_attr: "T"
+}
+input_arg {
+  name: "y"
+  type_attr: "T"
+}
+output_arg {
+  n...     type: DT_UINT16
+      type: DT_INT32
+      type: DT_UINT32
+      type: DT_INT64
+      type: DT_UINT64
+    }
+  }
+}
+
+g = <Mock name='mock._as_graph_element().graph' id='5821449216'>
+producer = <Mock name='mock._as_graph_element().graph.graph_def_versions.producer' id='5821449408'>
+attrs = {}, attr_protos = {}, default_type_attr_map = {}
+allowed_list_attr_map = {'T': [14, 19, 1, 2, 6, 4, 5, 17, 3, 22, 9, 23]}
+
+    def _apply_op_helper(op_type_name, name=None, **keywords):  # pylint: disable=invalid-name
+      """Implementation of apply_op that returns output_structure, op."""
+    
+      op_def, g, producer = _GetOpDef(op_type_name, keywords)
+      name = name if name else op_type_name
+    
+      attrs, attr_protos = {}, {}
+      default_type_attr_map, allowed_list_attr_map = {}, {}
+      inputs, input_types, output_structure = [], [], []
+      fallback = True
+    
+      if (_CanExtractAttrsFastPath(op_def, keywords) and
+          flags.config().graph_building_optimization.value()):
+        fallback = False
+        attr_protos, inputs, input_types, output_structure = (
+            op_def_library_pybind.process_inputs(op_type_name, producer, keywords))
+    
+      if fallback:
+        _CheckOpDeprecation(op_type_name, op_def, producer)
+        _ExtractDefaultTypesAndAllowedTypes(op_def, default_type_attr_map,
+                                            allowed_list_attr_map)
+    
+      # Requires that op_def has passed validation (using the C++
+      # ValidateOpDef() from ../framework/op_def_util.h).
+>     with g.as_default(), ops.name_scope(name) as scope:
+E     AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/op_def_library.py:777: AttributeError
+_ TestDynamicPaddingFunction.test_batch_with_dynamic_padding[2-32-True-False] __
+
+self = <test_tensorflow_python_training_input.TestDynamicPaddingFunction object at 0x15ad849a0>
+batch_size = 2, capacity = 32, dynamic_pad = True
+allow_smaller_final_batch = False
+variable_length_tensors = [<tf.Tensor 'Const:0' shape=(3, 2) dtype=int32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=int32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5819650480'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5820496288'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5820490672'>
+mock_warnings = <MagicMock name='warn' id='5820490336'>
+
+    @pytest.mark.parametrize("batch_size,capacity,dynamic_pad,allow_smaller_final_batch", [
+        (2, 32, True, False),   # Basic case from test plan
+        (3, 48, True, True),    # Parameter extension: dynamic pad with smaller batch
+    ])
+    def test_batch_with_dynamic_padding(
+        self,
+        batch_size,
+        capacity,
+        dynamic_pad,
+        allow_smaller_final_batch,
+        variable_length_tensors,
+        mock_queue_runner,
+        mock_fifo_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test batch function with dynamic padding for variable length tensors."""
+        # Setup mock queue
+        mock_queue = mock_fifo_queue
+        # For dynamic padding, we need to simulate padded output
+        # Create mock tensors with padded shapes
+        padded_tensor1 = mock.Mock()
+        padded_tensor1.shape = tf.TensorShape([batch_size, 3, 3])  # Padded to max length
+        padded_tensor2 = mock.Mock()
+        padded_tensor2.shape = tf.TensorShape([batch_size, 3, 3])  # Padded to max length
+    
+        mock_queue.dequeue_many.return_value = [padded_tensor1, padded_tensor2]
+    
+        # Call the batch function with dynamic_pad=True
+        with tf.Graph().as_default():
+            output_tensors = batch(
+                tensors=variable_length_tensors,
+                batch_size=batch_size,
+                capacity=capacity,
+                enqueue_many=False,
+                dynamic_pad=dynamic_pad,
+                allow_smaller_final_batch=allow_smaller_final_batch
+            )
+    
+            # Verify deprecation warning
+            assert_deprecation_warning_called(mock_warnings)
+    
+            # Verify queue runner was added
+            assert_queue_runner_added(mock_add_queue_runner, mock_queue_runner)
+    
+            # Verify FIFOQueue was created
+>           assert mock_fifo_queue.called
+E           AssertionError: assert False
+E            +  where False = <Mock name='FIFOQueue()' id='5820496288'>.called
+
+tests/test_tensorflow_python_training_input.py:605: AssertionError
+__ TestDynamicPaddingFunction.test_batch_with_dynamic_padding[3-48-True-True] __
+
+self = <test_tensorflow_python_training_input.TestDynamicPaddingFunction object at 0x15ad84b80>
+batch_size = 3, capacity = 48, dynamic_pad = True
+allow_smaller_final_batch = True
+variable_length_tensors = [<tf.Tensor 'Const:0' shape=(3, 2) dtype=int32>, <tf.Tensor 'Const_1:0' shape=(2, 3) dtype=int32>]
+mock_queue_runner = <Mock name='QueueRunner()' id='5819711200'>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5821344320'>
+mock_add_queue_runner = <MagicMock name='add_queue_runner' id='5821336784'>
+mock_warnings = <MagicMock name='warn' id='5821349216'>
+
+    @pytest.mark.parametrize("batch_size,capacity,dynamic_pad,allow_smaller_final_batch", [
+        (2, 32, True, False),   # Basic case from test plan
+        (3, 48, True, True),    # Parameter extension: dynamic pad with smaller batch
+    ])
+    def test_batch_with_dynamic_padding(
+        self,
+        batch_size,
+        capacity,
+        dynamic_pad,
+        allow_smaller_final_batch,
+        variable_length_tensors,
+        mock_queue_runner,
+        mock_fifo_queue,
+        mock_add_queue_runner,
+        mock_warnings
+    ):
+        """Test batch function with dynamic padding for variable length tensors."""
+        # Setup mock queue
+        mock_queue = mock_fifo_queue
+        # For dynamic padding, we need to simulate padded output
+        # Create mock tensors with padded shapes
+        padded_tensor1 = mock.Mock()
+        padded_tensor1.shape = tf.TensorShape([batch_size, 3, 3])  # Padded to max length
+        padded_tensor2 = mock.Mock()
+        padded_tensor2.shape = tf.TensorShape([batch_size, 3, 3])  # Padded to max length
+    
+        mock_queue.dequeue_many.return_value = [padded_tensor1, padded_tensor2]
+    
+        # Call the batch function with dynamic_pad=True
+        with tf.Graph().as_default():
+            output_tensors = batch(
+                tensors=variable_length_tensors,
+                batch_size=batch_size,
+                capacity=capacity,
+                enqueue_many=False,
+                dynamic_pad=dynamic_pad,
+                allow_smaller_final_batch=allow_smaller_final_batch
+            )
+    
+            # Verify deprecation warning
+            assert_deprecation_warning_called(mock_warnings)
+    
+            # Verify queue runner was added
+            assert_queue_runner_added(mock_add_queue_runner, mock_queue_runner)
+    
+            # Verify FIFOQueue was created
+>           assert mock_fifo_queue.called
+E           AssertionError: assert False
+E            +  where False = <Mock name='FIFOQueue()' id='5821344320'>.called
+
+tests/test_tensorflow_python_training_input.py:605: AssertionError
+____________ TestAdditionalEdgeCases.test_batch_with_single_tensor _____________
+
+self = <test_tensorflow_python_training_input.TestAdditionalEdgeCases object at 0x15ad85b40>
+mock_fifo_queue = <Mock name='FIFOQueue()' id='5825549776'>
+mock_warnings = <MagicMock name='warn' id='5825551312'>
+
+    def test_batch_with_single_tensor(self, mock_fifo_queue, mock_warnings):
+        """Test batch function with single tensor (not a list)."""
+        with tf.Graph().as_default():
+            tensor = tf.constant([[1, 2, 3], [4, 5, 6]], dtype=tf.float32)
+    
+            # Setup mock
+            mock_queue = mock_fifo_queue
+            mock_output = mock.Mock()
+            mock_output.shape = tf.TensorShape([2, 2, 3])
+            mock_queue.dequeue_many.return_value = [mock_output]
+    
+            # When batch is called with a single tensor (not in a list),
+            # it should still work and return a single tensor
+            # Note: The batch function expects a list of tensors, but TensorFlow
+            # internally handles single tensors by wrapping them in a list
+>           output = batch(
+                tensors=[tensor],  # Wrap single tensor in a list to avoid iteration error
+                batch_size=2,
+                capacity=32,
+                enqueue_many=False
+            )
+
+tests/test_tensorflow_python_training_input.py:858: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/deprecation.py:357: in new_func
+    return func(*args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:1006: in batch
+    return _batch(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/training/input.py:781: in _batch
+    math_ops.cast(queue.size(), dtypes.float32) * (1. / capacity))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='FIFOQueue().size()._as_graph_element().graph.as_default()' id='5822752960'>
+name = '__enter__'
+
+    def __getattr__(self, name):
+        if name in {'_mock_methods', '_mock_unsafe'}:
+            raise AttributeError(name)
+        elif self._mock_methods is not None:
+            if name not in self._mock_methods or name in _all_magics:
+                raise AttributeError("Mock object has no attribute %r" % name)
+        elif _is_magic(name):
+>           raise AttributeError(name)
+E           AttributeError: __enter__
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:645: AttributeError
+=============================== warnings summary ===============================
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:18: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:36: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:43: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:29: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO_DIM = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:73: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:80: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_shape_pb2.py:66: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORSHAPEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:19: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:33: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:37: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:41: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:45: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:49: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:53: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:57: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:61: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:65: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:69: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:73: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:77: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:81: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:85: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:89: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:93: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:97: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:101: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:105: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:109: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:113: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:117: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:121: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:125: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:129: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:133: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:137: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:141: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:145: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:149: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:153: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:157: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:161: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:165: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:169: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:173: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:177: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:181: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:185: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:189: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:193: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:197: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:201: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:205: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:209: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:213: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:217: DeprecationWarning: Call to deprecated create function EnumValueDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.EnumValueDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/types_pb2.py:27: DeprecationWarning: Call to deprecated create function EnumDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _DATATYPE = _descriptor.EnumDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:20: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:39: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:46: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:32: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO_DTYPEANDSHAPE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:76: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:83: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:90: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:97: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:104: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:111: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/resource_handle_pb2.py:69: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _RESOURCEHANDLEPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:96: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:103: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:110: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:117: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:124: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:131: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:138: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:145: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:152: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _TENSORPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:183: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:190: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:197: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/tensor_pb2.py:176: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _VARIANTTENSORDATAPROTO = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:21: DeprecationWarning: Call to deprecated create function FileDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    DESCRIPTOR = _descriptor.FileDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:40: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:47: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:54: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:61: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:68: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:75: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:82: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:89: DeprecationWarning: Call to deprecated create function FieldDescriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _descriptor.FieldDescriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/core/framework/attr_value_pb2.py:33: DeprecationWarning: Call to deprecated create function Descriptor(). Note: Create unlinked descriptors is going to go away. Please use get/find descriptors from generated code or query the descriptor_pool.
+    _ATTRVALUE_LISTVALUE = _descriptor.Descriptor(
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/framework/dtypes.py:205: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/flatbuffers/compat.py:19: DeprecationWarning: the imp module is deprecated in favour of importlib and slated for removal in Python 3.12; see the module's documentation for alternative uses
+    import imp
+
+../../../../../../../../opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:326: DeprecationWarning: `np.bool8` is a deprecated alias for `np.bool_`.  (Deprecated NumPy 1.24)
+    np.bool8: (False, True),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                             Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------
+test_fix.py                                          7      7      2      0     0%   4-19
+test_fix_verification.py                            42     42      2      0     0%   4-63
+tests/test_tensorflow_python_training_input.py     352     77     34      3    73%   88-91, 103-114, 180-197, 212-214, 230-232, 247-249, 280-287, 344-365, 402-432, 456-458, 502-508, 546, 609-620, 746->exit, 777-780, 866, 905
+--------------------------------------------------------------------------------------------
+TOTAL                                              401    126     38      3    64%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_tensorflow_python_training_input.py::TestBatchFunction::test_batch_basic_functionality[2-32-False]
+FAILED tests/test_tensorflow_python_training_input.py::TestBatchFunction::test_batch_basic_functionality[4-64-True]
+FAILED tests/test_tensorflow_python_training_input.py::TestBatchFunction::test_batch_basic_functionality[1-10-False]
+FAILED tests/test_tensorflow_python_training_input.py::TestBatchFunction::test_batch_with_dictionary_input
+FAILED tests/test_tensorflow_python_training_input.py::TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-8-42]
+FAILED tests/test_tensorflow_python_training_input.py::TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-16-123]
+FAILED tests/test_tensorflow_python_training_input.py::TestShuffleBatchFunction::test_shuffle_batch_with_seed_reproducibility
+FAILED tests/test_tensorflow_python_training_input.py::TestShuffleBatchFunction::test_shuffle_batch_with_enqueue_many
+FAILED tests/test_tensorflow_python_training_input.py::TestShuffleBatchFunction::test_shuffle_batch_allow_smaller_final_batch
+FAILED tests/test_tensorflow_python_training_input.py::TestDynamicPaddingFunction::test_batch_with_dynamic_padding[2-32-True-False]
+FAILED tests/test_tensorflow_python_training_input.py::TestDynamicPaddingFunction::test_batch_with_dynamic_padding[3-48-True-True]
+FAILED tests/test_tensorflow_python_training_input.py::TestAdditionalEdgeCases::test_batch_with_single_tensor
+12 failed, 17 passed, 103 warnings in 3.49s
+
+Error: exit 1

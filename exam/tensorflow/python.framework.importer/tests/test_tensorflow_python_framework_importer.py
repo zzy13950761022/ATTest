@@ -1,0 +1,393 @@
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import importer
+from tensorflow.python.framework import ops
+from tensorflow.core.framework import graph_pb2
+from tensorflow.core.framework import node_def_pb2
+from tensorflow.core.framework import attr_value_pb2
+from unittest.mock import Mock, patch, MagicMock
+import numpy as np
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+
+@pytest.fixture(autouse=True)
+def reset_default_graph():
+    """Reset default graph before and after each test."""
+    ops.reset_default_graph()
+    yield
+    ops.reset_default_graph()
+
+
+def create_simple_constant_graph():
+    """Create a simple GraphDef with a constant operation."""
+    graph_def = graph_pb2.GraphDef()
+    
+    # Create a constant node
+    const_node = graph_def.node.add()
+    const_node.name = "const"
+    const_node.op = "Const"
+    
+    # Add value attribute
+    tensor_proto = tf.make_tensor_proto(42.0, dtype=tf.float32)
+    const_node.attr["value"].tensor.CopyFrom(tensor_proto)
+    const_node.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    return graph_def
+
+
+def create_placeholder_graph():
+    """Create a GraphDef with a placeholder operation."""
+    graph_def = graph_pb2.GraphDef()
+    
+    # Create a placeholder node
+    placeholder_node = graph_def.node.add()
+    placeholder_node.name = "placeholder"
+    placeholder_node.op = "Placeholder"
+    placeholder_node.attr["dtype"].type = tf.float32.as_datatype_enum
+    placeholder_node.attr["shape"].shape.SetInParent()  # Unknown shape
+    
+    return graph_def
+
+
+def create_multi_operation_graph():
+    """Create a GraphDef with multiple operations."""
+    graph_def = graph_pb2.GraphDef()
+    
+    # Create input placeholder
+    input_node = graph_def.node.add()
+    input_node.name = "input"
+    input_node.op = "Placeholder"
+    input_node.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    # Create constant
+    const_node = graph_def.node.add()
+    const_node.name = "const"
+    const_node.op = "Const"
+    tensor_proto = tf.make_tensor_proto(2.0, dtype=tf.float32)
+    const_node.attr["value"].tensor.CopyFrom(tensor_proto)
+    const_node.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    # Create add operation
+    add_node = graph_def.node.add()
+    add_node.name = "add"
+    add_node.op = "Add"
+    add_node.input.extend(["input", "const"])
+    add_node.attr["T"].type = tf.float32.as_datatype_enum
+    
+    return graph_def
+
+
+def create_invalid_graph_def():
+    """Create an invalid GraphDef proto."""
+    # Return something that's not a GraphDef
+    return "not a graph def"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# Basic GraphDef import test
+def test_basic_graphdef_import():
+    """Test basic GraphDef import without input_map or return_elements."""
+    # Create a simple constant graph
+    graph_def = create_simple_constant_graph()
+    
+    # Instead of mocking the C API directly (which causes AttributeError in TF 2.x),
+    # we'll test the actual function behavior with a simple graph.
+    # This is a weak assertion test as specified in the test plan.
+    
+    # Get the current graph before import
+    graph = ops.get_default_graph()
+    initial_operations = list(graph.get_operations())
+    
+    # Call import_graph_def
+    result = importer.import_graph_def(
+        graph_def=graph_def,
+        input_map=None,
+        return_elements=None,
+        name="import"
+    )
+    
+    # Weak assertions from test plan:
+    # 1. No exception raised (implicitly passed if we get here)
+    
+    # 2. Graph should have been modified (operations created)
+    final_operations = list(graph.get_operations())
+    assert len(final_operations) > len(initial_operations), \
+        "Graph should have new operations after import"
+    
+    # 3. Result should be None when return_elements is None
+    assert result is None, \
+        "Should return None when return_elements is None"
+    
+    # 4. Check that the imported operation has the correct name prefix
+    # Look for operations with "import/" prefix
+    imported_ops = [op for op in final_operations 
+                   if op.name.startswith("import/") and op not in initial_operations]
+    assert len(imported_ops) > 0, \
+        "Should have imported operations with 'import/' prefix"
+    
+    # 5. Verify the constant operation was imported
+    const_ops = [op for op in imported_ops if "const" in op.name.lower()]
+    assert len(const_ops) > 0, \
+        "Should have imported constant operation"
+    
+    # Additional weak assertion: operation type should be correct
+    for op in imported_ops:
+        assert hasattr(op, 'type'), "Imported operation should have type attribute"
+        assert op.type in ["Const", "Placeholder", "Add"], \
+            f"Unexpected operation type: {op.type}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# Import with input_map test
+def test_import_with_input_map():
+    """Test GraphDef import with input_map for input remapping."""
+    # Create a placeholder graph
+    graph_def = create_placeholder_graph()
+    
+    # Create a tensor to map to the placeholder
+    # We need to create this in the default graph
+    mapped_tensor = tf.constant(3.14, dtype=tf.float32, name="mapped_input")
+    
+    # Get the current graph before import
+    graph = ops.get_default_graph()
+    initial_operations = list(graph.get_operations())
+    
+    # Call import_graph_def with input_map
+    result = importer.import_graph_def(
+        graph_def=graph_def,
+        input_map={"placeholder": mapped_tensor},
+        return_elements=None,
+        name="import"
+    )
+    
+    # Weak assertions from test plan:
+    # 1. No exception raised (implicitly passed if we get here)
+    
+    # 2. Graph should have been modified (operations created)
+    final_operations = list(graph.get_operations())
+    assert len(final_operations) > len(initial_operations), \
+        "Graph should have new operations after import"
+    
+    # 3. Result should be None when return_elements is None
+    assert result is None, \
+        "Should return None when return_elements is None"
+    
+    # 4. Input mapping should be processed without errors
+    # We can verify that the import succeeded by checking for imported operations
+    imported_ops = [op for op in final_operations 
+                   if op.name.startswith("import/") and op not in initial_operations]
+    assert len(imported_ops) > 0, \
+        "Should have imported operations with 'import/' prefix"
+    
+    # 5. Check that we have a placeholder operation (though it's been remapped)
+    placeholder_ops = [op for op in imported_ops if "placeholder" in op.name.lower()]
+    assert len(placeholder_ops) > 0, \
+        "Should have imported placeholder operation"
+    
+    # 6. Verify the input_map parameter was accepted
+    # The function should not raise ValueError for valid input_map
+    # This is implicitly tested by the fact that we got here without exceptions
+    
+    # Additional check: the mapped tensor should exist in the graph
+    assert "mapped_input" in [op.name for op in initial_operations], \
+        "Mapped tensor should exist in the graph"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# Import with return_elements test
+def test_import_with_return_elements():
+    """Test GraphDef import with return_elements to get specific operations/tensors."""
+    # Create a multi-operation graph
+    graph_def = create_multi_operation_graph()
+    
+    # Get the current graph before import
+    graph = ops.get_default_graph()
+    initial_operations = list(graph.get_operations())
+    
+    # Call import_graph_def with return_elements
+    result = importer.import_graph_def(
+        graph_def=graph_def,
+        input_map=None,
+        return_elements=["input", "add:0"],
+        name="import"
+    )
+    
+    # Weak assertions from test plan:
+    # 1. No exception raised (implicitly passed if we get here)
+    
+    # 2. Returns a list
+    assert isinstance(result, list), \
+        "Should return a list when return_elements is specified"
+    
+    # 3. Correct length (should match return_elements)
+    assert len(result) == 2, \
+        f"Should return 2 elements, got {len(result)}"
+    
+    # 4. Elements should be Operation or Tensor objects
+    # First element should be an Operation (just "input")
+    assert hasattr(result[0], 'type'), "First element should be an Operation or Tensor"
+    
+    # Second element should be a Tensor ("add:0")
+    assert hasattr(result[1], 'name'), "Second element should be an Operation or Tensor"
+    assert ":0" in result[1].name, "Second element should be a tensor (have ':0' in name)"
+    
+    # 5. Graph should have been modified
+    final_operations = list(graph.get_operations())
+    assert len(final_operations) > len(initial_operations), \
+        "Graph should have new operations after import"
+    
+    # 6. Check that returned elements have correct names
+    # Names should be prefixed with "import/"
+    assert result[0].name.startswith("import/"), \
+        f"Returned operation should have 'import/' prefix, got {result[0].name}"
+    
+    assert result[1].name.startswith("import/"), \
+        f"Returned tensor should have 'import/' prefix, got {result[1].name}"
+    
+    # 7. Verify the specific elements were returned
+    # result[0] should be the "input" operation
+    assert "input" in result[0].name.lower(), \
+        f"First element should be 'input' operation, got {result[0].name}"
+    
+    # result[1] should be the "add:0" tensor
+    assert "add" in result[1].name.lower() and ":0" in result[1].name, \
+        f"Second element should be 'add:0' tensor, got {result[1].name}"
+    
+    # Additional check: verify operation types
+    if hasattr(result[0], 'type'):  # It's an Operation
+        assert result[0].type == "Placeholder", \
+            f"First element should be Placeholder operation, got {result[0].type}"
+    
+    # Check that we have all expected operations in the graph
+    imported_ops = [op for op in final_operations 
+                   if op.name.startswith("import/") and op not in initial_operations]
+    assert len(imported_ops) >= 3, \
+        f"Should have at least 3 imported operations, got {len(imported_ops)}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# Combined functionality test (deferred)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# producer_op_list parameter test (deferred)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Invalid GraphDef exception test
+def test_invalid_graphdef_exception():
+    """Test that invalid GraphDef raises appropriate exception."""
+    # Create invalid graph def (not a GraphDef proto)
+    invalid_graph_def = create_invalid_graph_def()
+    
+    # Weak assertions: should raise TypeError
+    with pytest.raises(TypeError) as exc_info:
+        importer.import_graph_def(
+            graph_def=invalid_graph_def,
+            input_map=None,
+            return_elements=None,
+            name="import"
+        )
+    
+    # Verify exception type
+    assert "GraphDef" in str(exc_info.value) or "proto" in str(exc_info.value)
+    
+    # Test with another invalid type
+    with pytest.raises(TypeError) as exc_info2:
+        importer.import_graph_def(
+            graph_def=123,  # Integer, not GraphDef
+            input_map=None,
+            return_elements=None,
+            name="import"
+        )
+    
+    # Should also raise TypeError
+    assert isinstance(exc_info2.value, TypeError)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Invalid input_map key exception test (deferred)
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Invalid return_elements name exception test (deferred)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Boundary value test (deferred)
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup
+
+def test_import_graph_def_signature():
+    """Verify the function signature matches expectations."""
+    import inspect
+    
+    sig = inspect.signature(importer.import_graph_def)
+    params = list(sig.parameters.keys())
+    
+    # Check required and optional parameters
+    assert params == ['graph_def', 'input_map', 'return_elements', 'name', 'op_dict', 'producer_op_list']
+    
+    # Check default values
+    assert sig.parameters['input_map'].default is None
+    assert sig.parameters['return_elements'].default is None
+    assert sig.parameters['name'].default is None
+    assert sig.parameters['op_dict'].default is None
+    assert sig.parameters['producer_op_list'].default is None
+
+
+# Helper function for deferred tests
+def create_complex_graph():
+    """Create a more complex graph for deferred tests."""
+    graph_def = graph_pb2.GraphDef()
+    
+    # Multiple operations with dependencies
+    input1 = graph_def.node.add()
+    input1.name = "input1"
+    input1.op = "Placeholder"
+    input1.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    input2 = graph_def.node.add()
+    input2.name = "input2"
+    input2.op = "Placeholder"
+    input2.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    const = graph_def.node.add()
+    const.name = "const"
+    const.op = "Const"
+    tensor_proto = tf.make_tensor_proto(5.0, dtype=tf.float32)
+    const.attr["value"].tensor.CopyFrom(tensor_proto)
+    const.attr["dtype"].type = tf.float32.as_datatype_enum
+    
+    add1 = graph_def.node.add()
+    add1.name = "add1"
+    add1.op = "Add"
+    add1.input.extend(["input1", "const"])
+    add1.attr["T"].type = tf.float32.as_datatype_enum
+    
+    add2 = graph_def.node.add()
+    add2.name = "add2"
+    add2.op = "Add"
+    add2.input.extend(["input2", "add1:0"])
+    add2.attr["T"].type = tf.float32.as_datatype_enum
+    
+    return graph_def
+
+
+# Cleanup reminder
+def test_cleanup():
+    """Ensure tests clean up graph state properly."""
+    # This test verifies the reset_default_graph fixture works
+    initial_graph = ops.get_default_graph()
+    
+    # Create a new operation
+    with ops.Graph().as_default():
+        new_graph = ops.get_default_graph()
+        assert new_graph is not initial_graph
+    
+    # After context manager, should be back to initial
+    assert ops.get_default_graph() is initial_graph
+# ==== BLOCK:FOOTER END ====

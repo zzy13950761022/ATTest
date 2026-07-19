@@ -1,0 +1,39 @@
+{
+  "status": "未完全通过",
+  "passed": 18,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLossFunctionsG1.test_invalid_reduction_parameter",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "无效reduction参数未抛出ValueError，PyTorch可能静默处理"
+    },
+    {
+      "test": "TestLossFunctionsG2.test_shape_mismatch_errors_g2",
+      "block_id": "FOOTER",
+      "error_type": "RuntimeError",
+      "action": "adjust_assertion",
+      "note": "NLLLoss形状不匹配抛出RuntimeError而非ValueError，需要更新断言"
+    },
+    {
+      "test": "TestLossFunctionsG2.test_bceloss_invalid_probability_range",
+      "block_id": "FOOTER",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "BCELoss验证输入范围[0,1]，需要调整测试逻辑或使用sigmoid转换"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLossFunctionsG2.test_invalid_reduction_parameter_g2",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

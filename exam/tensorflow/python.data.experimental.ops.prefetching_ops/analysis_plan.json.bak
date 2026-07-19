@@ -1,0 +1,32 @@
+{
+  "status": "成功",
+  "passed": 11,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_copy_to_device_gpu_support",
+      "block_id": "CASE_06",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "GPU测试代码未执行（行269-300），需要添加CPU回退测试或模拟GPU环境"
+    },
+    {
+      "test": "test_copy_to_device_invalid_device",
+      "block_id": "CASE_07",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "异常处理代码未完全覆盖（行363-375），需要添加更多异常场景测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "FOOTER",
+      "reason": "FOOTER块行423未覆盖，属于收尾代码，优先级较低"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

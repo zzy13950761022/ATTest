@@ -1,0 +1,71 @@
+{
+  "status": "未完全通过",
+  "passed": 17,
+  "failed": 12,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[2-32-False]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "不能直接设置Tensor的shape属性，需要改用Mock对象模拟输出"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_with_seed_reproducibility",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Mock对象不能与整数进行运算，需要正确模拟queue.size()返回值"
+    },
+    {
+      "test": "TestAdditionalEdgeCases::test_batch_with_single_tensor",
+      "block_id": "CASE_EDGE_01",
+      "error_type": "OperatorNotAllowedInGraphError",
+      "action": "add_case",
+      "note": "单张量输入测试需要特殊处理，避免在图执行中迭代Tensor"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[4-64-True]",
+      "reason": "错误类型重复，等待CASE_01修复"
+    },
+    {
+      "test": "TestBatchFunction::test_batch_basic_functionality[1-10-False]",
+      "reason": "错误类型重复，等待CASE_01修复"
+    },
+    {
+      "test": "TestBatchFunction::test_batch_with_dictionary_input",
+      "reason": "错误类型重复，等待CASE_01修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-8-42]",
+      "reason": "错误类型重复，等待CASE_02修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_basic_functionality[2-32-16-123]",
+      "reason": "错误类型重复，等待CASE_02修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_with_enqueue_many",
+      "reason": "错误类型重复，等待CASE_02修复"
+    },
+    {
+      "test": "TestShuffleBatchFunction::test_shuffle_batch_allow_smaller_final_batch",
+      "reason": "错误类型重复，等待CASE_02修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_batch_with_dynamic_padding[2-32-True-False]",
+      "reason": "错误类型重复，等待CASE_03修复"
+    },
+    {
+      "test": "TestDynamicPaddingFunction::test_batch_with_dynamic_padding[3-48-True-True]",
+      "reason": "错误类型重复，等待CASE_03修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

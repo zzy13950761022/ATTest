@@ -1,0 +1,192 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.framework.dtypes",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_framework_dtypes.py",
+    "all_pattern": "tests/test_tensorflow_python_framework_dtypes_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_framework_dtypes_g1.py",
+      "G2": "tests/test_tensorflow_python_framework_dtypes_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "DType类与基本数据类型",
+      "entrypoints": ["DType", "as_dtype", "float32", "int64", "bool"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05", "CASE_06"],
+      "note": "测试DType类基本功能和核心数据类型常量"
+    },
+    {
+      "group_id": "G2",
+      "title": "类型转换与特殊数据类型",
+      "entrypoints": ["as_dtype", "bfloat16", "complex64", "qint8", "resource"],
+      "smoke_set": ["CASE_03", "CASE_04"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试类型转换函数和特殊数据类型处理"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "DType类基本属性访问",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype_name": "float32", "expected_name": "float32", "expected_size": 4},
+        {"dtype_name": "int64", "expected_name": "int64", "expected_size": 8},
+        {"dtype_name": "bool", "expected_name": "bool", "expected_size": 1}
+      ],
+      "asserts": {
+        "weak": ["dtype_name", "size", "basic_property"],
+        "strong": ["min_value", "max_value", "as_numpy_dtype"]
+      },
+      "oracle": "tf.dtypes.DType属性验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "核心数据类型常量访问",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype_const": "float32", "expected_type": "float32"},
+        {"dtype_const": "int32", "expected_type": "int32"},
+        {"dtype_const": "bool", "expected_type": "bool"}
+      ],
+      "asserts": {
+        "weak": ["is_dtype_instance", "type_name_match"],
+        "strong": ["size_consistency", "numpy_compatibility"]
+      },
+      "oracle": "tf.dtypes常量验证",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "as_dtype字符串类型转换",
+      "priority": "High",
+      "param_matrix": [
+        {"input_type": "float32", "expected_name": "float32"},
+        {"input_type": "int64", "expected_name": "int64"},
+        {"input_type": "bool", "expected_name": "bool"}
+      ],
+      "asserts": {
+        "weak": ["conversion_success", "type_match"],
+        "strong": ["roundtrip_consistency", "error_messages"]
+      },
+      "oracle": "tf.dtypes.as_dtype字符串转换",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 55,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G2",
+      "name": "as_dtype NumPy类型转换",
+      "priority": "High",
+      "param_matrix": [
+        {"numpy_type": "np.float32", "expected_name": "float32"},
+        {"numpy_type": "np.int64", "expected_name": "int64"},
+        {"numpy_type": "np.bool_", "expected_name": "bool"}
+      ],
+      "asserts": {
+        "weak": ["numpy_conversion", "type_equivalence"],
+        "strong": ["bidirectional_mapping", "edge_cases"]
+      },
+      "oracle": "tf.dtypes.as_dtype NumPy转换",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "DType数值范围验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {"dtype_name": "float32", "test_min_max": true},
+        {"dtype_name": "int32", "test_min_max": true}
+      ],
+      "asserts": {
+        "weak": ["min_exists", "max_exists"],
+        "strong": ["correct_min_value", "correct_max_value", "range_consistency"]
+      },
+      "oracle": "tf.dtypes.DType.min/max属性",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"dtype_name": "float64", "expected_name": "float64", "expected_size": 8},
+      "note": "扩展测试float64数据类型"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"dtype_name": "int8", "expected_name": "int8", "expected_size": 1},
+      "note": "扩展测试int8数据类型"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"dtype_const": "float64", "expected_type": "float64"},
+      "note": "扩展测试float64常量"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {"input_type": "float64", "expected_name": "float64"},
+      "note": "扩展测试float64字符串转换"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {"numpy_type": "np.float64", "expected_name": "float64"},
+      "note": "扩展测试float64 NumPy转换"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05", "CASE_06", "CASE_07", "CASE_08"]
+}

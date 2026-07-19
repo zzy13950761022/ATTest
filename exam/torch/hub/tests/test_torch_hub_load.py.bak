@@ -1,0 +1,464 @@
+"""
+Test cases for torch.hub.load - Core loading functionality (Group G1)
+"""
+import os
+import sys
+import tempfile
+import shutil
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, call
+
+import pytest
+import torch
+import torch.hub
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for torch.hub.load - Core loading functionality (Group G1)
+"""
+import os
+import sys
+import tempfile
+import shutil
+import json
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, call
+
+import pytest
+import torch
+import torch.hub
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for test files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
+@pytest.fixture
+def mock_hubconf_resnet50():
+    """Mock hubconf.py with a resnet50 model."""
+    def create_mock_model(*args, **kwargs):
+        model = Mock(spec=torch.nn.Module)
+        model.__class__.__name__ = "ResNet"
+        model.forward = Mock(return_value=torch.randn(1, 1000))
+        model.eval = Mock()
+        model.train = Mock()
+        model.parameters = Mock(return_value=[])
+        model.named_parameters = Mock(return_value=[])
+        model.state_dict = Mock(return_value={})
+        model.load_state_dict = Mock()
+        return model
+    
+    return create_mock_model
+
+
+@pytest.fixture
+def mock_local_hubconf():
+    """Mock hubconf.py for local path testing."""
+    def create_mock_model(*args, **kwargs):
+        model = Mock(spec=torch.nn.Module)
+        model.__class__.__name__ = "SimpleModel"
+        model.forward = Mock(return_value=torch.randn(1, 10))
+        model.eval = Mock()
+        model.train = Mock()
+        return model
+    
+    return create_mock_model
+
+
+@pytest.fixture
+def mock_github_download():
+    """Mock GitHub download operations."""
+    with patch('torch.hub.download_url_to_file') as mock_download, \
+         patch('torch.hub._git_archive_link') as mock_git_archive_link, \
+         patch('torch.hub.urlparse') as mock_urlparse:
+        
+        mock_download.return_value = None
+        mock_git_archive_link.return_value = "https://github.com/test/repo/zipball/main"
+        
+        # Mock URL parsing
+        mock_url = Mock()
+        mock_url.scheme = 'https'
+        mock_url.netloc = 'github.com'
+        mock_urlparse.return_value = mock_url
+        
+        yield {
+            'download': mock_download,
+            'git_archive_link': mock_git_archive_link,
+            'urlparse': mock_urlparse
+        }
+
+
+@pytest.fixture
+def mock_cache_dir(temp_dir):
+    """Mock torch.hub cache directory."""
+    cache_dir = temp_dir / '.cache' / 'torch' / 'hub'
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    with patch('torch.hub.get_dir') as mock_get_dir:
+        mock_get_dir.return_value = str(cache_dir)
+        yield cache_dir
+
+
+@pytest.fixture
+def mock_import_module():
+    """Mock importlib.import_module for hubconf import."""
+    with patch('importlib.import_module') as mock_import:
+        yield mock_import
+
+
+@pytest.fixture
+def mock_trust_repo():
+    """Mock trust repo mechanism."""
+    with patch('torch.hub._get_cache_or_reload') as mock_cache_reload, \
+         patch('torch.hub._check_module_exists') as mock_check_module:
+        
+        mock_cache_reload.return_value = None
+        mock_check_module.return_value = True
+        
+        yield {
+            'cache_reload': mock_cache_reload,
+            'check_module': mock_check_module
+        }
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+def test_github_repository_standard_loading(
+    mock_hubconf_resnet50,
+    mock_github_download,
+    mock_cache_dir,
+    mock_import_module
+):
+    """
+    Test GitHub repository standard loading (CASE_01).
+    
+    This test verifies that torch.hub.load can load a model from a GitHub
+    repository with standard parameters.
+    
+    Weak assertions:
+    1. returns_object: Function returns a valid object
+    2. is_callable: Returned object is callable (has forward method)
+    3. has_expected_attributes: Returned object has expected model attributes
+    """
+    # Setup cache directory structure
+    repo_dir = mock_cache_dir / 'pytorch_vision_master'
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create a dummy hubconf.py file in cache
+    hubconf_file = repo_dir / 'hubconf.py'
+    hubconf_file.write_text('# Mock hubconf.py file')
+    
+    # Mock the cache reload function to return the repo directory
+    with patch('torch.hub._get_cache_or_reload') as mock_cache_reload, \
+         patch('torch.hub._check_module_exists') as mock_check_module:
+        
+        # Mock to return the repo directory path
+        mock_cache_reload.return_value = str(repo_dir)
+        mock_check_module.return_value = True
+        
+        # Mock trust warning
+        with patch('warnings.warn') as mock_warn:
+            
+            # Mock the actual import of hubconf.py
+            # We need to mock _import_module to return a module with resnet50
+            with patch('torch.hub._import_module') as mock_hub_import:
+                # Create a mock module with resnet50 function
+                mock_module = Mock()
+                mock_module.resnet50 = mock_hubconf_resnet50
+                mock_hub_import.return_value = mock_module
+                
+                # Call torch.hub.load with standard parameters
+                model = torch.hub.load(
+                    repo_or_dir='pytorch/vision',
+                    model='resnet50',
+                    source='github',
+                    trust_repo=None,
+                    force_reload=False,
+                    verbose=True,
+                    skip_validation=False
+                )
+                
+                # Weak assertion 1: returns_object
+                assert model is not None, "torch.hub.load should return a model object"
+                
+                # Weak assertion 2: is_callable
+                # Check that the model has a forward method (is callable)
+                assert hasattr(model, 'forward'), "Model should have forward method"
+                assert callable(model.forward), "Model.forward should be callable"
+                
+                # Weak assertion 2.1: Additional callable check - can call forward
+                test_input = torch.randn(1, 3, 224, 224)
+                output = model.forward(test_input)
+                assert output is not None, "Model.forward should return output"
+                assert isinstance(output, torch.Tensor), "Output should be a torch.Tensor"
+                
+                # Weak assertion 3: has_expected_attributes
+                # Check for common model attributes
+                expected_attrs = ['eval', 'train', 'parameters', 'named_parameters', 
+                                'state_dict', 'load_state_dict']
+                for attr in expected_attrs:
+                    assert hasattr(model, attr), f"Model should have {attr} attribute"
+                
+                # Verify mock calls
+                # Check that _import_module was called with correct parameters
+                mock_hub_import.assert_called_once()
+                call_args = mock_hub_import.call_args
+                
+                # _import_module should be called with ('hubconf.py', hubconf_path)
+                assert call_args[0][0] == 'hubconf.py', f"Should import module named 'hubconf.py', got {call_args[0][0]}"
+                assert str(call_args[0][1]) == str(hubconf_file), f"Should import from {hubconf_file}, got {call_args[0][1]}"
+                
+                # Check that the model factory was called
+                assert mock_module.resnet50.called, "resnet50 factory should be called"
+                
+                # Check that cache operations were called
+                mock_cache_reload.assert_called()
+                mock_check_module.assert_called()
+                
+                # Verify download was triggered (since cache was empty)
+                mock_github_download['download'].assert_called()
+                
+                # Verify trust_repo=None triggers a warning
+                warning_found = False
+                for call_args in mock_warn.call_args_list:
+                    if 'trust_repo' in str(call_args):
+                        warning_found = True
+                        break
+                assert warning_found, "Should warn about trust_repo=None"
+                
+                # Verify verbose mode (should have some print calls, but we don't assert specifics)
+                # This is a weak assertion - we just verify the function completed
+                
+                print(f"✓ GitHub repository loading test passed. Model type: {type(model)}")
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+def test_local_path_loading(
+    mock_local_hubconf,
+    temp_dir,
+    mock_import_module
+):
+    """
+    Test local path loading (CASE_02).
+    
+    This test verifies that torch.hub.load can load a model from a local
+    directory path with a valid hubconf.py file.
+    
+    Weak assertions:
+    1. returns_object: Function returns a valid object
+    2. is_callable: Returned object is callable (has forward method)
+    3. has_expected_attributes: Returned object has expected model attributes
+    """
+    # Create a local test directory with hubconf.py
+    local_repo_dir = temp_dir / 'test_hub_local'
+    local_repo_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create hubconf.py file with simple_model entry point
+    hubconf_content = '''
+import torch.nn as nn
+
+class SimpleModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(10, 5)
+    
+    def forward(self, x):
+        return self.linear(x)
+
+def simple_model(*args, **kwargs):
+    """Factory function for simple_model."""
+    return SimpleModel()
+'''
+    
+    hubconf_file = local_repo_dir / 'hubconf.py'
+    hubconf_file.write_text(hubconf_content)
+    
+    # Mock trust warning
+    with patch('warnings.warn') as mock_warn:
+        
+        # Mock the actual import of hubconf.py
+        # We need to mock _import_module to return a module with simple_model
+        with patch('torch.hub._import_module') as mock_hub_import:
+            # Create a mock module with simple_model function
+            mock_module = Mock()
+            mock_module.simple_model = mock_local_hubconf
+            mock_hub_import.return_value = mock_module
+            
+            # Call torch.hub.load with local path
+            model = torch.hub.load(
+                repo_or_dir=str(local_repo_dir),
+                model='simple_model',
+                source='local',
+                trust_repo=None,
+                force_reload=False,
+                verbose=True,
+                skip_validation=False
+            )
+            
+            # Weak assertion 1: returns_object
+            assert model is not None, "torch.hub.load should return a model object"
+            
+            # Weak assertion 2: is_callable
+            # Check that the model has a forward method (is callable)
+            assert hasattr(model, 'forward'), "Model should have forward method"
+            assert callable(model.forward), "Model.forward should be callable"
+            
+            # Weak assertion 2.1: Additional callable check - can call forward
+            test_input = torch.randn(1, 10)
+            output = model.forward(test_input)
+            assert output is not None, "Model.forward should return output"
+            assert isinstance(output, torch.Tensor), "Output should be a torch.Tensor"
+            
+            # Weak assertion 3: has_expected_attributes
+            # Check for common model attributes
+            expected_attrs = ['eval', 'train']
+            for attr in expected_attrs:
+                assert hasattr(model, attr), f"Model should have {attr} attribute"
+            
+            # Verify the model has the expected class name
+            assert model.__class__.__name__ == "SimpleModel", \
+                f"Model should be SimpleModel, got {model.__class__.__name__}"
+            
+            # Verify mock calls
+            # Check that _import_module was called with correct parameters
+            mock_hub_import.assert_called_once()
+            call_args = mock_hub_import.call_args
+            
+            # _import_module should be called with ('hubconf.py', hubconf_file_path)
+            assert call_args[0][0] == 'hubconf.py', f"Should import module named 'hubconf.py', got {call_args[0][0]}"
+            assert str(call_args[0][1]) == str(hubconf_file), f"Should import from {hubconf_file}, got {call_args[0][1]}"
+            
+            # Check that the model factory was called
+            assert mock_module.simple_model.called, "simple_model factory should be called"
+            
+            # For local source, trust_repo=None should still trigger a warning
+            warning_found = False
+            for call_args in mock_warn.call_args_list:
+                if 'trust_repo' in str(call_args):
+                    warning_found = True
+                    break
+            assert warning_found, "Should warn about trust_repo=None even for local paths"
+            
+            # Additional check: verify the local file exists
+            assert hubconf_file.exists(), "hubconf.py should exist in local directory"
+            assert hubconf_file.is_file(), "hubconf.py should be a file"
+            
+            print(f"✓ Local path loading test passed. Model type: {type(model)}")
+            print(f"  Local directory: {local_repo_dir}")
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# Test case: Parameter passing validation (deferred)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# Test case: Force reload behavior (deferred)
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Helper functions for deferred test cases
+
+def create_mock_param_model():
+    """Create a mock model for parameter passing tests."""
+    def factory(*args, **kwargs):
+        model = Mock(spec=torch.nn.Module)
+        model.__class__.__name__ = "ParamModel"
+        model.received_args = args
+        model.received_kwargs = kwargs
+        
+        def forward(x):
+            return torch.randn(1, 10)
+        
+        model.forward = forward
+        model.eval = Mock()
+        model.train = Mock()
+        return model
+    return factory
+
+
+def create_mock_cache_model():
+    """Create a mock model for cache behavior tests."""
+    def factory(*args, **kwargs):
+        model = Mock(spec=torch.nn.Module)
+        model.__class__.__name__ = "CacheModel"
+        
+        def forward(x):
+            return torch.randn(1, 5)
+        
+        model.forward = forward
+        model.eval = Mock()
+        model.train = Mock()
+        return model
+    return factory
+
+
+# Test utilities for edge cases
+
+def test_invalid_github_repo_format():
+    """Test that invalid GitHub repo format raises appropriate error."""
+    with pytest.raises((ValueError, RuntimeError)):
+        torch.hub.load(
+            repo_or_dir='invalid-repo-format',  # Missing owner/repo structure
+            model='test_model',
+            source='github'
+        )
+
+
+def test_nonexistent_local_path(temp_dir):
+    """Test that non-existent local path raises appropriate error."""
+    non_existent_path = temp_dir / 'does_not_exist'
+    
+    with pytest.raises((FileNotFoundError, RuntimeError)):
+        torch.hub.load(
+            repo_or_dir=str(non_existent_path),
+            model='test_model',
+            source='local'
+        )
+
+
+def test_missing_hubconf_file(temp_dir):
+    """Test that directory without hubconf.py raises appropriate error."""
+    empty_dir = temp_dir / 'empty_dir'
+    empty_dir.mkdir(parents=True, exist_ok=True)
+    
+    # When hubconf.py doesn't exist, torch.hub._import_module will raise FileNotFoundError
+    # during the import process. We should catch this error.
+    with pytest.raises((FileNotFoundError, ImportError, RuntimeError)):
+        torch.hub.load(
+            repo_or_dir=str(empty_dir),
+            model='test_model',
+            source='local'
+        )
+
+
+def test_nonexistent_model_entrypoint():
+    """Test that non-existent model entry point raises appropriate error."""
+    # Mock the entire download and import process to avoid network calls
+    with patch('torch.hub._get_cache_or_reload') as mock_cache_reload, \
+         patch('torch.hub._check_module_exists') as mock_check_module, \
+         patch('torch.hub._import_module') as mock_import_module:
+        
+        # Setup mocks to simulate successful download but missing model
+        mock_cache_reload.return_value = None
+        mock_check_module.return_value = True
+        
+        # Create a mock module without the requested model
+        mock_module = Mock()
+        # Don't add any model entry points
+        mock_import_module.return_value = mock_module
+        
+        with pytest.raises((AttributeError, RuntimeError)):
+            torch.hub.load(
+                repo_or_dir='test/repo',
+                model='nonexistent_model',
+                source='github'
+            )
+
+
+if __name__ == '__main__':
+    # Simple test runner for debugging
+    import sys
+    sys.exit(pytest.main([__file__, '-v']))
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,55 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedMathOps.test_range_basic_functionality[0-5-1-int32-int32]",
+      "block_id": "CASE_01",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "ragged.range函数参数签名错误：不支持'start'关键字参数"
+    },
+    {
+      "test": "TestRaggedMathOps.test_reduce_sum_single_axis[input_shape0-1-float32]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块不存在，需要调整mock路径"
+    },
+    {
+      "test": "TestRaggedMathOps.test_edge_case_empty_ragged_tensor",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "空RaggedTensor的reduce_sum结果形状断言错误"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedMathOps.test_range_basic_functionality[2-10-2-int64-int64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedMathOps.test_reduce_sum_single_axis[input_shape1-0-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedMathOps.test_segment_sum_basic_aggregation[data_shape0-segment_ids0-float32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedMathOps.test_segment_sum_basic_aggregation[data_shape1-segment_ids1-int32]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedMathOps.test_range_with_negative_delta",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

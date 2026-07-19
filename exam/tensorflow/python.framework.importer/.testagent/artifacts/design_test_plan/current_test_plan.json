@@ -1,0 +1,350 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.framework.importer",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_framework_importer.py",
+    "all_pattern": "tests/test_tensorflow_python_framework_importer_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_framework_importer_g1.py",
+      "G2": "tests/test_tensorflow_python_framework_importer_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心导入功能",
+      "entrypoints": ["import_graph_def"],
+      "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+      "deferred_set": ["CASE_04", "CASE_05"],
+      "note": "测试基本 GraphDef 导入、输入重映射和返回元素功能"
+    },
+    {
+      "group_id": "G2",
+      "title": "边界与异常处理",
+      "entrypoints": ["import_graph_def"],
+      "smoke_set": ["CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08", "CASE_09"],
+      "note": "测试无效输入、异常场景和边界条件"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "基本 GraphDef 导入",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "simple_constant",
+          "input_map": null,
+          "return_elements": null,
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["graph_modified", "operations_created", "no_exception"],
+        "strong": ["operation_count", "tensor_count", "graph_structure"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "带 input_map 的导入",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "simple_placeholder",
+          "input_map": "valid_mapping",
+          "return_elements": null,
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["graph_modified", "input_remapped", "no_exception"],
+        "strong": ["input_values_correct", "dependency_resolved", "output_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "带 return_elements 的导入",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "multi_operation",
+          "input_map": null,
+          "return_elements": "valid_names",
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["returns_list", "correct_length", "no_exception"],
+        "strong": ["correct_order", "correct_types", "element_names_match"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "组合功能测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "graph_type": "complex_graph",
+          "input_map": "valid_mapping",
+          "return_elements": "valid_names",
+          "name": "custom_prefix",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["graph_modified", "input_remapped", "returns_list", "no_exception"],
+        "strong": ["name_prefix_applied", "all_functions_work", "integration_correct"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "L",
+      "max_lines": 100,
+      "max_params": 7,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "producer_op_list 参数",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "graph_type": "simple_constant",
+          "input_map": null,
+          "return_elements": null,
+          "name": "import",
+          "producer_op_list": "valid_op_list"
+        }
+      ],
+      "asserts": {
+        "weak": ["graph_modified", "no_exception"],
+        "strong": ["op_list_processed", "attributes_handled"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "无效 GraphDef 异常",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "graph_type": "invalid_proto",
+          "input_map": null,
+          "return_elements": null,
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type_correct"],
+        "strong": ["error_message_contains", "specific_error_code"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "无效 input_map 键异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "graph_type": "simple_placeholder",
+          "input_map": "invalid_key",
+          "return_elements": null,
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type_correct"],
+        "strong": ["error_message_contains", "specific_error_code"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "无效 return_elements 名称异常",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "graph_type": "simple_constant",
+          "input_map": null,
+          "return_elements": "invalid_names",
+          "name": "import",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception", "exception_type_correct"],
+        "strong": ["error_message_contains", "specific_error_code"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G2",
+      "name": "边界值测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "graph_type": "empty_graph",
+          "input_map": "empty_dict",
+          "return_elements": "empty_list",
+          "name": "empty_string",
+          "producer_op_list": null
+        }
+      ],
+      "asserts": {
+        "weak": ["no_exception", "graph_modified"],
+        "strong": ["empty_handling_correct", "edge_cases_handled"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": false,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "multi_operation",
+        "input_map": null,
+        "return_elements": null,
+        "name": "import",
+        "producer_op_list": null
+      },
+      "note": "作为参数扩展：多操作图导入"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "simple_placeholder",
+        "input_map": "multiple_mappings",
+        "return_elements": null,
+        "name": "import",
+        "producer_op_list": null
+      },
+      "note": "作为参数扩展：多输入映射"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "graph_type": "multi_operation",
+        "input_map": null,
+        "return_elements": "mixed_types",
+        "name": "import",
+        "producer_op_list": null
+      },
+      "note": "作为参数扩展：混合类型返回元素"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Low",
+      "params": {
+        "graph_type": "malformed_proto",
+        "input_map": null,
+        "return_elements": null,
+        "name": "import",
+        "producer_op_list": null
+      },
+      "note": "作为参数扩展：格式错误的 proto"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_06"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_07", "CASE_08", "CASE_09"]
+}

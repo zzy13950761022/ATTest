@@ -1,0 +1,27 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_tensor_str_core.py::TestTensorStrCore::test_basic_float_tensor_formatting[dtype0-cpu-shape0-arange-4]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "形状断言不匹配实际输出格式，需要调整断言逻辑"
+    },
+    {
+      "test": "tests/test_torch_tensor_str_core.py::TestTensorStrCore::test_large_tensor_truncation_display[dtype0-cpu-shape0-1000-3]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "形状断言不匹配实际输出格式，需要调整断言逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

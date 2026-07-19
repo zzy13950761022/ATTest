@@ -1,0 +1,399 @@
+{
+  "plan_version": 2,
+  "target": "torch._lobpcg",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_lobpcg.py",
+    "all_pattern": "tests/test_torch_lobpcg_*.py",
+    "groups": {
+      "G1": "tests/test_torch_lobpcg_basic.py",
+      "G2": "tests/test_torch_lobpcg_advanced.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基本功能验证",
+      "entrypoints": ["torch._lobpcg"],
+      "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+      "deferred_set": ["CASE_04", "CASE_05"],
+      "note": "验证LOBPCG核心功能：密集矩阵特征值求解"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级功能与边界测试",
+      "entrypoints": ["torch._lobpcg"],
+      "smoke_set": ["CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08", "CASE_09", "CASE_10"],
+      "note": "测试稀疏矩阵、批量处理、边界条件和异常场景"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "密集矩阵基本特征值求解",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 4],
+          "k": 2,
+          "largest": true,
+          "method": "ortho"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality", "eigenvalue_order"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "最小特征值求解验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [5, 5],
+          "k": 3,
+          "largest": false,
+          "method": "ortho"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality", "eigenvalue_order"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "指定初始特征向量X",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [6, 6],
+          "k": 2,
+          "largest": true,
+          "method": "basic",
+          "has_initial_X": true
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality", "convergence_rate"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "广义特征值问题（B矩阵）",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [4, 4],
+          "k": 2,
+          "largest": true,
+          "method": "ortho",
+          "has_B": true
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_generalized_eigenvalues", "orthogonality_B"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "批量矩阵处理",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 4, 4],
+          "k": 2,
+          "largest": true,
+          "method": "ortho"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality", "batch_consistency"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "稀疏矩阵特征值求解",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [8, 8],
+          "k": 3,
+          "largest": true,
+          "method": "ortho",
+          "sparse": true
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "迭代参数控制（niter, tol）",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [5, 5],
+          "k": 2,
+          "largest": true,
+          "method": "ortho",
+          "niter": 10,
+          "tol": 1e-8
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "convergence_within_tol"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "边界条件测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "k": 1,
+          "largest": true,
+          "method": "ortho"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "residual_norm"],
+        "strong": ["approx_equal_eigenvalues", "orthogonality"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G2",
+      "name": "异常输入验证",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 3],
+          "k": 4,
+          "largest": true,
+          "method": "ortho"
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_exception"],
+        "strong": ["exception_type", "error_message"]
+      },
+      "oracle": null,
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G2",
+      "name": "tracker回调函数测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 4],
+          "k": 2,
+          "largest": true,
+          "method": "ortho",
+          "has_tracker": true
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "tracker_called"],
+        "strong": ["approx_equal_eigenvalues", "tracker_data_consistency"]
+      },
+      "oracle": "torch.linalg.eigh",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [8, 8],
+        "k": 4,
+        "largest": true,
+        "method": "basic"
+      },
+      "note": "扩展数据类型和矩阵尺寸"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "dtype": "float32",
+        "device": "cpu",
+        "shape": [3, 3],
+        "k": 3,
+        "largest": false,
+        "method": "ortho"
+      },
+      "note": "扩展最小特征值求解"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [5, 5],
+        "k": 3,
+        "largest": true,
+        "method": "ortho",
+        "has_initial_X": true
+      },
+      "note": "扩展初始特征向量测试"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [10, 10],
+        "k": 5,
+        "largest": false,
+        "method": "ortho",
+        "sparse": true
+      },
+      "note": "扩展稀疏矩阵测试"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_06"],
+  "deferred_set": ["CASE_04", "CASE_05", "CASE_07", "CASE_08", "CASE_09", "CASE_10"]
+}

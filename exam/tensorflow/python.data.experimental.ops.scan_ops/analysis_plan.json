@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_data_experimental_ops_scan_ops_g1.py::test_scan_nested_structure_matching",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "TensorFlow scan操作处理批处理数据的方式与预期不同，需要调整测试逻辑以匹配实际行为"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

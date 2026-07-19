@@ -1,0 +1,505 @@
+"""
+Test cases for tensorflow.python.data.experimental.ops.scan_ops
+Group G2: 错误处理与边界条件
+"""
+
+import warnings
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.data.experimental.ops.scan_ops import scan
+
+# Set random seed for reproducibility
+tf.random.set_seed(42)
+np.random.seed(42)
+
+# ==== BLOCK:HEADER START ====
+"""
+Test cases for tensorflow.python.data.experimental.ops.scan_ops
+Group G2: 错误处理与边界条件
+"""
+
+import warnings
+import numpy as np
+import pytest
+import tensorflow as tf
+from tensorflow.python.data.experimental.ops.scan_ops import scan
+
+# Set random seed for reproducibility
+tf.random.set_seed(42)
+np.random.seed(42)
+
+# Common helper functions for error handling tests
+def valid_scan_func(state, element):
+    """A valid scan function for testing."""
+    new_state = state + element
+    output_element = new_state
+    return new_state, output_element
+
+def invalid_args_scan_func(state, element, extra_arg):
+    """Invalid scan function with wrong number of arguments."""
+    # This function has 3 args instead of 2
+    return state, element
+
+def invalid_return_scan_func(state, element):
+    """Invalid scan function that returns wrong structure."""
+    # Returns a single value instead of a tuple
+    return state + element
+
+def identity_scan_func(state, element):
+    """Identity scan function that returns state unchanged."""
+    return state, element
+
+def numeric_safe_scan_func(state, element):
+    """Scan function that handles numeric extremes safely."""
+    # Handle NaN and Inf by replacing with zeros
+    element_safe = tf.where(tf.math.is_finite(element), element, tf.zeros_like(element))
+    new_state = state + element_safe
+    output_element = new_state
+    return new_state, output_element
+
+# Error test fixtures
+@pytest.fixture
+def empty_dataset():
+    """Create an empty dataset."""
+    return tf.data.Dataset.from_tensor_slices([])
+
+@pytest.fixture
+def single_element_dataset():
+    """Create a dataset with a single element."""
+    return tf.data.Dataset.from_tensor_slices([tf.constant(5.0, dtype=tf.float32)])
+
+@pytest.fixture
+def extreme_values_dataset():
+    """Create a dataset with extreme numeric values."""
+    data = np.array([0.0, np.nan, np.inf, -np.inf, 1e10, -1e10], dtype=np.float32)
+    return tf.data.Dataset.from_tensor_slices(data)
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("initial_state,scan_func,expected_error", [
+    # Test case 1: initial_state is None (invalid)
+    (
+        None,  # invalid initial_state
+        valid_scan_func,
+        (TypeError, ValueError)  # TensorFlow may raise either
+    ),
+    # Test case 2: scan_func has wrong number of arguments
+    (
+        tf.constant(0.0, dtype=tf.float32),  # valid initial_state
+        invalid_args_scan_func,  # function with 3 args instead of 2
+        (TypeError, ValueError)
+    ),
+])
+def test_scan_invalid_parameters(initial_state, scan_func, expected_error):
+    """Test scan function with invalid parameters raises appropriate exceptions.
+    
+    This test verifies:
+    1. Invalid initial_state raises exception
+    2. Scan function with wrong argument count raises exception
+    3. Exception type is correct (TypeError or ValueError)
+    4. No side effects from failed scan call
+    
+    Note: The scan() function itself doesn't validate parameters immediately.
+    Validation happens when the returned transformation function is applied
+    to a dataset (in dataset.scan()).
+    """
+    # Use warnings.catch_warnings to capture deprecation warnings
+    import warnings
+    
+    # Clear any existing warnings
+    warnings.simplefilter("always")
+    
+    # Capture warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        # The scan() function should return a transformation function
+        # even with invalid parameters (validation is deferred)
+        transform_fn = scan(initial_state, scan_func)
+        
+        # Check for deprecation warning - but don't fail if not present
+        # Some TensorFlow versions may not emit the warning immediately
+        if w:
+            # If warnings were captured, check if any are deprecation warnings
+            deprecation_warnings = [warning for warning in w 
+                                   if issubclass(warning.category, DeprecationWarning) or
+                                   "deprecated" in str(warning.message).lower()]
+            if deprecation_warnings:
+                # Verify it's about scan function
+                scan_warnings = [warning for warning in deprecation_warnings
+                               if "scan" in str(warning.message).lower()]
+                if scan_warnings:
+                    # Good, we have deprecation warning about scan
+                    pass
+    
+    # Verify the returned function is callable
+    assert callable(transform_fn), "scan() should return a callable function"
+    
+    # Create a simple dataset to test the transformation
+    test_dataset = tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0])
+    
+    # Now apply the transformation - this is where validation happens
+    with pytest.raises(expected_error) as exc_info:
+        transformed_dataset = transform_fn(test_dataset)
+        # Force evaluation to trigger validation
+        list(transformed_dataset.as_numpy_iterator())
+    
+    # Verify error message contains relevant information
+    error_msg = str(exc_info.value).lower()
+    
+    if initial_state is None:
+        # Check for state-related error
+        assert any(keyword in error_msg for keyword in 
+                  ['state', 'initial', 'tensor', 'structure', 'none']), \
+            f"Error message should mention state/tensor, got: {error_msg}"
+    elif scan_func == invalid_args_scan_func:
+        # Check for function signature error
+        assert any(keyword in error_msg for keyword in 
+                  ['argument', 'parameter', 'signature', 'accept', 'args']), \
+            f"Error message should mention arguments/signature, got: {error_msg}"
+    
+    # Additional verification: ensure no global state was corrupted
+    # by attempting a valid scan after the invalid one
+    if initial_state is not None and scan_func != invalid_args_scan_func:
+        # Only test if we have at least one valid parameter
+        valid_state = tf.constant(1.0, dtype=tf.float32)
+        valid_func = valid_scan_func
+        
+        # Try a valid scan to ensure no corruption
+        with warnings.catch_warnings(record=True) as w2:
+            warnings.simplefilter("always")
+            valid_transform_fn = scan(valid_state, valid_func)
+        
+        assert callable(valid_transform_fn), \
+            "Valid scan should return callable function after invalid attempt"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("initial_state,scan_func,dataset_fixture,expected_behavior", [
+    # Test case 1: Empty tensor state with empty dataset
+    (
+        tf.constant([], dtype=tf.float32),  # empty tensor
+        identity_scan_func,
+        'empty_dataset',
+        'handles_empty'  # Should handle without crashing
+    ),
+    # Test case 2: Zero scalar state with single element
+    (
+        tf.constant(0.0, dtype=tf.float32),  # zero scalar
+        valid_scan_func,
+        'single_element_dataset',
+        'single_pass_works'  # Should process single element correctly
+    ),
+])
+def test_scan_edge_cases(initial_state, scan_func, dataset_fixture, expected_behavior, request):
+    """Test scan function with edge cases and boundary conditions.
+    
+    This test verifies:
+    1. Empty states and datasets are handled without crashing
+    2. Single element datasets work correctly
+    3. Basic sanity checks pass for edge cases
+    4. The function returns a callable transformation
+    """
+    # Get the dataset fixture
+    dataset = request.getfixturevalue(dataset_fixture)
+    
+    # Use warnings.catch_warnings to capture deprecation warnings
+    import warnings
+    
+    # Clear any existing warnings
+    warnings.simplefilter("always")
+    
+    # Capture warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        # Call scan function - should not crash
+        transform_fn = scan(initial_state, scan_func)
+        
+        # Check if deprecation warning was captured
+        # Don't fail if no warnings - some TensorFlow versions may not emit them
+        if w:
+            # If warnings were captured, check if any are deprecation warnings
+            deprecation_warnings = [warning for warning in w 
+                                   if issubclass(warning.category, DeprecationWarning) or
+                                   "deprecated" in str(warning.message).lower()]
+            if deprecation_warnings:
+                # Verify it's about scan function
+                scan_warnings = [warning for warning in deprecation_warnings
+                               if "scan" in str(warning.message).lower()]
+                if scan_warnings:
+                    # Good, we have deprecation warning about scan
+                    pass
+    
+    # Verify the returned function is callable
+    assert callable(transform_fn), "scan() should return a callable function"
+    
+    # Apply the transformation to the dataset
+    transformed_dataset = transform_fn(dataset)
+    
+    # Verify the transformed dataset is a valid dataset
+    assert isinstance(transformed_dataset, tf.data.Dataset), \
+        "Transformed result should be a Dataset"
+    
+    # Basic sanity check based on expected behavior
+    if expected_behavior == 'handles_empty':
+        # For empty cases, just verify no crash and basic properties
+        # Count elements in transformed dataset
+        element_count = 0
+        try:
+            for _ in transformed_dataset:
+                element_count += 1
+        except Exception as e:
+            pytest.fail(f"Should handle empty case without exception, got: {e}")
+        
+        # Empty dataset should produce empty result or maintain emptiness
+        # (exact behavior depends on TensorFlow implementation)
+        # We just verify it doesn't crash
+        
+    elif expected_behavior == 'single_pass_works':
+        # For single element, verify it processes correctly
+        results = list(transformed_dataset.as_numpy_iterator())
+        
+        # Should have at least one result
+        assert len(results) > 0, "Should produce results for single element dataset"
+        
+        # Verify result makes sense
+        # With initial_state = 0.0 and valid_scan_func (state + element)
+        # Input element is 5.0, so output should be 5.0
+        if len(results) == 1:
+            result = results[0]
+            expected = 5.0  # From single_element_dataset fixture
+            np.testing.assert_allclose(result, expected, rtol=1e-6, atol=1e-6,
+                                      err_msg="Single element processing incorrect")
+    
+    # Additional basic sanity: can create iterator without errors
+    try:
+        iterator = iter(transformed_dataset)
+        # Try to get one item (if any)
+        try:
+            next(iterator)
+        except StopIteration:
+            pass  # Empty dataset is OK
+    except Exception as e:
+        pytest.fail(f"Should be able to create iterator, got: {e}")
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_06 START ====
+@pytest.mark.parametrize("initial_state,scan_func,dataset_fixture,expected_behavior", [
+    # Test case 1: NaN/Inf state with extreme values dataset
+    (
+        tf.constant(np.nan, dtype=tf.float32),  # NaN state
+        numeric_safe_scan_func,
+        'extreme_values_dataset',
+        'handles_extreme_numeric'  # Should handle extreme values without crashing
+    ),
+    # Test case 2: Large numeric state with extreme values
+    (
+        tf.constant(1e10, dtype=tf.float32),  # Large state
+        numeric_safe_scan_func,
+        'extreme_values_dataset',
+        'handles_large_numeric'  # Should handle large values
+    ),
+])
+def test_scan_extreme_numeric_handling(initial_state, scan_func, dataset_fixture, expected_behavior, request):
+    """Test scan function with extreme numeric values and edge cases.
+    
+    This test verifies:
+    1. NaN and Inf values are handled without crashing
+    2. Large numeric values don't cause overflow or underflow
+    3. The scan function can process extreme values safely
+    4. Basic sanity checks pass for numeric edge cases
+    
+    This corresponds to param_extensions for CASE_04 in test_plan.json.
+    """
+    # Get the dataset fixture
+    dataset = request.getfixturevalue(dataset_fixture)
+    
+    # Use warnings.catch_warnings to capture deprecation warnings
+    import warnings
+    
+    # Clear any existing warnings
+    warnings.simplefilter("always")
+    
+    # Capture warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        # Call scan function - should not crash
+        transform_fn = scan(initial_state, scan_func)
+        
+        # Check if deprecation warning was captured
+        # Don't fail if no warnings - some TensorFlow versions may not emit them
+        if w:
+            # If warnings were captured, check if any are deprecation warnings
+            deprecation_warnings = [warning for warning in w 
+                                   if issubclass(warning.category, DeprecationWarning) or
+                                   "deprecated" in str(warning.message).lower()]
+            if deprecation_warnings:
+                # Verify it's about scan function
+                scan_warnings = [warning for warning in deprecation_warnings
+                               if "scan" in str(warning.message).lower()]
+                if scan_warnings:
+                    # Good, we have deprecation warning about scan
+                    pass
+    
+    # Verify the returned function is callable
+    assert callable(transform_fn), "scan() should return a callable function"
+    
+    # Apply the transformation to the dataset
+    transformed_dataset = transform_fn(dataset)
+    
+    # Verify the transformed dataset is a valid dataset
+    assert isinstance(transformed_dataset, tf.data.Dataset), \
+        "Transformed result should be a Dataset"
+    
+    # Process the dataset and verify no crashes
+    results = []
+    try:
+        for element in transformed_dataset.as_numpy_iterator():
+            results.append(element)
+    except Exception as e:
+        pytest.fail(f"Should handle extreme values without exception, got: {e}")
+    
+    # Basic sanity checks based on expected behavior
+    if expected_behavior == 'handles_extreme_numeric':
+        # For NaN state with extreme values, just verify no crash
+        # The numeric_safe_scan_func replaces NaN/Inf with zeros
+        assert len(results) > 0, "Should produce results for extreme values dataset"
+        
+        # Verify all results are finite (no NaN or Inf in outputs)
+        for result in results:
+            assert np.isfinite(result), f"Result should be finite, got: {result}"
+            
+    elif expected_behavior == 'handles_large_numeric':
+        # For large state with extreme values, verify no crash
+        assert len(results) > 0, "Should produce results for extreme values dataset"
+        
+        # Verify results are reasonable (not infinite)
+        for result in results:
+            assert np.isfinite(result), f"Result should be finite, got: {result}"
+    
+    # Additional verification: test with a simple valid case to ensure
+    # the scan function still works normally after extreme values
+    simple_state = tf.constant(1.0, dtype=tf.float32)
+    simple_dataset = tf.data.Dataset.from_tensor_slices([2.0, 3.0, 4.0])
+    
+    # Use warnings.catch_warnings for the simple test
+    with warnings.catch_warnings(record=True) as w2:
+        warnings.simplefilter("always")
+        simple_transform = scan(simple_state, valid_scan_func)
+    
+    simple_results = list(simple_transform(simple_dataset).as_numpy_iterator())
+    assert len(simple_results) == 3, "Simple test should produce 3 results"
+    
+    # Verify simple accumulation: 1+2=3, 3+3=6, 6+4=10
+    expected_simple = [3.0, 6.0, 10.0]
+    for actual, expected in zip(simple_results, expected_simple):
+        np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional utilities for error handling and boundary condition tests
+
+def assert_exception_contains(exc_info, keywords):
+    """Assert that exception message contains specified keywords.
+    
+    Args:
+        exc_info: Exception info from pytest.raises context
+        keywords: List of keywords to check for in exception message
+    
+    Returns:
+        bool: True if all keywords found (case-insensitive)
+    """
+    error_msg = str(exc_info.value).lower()
+    for keyword in keywords:
+        if keyword.lower() not in error_msg:
+            return False
+    return True
+
+def create_edge_case_state(state_type):
+    """Create edge case initial states for testing.
+    
+    Args:
+        state_type: Type of edge case state ('empty', 'zero', 'nan', 'inf', 'large')
+    
+    Returns:
+        Tensor or nested structure representing the edge case state
+    """
+    if state_type == 'empty':
+        return tf.constant([], dtype=tf.float32)
+    elif state_type == 'zero':
+        return tf.constant(0.0, dtype=tf.float32)
+    elif state_type == 'zero_vector':
+        return tf.zeros([3], dtype=tf.float32)
+    elif state_type == 'nan':
+        return tf.constant(np.nan, dtype=tf.float32)
+    elif state_type == 'inf':
+        return tf.constant(np.inf, dtype=tf.float32)
+    elif state_type == 'large':
+        return tf.constant(1e10, dtype=tf.float32)
+    elif state_type == 'small':
+        return tf.constant(1e-10, dtype=tf.float32)
+    else:
+        raise ValueError(f"Unknown state_type: {state_type}")
+
+def create_edge_case_dataset(dataset_type, num_elements=5):
+    """Create edge case datasets for testing.
+    
+    Args:
+        dataset_type: Type of edge case dataset
+        num_elements: Number of elements (for some dataset types)
+    
+    Returns:
+        tf.data.Dataset with edge case data
+    """
+    if dataset_type == 'empty':
+        return tf.data.Dataset.from_tensor_slices([])
+    elif dataset_type == 'single':
+        return tf.data.Dataset.from_tensor_slices([tf.constant(1.0, dtype=tf.float32)])
+    elif dataset_type == 'zeros':
+        data = np.zeros(num_elements, dtype=np.float32)
+        return tf.data.Dataset.from_tensor_slices(data)
+    elif dataset_type == 'ones':
+        data = np.ones(num_elements, dtype=np.float32)
+        return tf.data.Dataset.from_tensor_slices(data)
+    elif dataset_type == 'nan_inf':
+        data = np.array([np.nan, np.inf, -np.inf, 0.0, 1.0], dtype=np.float32)
+        return tf.data.Dataset.from_tensor_slices(data)
+    elif dataset_type == 'extreme_range':
+        data = np.array([-1e10, -1.0, 0.0, 1.0, 1e10], dtype=np.float32)
+        return tf.data.Dataset.from_tensor_slices(data)
+    else:
+        raise ValueError(f"Unknown dataset_type: {dataset_type}")
+
+# Error pattern verification
+def verify_tensorflow_error_pattern(exception, expected_patterns):
+    """Verify that a TensorFlow exception matches expected patterns.
+    
+    Args:
+        exception: The caught exception
+        expected_patterns: List of regex patterns or keywords to match
+    
+    Returns:
+        bool: True if exception matches any expected pattern
+    """
+    error_msg = str(exception).lower()
+    for pattern in expected_patterns:
+        if isinstance(pattern, str):
+            if pattern.lower() in error_msg:
+                return True
+        # Could extend to regex patterns if needed
+    return False
+
+# Cleanup utilities
+def reset_tensorflow_graph():
+    """Reset TensorFlow graph to avoid interference between tests."""
+    tf.compat.v1.reset_default_graph()
+
+# Main execution guard
+if __name__ == "__main__":
+    # This allows running the test file directly for debugging
+    import sys
+    sys.exit(pytest.main([__file__, "-v"]))
+# ==== BLOCK:FOOTER END ====

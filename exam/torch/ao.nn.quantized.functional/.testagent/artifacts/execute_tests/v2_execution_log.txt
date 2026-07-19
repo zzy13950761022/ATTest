@@ -1,0 +1,261 @@
+=== Run Tests ===
+FF.F                                                                     [100%]
+=================================== FAILURES ===================================
+_____________ test_linear_basic_quantized_operation[test_params0] ______________
+
+test_params = {'bias': True, 'input_dtype': torch.quint8, 'input_shape': [2, 4], 'scale': 1.0, ...}
+
+    @pytest.mark.parametrize("test_params", [
+        {
+            "input_shape": [2, 4],
+            "weight_shape": [3, 4],
+            "input_dtype": torch.quint8,
+            "weight_dtype": torch.qint8,
+            "bias": True,
+            "scale": 1.0,
+            "zero_point": 0
+        }
+    ])
+    def test_linear_basic_quantized_operation(test_params):
+        """Test basic quantized linear operation."""
+        # Unpack parameters
+        input_shape = test_params["input_shape"]
+        weight_shape = test_params["weight_shape"]
+        input_dtype = test_params["input_dtype"]
+        weight_dtype = test_params["weight_dtype"]
+        bias = test_params["bias"]
+        scale = test_params["scale"]
+        zero_point = test_params["zero_point"]
+    
+        # Create quantized input tensor
+        input_tensor = create_quantized_tensor(
+            input_shape, dtype=input_dtype, scale=scale, zero_point=zero_point
+        )
+    
+        # Create quantized weight tensor
+        weight_tensor = create_quantized_weight(
+            weight_shape, dtype=weight_dtype, scale=scale, zero_point=0
+        )
+    
+        # Create bias if needed
+        bias_tensor = None
+        if bias:
+            # For linear operation, bias is float
+            bias_tensor = torch.randn(weight_shape[0])
+    
+        # Calculate expected output shape
+        # Linear: input [batch, in_features] * weight [out_features, in_features]^T
+        # -> output [batch, out_features]
+        expected_shape = (input_shape[0], weight_shape[0])
+    
+        # Perform quantized linear operation
+>       output = qF.linear(
+            input=input_tensor,
+            weight=weight_tensor,
+            bias=bias_tensor,
+            scale=scale,
+            zero_point=zero_point
+        )
+
+tests/test_torch_ao_nn_quantized_functional_g2.py:136: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/ao/nn/quantized/functional.py:363: in linear
+    _packed_params = torch.ops.quantized.linear_prepack(weight, bias)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <OpOverloadPacket(op='quantized.linear_prepack')>
+args = (tensor([[ 0.,  0.,  1.,  1.],
+        [ 1., -2., -1.,  1.],
+        [ 1.,  1., -1., -1.]], size=(3, 4), dtype=torch.qint8,
+       quantization_scheme=torch.per_tensor_affine, scale=1.0, zero_point=0), tensor([ 1.3525,  0.6863, -0.3278]))
+kwargs = {}
+
+    def __call__(self, *args, **kwargs):
+        # overloading __call__ to ensure torch.ops.foo.bar()
+        # is still callable from JIT
+        # We save the function ptr as the `op` attribute on
+        # OpOverloadPacket to access it here.
+>       return self._op(*args, **kwargs or {})
+E       RuntimeError: Didn't find engine for operation quantized::linear_prepack NoQEngine
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_ops.py:442: RuntimeError
+______________ test_avg_pool2d_quantized_operation[test_params0] _______________
+
+test_params = {'ceil_mode': False, 'count_include_pad': True, 'divisor_override': None, 'input_dtype': torch.quint8, ...}
+
+    @pytest.mark.parametrize("test_params", [
+        {
+            "input_shape": [1, 3, 6, 6],
+            "input_dtype": torch.quint8,
+            "kernel_size": 2,
+            "stride": 2,
+            "padding": 0,
+            "ceil_mode": False,
+            "count_include_pad": True,
+            "divisor_override": None,
+            "scale": 1.0,
+            "zero_point": 0
+        }
+    ])
+    def test_avg_pool2d_quantized_operation(test_params):
+        """Test quantized avg_pool2d operation."""
+        # Unpack parameters
+        input_shape = test_params["input_shape"]
+        input_dtype = test_params["input_dtype"]
+        kernel_size = test_params["kernel_size"]
+        stride = test_params["stride"]
+        padding = test_params["padding"]
+        ceil_mode = test_params["ceil_mode"]
+        count_include_pad = test_params["count_include_pad"]
+        divisor_override = test_params["divisor_override"]
+        scale = test_params["scale"]
+        zero_point = test_params["zero_point"]
+    
+        # Create quantized input tensor
+        input_tensor = create_quantized_tensor(
+            input_shape, dtype=input_dtype, scale=scale, zero_point=zero_point
+        )
+    
+        # Calculate expected output shape
+        # For avg_pool2d with kernel_size=2, stride=2, padding=0
+        # Input: [1, 3, 6, 6] -> Output: [1, 3, 3, 3]
+        N, C, H, W = input_shape
+        kernel_h, kernel_w = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+        stride_h, stride_w = (stride, stride) if isinstance(stride, int) else stride
+        padding_h, padding_w = (padding, padding) if isinstance(padding, int) else padding
+    
+        # Calculate output dimensions
+        if ceil_mode:
+            H_out = math.ceil((H + 2 * padding_h - kernel_h) / stride_h + 1)
+            W_out = math.ceil((W + 2 * padding_w - kernel_w) / stride_w + 1)
+        else:
+            H_out = math.floor((H + 2 * padding_h - kernel_h) / stride_h + 1)
+            W_out = math.floor((W + 2 * padding_w - kernel_w) / stride_w + 1)
+    
+        expected_shape = (N, C, H_out, W_out)
+    
+        # Perform quantized avg_pool2d operation
+        output = qF.avg_pool2d(
+            input=input_tensor,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            ceil_mode=ceil_mode,
+            count_include_pad=count_include_pad,
+            divisor_override=divisor_override
+        )
+    
+        # Weak assertions (first round)
+        # 1. Output is quantized
+        assert output.is_quantized, "Output should be quantized"
+    
+        # 2. Output shape is correct
+        assert output.shape == torch.Size(expected_shape), \
+            f"Expected shape {expected_shape}, got {output.shape}"
+    
+        # 3. Output dtype is correct
+        assert output.dtype == input_dtype, \
+            f"Expected dtype {input_dtype}, got {output.dtype}"
+    
+        # 4. No NaN or Inf values
+        assert not torch.any(torch.isnan(output.dequantize())), "Output contains NaN values"
+        assert not torch.any(torch.isinf(output.dequantize())), "Output contains Inf values"
+    
+        # Additional checks for avg_pool2d
+        # Check that quantization parameters are preserved
+        # Note: avg_pool2d propagates input quantization parameters to output
+        assert math.isclose(output.q_scale(), scale, rel_tol=1e-6), \
+            f"Expected scale {scale}, got {output.q_scale()}"
+        assert output.q_zero_point() == zero_point, \
+            f"Expected zero_point {zero_point}, got {output.q_zero_point()}"
+    
+        # Verify pooling effect
+        # For kernel_size=2, stride=2, each 2x2 block should be averaged
+        dequantized_input = input_tensor.dequantize()
+        dequantized_output = output.dequantize()
+    
+        # Check a few sample positions
+        for c in range(C):
+            for h_out in range(H_out):
+                for w_out in range(W_out):
+                    # Calculate input region
+                    h_start = h_out * stride_h
+                    w_start = w_out * stride_w
+                    h_end = min(h_start + kernel_h, H)
+                    w_end = min(w_start + kernel_w, W)
+    
+                    # Extract input region
+                    input_region = dequantized_input[0, c, h_start:h_end, w_start:w_end]
+    
+                    # Calculate expected average
+                    if count_include_pad:
+                        # Include padding in average calculation
+                        region_size = kernel_h * kernel_w
+                    else:
+                        # Only include actual input values
+                        region_size = (h_end - h_start) * (w_end - w_start)
+    
+                    if region_size > 0:
+                        expected_value = input_region.sum().item() / region_size
+                        actual_value = dequantized_output[0, c, h_out, w_out].item()
+    
+                        # Allow some tolerance for quantization errors
+>                       assert abs(actual_value - expected_value) < 1e-3, \
+                            f"Pooling mismatch at position (c={c}, h={h_out}, w={w_out}): " \
+                            f"expected {expected_value}, got {actual_value}"
+E                       AssertionError: Pooling mismatch at position (c=0, h=0, w=1): expected 0.25, got 0.0
+E                       assert 0.25 < 0.001
+E                        +  where 0.25 = abs((0.0 - 0.25))
+
+tests/test_torch_ao_nn_quantized_functional_g2.py:299: AssertionError
+_____________________ test_quantized_linear_weight_packing _____________________
+
+    def test_quantized_linear_weight_packing():
+        """Test that linear operation handles weight packing correctly."""
+        # Create quantized input
+        input_tensor = create_quantized_tensor([2, 4], scale=1.0, zero_point=0)
+    
+        # Create quantized weight
+        weight_tensor = create_quantized_weight([3, 4], scale=1.0, zero_point=0)
+    
+        # Perform linear operation
+>       output = qF.linear(input_tensor, weight_tensor)
+
+tests/test_torch_ao_nn_quantized_functional_g2.py:459: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/ao/nn/quantized/functional.py:363: in linear
+    _packed_params = torch.ops.quantized.linear_prepack(weight, bias)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <OpOverloadPacket(op='quantized.linear_prepack')>
+args = (tensor([[-1., -2.,  0.,  0.],
+        [-1.,  0.,  2., -1.],
+        [ 0.,  1., -1.,  2.]], size=(3, 4), dtype=torch.qint8,
+       quantization_scheme=torch.per_tensor_affine, scale=1.0, zero_point=0), None)
+kwargs = {}
+
+    def __call__(self, *args, **kwargs):
+        # overloading __call__ to ensure torch.ops.foo.bar()
+        # is still callable from JIT
+        # We save the function ptr as the `op` attribute on
+        # OpOverloadPacket to access it here.
+>       return self._op(*args, **kwargs or {})
+E       RuntimeError: Didn't find engine for operation quantized::linear_prepack NoQEngine
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_ops.py:442: RuntimeError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                                Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------------------
+tests/test_torch_ao_nn_quantized_functional_g2.py     192     47     44     11    71%   29, 40-43, 49-69, 73-83, 126->133, 146-177, 225-226, 275->274, 276->275, 292, 294->276, 304-307, 358-359, 421->416, 424->408, 462-464
+-----------------------------------------------------------------------------------------------
+TOTAL                                                 192     47     44     11    71%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_ao_nn_quantized_functional_g2.py::test_linear_basic_quantized_operation[test_params0]
+FAILED tests/test_torch_ao_nn_quantized_functional_g2.py::test_avg_pool2d_quantized_operation[test_params0]
+FAILED tests/test_torch_ao_nn_quantized_functional_g2.py::test_quantized_linear_weight_packing
+3 failed, 1 passed in 0.65s
+
+Error: exit 1

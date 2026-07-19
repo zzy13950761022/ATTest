@@ -1,0 +1,63 @@
+{
+  "status": "失败",
+  "passed": 2,
+  "failed": 0,
+  "errors": 10,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_enable_disable_flow",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径错误：tensorflow.python模块在TF 2.x中不可直接访问"
+    },
+    {
+      "test": "test_idempotency_verification",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径错误：tensorflow.python模块在TF 2.x中不可直接访问"
+    },
+    {
+      "test": "test_different_parameter_combinations_conflict",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock路径错误：tensorflow.python模块在TF 2.x中不可直接访问"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_basic_tensor_debug_mode_shape",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_curt_health_mode",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_op_regex_filtering",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_tensor_dtype_filtering",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_circular_buffer_functionality[10-small buffer]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_circular_buffer_functionality[0-zero buffer (disabled)]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_circular_buffer_functionality[-1-negative buffer (should be treated as disabled)]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

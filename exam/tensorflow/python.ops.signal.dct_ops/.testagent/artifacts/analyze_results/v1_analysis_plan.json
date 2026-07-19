@@ -1,0 +1,59 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 19,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestDCTBasic.test_dct_basic_functionality[dtype0-shape0-2-None-None]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "create_test_signal调用错误：dtype.numpy_dtype应为dtype.as_numpy_dtype"
+    },
+    {
+      "test": "TestIDCTBasic.test_idct_basic_functionality[dtype0-shape0-2-None]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "create_test_signal调用错误：dtype.numpy_dtype应为dtype.as_numpy_dtype"
+    },
+    {
+      "test": "TestParameterValidation.test_dct_invalid_parameters[dtype0-shape0-5-None-None-True-ValueError]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "create_test_signal调用错误：dtype.numpy_dtype应为dtype.as_numpy_dtype"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestDCTBasic.test_dct_identity_property",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestIDCTBasic.test_idct_inverse_relationship",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestIDCTBasic.test_idct_with_ortho_normalization",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestParameterValidation.test_idct_invalid_n_parameter",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestParameterValidation.test_dct_empty_tensor",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestEdgeCases.test_dct_single_element",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

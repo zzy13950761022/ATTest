@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 1,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_standard_linear_spectral_norm",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "权重参数类型检查失败，spectral_norm可能修改了参数类型"
+    },
+    {
+      "test": "tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_different_module_type_compatibility",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "权重参数类型检查失败，与CASE_01相同问题"
+    },
+    {
+      "test": "tests/test_torch_nn_utils_spectral_norm.py::TestSpectralNorm::test_nonexistent_parameter_exception",
+      "block_id": "CASE_09",
+      "error_type": "KeyError",
+      "action": "adjust_assertion",
+      "note": "期望AttributeError但实际抛出KeyError，需要调整异常类型检查"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

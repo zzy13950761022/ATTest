@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_ragged_rank_parameter[pylist0-None-1-None-None-int64-1]",
+      "block_id": "CASE_04",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "ragged_rank=1时，flat_values返回二维数组(4,2)而非预期的一维数组(8,)，需要调整断言逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

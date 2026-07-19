@@ -1,0 +1,51 @@
+{
+  "status": "成功",
+  "passed": 3,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_conv1d_and_conv3d_basic_functionality[Conv1d-3-16-3-(2, 3, 32)-torch.float32-cpu]",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：行133-135未覆盖，需要增加Conv3d的边界条件测试"
+    },
+    {
+      "test": "test_conv1d_and_conv3d_basic_functionality[Conv3d-3-16-3-(2, 3, 16, 16, 16)-torch.float32-cpu]",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：分支214->247未覆盖，需要测试CUDA设备条件"
+    },
+    {
+      "test": "test_conv1d_and_conv3d_basic_functionality[ConvTranspose2d-3-16-3-(2, 3, 16, 16)-torch.float32-cpu]",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：分支259->262未覆盖，需要测试非默认参数条件"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "HEADER",
+      "reason": "CUDA相关代码在CPU环境下无法执行，属于环境限制"
+    },
+    {
+      "test": "CASE_07",
+      "reason": "属于deferred_set，将在后续迭代中实现"
+    },
+    {
+      "test": "CASE_08",
+      "reason": "属于deferred_set，将在后续迭代中实现"
+    },
+    {
+      "test": "CASE_09",
+      "reason": "属于deferred_set，将在后续迭代中实现"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

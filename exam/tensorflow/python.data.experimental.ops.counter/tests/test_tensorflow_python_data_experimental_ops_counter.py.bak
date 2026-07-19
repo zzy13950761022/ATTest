@@ -1,0 +1,65 @@
+# ==== BLOCK:HEADER START ====
+import pytest
+import numpy as np
+import tensorflow as tf
+from tensorflow.python.data.experimental.ops import counter
+
+# Test class for CounterV2 functionality - G1 Group: 核心计数功能
+class TestCounterV2G1:
+    """Test cases for tensorflow.python.data.experimental.ops.counter.CounterV2 - Core Counting Functionality"""
+    
+    # Helper method to extract first N elements from a dataset
+    def _get_first_n_elements(self, dataset, n=5):
+        """Extract first n elements from a dataset as a list."""
+        return list(dataset.take(n).as_numpy_iterator())
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# TC-01: 默认参数计数 (Moved to G1 test file)
+def test_counter_default_parameters_moved():
+    """Test CounterV2 with default parameters - moved to G1 test file."""
+    pytest.skip("This test case has been moved to test_tensorflow_python_data_experimental_ops_counter_g1.py")
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# TC-02: 指定start和step参数 (Moved to G1 test file)
+def test_counter_with_start_and_step_moved():
+    """Test CounterV2 with specified start and step - moved to G1 test file."""
+    pytest.skip("This test case has been moved to test_tensorflow_python_data_experimental_ops_counter_g1.py")
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: 不同数据类型验证 (Moved to G2 test file)
+def test_counter_different_dtypes_moved():
+    """Test CounterV2 with different data types - moved to G2 test file."""
+    pytest.skip("This test case has been moved to test_tensorflow_python_data_experimental_ops_counter_g2.py")
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: 负步长递减计数 (Moved to G1 test file)
+def test_counter_negative_step_moved():
+    """Test CounterV2 with negative step - moved to G1 test file."""
+    pytest.skip("This test case has been moved to test_tensorflow_python_data_experimental_ops_counter_g1.py")
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: 浮点参数验证 (DEFERRED - placeholder only)
+def test_counter_float_parameters():
+    """Test CounterV2 with float parameters (deferred)."""
+    pytest.skip("Deferred test case - will be implemented in later rounds")
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional helper functions and fixtures
+
+# Fixture for common test setup
+@pytest.fixture
+def default_counter():
+    """Fixture providing default CounterV2 dataset."""
+    return counter.CounterV2()
+
+# Note: Test cases have been split into group-specific files:
+# - G1 (Core Counting Functionality): test_tensorflow_python_data_experimental_ops_counter_g1.py
+# - G2 (Data Types & Boundaries): test_tensorflow_python_data_experimental_ops_counter_g2.py
+# This file is kept for backward compatibility and contains placeholder tests.
+# ==== BLOCK:FOOTER END ====

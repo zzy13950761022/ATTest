@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_nn_modules_pooling_special.py::TestSpecialPooling::test_maxunpool1d_edge_cases",
+      "block_id": "CASE_10",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "output_size参数超出PyTorch允许范围。根据PyTorch的_unpool_output_size函数，output_size必须满足：min_size < output_size[d] < max_size，其中min_size = default_size[d] - stride[d]，max_size = default_size[d] + stride[d]。当前测试使用custom_size=(1,1,6)，但计算出的default_size为4，stride=2，所以允许范围是2 < output_size < 6，而6不在范围内。"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

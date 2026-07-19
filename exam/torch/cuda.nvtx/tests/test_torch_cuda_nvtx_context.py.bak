@@ -1,0 +1,134 @@
+# ==== BLOCK:HEADER START ====
+import pytest
+import torch.cuda.nvtx as nvtx
+from unittest.mock import patch, MagicMock
+
+
+class TestNvtxContext:
+    """Test NVTX context manager functions: range."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self):
+        """Setup mock for _nvtx module to avoid CUDA dependency."""
+        self.mock_nvtx = MagicMock()
+        self.mock_nvtx.rangePushA = MagicMock()
+        self.mock_nvtx.rangePop = MagicMock()
+        
+        with patch('torch.cuda.nvtx._nvtx', self.mock_nvtx):
+            yield
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("msg,use_ascii,use_context", [
+        ("context_range", True, True),
+    ])
+    def test_context_manager_basic_usage(self, msg, use_ascii, use_context):
+        """Test basic context manager usage with various parameters.
+        
+        Weak assertions:
+        - context_enters: context manager should enter successfully
+        - context_exits: context manager should exit successfully
+        - no_exception: no exceptions should be raised
+        - returns_context: range function should return a context manager
+        """
+        # Setup mock return values
+        self.mock_nvtx.rangePushA.return_value = 0
+        self.mock_nvtx.rangePop.return_value = 0
+        
+        # Test range context manager
+        with nvtx.range(msg) as context:
+            # Weak assertion: context enters successfully
+            # (If we get here, context entered without exception)
+            
+            # Verify range_push was called with correct message
+            self.mock_nvtx.rangePushA.assert_called_once_with(msg)
+            
+            # The context should be None (range yields None)
+            assert context is None, f"Context should be None, got {context}"
+        
+        # Weak assertion: context exits successfully
+        # (If we get here, context exited without exception)
+        
+        # Verify range_pop was called
+        self.mock_nvtx.rangePop.assert_called_once()
+        
+        # Weak assertion: no exception raised
+        # (If we get here without exception, this assertion passes)
+        
+        # Test that range returns a context manager
+        context_manager = nvtx.range(msg)
+        
+        # Weak assertion: returns context manager
+        assert hasattr(context_manager, '__enter__'), "range should return a context manager"
+        assert hasattr(context_manager, '__exit__'), "range should return a context manager"
+        
+        # Reset mocks for next test iteration
+        self.mock_nvtx.rangePushA.reset_mock()
+        self.mock_nvtx.rangePop.reset_mock()
+        
+        # Test with formatted message
+        if use_context:
+            formatted_msg = "formatted_range_test"
+            with nvtx.range("formatted_range_{}", "test") as context2:
+                self.mock_nvtx.rangePushA.assert_called_once_with(formatted_msg)
+                assert context2 is None
+            
+            self.mock_nvtx.rangePop.assert_called_once()
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_07 START ====
+    def test_nested_context_managers(self):
+        """Test nested context managers (deferred to later rounds).
+        
+        This test case is deferred and will be implemented in later iterations.
+        Strong assertions (when implemented):
+        - context_timing: verify timing of nested contexts
+        - nested_context: test multiple levels of nesting
+        - exception_handling: test exception handling within contexts
+        """
+        # Placeholder for deferred test case
+        # This will be implemented in later iterations
+        pass
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+    def test_context_manager_with_exception(self):
+        """Test context manager behavior when exception occurs inside context."""
+        self.mock_nvtx.rangePushA.return_value = 0
+        self.mock_nvtx.rangePop.return_value = 0
+        
+        # Test that range_pop is called even when exception occurs
+        try:
+            with nvtx.range("test_with_exception"):
+                self.mock_nvtx.rangePushA.assert_called_once_with("test_with_exception")
+                raise ValueError("Test exception")
+        except ValueError:
+            pass
+        
+        # Verify range_pop was called despite the exception
+        self.mock_nvtx.rangePop.assert_called_once()
+    
+    def test_context_manager_as_decorator(self):
+        """Test range context manager used as a decorator."""
+        self.mock_nvtx.rangePushA.return_value = 0
+        self.mock_nvtx.rangePop.return_value = 0
+        
+        # Create a simple function decorated with range
+        @nvtx.range("decorator_test")
+        def test_function():
+            return 42
+        
+        # Call the decorated function
+        result = test_function()
+        
+        # Verify the function returns correctly
+        assert result == 42
+        
+        # Verify range_push and range_pop were called
+        self.mock_nvtx.rangePushA.assert_called_once_with("decorator_test")
+        self.mock_nvtx.rangePop.assert_called_once()
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

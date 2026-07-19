@@ -1,0 +1,51 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 7,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_equal-x_shape0-y_shape0-float32-eager]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块在TensorFlow 2.x中不可用"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_equal_graph_mode[assert_equal-x_shape0-y_shape0-int32-graph]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块在TensorFlow 2.x中不可用"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_less_static_failure[assert_less-x_shape0-y_shape0-float64-static_fail]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python模块在TensorFlow 2.x中不可用"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_equal-x_shape1-y_shape1-float64-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_equal_eager_mode[assert_greater-x_shape2-y_shape2-float32-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_equal_graph_mode[assert_equal-x_shape1-y_shape1-int32-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_check_ops.py::test_assert_less_static_failure[assert_less-x_shape1-y_shape1-float32-static_fail]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

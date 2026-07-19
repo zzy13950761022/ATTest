@@ -1,0 +1,55 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 8,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensorshape_construction[dims0-2-expected_dims0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "is_fully_defined 属性实现错误：已知维度应返回 True"
+    },
+    {
+      "test": "test_helper_functions[dimension_value-5-5-None]",
+      "block_id": "CASE_05",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "Dimension 类缺少 is_known 属性，需要修复或调整测试"
+    },
+    {
+      "test": "test_dimension_advanced_features",
+      "block_id": "CASE_06",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "Dimension 类未实现 __hash__ 方法"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_tensorshape_construction[dims1-0-expected_dims1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_tensorshape_construction[None-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_helper_functions[dimension_value-None-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_helper_functions[as_dimension-3-None-Dimension]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_helper_functions[as_shape-input_val3-None-TensorShape]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

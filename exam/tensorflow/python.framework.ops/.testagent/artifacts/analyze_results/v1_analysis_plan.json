@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensor_property_access_methods",
+      "block_id": "CASE_04",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "TensorFlow 2.x兼容性：tf.Session()已弃用，需使用tf.compat.v1.Session()或Eager Execution"
+    },
+    {
+      "test": "test_convert_to_tensor_basic_conversion",
+      "block_id": "CASE_08",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "TensorFlow 2.x兼容性：tf.Session()已弃用，需使用tf.compat.v1.Session()或Eager Execution"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

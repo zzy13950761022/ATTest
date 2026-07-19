@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 14,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_instance_norm_invalid_parameters",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "fix_dependency",
+      "note": "InstanceNorm构造函数未验证eps参数，期望抛出ValueError但未抛出。需要检查PyTorch的InstanceNorm参数验证逻辑"
+    },
+    {
+      "test": "test_instance_norm_channel_mismatch",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "InstanceNorm在前向传播时未对通道不匹配抛出RuntimeError。需要检查PyTorch的InstanceNorm错误处理行为"
+    },
+    {
+      "test": "test_lazy_instance_norm_parameter_validation",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "fix_dependency",
+      "note": "LazyInstanceNorm构造函数未验证momentum参数，期望抛出ValueError但未抛出。需要检查LazyInstanceNorm参数验证逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

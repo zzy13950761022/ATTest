@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 8,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestDatasetOps::test_empty_dataset",
+      "block_id": "CASE_05",
+      "error_type": "NotImplementedError",
+      "action": "add_case",
+      "note": "添加空数据集测试以覆盖边界情况和提高覆盖率"
+    },
+    {
+      "test": "TestDatasetOps::test_shuffle_operation",
+      "block_id": "CASE_06",
+      "error_type": "NotImplementedError",
+      "action": "add_case",
+      "note": "添加shuffle操作测试以覆盖更多数据集功能"
+    },
+    {
+      "test": "TestDatasetOps::test_filter_operation",
+      "block_id": "CASE_07",
+      "error_type": "NotImplementedError",
+      "action": "add_case",
+      "note": "添加filter操作测试以完善数据集转换操作覆盖"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

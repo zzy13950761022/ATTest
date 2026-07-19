@@ -1,0 +1,79 @@
+{
+  "status": "未完全通过",
+  "passed": 22,
+  "failed": 14,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_groupnorm_divisibility_exception",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "错误消息未包含具体的组/通道计数（3和5），需要调整断言或修改实现"
+    },
+    {
+      "test": "test_groupnorm_device_dtype[dtype0-cpu]",
+      "block_id": "CASE_01",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "混合精度测试失败：PyTorch不支持输入与层参数不同dtype的自动转换"
+    },
+    {
+      "test": "test_layernorm_exception_shapes",
+      "block_id": "CASE_03",
+      "error_type": "UnboundLocalError",
+      "action": "rewrite_block",
+      "note": "torch变量未定义，需要修复导入或变量作用域问题"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_localresponsenorm_boundary_values[3-0.0001-0.75-1.0-dtype1-cpu-shape1-small_size]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[15-0.0001-0.75-1.0-dtype2-cpu-shape2-large_size]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-1.0-0.75-1.0-dtype5-cpu-shape5-large_alpha]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.5-1.0-dtype7-cpu-shape7-small_beta]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-2.0-1.0-dtype8-cpu-shape8-large_beta]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.75-0.0-dtype9-cpu-shape9-zero_k]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.75-0.1-dtype10-cpu-shape10-small_k]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.75-10.0-dtype11-cpu-shape11-large_k]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.75-1.0-dtype12-cpu-shape12-float64]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_localresponsenorm_boundary_values[5-0.0001-0.75-1.0-dtype13-cpu-shape13-batch_size_1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_groupnorm_device_dtype[dtype1-cpu]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

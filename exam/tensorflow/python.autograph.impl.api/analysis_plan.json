@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 12,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_01",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少nested_function和simple_loop参数组合测试"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_02",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少nested_function和simple_loop参数组合测试"
+    },
+    {
+      "test": "coverage_gap_3",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "缺少while_loop和for_loop_range参数组合测试"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

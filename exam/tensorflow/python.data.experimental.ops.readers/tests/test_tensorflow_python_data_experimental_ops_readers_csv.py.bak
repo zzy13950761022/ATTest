@@ -1,0 +1,405 @@
+"""
+测试 tensorflow.python.data.experimental.ops.readers 模块的CSV读取功能
+"""
+import math
+import os
+import tempfile
+import pytest
+import numpy as np
+import tensorflow as tf
+from unittest import mock
+
+# 导入目标模块
+from tensorflow.python.data.experimental.ops import readers
+
+# 固定随机种子以确保可重复性
+tf.random.set_seed(42)
+np.random.seed(42)
+
+# ==== BLOCK:HEADER START ====
+# 测试辅助函数和fixture
+@pytest.fixture
+def temp_csv_file():
+    """创建临时CSV文件用于测试"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        # 写入CSV数据
+        f.write("col1,col2,col3\n")
+        f.write("1.0,10,alpha\n")
+        f.write("2.0,20,beta\n")
+        f.write("3.0,30,gamma\n")
+        f.write("4.0,40,delta\n")
+        f.write("5.0,50,epsilon\n")
+        temp_file = f.name
+    yield temp_file
+    # 清理临时文件
+    try:
+        os.unlink(temp_file)
+    except OSError:
+        pass
+
+@pytest.fixture
+def temp_csv_file_no_header():
+    """创建无表头的临时CSV文件"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        f.write("1.0,10,alpha\n")
+        f.write("2.0,20,beta\n")
+        f.write("3.0,30,gamma\n")
+        temp_file = f.name
+    yield temp_file
+    try:
+        os.unlink(temp_file)
+    except OSError:
+        pass
+
+@pytest.fixture
+def mock_gfile_glob():
+    """mock tf.io.gfile.glob函数"""
+    # 使用正确的TensorFlow 2.x API路径
+    with mock.patch('tensorflow.io.gfile.glob') as mock_glob:
+        yield mock_glob
+
+@pytest.fixture
+def mock_file_io():
+    """mock文件IO操作"""
+    # 使用TensorFlow 2.x的文件IO路径
+    with mock.patch('tensorflow.python.lib.io.file_io.FileIO') as mock_file_io:
+        yield mock_file_io
+
+@pytest.fixture
+def mock_tf_io_gfile():
+    """mock tf.io.gfile模块（公共API）"""
+    with mock.patch('tensorflow.io.gfile.glob') as mock_glob:
+        yield mock_glob
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize(
+    "file_pattern,batch_size,column_names,label_name,column_defaults",
+    [
+        # 基本测试用例
+        ("test.csv", 32, ["col1", "col2", "col3"], "col3", [0.0, 0, ""]),
+    ]
+)
+def test_make_csv_dataset_basic(
+    temp_csv_file, mock_gfile_glob, mock_file_io,
+    file_pattern, batch_size, column_names, label_name, column_defaults
+):
+    """
+    测试make_csv_dataset基本功能
+    
+    弱断言验证：
+    1. 返回数据集类型正确
+    2. 批次形状符合预期
+    3. 特征名称正确
+    4. 标签列存在性验证
+    """
+    # mock文件查找 - 返回实际临时文件路径
+    mock_gfile_glob.return_value = [temp_csv_file]
+    
+    # mock文件读取 - 但make_csv_dataset可能使用TensorFlow内部的文件读取机制
+    # 这里我们主要mock glob函数，文件读取由TensorFlow处理
+    
+    # 调用make_csv_dataset - 使用file_pattern参数，让函数通过glob查找文件
+    dataset = readers.make_csv_dataset(
+        file_pattern=file_pattern,  # 使用传入的文件模式
+        batch_size=batch_size,
+        column_names=column_names,
+        label_name=label_name,
+        column_defaults=column_defaults,
+        num_epochs=1,  # 只读取一次，避免无限循环
+        shuffle=False,  # 关闭随机，确保可重复
+        header=True
+    )
+    
+    # 弱断言1: 数据集类型正确
+    assert isinstance(dataset, tf.data.Dataset), "返回对象应该是tf.data.Dataset类型"
+    
+    # 获取第一批数据
+    iterator = iter(dataset)
+    try:
+        features, labels = next(iterator)
+    except StopIteration:
+        pytest.fail("数据集应该至少包含一个批次的数据")
+    
+    # 弱断言2: 批次形状符合预期
+    # 检查特征字典结构
+    assert isinstance(features, dict), "特征应该是字典类型"
+    assert len(features) == len(column_names) - 1, f"特征数量应该是{len(column_names)-1}（排除标签列）"
+    
+    # 检查每个特征的形状
+    for feature_name, feature_tensor in features.items():
+        assert feature_name in column_names, f"特征名'{feature_name}'应该在column_names中"
+        if feature_name != label_name:
+            # 特征张量应该是二维的：[batch_size, 1]
+            assert len(feature_tensor.shape) == 2, f"特征'{feature_name}'应该是二维张量"
+            # 批次大小应该匹配（可能小于batch_size如果数据不足）
+            assert feature_tensor.shape[0] <= batch_size, f"批次大小不应超过{batch_size}"
+    
+    # 弱断言3: 特征名称正确
+    expected_feature_names = [name for name in column_names if name != label_name]
+    actual_feature_names = list(features.keys())
+    # 检查所有预期特征都存在
+    for expected_name in expected_feature_names:
+        assert expected_name in actual_feature_names, f"特征'{expected_name}'应该在返回的特征字典中"
+    
+    # 弱断言4: 标签列存在性验证
+    assert labels is not None, "标签不应该为None"
+    assert isinstance(labels, tf.Tensor), "标签应该是tf.Tensor类型"
+    assert len(labels.shape) == 1 or len(labels.shape) == 2, "标签应该是1维或2维张量"
+    
+    # 验证标签值类型
+    if column_defaults:
+        # 找到标签列对应的默认值类型
+        label_idx = column_names.index(label_name)
+        label_default_type = column_defaults[label_idx]
+        # 检查标签数据类型
+        if label_default_type == "" or isinstance(label_default_type, str):
+            assert labels.dtype == tf.string, "字符串标签应该是tf.string类型"
+        elif isinstance(label_default_type, (int, float)):
+            # 数值类型检查
+            assert labels.dtype in [tf.float32, tf.float64, tf.int32, tf.int64], \
+                f"数值标签应该是数值类型，实际是{labels.dtype}"
+    
+    # 验证mock调用 - glob应该被调用
+    mock_gfile_glob.assert_called_once_with(file_pattern)
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize(
+    "file_pattern,record_defaults,select_cols",
+    [
+        # 基本测试用例 - 选择所有列
+        ("data.csv", [tf.float32, tf.int32, tf.string], None),
+        # 选择部分列 - 确保record_defaults长度与select_cols匹配
+        ("data.csv", [tf.float32, tf.string], [0, 2]),
+    ]
+)
+def test_csvdataset_basic_reading(
+    temp_csv_file, mock_gfile_glob, mock_file_io,
+    file_pattern, record_defaults, select_cols
+):
+    """
+    测试CsvDataset基本读取功能
+    
+    弱断言验证：
+    1. 返回数据集类型正确
+    2. 记录数量符合预期
+    3. 列类型正确
+    4. 列选择过滤器工作正常
+    """
+    # CsvDataset直接接受文件路径列表，不需要mock glob
+    # 但为了测试完整性，我们仍然设置mock
+    
+    # 创建CsvDataset - 直接使用文件路径
+    dataset = readers.CsvDataset(
+        filenames=[temp_csv_file],  # 使用实际文件路径
+        record_defaults=record_defaults,
+        select_cols=select_cols,
+        header=True  # 跳过表头
+    )
+    
+    # 弱断言1: 数据集类型正确
+    assert isinstance(dataset, tf.data.Dataset), "返回对象应该是tf.data.Dataset类型"
+    
+    # 收集所有记录
+    records = []
+    iterator = iter(dataset)
+    try:
+        for _ in range(10):  # 最多读取10条记录
+            record = next(iterator)
+            records.append(record)
+    except StopIteration:
+        pass  # 正常结束
+    
+    # 弱断言2: 记录数量符合预期
+    # CSV文件有5行数据（跳过表头）
+    expected_record_count = 5
+    assert len(records) == expected_record_count, \
+        f"应该读取{expected_record_count}条记录，实际读取{len(records)}条"
+    
+    # 弱断言3: 列类型正确
+    for record in records:
+        # 检查记录是元组
+        assert isinstance(record, tuple), "每条记录应该是元组"
+        
+        # 检查列数
+        expected_columns = len(select_cols) if select_cols else len(record_defaults)
+        assert len(record) == expected_columns, \
+            f"每条记录应该有{expected_columns}列，实际有{len(record)}列"
+        
+        # 检查每列的数据类型
+        for i, (value, expected_type) in enumerate(zip(record, record_defaults)):
+            assert isinstance(value, tf.Tensor), f"第{i}列应该是tf.Tensor类型"
+            
+            # 检查数据类型匹配
+            if isinstance(expected_type, tf.DType):
+                # 如果record_defaults是数据类型
+                assert value.dtype == expected_type, \
+                    f"第{i}列数据类型应该是{expected_type}，实际是{value.dtype}"
+            elif isinstance(expected_type, tf.Tensor):
+                # 如果record_defaults是张量
+                assert value.dtype == expected_type.dtype, \
+                    f"第{i}列数据类型应该匹配默认值类型{expected_type.dtype}，实际是{value.dtype}"
+    
+    # 弱断言4: 列选择过滤器工作正常
+    if select_cols is not None:
+        # 验证只选择了指定的列
+        first_record = records[0]
+        assert len(first_record) == len(select_cols), \
+            f"选择{len(select_cols)}列，实际返回{len(first_record)}列"
+        
+        # 验证列顺序
+        for i, col_idx in enumerate(select_cols):
+            # 这里我们主要验证结构，具体值验证在强断言中
+            pass
+    
+    # 验证数据值（弱断言级别）
+    if records:
+        first_record = records[0]
+        # 检查第一行数据的大致值
+        # 转换为numpy进行验证
+        first_record_np = [tensor.numpy() for tensor in first_record]
+        
+        if select_cols is None:
+            # 选择所有列的情况
+            # 第一行数据应该是: 1.0, 10, "alpha"
+            if len(first_record_np) > 0:
+                val1 = first_record_np[0]
+                assert isinstance(val1, (float, np.float32, np.float64)), \
+                    "第一列应该是浮点数"
+                # 弱断言：值在合理范围内
+                assert 0.9 <= val1 <= 1.1, f"第一列值应该在0.9-1.1之间，实际是{val1}"
+            
+            if len(first_record_np) > 1:
+                val2 = first_record_np[1]
+                assert isinstance(val2, (int, np.int32, np.int64)), \
+                    "第二列应该是整数"
+                # 弱断言：值在合理范围内
+                assert 9 <= val2 <= 11, f"第二列值应该在9-11之间，实际是{val2}"
+            
+            if len(first_record_np) > 2:
+                val3 = first_record_np[2]
+                if isinstance(val3, bytes):
+                    val3 = val3.decode('utf-8')
+                assert isinstance(val3, str), "第三列应该是字符串"
+                # 弱断言：字符串非空
+                assert len(val3) > 0, "字符串不应该为空"
+        elif select_cols == [0, 2]:
+            # 选择第0和第2列的情况
+            # 第一行数据应该是: 1.0, "alpha"
+            if len(first_record_np) > 0:
+                val1 = first_record_np[0]
+                assert isinstance(val1, (float, np.float32, np.float64)), \
+                    "第一列应该是浮点数"
+                # 弱断言：值在合理范围内
+                assert 0.9 <= val1 <= 1.1, f"第一列值应该在0.9-1.1之间，实际是{val1}"
+            
+            if len(first_record_np) > 1:
+                val3 = first_record_np[1]
+                if isinstance(val3, bytes):
+                    val3 = val3.decode('utf-8')
+                assert isinstance(val3, str), "第二列应该是字符串"
+                # 弱断言：字符串非空
+                assert len(val3) > 0, "字符串不应该为空"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# 占位符：SqlDataset基本查询（G2组，当前不生成）
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# 占位符：make_tf_record_dataset基本读取（G3组，当前不生成）
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# 占位符：DEFERRED_SET - 扩展测试用例
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# 占位符：DEFERRED_SET - 扩展测试用例
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# 占位符：DEFERRED_SET - 扩展测试用例（G2组）
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# 占位符：DEFERRED_SET - 扩展测试用例（G3组）
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试类定义
+class TestCSVReaders:
+    """CSV读取功能测试类"""
+    
+    def test_make_csv_dataset_basic(self, temp_csv_file, mock_gfile_glob):
+        """测试make_csv_dataset基本功能"""
+        # mock文件查找
+        mock_gfile_glob.return_value = [temp_csv_file]
+        
+        # 调用make_csv_dataset - 使用实际文件路径作为模式
+        dataset = readers.make_csv_dataset(
+            file_pattern=temp_csv_file,
+            batch_size=32,
+            column_names=["col1", "col2", "col3"],
+            label_name="col3",
+            column_defaults=[0.0, 0, ""],
+            num_epochs=1,
+            shuffle=False,
+            header=True
+        )
+        
+        # 弱断言验证
+        assert isinstance(dataset, tf.data.Dataset)
+        
+        iterator = iter(dataset)
+        features, labels = next(iterator)
+        
+        assert isinstance(features, dict)
+        assert len(features) == 2  # 排除标签列
+        assert "col1" in features
+        assert "col2" in features
+        assert labels is not None
+        
+        # 验证mock调用
+        mock_gfile_glob.assert_called_once_with(temp_csv_file)
+    
+    def test_csvdataset_basic_reading(self, temp_csv_file):
+        """测试CsvDataset基本读取功能"""
+        # CsvDataset直接使用文件路径，不需要mock
+        
+        # 创建CsvDataset
+        dataset = readers.CsvDataset(
+            filenames=[temp_csv_file],
+            record_defaults=[tf.float32, tf.int32, tf.string],
+            select_cols=[0, 2],
+            header=True
+        )
+        
+        # 弱断言验证
+        assert isinstance(dataset, tf.data.Dataset)
+        
+        records = list(iter(dataset))
+        assert len(records) == 5  # 5行数据
+        
+        for record in records:
+            assert isinstance(record, tuple)
+            assert len(record) == 2  # 选择2列
+            assert isinstance(record[0], tf.Tensor)
+            assert record[0].dtype == tf.float32
+            assert isinstance(record[1], tf.Tensor)
+            assert record[1].dtype == tf.string
+
+# 清理和辅助函数
+def cleanup_temp_files(files):
+    """清理临时文件"""
+    for file_path in files:
+        try:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+        except OSError:
+            pass
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

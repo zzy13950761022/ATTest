@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 9,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_histogram_fixed_width_bins_basic[dtype2-shape2-value_range2-20]",
+      "block_id": "CASE_01",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "int32类型输入时出现数据类型不匹配错误：'cannot compute Mul as input #1(zero-based) was expected to be a int32 tensor but is a double tensor'"
+    },
+    {
+      "test": "test_histogram_fixed_width_bins_invalid_value_range[dtype0-shape0-value_range0-5]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "value_range[0] > value_range[1]时未抛出预期异常，需要调整断言或理解实际行为"
+    },
+    {
+      "test": "test_histogram_fixed_width_bins_invalid_value_range[dtype1-shape1-value_range1-5]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "value_range[0] == value_range[1]时未抛出预期异常，需要调整断言或理解实际行为"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

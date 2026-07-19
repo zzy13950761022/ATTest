@@ -1,0 +1,326 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+from torch.nn.modules.transformer import (
+    Transformer,
+    TransformerEncoder,
+    TransformerDecoder,
+    TransformerEncoderLayer,
+    TransformerDecoderLayer
+)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions (shared with G1)
+@pytest.fixture(scope="module")
+def set_random_seed():
+    """Set random seed for reproducibility"""
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
+@pytest.fixture
+def device():
+    """Get available device (CPU only for consistency)"""
+    return torch.device("cpu")
+
+def create_test_tensor(shape, dtype=torch.float32, device="cpu"):
+    """Create test tensor with fixed random values"""
+    torch.manual_seed(123)
+    return torch.randn(*shape, dtype=dtype, device=device)
+
+def assert_tensor_properties(tensor, expected_shape=None, expected_dtype=None, 
+                           expected_device=None, finite_check=True):
+    """Assert tensor properties match expectations"""
+    if expected_shape is not None:
+        assert tensor.shape == expected_shape, f"Expected shape {expected_shape}, got {tensor.shape}"
+    
+    if expected_dtype is not None:
+        assert tensor.dtype == expected_dtype, f"Expected dtype {expected_dtype}, got {tensor.dtype}"
+    
+    if expected_device is not None:
+        assert tensor.device == expected_device, f"Expected device {expected_device}, got {tensor.device}"
+    
+    if finite_check:
+        assert torch.isfinite(tensor).all(), "Tensor contains non-finite values"
+        assert not torch.isnan(tensor).any(), "Tensor contains NaN values"
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_10 START ====
+@pytest.mark.parametrize(
+    "dtype,device,nhead,d_model,num_encoder_layers,mask_type,src_shape,mask_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            1,
+            "bool",
+            (5, 16, 8),
+            (5, 5),
+        ),
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            1,
+            "byte",
+            (5, 16, 8),
+            (5, 5),
+        ),
+    ]
+)
+def test_transformer_mask_handling_basic(
+    dtype,
+    device,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    mask_type,
+    src_shape,
+    mask_shape,
+    set_random_seed,
+):
+    """TC-10: 掩码处理基础"""
+    # Create model
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=1,  # Need at least 1 decoder layer for mask test
+        dim_feedforward=32,
+        dropout=0.0,
+        activation="relu",
+        batch_first=False,
+    )
+    
+    # Convert model parameters to match input dtype
+    model = model.to(dtype=dtype, device=device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create source tensor
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    
+    # Create target tensor (same batch size as src)
+    tgt_shape = (src_shape[0] + 2, src_shape[1], src_shape[2])  # Different seq length
+    tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+    # Create mask based on mask_type
+    if mask_type == "bool":
+        # Create boolean mask (True means masked position)
+        mask = torch.randint(0, 2, mask_shape, dtype=torch.bool, device=device)
+    elif mask_type == "byte":
+        # Create byte mask (1 means masked position)
+        mask = torch.randint(0, 2, mask_shape, dtype=torch.uint8, device=device)
+    else:
+        raise ValueError(f"Unsupported mask_type: {mask_type}")
+    
+    # Forward pass with mask
+    with torch.no_grad():
+        output = model(src, tgt, src_mask=mask)
+    
+    # Weak assertions
+    # 1. Mask applied check (output should be finite even with mask)
+    assert torch.isfinite(output).all(), "Output contains non-finite values after mask application"
+    
+    # 2. Output finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 3. Shape preserved check
+    expected_shape = tgt_shape  # Output should have same shape as target
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape}, got {output.shape}"
+    )
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+@pytest.mark.parametrize(
+    "dtype,device,nhead,d_model,num_encoder_layers,num_decoder_layers,"
+    "dim_feedforward,dropout,activation,batch_first,src_shape,tgt_shape",
+    [
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            1,
+            1,
+            32,
+            0.0,
+            "relu",
+            True,
+            (16, 5, 8),  # batch_first=True: [batch_size, seq_len, d_model]
+            (16, 10, 8),
+        ),
+        (
+            torch.float32,
+            "cpu",
+            2,
+            8,
+            1,
+            1,
+            32,
+            0.0,
+            "relu",
+            False,
+            (5, 16, 8),  # batch_first=False: [seq_len, batch_size, d_model]
+            (10, 16, 8),
+        ),
+    ]
+)
+def test_transformer_batch_first_dimension(
+    dtype,
+    device,
+    nhead,
+    d_model,
+    num_encoder_layers,
+    num_decoder_layers,
+    dim_feedforward,
+    dropout,
+    activation,
+    batch_first,
+    src_shape,
+    tgt_shape,
+    set_random_seed,
+):
+    """Test Transformer with batch_first parameter for dimension ordering"""
+    # Create model with specified batch_first parameter
+    model = Transformer(
+        d_model=d_model,
+        nhead=nhead,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=num_decoder_layers,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout,
+        activation=activation,
+        batch_first=batch_first,
+    )
+    model.to(device)
+    model.eval()  # Disable dropout for deterministic output
+    
+    # Create source and target tensors
+    src = create_test_tensor(src_shape, dtype=dtype, device=device)
+    tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+    # Forward pass
+    with torch.no_grad():
+        output = model(src, tgt)
+    
+    # Weak assertions
+    # 1. Output shape check based on batch_first
+    if batch_first:
+        # batch_first=True: output should be [batch_size, tgt_seq_len, d_model]
+        expected_shape = (tgt_shape[0], tgt_shape[1], d_model)
+    else:
+        # batch_first=False: output should be [tgt_seq_len, batch_size, d_model]
+        expected_shape = (tgt_shape[0], tgt_shape[1], d_model)
+    
+    assert output.shape == expected_shape, (
+        f"Output shape mismatch. Expected {expected_shape} for batch_first={batch_first}, "
+        f"got {output.shape}"
+    )
+    
+    # 2. Dimension order check
+    if batch_first:
+        # First dimension should be batch size
+        assert output.shape[0] == tgt_shape[0], (
+            f"First dimension should be batch size ({tgt_shape[0]}) for batch_first=True, "
+            f"got {output.shape[0]}"
+        )
+        # Second dimension should be sequence length
+        assert output.shape[1] == tgt_shape[1], (
+            f"Second dimension should be sequence length ({tgt_shape[1]}) for batch_first=True, "
+            f"got {output.shape[1]}"
+        )
+    else:
+        # First dimension should be sequence length
+        assert output.shape[0] == tgt_shape[0], (
+            f"First dimension should be sequence length ({tgt_shape[0]}) for batch_first=False, "
+            f"got {output.shape[0]}"
+        )
+        # Second dimension should be batch size
+        assert output.shape[1] == tgt_shape[1], (
+            f"Second dimension should be batch size ({tgt_shape[1]}) for batch_first=False, "
+            f"got {output.shape[1]}"
+        )
+    
+    # 3. Output dtype check
+    assert output.dtype == dtype, (
+        f"Output dtype mismatch. Expected {dtype}, got {output.dtype}"
+    )
+    
+    # 4. Finite check
+    assert torch.isfinite(output).all(), "Output contains non-finite values"
+    assert not torch.isnan(output).any(), "Output contains NaN values"
+    
+    # 5. Test consistency: same data with different batch_first should produce
+    # equivalent results (just transposed)
+    if src_shape[0] == src_shape[1] and tgt_shape[0] == tgt_shape[1]:
+        # Only test if dimensions are square (same seq_len and batch_size)
+        # Create a square tensor for testing transpose equivalence
+        square_src = create_test_tensor((8, 8, d_model), dtype=dtype, device=device)
+        square_tgt = create_test_tensor((8, 8, d_model), dtype=dtype, device=device)
+        
+        # Model with batch_first=False
+        model_false = Transformer(
+            d_model=d_model,
+            nhead=nhead,
+            num_encoder_layers=num_encoder_layers,
+            num_decoder_layers=num_decoder_layers,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            batch_first=False,
+        )
+        model_false.to(device)
+        model_false.eval()
+        
+        # Model with batch_first=True
+        model_true = Transformer(
+            d_model=d_model,
+            nhead=nhead,
+            num_encoder_layers=num_encoder_layers,
+            num_decoder_layers=num_decoder_layers,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            batch_first=True,
+        )
+        model_true.to(device)
+        model_true.eval()
+        
+        # Transpose square tensors for batch_first=True
+        # [seq_len, batch_size, d_model] -> [batch_size, seq_len, d_model]
+        square_src_transposed = square_src.transpose(0, 1)
+        square_tgt_transposed = square_tgt.transpose(0, 1)
+        
+        with torch.no_grad():
+            output_false = model_false(square_src, square_tgt)
+            output_true = model_true(square_src_transposed, square_tgt_transposed)
+        
+        # Outputs should be transposes of each other
+        output_true_transposed = output_true.transpose(0, 1)
+        assert torch.allclose(output_false, output_true_transposed, rtol=1e-5, atol=1e-5), (
+            "Outputs with batch_first=False and batch_first=True (with transposed input) "
+            "should be equivalent"
+        )
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# Placeholder for CASE_12: (DEFERRED)
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:CASE_13 START ====
+# Placeholder for CASE_13: (DEFERRED)
+# ==== BLOCK:CASE_13 END ====
+
+# ==== BLOCK:CASE_14 START ====
+# Placeholder for CASE_14: (DEFERRED)
+# ==== BLOCK:CASE_14 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test cases and utilities
+# ==== BLOCK:FOOTER END ====

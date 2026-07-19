@@ -1,0 +1,47 @@
+{
+  "status": "成功",
+  "passed": 16,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_7",
+      "block_id": "CASE_12",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失代码行889-963（复杂逻辑分支，需要测试特定参数组合）"
+    },
+    {
+      "test": "coverage_gap_8",
+      "block_id": "CASE_13",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失代码行971-1005（复杂逻辑分支，需要测试错误处理路径）"
+    },
+    {
+      "test": "coverage_gap_9",
+      "block_id": "CASE_14",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖缺失代码行1048, 1087-1088, 1109-1110, 1131-1132, 1137-1138（边界条件和清理逻辑）"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "coverage_gap_10",
+      "reason": "覆盖缺失代码行31, 56-71, 90（函数导入和初始化部分，已在CASE_09中处理）"
+    },
+    {
+      "test": "coverage_gap_11",
+      "reason": "覆盖缺失代码行275->277, 368-371, 474->exit（条件分支和错误处理，已在CASE_10中处理）"
+    },
+    {
+      "test": "coverage_gap_12",
+      "reason": "覆盖缺失代码行673（特定参数组合测试，已在CASE_11中处理）"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

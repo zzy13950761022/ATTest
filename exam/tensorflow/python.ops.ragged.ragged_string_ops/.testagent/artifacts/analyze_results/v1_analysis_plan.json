@@ -1,0 +1,67 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 10,
+  "errors": 14,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[Tensor-content0-expected_shape0]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "ragged_rank应为1但实际为2，需要修正断言逻辑"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_encode_basic[input_shape0-content0-UTF-8-replace-65533]",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "形状不匹配：12个元素无法放入2x3形状，需要修正输入数据准备"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_decode_basic[input_shape0-content0-UTF-8-replace-65533-False]",
+      "block_id": "CASE_03",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "total_elements为None导致比较错误，需要修正结果元素计数逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_basic[RaggedTensor-content1-ragged]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_encode_basic[input_shape1-content1-UTF-16-BE-ignore-65533]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_unicode_decode_basic[input_shape1-content1-UTF-8-strict-65533-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[Tensor-content0-,--1-expected_shape0]",
+      "reason": "字节字符串与普通字符串比较问题，需要修正断言"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_split_v2_basic[RaggedTensor-content1-None-1-ragged]",
+      "reason": "ragged_rank应为1但实际为2，需要修正断言"
+    },
+    {
+      "test": "TestRaggedStringOps.test_ngrams_basic[Tensor-content0-2- -None-None-False-expected_shape0]",
+      "reason": "输出应为RaggedTensor但实际为EagerTensor，需要修正断言"
+    },
+    {
+      "test": "TestRaggedStringOps.test_ngrams_basic[RaggedTensor-content1-3---PAD-2-True-ragged]",
+      "reason": "输出秩应为3但实际为2，需要修正断言"
+    },
+    {
+      "test": "TestRaggedStringOps.test_string_bytes_split_invalid_rank",
+      "reason": "未抛出预期的ValueError，需要修正测试逻辑"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

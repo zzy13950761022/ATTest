@@ -1,0 +1,212 @@
+import torch
+import pytest
+import numpy as np
+from typing import Callable, Tuple, Union
+import math
+from unittest.mock import patch, MagicMock
+
+# ==== BLOCK:HEADER START ====
+# Test file for torch.autograd.gradcheck - Advanced functionality tests
+# Group: G2 - Advanced features and exception handling
+# Target: torch.autograd.gradcheck
+# ==== BLOCK:HEADER END ====
+
+# Helper functions for test cases
+def simple_polynomial(x: torch.Tensor) -> torch.Tensor:
+    """Simple polynomial function: f(x) = x^3 + 2x^2 + 3x + 4"""
+    return x.pow(3) + 2 * x.pow(2) + 3 * x + 4
+
+def failing_function(x: torch.Tensor) -> torch.Tensor:
+    """Function that fails gradient check due to incorrect implementation"""
+    # This function has incorrect gradient implementation
+    # Using a non-linear operation without proper gradient implementation
+    # This will cause gradient check to fail
+    return x * 2 + x.detach() * 0.1  # detach() breaks gradient flow
+
+# Test class for advanced gradcheck functionality
+class TestGradcheckAdvanced:
+    """Test cases for advanced gradcheck functionality (Group G2)"""
+    
+    # ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("dtype,shape,sparse,eps,atol,rtol", [
+        (torch.float32, (4, 4), True, 1e-6, 1e-5, 0.001),  # Base case from param_matrix
+        (torch.float64, (6, 6), True, 1e-6, 1e-5, 0.001),  # Extension: large sparse tensor
+    ])
+    def test_sparse_tensor_gradient_check(self, dtype, shape, sparse, eps, atol, rtol):
+        """
+        TC-03: Sparse tensor gradient check
+        Test gradcheck with sparse tensor inputs.
+        
+        Weak assertions:
+        - returns_bool: gradcheck returns boolean
+        - no_exception: no exception raised during execution
+        - sparse_gradient_check: gradient check passes for sparse tensor
+        """
+        # Set random seed for reproducibility
+        torch.manual_seed(42)
+        
+        # Create sparse tensor
+        dense_tensor = torch.randn(*shape, dtype=dtype)
+        # Create sparse tensor with some zeros
+        indices = torch.tensor([[0, 1, 2], [0, 1, 2]], dtype=torch.long)
+        values = torch.tensor([1.0, 2.0, 3.0], dtype=dtype)
+        sparse_tensor = torch.sparse_coo_tensor(indices, values, shape, dtype=dtype)
+        sparse_tensor.requires_grad_(True)
+        
+        # Define a simple function that works with sparse tensors
+        # According to PyTorch documentation, gradcheck doesn't support sparse output
+        # We need to convert sparse output to dense
+        def sparse_safe_function(x):
+            # Use operations that are supported for sparse tensors
+            # x * x is supported for sparse tensors
+            # Convert sparse output to dense to avoid ValueError
+            result = x * x  # f(x) = x^2
+            # Convert sparse tensor to dense if needed
+            if result.is_sparse:
+                result = result.to_dense()
+            return result
+        
+        # Test with sparse tensor
+        result = torch.autograd.gradcheck(
+            func=sparse_safe_function,
+            inputs=(sparse_tensor,),
+            eps=eps,
+            atol=atol,
+            rtol=rtol,
+            raise_exception=True,
+            check_sparse_nnz=True,
+            check_backward_ad=True
+        )
+        
+        # Weak assertion: returns boolean
+        assert isinstance(result, bool), f"gradcheck should return bool, got {type(result)}"
+        
+        # Weak assertion: no exception raised (implied by successful execution)
+        # Weak assertion: gradient check should pass for sparse tensor with appropriate function
+        assert result is True, f"gradcheck should return True for sparse tensor with sparse-safe function. dtype={dtype}, shape={shape}"
+    # ==== BLOCK:CASE_03 END ====
+    
+    # ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("dtype,shape,eps,atol,rtol", [
+        (torch.float32, (2, 2), 1e-6, 1e-5, 0.001),  # Base case from param_matrix
+    ])
+    def test_exception_handling_raise_exception_behavior(self, dtype, shape, eps, atol, rtol):
+        """
+        TC-05: Exception handling: raise_exception behavior
+        Test gradcheck with raise_exception=False when gradient check fails.
+        
+        Weak assertions:
+        - returns_false: gradcheck returns False when gradient check fails
+        - no_exception_raised: no exception raised when raise_exception=False
+        - exception_handling: proper handling of gradient check failures
+        """
+        # Set random seed for reproducibility
+        torch.manual_seed(42)
+        
+        # Create input tensor
+        x = torch.randn(*shape, dtype=dtype)
+        x.requires_grad_(True)
+        
+        # Test with raise_exception=False when gradient check should fail
+        result = torch.autograd.gradcheck(
+            func=failing_function,
+            inputs=(x,),
+            eps=eps,
+            atol=atol,
+            rtol=rtol,
+            raise_exception=False,  # Should not raise exception
+            check_backward_ad=True
+        )
+        
+        # Weak assertion: returns False when gradient check fails
+        assert isinstance(result, bool), f"gradcheck should return bool, got {type(result)}"
+        assert result is False, f"gradcheck should return False for failing function. dtype={dtype}, shape={shape}"
+        
+        # Weak assertion: no exception raised (implied by successful execution)
+        # Weak assertion: exception handling works correctly
+        
+        # Additional test: verify that raise_exception=True would raise an exception
+        # According to PyTorch documentation and actual behavior, gradcheck raises RuntimeError
+        # when raise_exception=True and gradient check fails
+        with pytest.raises(RuntimeError) as exc_info:
+            torch.autograd.gradcheck(
+                func=failing_function,
+                inputs=(x,),
+                eps=eps,
+                atol=atol,
+                rtol=rtol,
+                raise_exception=True,  # Should raise exception
+                check_backward_ad=True
+            )
+        
+        # Verify exception contains useful information
+        assert "Jacobian mismatch" in str(exc_info.value) or "gradient" in str(exc_info.value).lower(), \
+            f"Exception should contain gradient mismatch information. Got: {exc_info.value}"
+    # ==== BLOCK:CASE_05 END ====
+    
+    # ==== BLOCK:CASE_06 START ====
+    @pytest.mark.parametrize("dtype,shape,eps,atol,rtol,fast_mode", [
+        (torch.float64, (3, 3), 1e-6, 1e-5, 0.001, True),  # Base case from param_matrix
+    ])
+    def test_fast_mode_verification(self, dtype, shape, eps, atol, rtol, fast_mode):
+        """
+        TC-06: Fast mode verification
+        Test gradcheck with fast_mode=True for real-valued functions.
+        
+        Weak assertions:
+        - returns_bool: gradcheck returns boolean
+        - no_exception: no exception raised during execution
+        - fast_mode_check: gradient check passes with fast_mode=True
+        """
+        # Set random seed for reproducibility
+        torch.manual_seed(42)
+        
+        # Create input tensor
+        x = torch.randn(*shape, dtype=dtype)
+        x.requires_grad_(True)
+        
+        # Test with fast_mode=True
+        result = torch.autograd.gradcheck(
+            func=simple_polynomial,
+            inputs=(x,),
+            eps=eps,
+            atol=atol,
+            rtol=rtol,
+            raise_exception=True,
+            fast_mode=fast_mode,
+            check_backward_ad=True
+        )
+        
+        # Weak assertion: returns boolean
+        assert isinstance(result, bool), f"gradcheck should return bool, got {type(result)}"
+        
+        # Weak assertion: no exception raised (implied by successful execution)
+        # Weak assertion: gradient check should pass with fast_mode=True
+        assert result is True, f"gradcheck should return True with fast_mode=True. dtype={dtype}, shape={shape}"
+        
+        # Additional test: verify fast_mode works only for real-valued functions
+        # Create complex input to test that fast_mode should not work
+        if dtype in [torch.complex64, torch.complex128]:
+            # Complex functions should not use fast_mode
+            # This is a negative test case
+            pass
+        else:
+            # For real-valued functions, fast_mode should work
+            # Test without fast_mode for comparison
+            result_slow = torch.autograd.gradcheck(
+                func=simple_polynomial,
+                inputs=(x,),
+                eps=eps,
+                atol=atol,
+                rtol=rtol,
+                raise_exception=True,
+                fast_mode=False,  # Slow mode
+                check_backward_ad=True
+            )
+            assert result_slow is True, f"gradcheck should also work in slow mode. dtype={dtype}, shape={shape}"
+    # ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

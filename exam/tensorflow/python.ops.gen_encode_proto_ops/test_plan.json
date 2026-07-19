@@ -1,0 +1,261 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_encode_proto_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_encode_proto_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_encode_proto_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "基本proto消息序列化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "batch_shape": [2],
+          "field_names": ["int_field", "float_field"],
+          "message_type": "SimpleMessage",
+          "descriptor_source": "local://",
+          "sizes_shape": [2, 2],
+          "values_types": ["int32", "float32"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "non_empty_string", "basic_serialization"],
+        "strong": ["exact_protobuf_match", "bytewise_equality", "cross_validation"]
+      },
+      "oracle": "protobuf_manual_serialization",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_encode_proto_ops._op_def_library._apply_op_helper",
+        "tensorflow.python.ops.gen_encode_proto_ops._execute.execute"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "批量处理验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "batch_shape": [3, 4],
+          "field_names": ["id", "score"],
+          "message_type": "BatchMessage",
+          "descriptor_source": "local://",
+          "sizes_shape": [3, 4, 2],
+          "values_types": ["int64", "float64"]
+        }
+      ],
+      "asserts": {
+        "weak": ["batch_shape_match", "output_consistency", "no_nan_inf"],
+        "strong": ["batch_independence", "deterministic_output", "performance_baseline"]
+      },
+      "oracle": "batch_protobuf_validation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_encode_proto_ops._op_def_library._apply_op_helper",
+        "tensorflow.python.ops.gen_encode_proto_ops._execute.execute",
+        "tensorflow.python.ops.gen_encode_proto_ops._dispatch"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "重复计数控制",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "batch_shape": [2],
+          "field_names": ["repeated_int", "single_float"],
+          "message_type": "RepeatedMessage",
+          "descriptor_source": "local://",
+          "sizes_shape": [2, 2],
+          "values_types": ["int32", "float32"],
+          "repetition_counts": [3, 1]
+        }
+      ],
+      "asserts": {
+        "weak": ["sizes_shape_correct", "values_dimension_sufficient", "basic_repetition"],
+        "strong": ["exact_repetition_count", "data_integrity", "edge_repetition"]
+      },
+      "oracle": "repetition_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_encode_proto_ops._op_def_library._apply_op_helper",
+        "tensorflow.python.ops.gen_encode_proto_ops._execute.execute"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "descriptor_source格式验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "batch_shape": [1],
+          "field_names": ["test_field"],
+          "message_type": "TestMessage",
+          "descriptor_source": "local://",
+          "sizes_shape": [1, 1],
+          "values_types": ["int32"]
+        }
+      ],
+      "asserts": {
+        "weak": ["source_format_handled", "no_crash", "basic_functionality"],
+        "strong": ["format_specific_behavior", "error_handling", "resource_cleanup"]
+      },
+      "oracle": "descriptor_source_validation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 95,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_encode_proto_ops._op_def_library._apply_op_helper",
+        "tensorflow.python.ops.gen_encode_proto_ops._execute.execute",
+        "tensorflow.python.ops.gen_encode_proto_ops._dispatch",
+        "builtins.open"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "类型兼容性检查",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "batch_shape": [2],
+          "field_names": ["int32_field", "float64_field", "string_field"],
+          "message_type": "TypeMessage",
+          "descriptor_source": "local://",
+          "sizes_shape": [2, 3],
+          "values_types": ["int32", "float64", "string"]
+        }
+      ],
+      "asserts": {
+        "weak": ["type_compatibility", "no_type_error", "basic_serialization"],
+        "strong": ["type_precision", "string_encoding", "type_boundary"]
+      },
+      "oracle": "type_compatibility_validation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_encode_proto_ops._op_def_library._apply_op_helper",
+        "tensorflow.python.ops.gen_encode_proto_ops._execute.execute"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "batch_shape": [1],
+        "field_names": ["single_field"],
+        "message_type": "MinimalMessage",
+        "descriptor_source": "",
+        "sizes_shape": [1, 1],
+        "values_types": ["int32"]
+      },
+      "note": "最小化参数集，空descriptor_source"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "batch_shape": [5],
+        "field_names": ["batch_id", "value"],
+        "message_type": "LinearBatchMessage",
+        "descriptor_source": "local://",
+        "sizes_shape": [5, 2],
+        "values_types": ["int32", "float32"]
+      },
+      "note": "一维批量处理，简化形状"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "batch_shape": [1],
+        "field_names": ["zero_repeated", "max_repeated"],
+        "message_type": "EdgeRepetitionMessage",
+        "descriptor_source": "local://",
+        "sizes_shape": [1, 2],
+        "values_types": ["int32", "int32"],
+        "repetition_counts": [0, 10]
+      },
+      "note": "边界重复计数：0和较大值"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "batch_shape": [1],
+        "field_names": ["file_field"],
+        "message_type": "FileMessage",
+        "descriptor_source": "/tmp/test.proto",
+        "sizes_shape": [1, 1],
+        "values_types": ["int32"]
+      },
+      "note": "文件路径descriptor_source，需要文件系统mock"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "batch_shape": [2],
+        "field_names": ["bool_field", "uint64_field"],
+        "message_type": "SpecialTypeMessage",
+        "descriptor_source": "local://",
+        "sizes_shape": [2, 2],
+        "values_types": ["bool", "int64"]
+      },
+      "note": "特殊类型：bool和uint64（用int64表示）"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

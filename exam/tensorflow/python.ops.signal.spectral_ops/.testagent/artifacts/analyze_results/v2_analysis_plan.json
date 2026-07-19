@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_stft_perfect_reconstruction[dtype0-cpu-signal_shape0-32-16-32-False-hann_window]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "重建误差过大(0.829)，需要调整断言容差或检查STFT/ISTFT实现"
+    },
+    {
+      "test": "test_stft_perfect_reconstruction[dtype1-cpu-signal_shape1-48-24-48-False-hann_window]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "重建误差过大(0.518)，需要调整断言容差或检查STFT/ISTFT实现"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "与上一轮(v2)失败集合完全重复：相同的2个测试用例在CASE_03上失败，错误类型和数值相同"
+}

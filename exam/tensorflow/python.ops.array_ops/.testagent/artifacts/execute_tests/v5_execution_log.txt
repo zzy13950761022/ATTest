@@ -1,0 +1,499 @@
+=== Run Tests ===
+FFFFFFF....F                                                             [100%]
+================================== FAILURES ===================================
+___ test_reshape_basic_shape_transform[input_shape0-target_shape0-float32] ____
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600894730192'>, 'constant': <MagicMock name='mock.constant' id='26008...ock.convert_to_tensor' id='2600894678400'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600894722400'>, ...}
+input_shape = [2, 3], target_shape = [6], dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shape,target_shape,dtype", [
+        ([2, 3], [6], np.float32),  # 基本形状变换
+        ([4, 4], [2, 8], np.float64),  # 参数扩展：不同形状和数据类型
+    ])
+    def test_reshape_basic_shape_transform(mock_tensor_ops, input_shape, target_shape, dtype):
+        """测试reshape基本形状变换"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+        expected_values = input_values.reshape(target_shape)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_reshape = mocks['reshape']
+        mock_set_shape = mocks['set_shape']
+    
+        # 模拟reshape操作返回结果
+        result_tensor = create_mock_tensor(target_shape, dtype, expected_values)
+        mock_reshape.return_value = result_tensor
+    
+        # 调用被测试函数
+>       result = array_ops.reshape(input_tensor, target_shape)
+
+tests\test_tensorflow_python_ops_array_ops.py:154: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+op_name = b'Reshape', num_outputs = 1
+inputs = [<tf.Tensor: shape=(2, 0), dtype=float32, numpy=array([], shape=(2, 0), dtype=float32)>, <tf.Tensor: shape=(1,), dtype=int32, numpy=array([6])>]
+attrs = ('T', 1, 'Tshape', 3)
+ctx = <tensorflow.python.eager.context.Context object at 0x0000025D8A12B400>
+name = None
+
+    def quick_execute(op_name, num_outputs, inputs, attrs, ctx, name=None):
+      """Execute a TensorFlow operation.
+    
+      Args:
+        op_name: Name of the TensorFlow operation (see REGISTER_OP in C++ code) to
+          execute.
+        num_outputs: The number of outputs of the operation to fetch. (Explicitly
+          provided instead of being inferred for performance reasons).
+        inputs: A list of inputs to the operation. Each entry should be a Tensor, or
+          a value which can be passed to the Tensor constructor to create one.
+        attrs: A tuple with alternating string attr names and attr values for this
+          operation.
+        ctx: The value of context.context().
+        name: Customized name for the operation.
+    
+      Returns:
+        List of output Tensor objects. The list is empty if there are no outputs
+    
+      Raises:
+        An exception on error.
+      """
+      device_name = ctx.device_name
+      # pylint: disable=protected-access
+      try:
+        ctx.ensure_initialized()
+>       tensors = pywrap_tfe.TFE_Py_Execute(ctx._handle, device_name, op_name,
+                                            inputs, attrs, num_outputs)
+E                                           tensorflow.python.framework.errors_impl.InvalidArgumentError: Input to reshape is a tensor with 0 values, but the requested shape has 6 [Op:Reshape]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\execute.py:54: InvalidArgumentError
+---------------------------- Captured stderr call -----------------------------
+2026-01-21 10:49:18.579711: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+___ test_reshape_basic_shape_transform[input_shape1-target_shape1-float64] ____
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600914081632'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600914549632'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914098352'>, ...}
+input_shape = [4, 4], target_shape = [2, 8], dtype = <class 'numpy.float64'>
+
+    @pytest.mark.parametrize("input_shape,target_shape,dtype", [
+        ([2, 3], [6], np.float32),  # 基本形状变换
+        ([4, 4], [2, 8], np.float64),  # 参数扩展：不同形状和数据类型
+    ])
+    def test_reshape_basic_shape_transform(mock_tensor_ops, input_shape, target_shape, dtype):
+        """测试reshape基本形状变换"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+        expected_values = input_values.reshape(target_shape)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_reshape = mocks['reshape']
+        mock_set_shape = mocks['set_shape']
+    
+        # 模拟reshape操作返回结果
+        result_tensor = create_mock_tensor(target_shape, dtype, expected_values)
+        mock_reshape.return_value = result_tensor
+    
+        # 调用被测试函数
+>       result = array_ops.reshape(input_tensor, target_shape)
+
+tests\test_tensorflow_python_ops_array_ops.py:154: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+op_name = b'Reshape', num_outputs = 1
+inputs = [<tf.Tensor: shape=(4, 0), dtype=float32, numpy=array([], shape=(4, 0), dtype=float32)>, <tf.Tensor: shape=(2,), dtype=int32, numpy=array([2, 8])>]
+attrs = ('T', 1, 'Tshape', 3)
+ctx = <tensorflow.python.eager.context.Context object at 0x0000025D8A12B400>
+name = None
+
+    def quick_execute(op_name, num_outputs, inputs, attrs, ctx, name=None):
+      """Execute a TensorFlow operation.
+    
+      Args:
+        op_name: Name of the TensorFlow operation (see REGISTER_OP in C++ code) to
+          execute.
+        num_outputs: The number of outputs of the operation to fetch. (Explicitly
+          provided instead of being inferred for performance reasons).
+        inputs: A list of inputs to the operation. Each entry should be a Tensor, or
+          a value which can be passed to the Tensor constructor to create one.
+        attrs: A tuple with alternating string attr names and attr values for this
+          operation.
+        ctx: The value of context.context().
+        name: Customized name for the operation.
+    
+      Returns:
+        List of output Tensor objects. The list is empty if there are no outputs
+    
+      Raises:
+        An exception on error.
+      """
+      device_name = ctx.device_name
+      # pylint: disable=protected-access
+      try:
+        ctx.ensure_initialized()
+>       tensors = pywrap_tfe.TFE_Py_Execute(ctx._handle, device_name, op_name,
+                                            inputs, attrs, num_outputs)
+E                                           tensorflow.python.framework.errors_impl.InvalidArgumentError: Input to reshape is a tensor with 0 values, but the requested shape has 16 [Op:Reshape]
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\eager\execute.py:54: InvalidArgumentError
+________ test_expand_dims_dimension_insertion[input_shape0-0-float32] _________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600914215504'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600914384016'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914359344'>, ...}
+input_shape = [10, 10, 3], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shape,axis,dtype", [
+        ([10, 10, 3], 0, np.float32),  # 在轴0插入维度
+        ([5], -1, np.int32),  # 参数扩展：负轴索引和整数类型
+    ])
+    def test_expand_dims_dimension_insertion(mock_tensor_ops, input_shape, axis, dtype):
+        """测试expand_dims维度插入"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    
+        # 计算期望形状
+        expected_shape = list(input_shape)
+        if axis >= 0:
+            expected_shape.insert(axis, 1)
+        else:
+            expected_shape.insert(axis + len(input_shape) + 1, 1)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_expand_dims = mocks['expand_dims']
+    
+        # 模拟expand_dims操作返回结果
+        expected_values = np.expand_dims(input_values, axis)
+        result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+        mock_expand_dims.return_value = result_tensor
+    
+        # 调用被测试函数
+        result = array_ops.expand_dims(input_tensor, axis)
+    
+        # 验证调用
+>       mock_expand_dims.assert_called_once()
+
+tests\test_tensorflow_python_ops_array_ops.py:207: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.expand_dims' id='2600914359344'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'expand_dims' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+_________ test_expand_dims_dimension_insertion[input_shape1--1-int32] _________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600914857600'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600915407728'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914845600'>, ...}
+input_shape = [5], axis = -1, dtype = <class 'numpy.int32'>
+
+    @pytest.mark.parametrize("input_shape,axis,dtype", [
+        ([10, 10, 3], 0, np.float32),  # 在轴0插入维度
+        ([5], -1, np.int32),  # 参数扩展：负轴索引和整数类型
+    ])
+    def test_expand_dims_dimension_insertion(mock_tensor_ops, input_shape, axis, dtype):
+        """测试expand_dims维度插入"""
+        # 准备测试数据
+        input_values = np.arange(np.prod(input_shape), dtype=dtype).reshape(input_shape)
+    
+        # 计算期望形状
+        expected_shape = list(input_shape)
+        if axis >= 0:
+            expected_shape.insert(axis, 1)
+        else:
+            expected_shape.insert(axis + len(input_shape) + 1, 1)
+    
+        # 创建模拟Tensor
+        input_tensor = create_mock_tensor(input_shape, dtype, input_values)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_expand_dims = mocks['expand_dims']
+    
+        # 模拟expand_dims操作返回结果
+        expected_values = np.expand_dims(input_values, axis)
+        result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+        mock_expand_dims.return_value = result_tensor
+    
+        # 调用被测试函数
+        result = array_ops.expand_dims(input_tensor, axis)
+    
+        # 验证调用
+>       mock_expand_dims.assert_called_once()
+
+tests\test_tensorflow_python_ops_array_ops.py:207: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.expand_dims' id='2600914845600'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'expand_dims' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+__________ test_concat_tensor_concatenation[input_shapes0-0-float32] __________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600914031424'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600914144656'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914019280'>, ...}
+input_shapes = [[2, 3], [2, 3]], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0连接
+        ([[3, 2], [3, 2]], 1, np.float64),  # 参数扩展：不同连接轴和数据类型
+    ])
+    def test_concat_tensor_concatenation(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试concat张量连接"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        expected_shape[axis] = sum(shape[axis] for shape in input_shapes)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_concat = mocks['concat']
+        mock_convert_tensor = mocks['convert_tensor']
+    
+        # 模拟concat操作返回结果
+        expected_values = np.concatenate(input_values_list, axis=axis)
+        result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+        mock_concat.return_value = result_tensor
+    
+        # 调用被测试函数
+        result = array_ops.concat(input_tensors, axis)
+    
+        # 验证调用
+>       mock_concat.assert_called_once()
+
+tests\test_tensorflow_python_ops_array_ops.py:258: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.concat_v2' id='2600914031424'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'concat_v2' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+__________ test_concat_tensor_concatenation[input_shapes1-1-float64] __________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600914069392'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600914088384'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914053296'>, ...}
+input_shapes = [[3, 2], [3, 2]], axis = 1, dtype = <class 'numpy.float64'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0连接
+        ([[3, 2], [3, 2]], 1, np.float64),  # 参数扩展：不同连接轴和数据类型
+    ])
+    def test_concat_tensor_concatenation(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试concat张量连接"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        expected_shape[axis] = sum(shape[axis] for shape in input_shapes)
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_concat = mocks['concat']
+        mock_convert_tensor = mocks['convert_tensor']
+    
+        # 模拟concat操作返回结果
+        expected_values = np.concatenate(input_values_list, axis=axis)
+        result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+        mock_concat.return_value = result_tensor
+    
+        # 调用被测试函数
+        result = array_ops.concat(input_tensors, axis)
+    
+        # 验证调用
+>       mock_concat.assert_called_once()
+
+tests\test_tensorflow_python_ops_array_ops.py:258: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.concat_v2' id='2600914069392'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'concat_v2' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+_____________ test_stack_tensor_stacking[input_shapes0-0-float32] _____________
+
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600894697584'>, 'constant': <MagicMock name='mock.constant' id='26008...ock.convert_to_tensor' id='2600894866768'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600894771600'>, ...}
+input_shapes = [[2, 3], [2, 3]], axis = 0, dtype = <class 'numpy.float32'>
+
+    @pytest.mark.parametrize("input_shapes,axis,dtype", [
+        ([[2, 3], [2, 3]], 0, np.float32),  # 沿轴0堆叠
+    ])
+    def test_stack_tensor_stacking(mock_tensor_ops, input_shapes, axis, dtype):
+        """测试stack张量堆叠"""
+        # 准备测试数据
+        input_tensors = []
+        input_values_list = []
+    
+        for i, shape in enumerate(input_shapes):
+            values = np.arange(np.prod(shape), dtype=dtype).reshape(shape) + i * 100
+            input_values_list.append(values)
+            tensor = create_mock_tensor(shape, dtype, values)
+            input_tensors.append(tensor)
+    
+        # 计算期望形状
+        expected_shape = list(input_shapes[0])
+        # 使用input_shapes[0]的长度来计算插入位置
+        if axis >= 0:
+            expected_shape.insert(axis, len(input_shapes))
+        else:
+            expected_shape.insert(axis + len(input_shapes[0]) + 1, len(input_shapes))
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+    
+        # 配置mock
+        mock_pack = mocks['pack']
+        mock_convert_tensor = mocks['convert_tensor']
+    
+        # 模拟stack操作返回结果
+        expected_values = np.stack(input_values_list, axis=axis)
+        result_tensor = create_mock_tensor(expected_shape, dtype, expected_values)
+        mock_pack.return_value = result_tensor
+    
+        # 调用被测试函数
+        result = array_ops.stack(input_tensors, axis)
+    
+        # 验证调用
+>       mock_pack.assert_called_once()
+
+tests\test_tensorflow_python_ops_array_ops.py:319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.pack' id='2600894697232'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'pack' to have been called once. Called 0 times.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:886: AssertionError
+_________________ TestArrayOps.test_stack_incompatible_shapes _________________
+
+self = <test_tensorflow_python_ops_array_ops.TestArrayOps object at 0x0000025D9164DC70>
+mock_tensor_ops = {'concat': <MagicMock name='mock.concat_v2' id='2600894655888'>, 'constant': <MagicMock name='mock.constant' id='26009...ock.convert_to_tensor' id='2600915037056'>, 'expand_dims': <MagicMock name='mock.expand_dims' id='2600914468192'>, ...}
+
+    def test_stack_incompatible_shapes(self, mock_tensor_ops):
+        """测试stack不兼容形状"""
+        tensor1 = create_mock_tensor([2, 3], np.float32)
+        tensor2 = create_mock_tensor([2, 4], np.float32)  # 不兼容形状
+    
+        # 使用mock_tensor_ops字典（不再是上下文管理器）
+        mocks = mock_tensor_ops
+        mock_pack = mocks['pack']
+    
+        # 模拟InvalidArgumentError
+        mock_pack.side_effect = tf.errors.InvalidArgumentError(
+            None, None, "Shapes of all inputs must match"
+        )
+    
+        # 验证异常被抛出
+        with pytest.raises(tf.errors.InvalidArgumentError):
+>           array_ops.stack([tensor1, tensor2], 0)
+E           Failed: DID NOT RAISE <class 'tensorflow.python.framework.errors_impl.InvalidArgumentError'>
+
+tests\test_tensorflow_python_ops_array_ops.py:429: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_array_ops.py     189     37     22      3    79%   62->61, 90, 114-125, 157-169, 208-216, 259-274, 301, 320-338
+-------------------------------------------------------------------------------------------
+TOTAL                                             189     37     22      3    79%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape0-target_shape0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape1-target_shape1-float64]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape1--1-int32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes1-1-float64]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::test_stack_tensor_stacking[input_shapes0-0-float32]
+FAILED tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_stack_incompatible_shapes
+8 failed, 4 passed in 1.86s
+
+Error: exit 1

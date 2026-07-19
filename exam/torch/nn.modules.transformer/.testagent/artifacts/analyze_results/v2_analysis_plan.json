@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 7,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_transformer_encoder_norm",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "TransformerEncoder的norm属性为None，需要修复norm层的初始化"
+    },
+    {
+      "test": "test_transformer_decoder_norm",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "TransformerDecoder的norm属性为None，需要修复norm层的初始化"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

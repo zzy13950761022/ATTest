@@ -1,0 +1,416 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.init",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_init.py",
+    "all_pattern": "tests/test_torch_nn_init_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_init_g1.py",
+      "G2": "tests/test_torch_nn_init_g2.py",
+      "G3": "tests/test_torch_nn_init_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础分布初始化",
+      "entrypoints": ["uniform_", "normal_", "constant_", "ones_", "zeros_"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试均匀分布、正态分布和常数初始化"
+    },
+    {
+      "group_id": "G2",
+      "title": "自适应初始化策略",
+      "entrypoints": ["xavier_uniform_", "xavier_normal_", "kaiming_uniform_", "kaiming_normal_"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08"],
+      "note": "测试Xavier和Kaiming初始化方法"
+    },
+    {
+      "group_id": "G3",
+      "title": "特殊初始化函数",
+      "entrypoints": ["eye_", "dirac_", "sparse_", "orthogonal_"],
+      "smoke_set": ["CASE_09"],
+      "deferred_set": ["CASE_10", "CASE_11"],
+      "note": "测试特殊矩阵和稀疏初始化"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "uniform_基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 4],
+          "a": 0.0,
+          "b": 1.0,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "in_range"],
+        "strong": ["distribution_uniform", "mean_approx", "variance_approx"]
+      },
+      "oracle": "torch.rand",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "normal_基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 5],
+          "mean": 0.0,
+          "std": 1.0,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "not_all_zero"],
+        "strong": ["distribution_normal", "mean_approx", "std_approx"]
+      },
+      "oracle": "torch.randn",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "constant_和ones_zeros_测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 3],
+          "val": 5.0,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "all_equal"],
+        "strong": ["exact_value", "no_gradient"]
+      },
+      "oracle": "torch.full",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "基础函数边界测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [1, 1],
+          "flags": ["edge_case"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["edge_behavior", "warning_check"]
+      },
+      "oracle": "manual",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "xavier_uniform_基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 6],
+          "gain": 1.0,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "in_range"],
+        "strong": ["fan_calculation", "variance_bound"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "kaiming_uniform_基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [5, 3],
+          "mode": "fan_in",
+          "nonlinearity": "relu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "in_range"],
+        "strong": ["fan_calculation", "nonlinearity_gain"]
+      },
+      "oracle": "manual_calculation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "自适应初始化参数组合",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float64",
+          "device": "cpu",
+          "shape": [3, 7],
+          "mode": "fan_out",
+          "nonlinearity": "leaky_relu",
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["parameter_combinations", "gain_calculation"]
+      },
+      "oracle": "calculate_gain",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G2",
+      "name": "自适应初始化边界测试",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2],
+          "flags": ["small_shape"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["small_shape_behavior", "fan_calculation_edge"]
+      },
+      "oracle": "manual",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "eye_和dirac_基础测试",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [3, 3],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "eye_pattern"],
+        "strong": ["exact_eye", "dirac_properties"]
+      },
+      "oracle": "torch.eye",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 75,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "sparse_和orthogonal_测试",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [4, 4],
+          "sparsity": 0.5,
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "sparsity_approx"],
+        "strong": ["orthogonality", "sparse_pattern"]
+      },
+      "oracle": "manual",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-11",
+      "block_id": "CASE_11",
+      "group_id": "G3",
+      "name": "特殊函数维度边界",
+      "priority": "Low",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "device": "cpu",
+          "shape": [2, 2, 3],
+          "flags": ["dimension_check"]
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite"],
+        "strong": ["dimension_validation", "error_handling"]
+      },
+      "oracle": "manual",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [5, 5],
+        "a": -1.0,
+        "b": 1.0,
+        "flags": ["different_range"]
+      },
+      "note": "作为uniform_参数扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [3, 3],
+        "mean": 2.0,
+        "std": 0.5,
+        "flags": ["different_params"]
+      },
+      "note": "作为normal_参数扩展"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [6, 4],
+        "gain": 2.0,
+        "flags": ["different_gain"]
+      },
+      "note": "作为xavier_uniform_参数扩展"
+    },
+    {
+      "base_block_id": "CASE_06",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "device": "cpu",
+        "shape": [4, 8],
+        "mode": "fan_out",
+        "nonlinearity": "tanh",
+        "flags": ["different_mode"]
+      },
+      "note": "作为kaiming_uniform_参数扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_06", "CASE_09"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_07", "CASE_08", "CASE_10", "CASE_11"]
+}

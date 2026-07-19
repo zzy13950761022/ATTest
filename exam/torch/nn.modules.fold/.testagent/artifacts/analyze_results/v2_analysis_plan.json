@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 3,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_unfold_basic_tuple_params[kernel_size0-stride0-padding0-dilation0-2-3-4-6-dtype0-cpu]",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "Unfold模块未将列表参数转换为元组，需要调整参数验证逻辑"
+    },
+    {
+      "test": "test_unfold_basic_tuple_params[kernel_size1-stride1-padding1-dilation1-2-3-4-6-dtype1-cpu]",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "与第一个失败相同，修复CASE_06可解决"
+    },
+    {
+      "test": "test_unfold_edge_conditions[kernel_size0-stride0-padding0-dilation0-1-1-2-2-dtype0-cpu]",
+      "block_id": "CASE_07",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "同样的问题：Unfold模块未将列表参数转换为元组"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,60 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 1,
+  "errors": 9,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_invalid_inputs",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "fix_dependency",
+      "note": "tf_session fixture在teardown时调用reset_default_graph()导致AssertionError"
+    },
+    {
+      "test": "test_invalid_inputs",
+      "block_id": "CASE_06",
+      "error_type": "Failed",
+      "action": "add_case",
+      "note": "错误输入测试失败：splits[0] != 0未触发预期异常"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_row_splits_to_segment_ids_basic[splits0-dtype0-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_row_splits_to_segment_ids_basic[splits1-dtype1-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_row_splits_to_segment_ids_basic[splits2-dtype2-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_segment_ids_to_row_splits_basic[segment_ids0-dtype0-None-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_segment_ids_to_row_splits_basic[segment_ids1-dtype1-None-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_segment_ids_to_row_splits_basic[segment_ids2-dtype2-6-None-None]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_inverse_operations[splits0-dtype0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_name_parameter",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

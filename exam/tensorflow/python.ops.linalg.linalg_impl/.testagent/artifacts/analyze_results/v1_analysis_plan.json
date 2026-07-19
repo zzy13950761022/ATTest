@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLinalgImpl.test_logdet_hermitian_positive_definite",
+      "block_id": "CASE_01",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "tf.random.normal不支持complex128，需要修改测试数据生成逻辑"
+    },
+    {
+      "test": "TestLinalgImpl.test_matrix_exponential_numerical_stability",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "float32数值精度容差过小，需要放宽容差设置"
+    },
+    {
+      "test": "TestLinalgImpl.test_tridiagonal_solve_formats_compatibility",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "tridiagonal_solve期望张量输入，需要修改输入格式"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

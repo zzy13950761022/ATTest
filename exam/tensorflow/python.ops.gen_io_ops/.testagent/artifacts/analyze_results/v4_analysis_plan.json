@@ -1,0 +1,68 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 2,
+  "errors": 10,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_invalid_file_path",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python不存在，需要修复mock_tensorflow_execution fixture中的导入路径"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_unsupported_eager_mode",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "相同的mock路径错误，依赖HEADER修复"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_reader_creation_and_basic_read[TFRecordReader-test.tfrecord--graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_reader_creation_and_basic_read[TFRecordReader-test.tfrecord-GZIP-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_reader_creation_and_basic_read[TextLineReader-test.txt--graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_file_operations[ReadFile-test.txt-test content-eager]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_file_operations[WriteFile-output.txt-test content-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_checkpoint_operations[SaveV2-checkpoint.ckpt-test_tensor-tensor_shape0-float32-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_checkpoint_operations[RestoreV2-checkpoint.ckpt-test_tensor-tensor_shape1-float32-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_fixed_length_record_reader[FixedLengthRecordReader-fixed_length.bin-100-0-0-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_fixed_length_record_reader[FixedLengthRecordReader-fixed_length.bin-100-10-5-graph]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_gen_io_ops.py::test_matching_files_operation[MatchingFiles-test_*.txt-matched_files0-eager]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": true,
+  "stop_reason": "所有测试因相同的AttributeError失败，且与上一轮错误完全重复。mock路径'tensorflow.python.ops.gen_io_ops'在TensorFlow 2.x中不存在，需要重新设计mock策略。"
+}

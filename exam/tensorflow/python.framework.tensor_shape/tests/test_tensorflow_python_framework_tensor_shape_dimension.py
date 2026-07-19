@@ -1,0 +1,141 @@
+"""
+测试 tensorflow.python.framework.tensor_shape 模块中的 Dimension 类
+"""
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import tensor_shape
+
+# ==== BLOCK:HEADER START ====
+"""
+测试 tensorflow.python.framework.tensor_shape 模块中的 Dimension 类
+"""
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import tensor_shape
+
+# 设置随机种子以确保测试可重复性
+import random
+import numpy as np
+random.seed(42)
+np.random.seed(42)
+
+# 测试 Dimension 类的基本功能
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize(
+    "value,expected_value",
+    [
+        (5, 5),
+        (0, 0),
+        (None, None),
+    ]
+)
+def test_dimension_construction_and_properties(value, expected_value):
+    """测试 Dimension 基本构造与属性"""
+    # 创建 Dimension 对象
+    dim = tensor_shape.Dimension(value)
+    
+    # 验证 value 属性
+    assert dim.value == expected_value
+    
+    # 验证 is_known 属性
+    if value is None:
+        assert not dim.is_known
+    else:
+        assert dim.is_known
+    
+    # 验证相等性
+    # 相同值的 Dimension 应该相等
+    dim2 = tensor_shape.Dimension(value)
+    assert dim == dim2
+    assert not (dim != dim2)
+    
+    # 验证与整数的比较
+    if value is not None:
+        assert dim == value
+        assert value == dim
+        assert not (dim != value)
+        assert not (value != dim)
+    
+    # 验证与 None 的比较
+    if value is None:
+        assert dim == None  # noqa: E711
+        assert None == dim  # noqa: E711
+    else:
+        assert dim != None  # noqa: E711
+        assert None != dim  # noqa: E711
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize(
+    "value1,value2,op,expected",
+    [
+        (3, 4, "add", 7),
+        (3, 4, "mul", 12),
+        (None, 5, "add", None),
+    ]
+)
+def test_dimension_arithmetic_operations(value1, value2, op, expected):
+    """测试 Dimension 算术运算"""
+    # 创建 Dimension 对象
+    dim1 = tensor_shape.Dimension(value1)
+    dim2 = tensor_shape.Dimension(value2)
+    
+    # 执行运算
+    if op == "add":
+        result = dim1 + dim2
+    elif op == "mul":
+        result = dim1 * dim2
+    else:
+        pytest.fail(f"未知操作: {op}")
+    
+    # 验证运算结果
+    if expected is None:
+        assert result.value is None
+    else:
+        assert result.value == expected
+    
+    # 验证结果类型
+    assert isinstance(result, tensor_shape.Dimension)
+    
+    # 验证运算的对称性（对于已知维度）
+    if value1 is not None and value2 is not None:
+        if op == "add":
+            # 加法交换律
+            assert dim1 + dim2 == dim2 + dim1
+            # 加法结合律
+            dim3 = tensor_shape.Dimension(2)
+            assert (dim1 + dim2) + dim3 == dim1 + (dim2 + dim3)
+        elif op == "mul":
+            # 乘法交换律
+            assert dim1 * dim2 == dim2 * dim1
+            # 乘法结合律
+            dim3 = tensor_shape.Dimension(2)
+            assert (dim1 * dim2) * dim3 == dim1 * (dim2 * dim3)
+    
+    # 验证与整数的运算
+    if value1 is not None and value2 is not None:
+        if op == "add":
+            # Dimension + int
+            assert dim1 + value2 == expected
+            # int + Dimension
+            assert value1 + dim2 == expected
+        elif op == "mul":
+            # Dimension * int
+            assert dim1 * value2 == expected
+            # int * Dimension
+            assert value1 * dim2 == expected
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Dimension 高级功能测试（deferred）
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Dimension 边缘情况测试（deferred）
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试结束
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,245 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.signal.fft_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_signal_fft_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_signal_fft_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "fftshift基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [10],
+          "axes": null,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_numpy", "inverse_property"]
+      },
+      "oracle": "numpy.fft.fftshift",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "fft/ifft互逆性验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "complex64",
+          "shape": [8],
+          "axes": null,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_original", "hermitian_symmetry"]
+      },
+      "oracle": "numpy.fft.fft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "rfft/irfft实数变换验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [8],
+          "fft_length": 8,
+          "axes": null,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_numpy", "gradient_correctness"]
+      },
+      "oracle": "numpy.fft.rfft",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "不同轴参数处理验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [4, 4],
+          "axes": 0,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_numpy", "axis_specific"]
+      },
+      "oracle": "numpy.fft.fftshift",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "边界情况处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "dtype": "float32",
+          "shape": [1],
+          "axes": null,
+          "name": null
+        }
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_numpy", "edge_case_handling"]
+      },
+      "oracle": "numpy.fft.fftshift",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [12],
+        "axes": null,
+        "name": null
+      },
+      "note": "作为参数扩展：不同数据类型"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "shape": [6, 6],
+        "axes": [0, 1],
+        "name": null
+      },
+      "note": "作为参数扩展：2D张量和多轴"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "dtype": "complex128",
+        "shape": [16],
+        "axes": null,
+        "name": null
+      },
+      "note": "作为参数扩展：不同复数精度"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "dtype": "complex64",
+        "shape": [4, 4],
+        "axes": null,
+        "name": null
+      },
+      "note": "作为参数扩展：2D复数FFT"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float64",
+        "shape": [16],
+        "fft_length": 16,
+        "axes": null,
+        "name": null
+      },
+      "note": "作为参数扩展：不同实数精度"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "shape": [3, 3, 3],
+        "axes": -1,
+        "name": null
+      },
+      "note": "作为参数扩展：3D张量和负轴索引"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "dtype": "float32",
+        "shape": [],
+        "axes": null,
+        "name": null
+      },
+      "note": "作为参数扩展：空张量"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

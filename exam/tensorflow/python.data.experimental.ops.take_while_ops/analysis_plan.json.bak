@@ -1,0 +1,47 @@
+{
+  "status": "成功",
+  "passed": 8,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_take_while_predicate_returns_non_boolean",
+      "block_id": "CASE_06",
+      "error_type": "AssertionError",
+      "action": "add_case",
+      "note": "覆盖率缺口：错误消息验证分支未执行"
+    },
+    {
+      "test": "test_take_while_function_type_and_deprecation",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "覆盖率缺口：警告检查分支未完全覆盖"
+    },
+    {
+      "test": "test_take_while_wraps_predicate_correctly",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "覆盖率缺口：部分断言分支未执行"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_take_while_with_tensorflow_bool_scalar",
+      "reason": "deferred_set中的测试，按计划跳过"
+    },
+    {
+      "test": "test_take_while_predicate_returns_non_scalar_bool_tensor",
+      "reason": "deferred_set中的测试，按计划跳过"
+    },
+    {
+      "test": "test_take_while_with_empty_dataset",
+      "reason": "deferred_set中的测试，按计划跳过"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

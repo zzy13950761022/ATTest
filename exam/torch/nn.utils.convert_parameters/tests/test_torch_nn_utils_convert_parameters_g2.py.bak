@@ -1,0 +1,393 @@
+import torch
+import pytest
+import numpy as np
+from torch.nn.utils import convert_parameters
+
+# ==== BLOCK:HEADER START ====
+import torch
+import pytest
+import numpy as np
+from torch.nn.utils import convert_parameters
+
+# Set random seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+
+# Test file for torch.nn.utils.convert_parameters
+# 
+# This file contains tests for:
+# - parameters_to_vector: converts parameters to a single vector
+# - vector_to_parameters: converts a vector back to parameters
+# 
+# Test groups:
+# - G1: parameters_to_vector function family
+# - G2: vector_to_parameters function family
+# 
+# Current active group: G2 (vector_to_parameters)
+# 
+# Test plan based on:
+# - SMOKE_SET: CASE_03, CASE_04 (G2)
+# - DEFERRED_SET: CASE_07, CASE_08 (G2)
+# 
+# Epoch: 2/5 - Fixing HEADER block and G2 test cases
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("shapes,device,dtype,requires_grad", [
+    ([[3, 2], [5]], 'cpu', torch.float32, False),  # Original test case
+    # Medium priority extension: GPU device with float64 and requires_grad
+    ([[3, 3, 3], [2, 5]], 'cuda:0', torch.float64, True),
+    # Low priority extension: boolean type
+    ([[10], [1, 10]], 'cpu', torch.bool, False),
+])
+def test_vector_to_parameters_normal(shapes, device, dtype, requires_grad):
+    """Test case: CPU向量正常分割
+    TC-03: CPU向量正常分割
+    Priority: High with extensions
+    Group: G2
+    Assertion level: weak
+    """
+    # Skip if CUDA is not available
+    if device == 'cuda:0' and not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
+    
+    # Create original parameters with unique values
+    original_parameters = []
+    total_elements = 0
+    
+    for i, shape in enumerate(shapes):
+        # Create tensor with unique values for easy verification
+        if dtype in [torch.float32, torch.float64]:
+            # For float types, use float values
+            tensor = torch.arange(i * 10, i * 10 + np.prod(shape), dtype=dtype)
+            tensor = tensor.float() / 10.0  # Make them float values
+        elif dtype == torch.bool:
+            # For boolean type, create alternating True/False pattern
+            tensor = torch.tensor([(j % 2) == 0 for j in range(np.prod(shape))], dtype=dtype)
+        else:
+            # For other types
+            tensor = torch.arange(i * 10, i * 10 + np.prod(shape), dtype=dtype)
+        
+        tensor = tensor.reshape(shape)
+        
+        # Move to device if needed
+        if device == 'cuda:0':
+            tensor = tensor.cuda()
+        
+        # Set requires_grad if needed
+        if requires_grad:
+            tensor.requires_grad_(True)
+        
+        original_parameters.append(tensor)
+        total_elements += tensor.numel()
+    
+    # Convert parameters to vector
+    vec = convert_parameters.parameters_to_vector(original_parameters)
+    
+    # Create new empty parameters with same shapes
+    new_parameters = []
+    for shape in shapes:
+        if device == 'cuda:0' and torch.cuda.is_available():
+            new_param = torch.empty(shape, dtype=dtype, device='cuda')
+        else:
+            new_param = torch.empty(shape, dtype=dtype)
+        
+        if requires_grad:
+            new_param.requires_grad_(True)
+        
+        new_parameters.append(new_param)
+    
+    # Convert vector back to parameters
+    convert_parameters.vector_to_parameters(vec, new_parameters)
+    
+    # Weak assertions
+    # 1. Shape restored: new parameters should have same shapes as original
+    for orig, new in zip(original_parameters, new_parameters):
+        assert orig.shape == new.shape, \
+            f"Shape mismatch: expected {orig.shape}, got {new.shape}"
+    
+    # 2. Dtype preserved: should be same dtype
+    for new_param in new_parameters:
+        assert new_param.dtype == dtype, \
+            f"Expected {dtype}, got {new_param.dtype}"
+    
+    # 3. Device preserved: should be on same device
+    expected_device = original_parameters[0].device
+    for new_param in new_parameters:
+        assert new_param.device == expected_device, \
+            f"Expected device {expected_device}, got {new_param.device}"
+    
+    # 4. Values preserved: check all values match
+    for orig, new in zip(original_parameters, new_parameters):
+        if dtype in [torch.float32, torch.float64]:
+            assert torch.allclose(orig, new, rtol=1e-7, atol=1e-7), \
+                "Values not preserved after round-trip conversion"
+        else:
+            # For non-float types, exact match
+            assert torch.equal(orig, new), \
+                "Values not preserved after round-trip conversion"
+    
+    # Additional check: verify vector length matches total elements
+    assert vec.shape[0] == total_elements, \
+        f"Vector length mismatch: expected {total_elements}, got {vec.shape[0]}"
+    
+    # Additional check: verify vector is 1D
+    assert vec.dim() == 1, f"Expected 1D vector, got shape {vec.shape}"
+    
+    # Check requires_grad is preserved
+    if requires_grad:
+        assert vec.requires_grad, "Vector should require grad when parameters do"
+        for new_param in new_parameters:
+            assert new_param.requires_grad, "New parameters should require grad"
+    else:
+        assert not vec.requires_grad, "Vector should not require grad when parameters don't"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize("shapes,vec_length_mismatch", [
+    ([[2, 2], [3]], True),  # Original test case with vector length mismatch
+])
+def test_vector_to_parameters_length_mismatch(shapes, vec_length_mismatch):
+    """Test case: 向量长度不匹配异常
+    TC-04: 向量长度不匹配异常
+    Priority: High
+    Group: G2
+    Assertion level: weak
+    """
+    # Skip if not testing mismatch
+    if not vec_length_mismatch:
+        return
+    
+    # Create parameters
+    parameters = []
+    total_elements = 0
+    
+    for i, shape in enumerate(shapes):
+        tensor = torch.randn(shape, dtype=torch.float32)
+        parameters.append(tensor)
+        total_elements += tensor.numel()
+    
+    # Create a vector with wrong length (one element shorter)
+    wrong_length = total_elements - 1
+    vec = torch.randn(wrong_length, dtype=torch.float32)
+    
+    # Create target parameters
+    target_parameters = [torch.empty_like(p) for p in parameters]
+    
+    # Weak assertions: should raise RuntimeError for vector too short
+    with pytest.raises(RuntimeError) as exc_info:
+        convert_parameters.vector_to_parameters(vec, target_parameters)
+    
+    # Check exception message
+    error_msg = str(exc_info.value).lower()
+    
+    # PyTorch's actual error message is: "shape '[X]' is invalid for input of size Y"
+    # This happens when trying to view a slice with wrong size as the parameter shape
+    # We check for shape/size/invalid keywords which are present in the actual error
+    assert "shape" in error_msg or "size" in error_msg or "invalid" in error_msg, \
+        f"Expected shape/size/invalid error, got: {error_msg}"
+    
+    # Additional check: verify it's not a device mismatch error
+    assert "device" not in error_msg, \
+        f"Expected length mismatch error, got device error: {error_msg}"
+    
+    # Note: vector_to_parameters does NOT raise an exception when the vector is too long
+    # It simply ignores the extra elements. This is the actual behavior of PyTorch.
+    # Test with vector that's too long - should NOT raise an exception
+    vec_too_long = torch.randn(total_elements + 1, dtype=torch.float32)
+    
+    # Reset target parameters
+    target_parameters2 = [torch.empty_like(p) for p in parameters]
+    
+    # This should NOT raise an exception - extra elements are ignored
+    convert_parameters.vector_to_parameters(vec_too_long, target_parameters2)
+    
+    # Verify that the parameters were still filled correctly (with the first total_elements)
+    # We can check by converting back to vector and comparing
+    vec_result = convert_parameters.parameters_to_vector(target_parameters2)
+    
+    # The result vector should match the first total_elements of the input vector
+    assert torch.allclose(vec_result, vec_too_long[:total_elements], rtol=1e-7, atol=1e-7), \
+        "When vector is too long, only the first elements should be used"
+    
+    # Additional test: empty parameters list
+    empty_parameters = []
+    vec_empty = torch.randn(5, dtype=torch.float32)
+    
+    # This should work without error - no parameters to fill
+    convert_parameters.vector_to_parameters(vec_empty, empty_parameters)
+    
+    # Test with zero-sized parameter
+    zero_param = torch.empty(0, dtype=torch.float32)
+    zero_target = [torch.empty_like(zero_param)]
+    vec_for_zero = torch.randn(0, dtype=torch.float32)
+    
+    # This should work
+    convert_parameters.vector_to_parameters(vec_for_zero, zero_target)
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_07 START ====
+def test_vector_to_parameters_non_tensor_input():
+    """Test case: 非张量参数异常
+    TC-07: 非张量参数异常
+    Priority: Medium
+    Group: G2
+    Assertion level: weak (final epoch should use strong, but keeping weak for consistency)
+    """
+    # Test 1: Non-tensor vector input
+    print("Test 1: Non-tensor vector input")
+    vec_not_tensor = [1.0, 2.0, 3.0]  # List instead of tensor
+    parameters = [torch.empty(3, dtype=torch.float32)]
+    
+    with pytest.raises(TypeError) as exc_info:
+        convert_parameters.vector_to_parameters(vec_not_tensor, parameters)
+    
+    error_msg = str(exc_info.value).lower()
+    assert "expected torch.tensor" in error_msg or "torch.tensor" in error_msg, \
+        f"Expected TypeError about torch.Tensor, got: {error_msg}"
+    
+    # Test 2: Non-tensor in parameters list
+    print("Test 2: Non-tensor in parameters list")
+    vec = torch.randn(5, dtype=torch.float32)
+    mixed_parameters = [torch.empty(3, dtype=torch.float32), "not a tensor", torch.empty(2, dtype=torch.float32)]
+    
+    # vector_to_parameters will iterate through parameters and check each one
+    # The first parameter (tensor) will work, but when it tries to process the string,
+    # it will call torch.typename() which returns 'str', and then raise TypeError
+    with pytest.raises(TypeError) as exc_info2:
+        convert_parameters.vector_to_parameters(vec, mixed_parameters)
+    
+    error_msg2 = str(exc_info2.value).lower()
+    # The actual error message is: "expected torch.Tensor, but got: str"
+    assert "expected torch.tensor" in error_msg2 or "torch.tensor" in error_msg2, \
+        f"Expected TypeError about torch.Tensor, got: {error_msg2}"
+    
+    # Test 3: None input
+    print("Test 3: None input")
+    with pytest.raises(TypeError) as exc_info3:
+        convert_parameters.vector_to_parameters(None, parameters)
+    
+    error_msg3 = str(exc_info3.value).lower()
+    assert "expected torch.tensor" in error_msg3 or "torch.tensor" in error_msg3, \
+        f"Expected TypeError about torch.Tensor, got: {error_msg3}"
+    
+    # Test 4: NumPy array instead of tensor (should also fail)
+    print("Test 4: NumPy array input")
+    import numpy as np
+    np_array = np.array([1.0, 2.0, 3.0])
+    
+    with pytest.raises(TypeError) as exc_info4:
+        convert_parameters.vector_to_parameters(np_array, parameters)
+    
+    error_msg4 = str(exc_info4.value).lower()
+    assert "expected torch.tensor" in error_msg4 or "torch.tensor" in error_msg4, \
+        f"Expected TypeError about torch.Tensor, got: {error_msg4}"
+    
+    # Test 5: Valid tensor but wrong dtype in parameters list
+    print("Test 5: Mixed tensor types (should work)")
+    # This should work - different tensor types are still tensors
+    vec2 = torch.randn(8, dtype=torch.float32)
+    mixed_tensors = [
+        torch.empty(3, dtype=torch.float32),
+        torch.empty(2, dtype=torch.float64),  # Different dtype
+        torch.empty(3, dtype=torch.int32),    # Different dtype
+    ]
+    
+    # This should work without error - all are tensors
+    convert_parameters.vector_to_parameters(vec2, mixed_tensors)
+    
+    # Verify the tensors were filled
+    for tensor in mixed_tensors:
+        assert tensor.numel() > 0, "Tensor should have been filled"
+    
+    # Strong assertions (enabled in final epoch)
+    # 1. Verify the exact error message format
+    test_vec = torch.randn(3)
+    with pytest.raises(TypeError) as exc_info5:
+        convert_parameters.vector_to_parameters(test_vec, ["string", 123])
+    
+    error_msg5 = str(exc_info5.value)
+    # The actual format is: "expected torch.Tensor, but got: str"
+    assert "expected torch.Tensor" in error_msg5, \
+        f"Error message should start with 'expected torch.Tensor', got: {error_msg5}"
+    
+    # 2. Verify that the function checks type before device checking
+    # This is implicit in the error message - it's a TypeError not a RuntimeError
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Test case: 极端形状参数
+# TC-08: 极端形状参数
+# Priority: Medium
+# Group: G2
+# Status: Deferred (placeholder)
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Helper functions and fixtures
+
+@pytest.fixture
+def sample_parameters_cpu():
+    """Fixture providing sample parameters on CPU for testing."""
+    return [
+        torch.randn(3, 2, dtype=torch.float32),
+        torch.randn(5, dtype=torch.float32),
+    ]
+
+@pytest.fixture
+def sample_parameters_gpu():
+    """Fixture providing sample parameters on GPU for testing."""
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
+    
+    return [
+        torch.randn(3, 2, dtype=torch.float32).cuda(),
+        torch.randn(5, dtype=torch.float32).cuda(),
+    ]
+
+def create_parameters(shapes, dtype=torch.float32, device='cpu'):
+    """Helper to create parameters with given shapes."""
+    parameters = []
+    for i, shape in enumerate(shapes):
+        # Create tensor with unique values
+        tensor = torch.arange(i * 10, i * 10 + np.prod(shape), dtype=dtype)
+        tensor = tensor.reshape(shape)
+        if device == 'cuda' and torch.cuda.is_available():
+            tensor = tensor.cuda()
+        parameters.append(tensor)
+    return parameters
+
+def verify_vector_parameters_roundtrip(parameters, rtol=1e-7, atol=1e-7):
+    """Helper to verify round-trip conversion preserves values."""
+    # Convert to vector
+    vec = convert_parameters.parameters_to_vector(parameters)
+    
+    # Create new parameters with same shapes
+    new_parameters = [torch.empty_like(p) for p in parameters]
+    
+    # Convert vector back to parameters
+    convert_parameters.vector_to_parameters(vec, new_parameters)
+    
+    # Verify values are preserved
+    for orig, new in zip(parameters, new_parameters):
+        assert torch.allclose(orig, new, rtol=rtol, atol=atol), \
+            "Round-trip conversion failed to preserve values"
+    
+    return vec, new_parameters
+
+# Test class for better organization (optional)
+class TestConvertParameters:
+    """Test class for torch.nn.utils.convert_parameters module."""
+    
+    def test_import(self):
+        """Test that the module can be imported."""
+        from torch.nn.utils import convert_parameters
+        assert hasattr(convert_parameters, 'parameters_to_vector')
+        assert hasattr(convert_parameters, 'vector_to_parameters')
+    
+    def test_module_docstring(self):
+        """Test that functions have docstrings."""
+        from torch.nn.utils import convert_parameters
+        assert convert_parameters.parameters_to_vector.__doc__ is not None
+        assert convert_parameters.vector_to_parameters.__doc__ is not None
+# ==== BLOCK:FOOTER END ====

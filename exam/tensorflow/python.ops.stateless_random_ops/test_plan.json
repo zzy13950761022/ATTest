@@ -1,0 +1,242 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.stateless_random_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_stateless_random_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_stateless_random_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "stateless_random_uniform 浮点数核心路径",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stateless_random_uniform",
+          "shape": [10],
+          "seed": [1, 2],
+          "minval": 0.0,
+          "maxval": 1.0,
+          "dtype": "float32",
+          "alg": "philox"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "range_check", "deterministic"],
+        "strong": ["distribution_uniformity", "statistical_properties"]
+      },
+      "oracle": "numpy.random.uniform",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "stateless_random_uniform 整数类型核心路径",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stateless_random_uniform",
+          "shape": [5, 5],
+          "seed": [42, 99],
+          "minval": 0,
+          "maxval": 100,
+          "dtype": "int32",
+          "alg": "threefry"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "range_check", "deterministic"],
+        "strong": ["distribution_uniformity", "no_bias"]
+      },
+      "oracle": "numpy.random.randint",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "stateless_random_normal 正态分布核心路径",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stateless_random_normal",
+          "shape": [20],
+          "seed": [7, 13],
+          "mean": 0.0,
+          "stddev": 1.0,
+          "dtype": "float32",
+          "alg": "philox"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "deterministic", "finite_check"],
+        "strong": ["distribution_normal", "statistical_moments"]
+      },
+      "oracle": "numpy.random.normal",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.gen_stateless_random_ops.stateless_random_normal_v2"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "种子形状验证和错误处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stateless_random_uniform",
+          "shape": [3],
+          "seed": [1, 2, 3],
+          "dtype": "float32",
+          "expect_error": true,
+          "error_type": "InvalidArgumentError"
+        }
+      ],
+      "asserts": {
+        "weak": ["error_raised", "error_type_match"],
+        "strong": ["error_message_contains"]
+      },
+      "oracle": "none",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "整数类型 minval/maxval 一致性约束",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "stateless_random_uniform",
+          "shape": [5],
+          "seed": [1, 2],
+          "minval": 0,
+          "maxval": null,
+          "dtype": "int32",
+          "expect_error": true,
+          "error_type": "InvalidArgumentError"
+        }
+      ],
+      "asserts": {
+        "weak": ["error_raised", "error_type_match"],
+        "strong": ["error_message_contains"]
+      },
+      "oracle": "none",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "stateless_random_uniform",
+        "shape": [100],
+        "seed": [1, 2],
+        "minval": -10.0,
+        "maxval": 10.0,
+        "dtype": "float64",
+        "alg": "threefry"
+      },
+      "note": "作为参数扩展：不同范围浮点数"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "stateless_random_uniform",
+        "shape": [2, 3, 4],
+        "seed": [1, 2],
+        "minval": 0.0,
+        "maxval": 1.0,
+        "dtype": "float16",
+        "alg": "auto_select"
+      },
+      "note": "作为参数扩展：多维形状和不同精度"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "stateless_random_uniform",
+        "shape": [50],
+        "seed": [42, 99],
+        "minval": -100,
+        "maxval": 100,
+        "dtype": "int64",
+        "alg": "philox"
+      },
+      "note": "作为参数扩展：不同范围和整数类型"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "stateless_random_uniform",
+        "shape": [10],
+        "seed": [42, 99],
+        "minval": null,
+        "maxval": null,
+        "dtype": "int32",
+        "alg": "threefry"
+      },
+      "note": "作为参数扩展：全范围整数"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "stateless_random_normal",
+        "shape": [1000],
+        "seed": [7, 13],
+        "mean": 5.0,
+        "stddev": 2.0,
+        "dtype": "float64",
+        "alg": "threefry"
+      },
+      "note": "作为参数扩展：不同参数的正态分布"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

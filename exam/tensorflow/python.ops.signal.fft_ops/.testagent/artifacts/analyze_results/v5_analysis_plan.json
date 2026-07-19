@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 11,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_fft_ops.py::test_edge_case_handling[dtype1-shape1-None]",
+      "block_id": "CASE_05",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "标量张量（shape=()）调用fftshift时，TensorFlow内部Roll操作期望axis参数为int32/int64，但传入空数组导致类型错误"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

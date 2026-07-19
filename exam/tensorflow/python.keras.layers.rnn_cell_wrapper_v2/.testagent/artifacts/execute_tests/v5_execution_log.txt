@@ -1,0 +1,209 @@
+=== Run Tests ===
+.sss.s.sF.F..                                                            [100%]
+================================== FAILURES ===================================
+_ test_dropoutwrapper_serialization[BasicRNNCell-0.7-0.8-0.9-True-float32-5] __
+
+cell_type = 'BasicRNNCell', input_keep_prob = 0.7, output_keep_prob = 0.8
+state_keep_prob = 0.9, variational_recurrent = True, dtype = 'float32'
+units = 5
+
+    @pytest.mark.parametrize(
+        "cell_type,input_keep_prob,output_keep_prob,state_keep_prob,variational_recurrent,dtype,units",
+        [
+            (
+                "BasicRNNCell",
+                0.7,
+                0.8,
+                0.9,
+                True,
+                "float32",
+                5
+            )
+        ]
+    )
+    def test_dropoutwrapper_serialization(
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        state_keep_prob,
+        variational_recurrent,
+        dtype,
+        units
+    ):
+        """Test DropoutWrapper serialization with various parameters."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            # Build the cell with a dummy input shape
+            cell.build((None, units))
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create the original DropoutWrapper
+        # When variational_recurrent=True and input_keep_prob<1.0, input_size must be provided
+        wrapper_kwargs = {
+            'cell': cell,
+            'input_keep_prob': input_keep_prob,
+            'output_keep_prob': output_keep_prob,
+            'state_keep_prob': state_keep_prob,
+            'variational_recurrent': variational_recurrent,
+            'dtype': getattr(tf, dtype),
+            'seed': 123
+        }
+    
+        # Add input_size if variational_recurrent=True and input_keep_prob<1.0
+        if variational_recurrent and input_keep_prob < 1.0:
+            wrapper_kwargs['input_size'] = tf.TensorShape([units])
+    
+        original_wrapper = DropoutWrapper(**wrapper_kwargs)
+    
+        # Weak assertion 1: get_config_exists
+        config = original_wrapper.get_config()
+        assert isinstance(config, dict)
+    
+        # Weak assertion 2: config_keys_present
+        expected_keys = ['cell', 'name', 'input_keep_prob', 'output_keep_prob']
+        for key in expected_keys:
+            assert key in config, f"Missing key in config: {key}"
+    
+        # Check specific parameter values in config
+>       assert config['input_keep_prob'] == input_keep_prob
+E       assert 0.699999988079071 == 0.7
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:615: AssertionError
+_ test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4] _
+
+wrapper_type = 'DropoutWrapper', cell_type = 'BasicRNNCell'
+input_keep_prob = 0.6, output_keep_prob = 0.7, dtype = 'float32', units = 4
+
+    @pytest.mark.parametrize(
+        "wrapper_type,cell_type,input_keep_prob,output_keep_prob,dtype,units",
+        [
+            (
+                "DropoutWrapper",
+                "BasicRNNCell",
+                0.6,
+                0.7,
+                "float32",
+                4
+            )
+        ]
+    )
+    def test_wrapper_serialization_cycle(
+        wrapper_type,
+        cell_type,
+        input_keep_prob,
+        output_keep_prob,
+        dtype,
+        units
+    ):
+        """Test serialization/deserialization cycle for wrappers."""
+        # Create the base RNN cell
+        if cell_type == "BasicRNNCell":
+            cell = BasicRNNCell(num_units=units, dtype=getattr(tf, dtype))
+            # Need to build with a dummy shape for serialization
+            cell.build((None, units))  # Using units as input_dim for simplicity
+        else:
+            raise ValueError(f"Unsupported cell type: {cell_type}")
+    
+        # Create the wrapper
+        if wrapper_type == "DropoutWrapper":
+            original_wrapper = DropoutWrapper(
+                cell=cell,
+                input_keep_prob=input_keep_prob,
+                output_keep_prob=output_keep_prob,
+                dtype=getattr(tf, dtype),
+                seed=42
+            )
+        else:
+            raise ValueError(f"Unsupported wrapper type: {wrapper_type}")
+    
+        # Weak assertion 1: config_serializable
+        config = original_wrapper.get_config()
+        assert isinstance(config, dict)
+    
+        # Weak assertion 2: config_keys_present
+        expected_keys = ['cell', 'name']
+        for key in expected_keys:
+            assert key in config, f"Missing key in config: {key}"
+    
+        # Check cell config is present
+        assert 'cell' in config
+        cell_config = config['cell']
+        assert isinstance(cell_config, dict)
+        assert 'class_name' in cell_config
+        assert 'config' in cell_config
+    
+        # Weak assertion 3: deserialization_works
+        # Recreate wrapper from config with custom_objects for BasicRNNCell
+        custom_objects = {'BasicRNNCell': BasicRNNCell}
+        reconstructed_wrapper = original_wrapper.__class__.from_config(
+            config, custom_objects=custom_objects
+        )
+    
+        # Weak assertion 4: reconstructed_callable
+        assert isinstance(reconstructed_wrapper, original_wrapper.__class__)
+        assert hasattr(reconstructed_wrapper, 'call')
+        assert callable(reconstructed_wrapper.call)
+    
+        # IMPORTANT: Need to build the cell inside reconstructed wrapper before calling
+        # The cell from config is not automatically built
+        if hasattr(reconstructed_wrapper.cell, 'built') and not reconstructed_wrapper.cell.built:
+            reconstructed_wrapper.cell.build((None, units))
+    
+        # Test that reconstructed wrapper works
+        batch_size = 2
+        input_dim = units
+        inputs = tf.random.normal((batch_size, input_dim), dtype=getattr(tf, dtype))
+        initial_state = tf.random.normal((batch_size, units), dtype=getattr(tf, dtype))
+    
+        # Call both wrappers
+        original_output, original_state = original_wrapper.call(inputs, initial_state)
+        reconstructed_output, reconstructed_state = reconstructed_wrapper.call(inputs, initial_state)
+    
+        # Weak assertion 5: parameter_preservation
+        # Check that parameters are preserved in reconstruction
+        if wrapper_type == "DropoutWrapper":
+>           assert reconstructed_wrapper.input_keep_prob == original_wrapper.input_keep_prob
+E           AttributeError: 'DropoutWrapper' object has no attribute 'input_keep_prob'
+
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py:884: AttributeError
+============================== warnings summary ===============================
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropoutwrapper_serialization[BasicRNNCell-0.7-0.8-0.9-True-float32-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropoutwrapper_invalid_parameters[input_keep_prob-1.5-ValueError]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\layers\legacy_rnn\rnn_cell_impl.py:427: UserWarning: `tf.nn.rnn_cell.BasicRNNCell` is deprecated and will be removed in a future version. This class is equivalent as `tf.keras.layers.SimpleRNNCell`, and will be replaced by that in Tensorflow 2.0.
+    warnings.warn("`tf.nn.rnn_cell.BasicRNNCell` is deprecated and will be "
+
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropoutwrapper_serialization[BasicRNNCell-0.7-0.8-0.9-True-float32-5]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropoutwrapper_invalid_parameters[input_keep_prob-1.5-ValueError]
+exam/tensorflow/python.keras.layers.rnn_cell_wrapper_v2/tests/test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]
+  D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\keras\engine\base_layer.py:2220: UserWarning: `layer.add_variable` is deprecated and will be removed in a future version. Please use `layer.add_weight` method instead.
+    warnings.warn('`layer.add_variable` is deprecated and '
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                               Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py     334    120     80     18    59%   25-28, 33-36, 41-43, 55, 113, 149->159, 162-171, 225, 235-319, 364, 474, 513->526, 585, 600->603, 616-691, 738->746, 770->exit, 824, 836, 868->872, 885-925, 963-971, 975-976
+--------------------------------------------------------------------------------------------------------------
+TOTAL                                                                334    120     80     18    59%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_dropoutwrapper_serialization[BasicRNNCell-0.7-0.8-0.9-True-float32-5]
+FAILED tests\test_tensorflow_python_keras_layers_rnn_cell_wrapper_v2.py::test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]
+2 failed, 6 passed, 5 skipped, 16 warnings in 1.66s
+
+Error: exit 1

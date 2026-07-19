@@ -1,0 +1,78 @@
+import warnings
+import tensorflow as tf
+from tensorflow.python.data.experimental.ops.take_while_ops import take_while
+
+# Test CASE_05 scenarios
+test_cases = [
+    (None, "None"),
+    ("not_a_function", "string"),
+    (123, "integer"),
+]
+
+print("Testing invalid predicate types (CASE_05 scenarios):")
+for invalid_predicate, desc in test_cases:
+    print(f"\nTesting {desc}: {invalid_predicate}")
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        
+        try:
+            # Step 1: take_while should succeed and return a callable
+            transform_func = take_while(invalid_predicate)
+            print(f"  Step 1: take_while succeeded, returned callable: {callable(transform_func)}")
+            
+            # Step 2: Try to apply to dataset
+            dataset = tf.data.Dataset.range(5)
+            try:
+                transformed = transform_func(dataset)
+                print(f"  Step 2: transform_func succeeded")
+                
+                # Step 3: Try to iterate
+                try:
+                    list(transformed.as_numpy_iterator())
+                    print(f"  Step 3: iteration succeeded (unexpected!)")
+                except Exception as e:
+                    print(f"  Step 3: iteration failed with {type(e).__name__}: {e}")
+                    
+            except Exception as e:
+                print(f"  Step 2: transform_func failed with {type(e).__name__}: {e}")
+                
+        except Exception as e:
+            print(f"  Step 1: take_while failed with {type(e).__name__}: {e}")
+
+print("\n\nTesting non-boolean return types (CASE_06 scenarios):")
+# Test CASE_06 scenarios
+test_cases_06 = [
+    ("returns_integer", lambda x: tf.constant(42)),
+    ("returns_string", lambda x: tf.constant("not_a_boolean")),
+]
+
+for desc, predicate in test_cases_06:
+    print(f"\nTesting {desc}")
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        
+        try:
+            # Step 1: take_while should succeed and return a callable
+            transform_func = take_while(predicate)
+            print(f"  Step 1: take_while succeeded, returned callable: {callable(transform_func)}")
+            
+            # Step 2: Try to apply to dataset
+            dataset = tf.data.Dataset.range(5)
+            try:
+                transformed = transform_func(dataset)
+                print(f"  Step 2: transform_func succeeded")
+                
+                # Step 3: Try to iterate
+                try:
+                    list(transformed.as_numpy_iterator())
+                    print(f"  Step 3: iteration succeeded (unexpected!)")
+                except Exception as e:
+                    print(f"  Step 3: iteration failed with {type(e).__name__}: {e}")
+                    
+            except Exception as e:
+                print(f"  Step 2: transform_func failed with {type(e).__name__}: {e}")
+                
+        except Exception as e:
+            print(f"  Step 1: take_while failed with {type(e).__name__}: {e}")

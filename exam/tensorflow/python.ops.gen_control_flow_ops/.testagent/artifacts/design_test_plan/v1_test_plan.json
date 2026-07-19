@@ -1,0 +1,244 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.gen_control_flow_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_gen_control_flow_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_gen_control_flow_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "enter_exit_frame_management",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "enter_exit",
+          "data_type": "float32",
+          "frame_name": "test_frame",
+          "is_constant": false,
+          "parallel_iterations": 10,
+          "execution_mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_created", "tensor_returned", "frame_name_preserved", "no_exception"],
+        "strong": ["frame_stack_correct", "memory_cleanup", "gradient_computation"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.ops.get_default_graph"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "switch_branch_selection",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "switch",
+          "data_type": "float32",
+          "pred_value": true,
+          "shape": [2, 2],
+          "execution_mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_created", "named_tuple_returned", "correct_branch_selected", "no_exception"],
+        "strong": ["both_branches_accessible", "gradient_flow", "complex_predicate"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.ops.EagerTensor"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "merge_multiple_inputs",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "merge",
+          "data_type": "float32",
+          "num_inputs": 3,
+          "shape": [2, 2],
+          "execution_mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_created", "named_tuple_returned", "input_count_correct", "no_exception"],
+        "strong": ["async_input_handling", "value_index_correct", "empty_input_list"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.ops.gen_control_flow_ops._op_def_library._apply_op_helper"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "abort_behavior",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "abort",
+          "error_msg": "test error",
+          "exit_without_error": false,
+          "execution_mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_created", "exception_raised", "error_message_preserved", "no_side_effects"],
+        "strong": ["exit_without_error_true", "empty_error_message", "graph_mode_behavior"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.errors_impl.AbortedError"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "ref_operations_graph_mode",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "operation": "ref_enter",
+          "data_type": "float32",
+          "frame_name": "ref_frame",
+          "execution_mode": "graph"
+        }
+      ],
+      "asserts": {
+        "weak": ["operation_created", "ref_tensor_returned", "graph_mode_only", "no_exception"],
+        "strong": ["ref_exit_consistency", "ref_switch_functionality", "eager_mode_exception"]
+      },
+      "oracle": "manual_verification",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.ops.get_default_graph"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "operation": "enter_exit",
+        "data_type": "float64",
+        "frame_name": "different_frame",
+        "is_constant": true,
+        "parallel_iterations": 5,
+        "execution_mode": "graph"
+      },
+      "note": "作为参数扩展：不同数据类型、常量标志、并行迭代次数、执行模式"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "operation": "switch",
+        "data_type": "int32",
+        "pred_value": false,
+        "shape": [1, 10],
+        "execution_mode": "graph"
+      },
+      "note": "作为参数扩展：整数类型、false谓词、不同形状、图模式"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "operation": "merge",
+        "data_type": "bool",
+        "num_inputs": 1,
+        "shape": [5],
+        "execution_mode": "graph"
+      },
+      "note": "作为参数扩展：布尔类型、单输入、一维形状、图模式"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {
+        "operation": "abort",
+        "error_msg": "",
+        "exit_without_error": true,
+        "execution_mode": "graph"
+      },
+      "note": "作为参数扩展：空错误消息、无错误退出、图模式"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "operation": "ref_switch",
+        "data_type": "float64",
+        "frame_name": "ref_switch_frame",
+        "execution_mode": "graph"
+      },
+      "note": "作为参数扩展：不同引用操作、双精度类型、图模式"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": []
+}

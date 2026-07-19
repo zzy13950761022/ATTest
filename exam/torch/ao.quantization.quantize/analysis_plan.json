@@ -1,0 +1,47 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_basic_float_model_quantization[simple_linear-False-default-simple_calibration]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_prepare未被调用，可能导入路径或函数实现问题"
+    },
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_inplace_quantization[simple_linear-True-default-simple_calibration]",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_prepare未被调用，与CASE_01相同问题"
+    },
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "mock_convert未被调用，自定义映射测试"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_calibration_function_parameter_passing[simple_linear-False-default-complex_calibration]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g1.py::TestQuantize::test_different_model_architecture_compatibility[convolutional-False-default-simple_calibration]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_torch_ao_quantization_quantize_g2.py::TestQuantizeG2::test_custom_mapping_parameter[simple_linear-False-custom-simple_calibration]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,239 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.control_flow_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "single": "tests/test_tensorflow_python_ops_control_flow_ops.py",
+    "default": "tests/test_tensorflow_python_ops_control_flow_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_control_flow_ops_*.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "cond基本功能-布尔标量控制分支",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pred": true,
+          "true_fn": "lambda: tf.constant(1.0)",
+          "false_fn": "lambda: tf.constant(0.0)",
+          "mode": "eager"
+        },
+        {
+          "pred": false,
+          "true_fn": "lambda: tf.constant(1.0)",
+          "false_fn": "lambda: tf.constant(0.0)",
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["返回值非空", "张量类型正确", "数值符合预期"],
+        "strong": ["梯度计算正确", "eager/graph模式一致性", "内存使用正常"]
+      },
+      "oracle": "tensorflow.python.ops.control_flow_ops.cond",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.ops.cond_v2.cond_v2",
+        "tensorflow.python.ops.gen_control_flow_ops",
+        "tensorflow.python.eager.context.context"
+      ]
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "case多分支选择-基本匹配",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pred_fn_pairs": [
+            [true, "lambda: tf.constant(1.0)"],
+            [false, "lambda: tf.constant(2.0)"]
+          ],
+          "default_fn": "lambda: tf.constant(0.0)",
+          "exclusive": false,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["返回值非空", "张量类型正确", "匹配第一个真条件"],
+        "strong": ["exclusive模式互斥性", "默认分支正确性", "多条件组合"]
+      },
+      "oracle": "tensorflow.python.ops.control_flow_ops.case",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.ops.gen_control_flow_ops",
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.ops.get_default_graph"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "while_loop基本循环-固定次数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "cond_fn": "lambda i: i < 5",
+          "body_fn": "lambda i: i + 1",
+          "loop_vars": [0],
+          "parallel_iterations": 10,
+          "mode": "eager"
+        }
+      ],
+      "asserts": {
+        "weak": ["循环正确终止", "最终值符合预期", "形状保持不变"],
+        "strong": ["梯度计算正确", "shape_invariants验证", "maximum_iterations限制"]
+      },
+      "oracle": "tensorflow.python.ops.control_flow_ops.while_loop",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.ops.while_v2.while_loop",
+        "tensorflow.python.ops.gen_control_flow_ops",
+        "tensorflow.python.eager.context.context"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "梯度计算验证-控制流自动微分",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "cond",
+          "mode": "eager",
+          "use_gradient": true
+        }
+      ],
+      "asserts": {
+        "weak": ["梯度计算可执行", "梯度形状正确", "梯度非None"],
+        "strong": ["梯度数值正确", "反向传播一致性", "内存交换不影响梯度"]
+      },
+      "oracle": "tensorflow.python.ops.control_flow_ops.cond",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.ops.cond_v2.cond_v2",
+        "tensorflow.python.ops.gen_control_flow_ops",
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.ops.gradients_impl.gradients"
+      ]
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "eager与graph模式一致性",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "func_type": "cond",
+          "compare_modes": true
+        }
+      ],
+      "asserts": {
+        "weak": ["eager模式结果非空", "graph模式结果非空", "两种模式结果类型相同"],
+        "strong": ["数值完全一致", "执行路径相同", "资源使用一致"]
+      },
+      "oracle": "tensorflow.python.ops.control_flow_ops.cond",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 100,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.framework.ops.executing_eagerly_outside_functions",
+        "tensorflow.python.ops.cond_v2.cond_v2",
+        "tensorflow.python.ops.gen_control_flow_ops",
+        "tensorflow.python.eager.context.context",
+        "tensorflow.python.framework.ops.get_default_graph"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "pred": "tf.constant(True)",
+        "true_fn": "lambda: tf.constant([1.0, 2.0])",
+        "false_fn": "lambda: tf.constant([0.0, 0.0])",
+        "mode": "graph"
+      },
+      "note": "张量pred和graph模式扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "pred_fn_pairs": [
+          [false, "lambda: tf.constant(1.0)"],
+          [true, "lambda: tf.constant(2.0)"],
+          [false, "lambda: tf.constant(3.0)"]
+        ],
+        "default_fn": "lambda: tf.constant(-1.0)",
+        "exclusive": true,
+        "mode": "graph"
+      },
+      "note": "多条件组合和exclusive模式扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "cond_fn": "lambda i, j: i < 10",
+        "body_fn": "lambda i, j: (i + 1, j * 2)",
+        "loop_vars": [0, 1],
+        "parallel_iterations": 5,
+        "mode": "graph"
+      },
+      "note": "多循环变量和graph模式扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}

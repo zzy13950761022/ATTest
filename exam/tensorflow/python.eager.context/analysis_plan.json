@@ -1,0 +1,39 @@
+{
+  "status": "成功",
+  "passed": 9,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_context_cleanup",
+      "block_id": "FOOTER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "ImportError分支未覆盖（行320-322）"
+    },
+    {
+      "test": "test_context_safe_retrieval",
+      "block_id": "CASE_02",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "分支未覆盖（行230）"
+    },
+    {
+      "test": "test_ensure_initialized_idempotent",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "分支未覆盖（行268->272）"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_context_cleanup",
+      "reason": "另一个分支未覆盖（行345），但已优先处理更重要的覆盖率缺口"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

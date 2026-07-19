@@ -1,0 +1,115 @@
+=== Run Tests ===
+........FF..                                                             [100%]
+=================================== FAILURES ===================================
+_____________ TestLossFunctionsG1.test_invalid_reduction_parameter _____________
+
+self = <test_torch_nn_modules_loss_g1.TestLossFunctionsG1 object at 0x140799de0>
+
+    def test_invalid_reduction_parameter(self):
+        """测试无效reduction参数"""
+>       with pytest.raises(ValueError, match=".*reduction.*"):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_torch_nn_modules_loss_g1.py:260: Failed
+________________ TestLossFunctionsG1.test_shape_mismatch_errors ________________
+
+self = <test_torch_nn_modules_loss_g1.TestLossFunctionsG1 object at 0x14079a0b0>
+
+    def test_shape_mismatch_errors(self):
+        """测试形状不匹配错误"""
+        # L1Loss形状不匹配
+        loss_fn = nn.L1Loss()
+        input_tensor = torch.randn(2, 3, 4)
+        target_tensor = torch.randn(2, 3, 5)  # 形状不匹配
+    
+        with pytest.raises(RuntimeError, match=".*shape.*"):
+>           loss_fn(input_tensor, target_tensor)
+
+tests/test_torch_nn_modules_loss_g1.py:277: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/loss.py:101: in forward
+    return F.l1_loss(input, target, reduction=self.reduction)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/functional.py:3260: in l1_loss
+    expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tensors = (tensor([[[ 0.8108,  1.4974,  0.8258, -1.7190],
+         [ 0.9627, -1.0615, -1.4342,  0.7780],
+         [-0.1037,  0.1...47],
+         [ 0.2750, -1.6155, -0.8580,  1.6777,  0.3595],
+         [ 0.5210,  0.6501, -0.1174,  1.0570, -0.6588]]]))
+
+    def broadcast_tensors(*tensors):
+        r"""broadcast_tensors(*tensors) -> List of Tensors
+    
+        Broadcasts the given tensors according to :ref:`broadcasting-semantics`.
+    
+        Args:
+            *tensors: any number of tensors of the same type
+    
+        .. warning::
+    
+            More than one element of a broadcasted tensor may refer to a single
+            memory location. As a result, in-place operations (especially ones that
+            are vectorized) may result in incorrect behavior. If you need to write
+            to the tensors, please clone them first.
+    
+        Example::
+    
+            >>> x = torch.arange(3).view(1, 3)
+            >>> y = torch.arange(2).view(2, 1)
+            >>> a, b = torch.broadcast_tensors(x, y)
+            >>> a.size()
+            torch.Size([2, 3])
+            >>> a
+            tensor([[0, 1, 2],
+                    [0, 1, 2]])
+        """
+        # This wrapper exists to support variadic args.
+        if has_torch_function(tensors):
+            return handle_torch_function(broadcast_tensors, tensors, *tensors)
+>       return _VF.broadcast_tensors(tensors)  # type: ignore[attr-defined]
+E       RuntimeError: The size of tensor a (4) must match the size of tensor b (5) at non-singleton dimension 2
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/functional.py:74: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_torch_nn_modules_loss_g1.TestLossFunctionsG1 object at 0x14079a0b0>
+
+    def test_shape_mismatch_errors(self):
+        """测试形状不匹配错误"""
+        # L1Loss形状不匹配
+        loss_fn = nn.L1Loss()
+        input_tensor = torch.randn(2, 3, 4)
+        target_tensor = torch.randn(2, 3, 5)  # 形状不匹配
+    
+>       with pytest.raises(RuntimeError, match=".*shape.*"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: '.*shape.*'
+E         Actual message: 'The size of tensor a (4) must match the size of tensor b (5) at non-singleton dimension 2'
+
+tests/test_torch_nn_modules_loss_g1.py:276: AssertionError
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.loss/tests/test_torch_nn_modules_loss_g1.py::TestLossFunctionsG1::test_shape_mismatch_errors
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/loss.py:101: UserWarning: Using a target size (torch.Size([2, 3, 5])) that is different to the input size (torch.Size([2, 3, 4])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+    return F.l1_loss(input, target, reduction=self.reduction)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                     Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_loss_g1.py     147     18     52     10    84%   32, 46, 57, 60-63, 91->95, 143->147, 179->exit, 213-216, 233, 263-267, 280-283, 322
+------------------------------------------------------------------------------------
+TOTAL                                      147     18     52     10    84%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_loss_g1.py::TestLossFunctionsG1::test_invalid_reduction_parameter
+FAILED tests/test_torch_nn_modules_loss_g1.py::TestLossFunctionsG1::test_shape_mismatch_errors
+2 failed, 10 passed, 1 warning in 0.89s
+
+Error: exit 1

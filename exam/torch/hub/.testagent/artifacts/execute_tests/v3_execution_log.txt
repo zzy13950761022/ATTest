@@ -1,0 +1,338 @@
+=== Run Tests ===
+FF...FE...F...                                                           [100%]
+==================================== ERRORS ====================================
+____________________ ERROR at setup of test_trust_mechanism ____________________
+
+temp_dir = PosixPath('/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/tmpb9lywie3')
+
+    @pytest.fixture
+    def mock_trust_list(temp_dir):
+        """Mock trust list file operations."""
+        trust_file = temp_dir / 'trusted_repos.json'
+    
+>       with patch('torch.hub._get_trusted_repos_file') as mock_trust_file:
+
+tests/test_torch_hub_trust.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1447: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x1269959f0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'torch.hub' from '/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py'> does not have the attribute '_get_trusted_repos_file'
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:1420: AttributeError
+=================================== FAILURES ===================================
+___________________ test_github_repository_standard_loading ____________________
+
+mock_hubconf_resnet50 = <function mock_hubconf_resnet50.<locals>.create_mock_model at 0x1268e83a0>
+mock_github_download = {'download': <MagicMock name='download_url_to_file' id='4941822032'>, 'git_archive_link': <MagicMock name='_git_archive_link' id='4941810224'>, 'urlparse': <MagicMock name='urlparse' id='4941745984'>}
+mock_cache_dir = PosixPath('/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/tmpw6xuy557/.cache/torch/hub')
+mock_import_module = <MagicMock name='import_module' id='4941799120'>
+mock_trust_repo = {'cache_reload': <MagicMock name='_get_cache_or_reload' id='4941806752'>, 'check_module': <MagicMock name='_check_module_exists' id='4941791040'>}
+
+    def test_github_repository_standard_loading(
+        mock_hubconf_resnet50,
+        mock_github_download,
+        mock_cache_dir,
+        mock_import_module,
+        mock_trust_repo
+    ):
+        """
+        Test GitHub repository standard loading (CASE_01).
+    
+        This test verifies that torch.hub.load can load a model from a GitHub
+        repository with standard parameters.
+    
+        Weak assertions:
+        1. returns_object: Function returns a valid object
+        2. is_callable: Returned object is callable (has forward method)
+        3. has_expected_attributes: Returned object has expected model attributes
+        """
+        # Setup mock import module to return our mock hubconf
+        mock_module = Mock()
+        mock_module.resnet50 = mock_hubconf_resnet50
+        mock_import_module.return_value = mock_module
+    
+        # Setup cache directory structure
+        repo_dir = mock_cache_dir / 'pytorch_vision_master'
+        repo_dir.mkdir(parents=True, exist_ok=True)
+    
+        # Create a dummy hubconf.py file in cache
+        hubconf_file = repo_dir / 'hubconf.py'
+        hubconf_file.write_text('# Mock hubconf.py file')
+    
+        # Call torch.hub.load with standard parameters
+>       model = torch.hub.load(
+            repo_or_dir='pytorch/vision',
+            model='resnet50',
+            source='github',
+            trust_repo=None,
+            force_reload=False,
+            verbose=True,
+            skip_validation=False
+        )
+
+tests/test_torch_hub_load.py:160: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:542: in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:568: in _load_local
+    hubconf_path = os.path.join(hubconf_dir, MODULE_HUBCONF)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = None, p = ('hubconf.py',)
+
+    def join(a, *p):
+        """Join two or more pathname components, inserting '/' as needed.
+        If any component is an absolute path, all previous path components
+        will be discarded.  An empty last part will result in a path that
+        ends with a separator."""
+>       a = os.fspath(a)
+E       TypeError: expected str, bytes or os.PathLike object, not NoneType
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/posixpath.py:76: TypeError
+___________________________ test_local_path_loading ____________________________
+
+mock_local_hubconf = <function mock_local_hubconf.<locals>.create_mock_model at 0x1268bfeb0>
+temp_dir = PosixPath('/var/folders/fc/ny_p_wjs10xfzq7xns_lfdc40000gn/T/tmp02jnwfi3')
+mock_import_module = <MagicMock name='import_module' id='4941799216'>
+mock_trust_repo = {'cache_reload': <MagicMock name='_get_cache_or_reload' id='4942372464'>, 'check_module': <MagicMock name='_check_module_exists' id='4942621248'>}
+
+    def test_local_path_loading(
+        mock_local_hubconf,
+        temp_dir,
+        mock_import_module,
+        mock_trust_repo
+    ):
+        """
+        Test local path loading (CASE_02).
+    
+        This test verifies that torch.hub.load can load a model from a local
+        directory path with a valid hubconf.py file.
+    
+        Weak assertions:
+        1. returns_object: Function returns a valid object
+        2. is_callable: Returned object is callable (has forward method)
+        3. has_expected_attributes: Returned object has expected model attributes
+        """
+        # Create a local test directory with hubconf.py
+        local_repo_dir = temp_dir / 'test_hub_local'
+        local_repo_dir.mkdir(parents=True, exist_ok=True)
+    
+        # Create hubconf.py file with simple_model entry point
+        hubconf_content = '''
+    import torch.nn as nn
+    
+    class SimpleModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = nn.Linear(10, 5)
+    
+        def forward(self, x):
+            return self.linear(x)
+    
+    def simple_model(*args, **kwargs):
+        """Factory function for simple_model."""
+        return SimpleModel()
+    '''
+    
+        hubconf_file = local_repo_dir / 'hubconf.py'
+        hubconf_file.write_text(hubconf_content)
+    
+        # Setup mock import module to return our mock hubconf
+        mock_module = Mock()
+        mock_module.simple_model = mock_local_hubconf
+    
+        # Mock _import_module instead of importlib.import_module
+        # because torch.hub uses its own _import_module for local paths
+        with patch('torch.hub._import_module') as mock_hub_import:
+            mock_hub_import.return_value = mock_module
+    
+            # Call torch.hub.load with local path
+            model = torch.hub.load(
+                repo_or_dir=str(local_repo_dir),
+                model='simple_model',
+                source='local',
+                trust_repo=None,
+                force_reload=False,
+                verbose=True,
+                skip_validation=False
+            )
+    
+            # Weak assertion 1: returns_object
+            assert model is not None, "torch.hub.load should return a model object"
+    
+            # Weak assertion 2: is_callable
+            # Check that the model has a forward method (is callable)
+            assert hasattr(model, 'forward'), "Model should have forward method"
+            assert callable(model.forward), "Model.forward should be callable"
+    
+            # Weak assertion 2.1: Additional callable check - can call forward
+            test_input = torch.randn(1, 10)
+            output = model.forward(test_input)
+            assert output is not None, "Model.forward should return output"
+            assert isinstance(output, torch.Tensor), "Output should be a torch.Tensor"
+    
+            # Weak assertion 3: has_expected_attributes
+            # Check for common model attributes
+            expected_attrs = ['eval', 'train']
+            for attr in expected_attrs:
+                assert hasattr(model, attr), f"Model should have {attr} attribute"
+    
+            # Verify the model has the expected class name
+            assert model.__class__.__name__ == "SimpleModel", \
+                f"Model should be SimpleModel, got {model.__class__.__name__}"
+    
+            # Verify mock calls
+            # Check that _import_module was called with correct path
+            mock_hub_import.assert_called_once()
+    
+            # The module name should be 'hubconf' and path should be the hubconf.py file
+            call_args = mock_hub_import.call_args
+>           assert call_args[0][0] == 'hubconf', "Should import module named 'hubconf'"
+E           AssertionError: Should import module named 'hubconf'
+E           assert 'hubconf.py' == 'hubconf'
+E             
+E             - hubconf
+E             + hubconf.py
+E             ?        +++
+
+tests/test_torch_hub_load.py:303: AssertionError
+______________________ test_nonexistent_model_entrypoint _______________________
+
+    def test_nonexistent_model_entrypoint():
+        """Test that non-existent model entry point raises appropriate error."""
+        # Mock the entire download and import process to avoid network calls
+        with patch('torch.hub._get_cache_or_reload') as mock_cache_reload, \
+             patch('torch.hub._check_module_exists') as mock_check_module, \
+             patch('torch.hub._import_module') as mock_import_module:
+    
+            # Setup mocks to simulate successful download but missing model
+            mock_cache_reload.return_value = None
+            mock_check_module.return_value = True
+    
+            # Create a mock module without the requested model
+            mock_module = Mock()
+            # Don't add any model entry points
+            mock_import_module.return_value = mock_module
+    
+            with pytest.raises((AttributeError, RuntimeError)):
+>               torch.hub.load(
+                    repo_or_dir='test/repo',
+                    model='nonexistent_model',
+                    source='github'
+                )
+
+tests/test_torch_hub_load.py:424: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:542: in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:568: in _load_local
+    hubconf_path = os.path.join(hubconf_dir, MODULE_HUBCONF)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = None, p = ('hubconf.py',)
+
+    def join(a, *p):
+        """Join two or more pathname components, inserting '/' as needed.
+        If any component is an absolute path, all previous path components
+        will be discarded.  An empty last part will result in a path that
+        ends with a separator."""
+>       a = os.fspath(a)
+E       TypeError: expected str, bytes or os.PathLike object, not NoneType
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/posixpath.py:76: TypeError
+________________________ test_invalid_trust_repo_value _________________________
+
+    def test_invalid_trust_repo_value():
+        """Test that invalid trust_repo value raises appropriate error."""
+        # Mock network requests to avoid actual HTTP calls
+        with patch('torch.hub.urlopen') as mock_urlopen, \
+             patch('torch.hub._read_url') as mock_read_url:
+    
+            # Mock successful API response for repo validation
+            mock_response = Mock()
+            mock_response.read.return_value = b'[{"name": "main"}]'
+            mock_response.headers.get_content_charset.return_value = 'utf-8'
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+    
+            # Mock _read_url for API calls
+            mock_read_url.return_value = '[{"name": "main"}]'
+    
+            with pytest.raises((ValueError, TypeError)):
+                # trust_repo should be bool, "check", or None
+>               torch.hub.load(
+                    repo_or_dir='test/repo',
+                    model='test_model',
+                    source='github',
+                    trust_repo='invalid_value'  # Not a valid value
+                )
+
+tests/test_torch_hub_trust.py:275: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:539: in load
+    repo_or_dir = _get_cache_or_reload(repo_or_dir, force_reload, trust_repo, "load",
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/hub.py:230: in _get_cache_or_reload
+    with zipfile.ZipFile(cached_file) as cached_zipfile:
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/zipfile.py:1288: in __init__
+    self._RealGetContents()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zipfile.ZipFile [closed]>
+
+    def _RealGetContents(self):
+        """Read in the table of contents for the ZIP file."""
+        fp = self.fp
+        try:
+            endrec = _EndRecData(fp)
+        except OSError:
+            raise BadZipFile("File is not a zip file")
+        if not endrec:
+>           raise BadZipFile("File is not a zip file")
+E           zipfile.BadZipFile: File is not a zip file
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/zipfile.py:1355: BadZipFile
+----------------------------- Captured stderr call -----------------------------
+Downloading: "https://github.com/test/repo/zipball/main" to /Users/zzf1sh/.cache/torch/hub/main.zip
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                            Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------
+tests/test_torch_hub_load.py      178     56      6      1    68%   43-52, 171-208, 304-320, 336-349, 354-365, 433-434
+tests/test_torch_hub_trust.py     148     46      8      1    69%   43-48, 100-107, 138-221, 354-355
+---------------------------------------------------------------------------
+TOTAL                             326    102     14      2    68%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_hub_load.py::test_github_repository_standard_loading
+FAILED tests/test_torch_hub_load.py::test_local_path_loading - AssertionError...
+FAILED tests/test_torch_hub_load.py::test_nonexistent_model_entrypoint - Type...
+FAILED tests/test_torch_hub_trust.py::test_invalid_trust_repo_value - zipfile...
+ERROR tests/test_torch_hub_trust.py::test_trust_mechanism - AttributeError: <...
+4 failed, 9 passed, 1 error in 1.25s
+
+Error: exit 1

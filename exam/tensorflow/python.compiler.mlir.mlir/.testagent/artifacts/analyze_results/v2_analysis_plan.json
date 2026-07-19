@@ -1,0 +1,20 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 1,
+  "collection_errors": true,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_compiler_mlir_mlir_g2.py",
+      "block_id": "HEADER",
+      "error_type": "FileNotFoundError",
+      "action": "rewrite_block",
+      "note": "G2组测试文件缺失，需要创建包含CASE_03和CASE_04的测试文件"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

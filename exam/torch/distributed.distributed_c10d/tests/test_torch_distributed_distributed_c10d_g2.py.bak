@@ -1,0 +1,275 @@
+import math
+import pytest
+import torch
+import torch.distributed as dist
+from unittest.mock import Mock, patch, MagicMock
+import sys
+import os
+
+# ==== BLOCK:HEADER START ====
+# Test file for torch.distributed.distributed_c10d - Group G2: 集体通信核心操作
+# Target functions: all_reduce, broadcast, all_gather, reduce_scatter
+# ==== BLOCK:HEADER END ====
+
+# Helper functions and fixtures
+@pytest.fixture
+def mock_process_group():
+    """Mock process group for testing."""
+    pg = Mock(spec=dist.ProcessGroup)
+    pg.rank.return_value = 0
+    pg.size.return_value = 2
+    pg.backend.return_value = "gloo"
+    return pg
+
+@pytest.fixture
+def mock_work():
+    """Mock async work handle."""
+    work = Mock(spec=dist.Work)
+    work.wait.return_value = None
+    work.is_completed.return_value = True
+    work.exception.return_value = None
+    return work
+
+@pytest.fixture
+def mock_default_group(mock_process_group):
+    """Mock default process group."""
+    with patch('torch.distributed.distributed_c10d._get_default_group') as mock_get:
+        mock_get.return_value = mock_process_group
+        yield mock_get
+
+@pytest.fixture
+def mock_is_initialized():
+    """Mock is_initialized to return True."""
+    with patch('torch.distributed.distributed_c10d.is_initialized') as mock:
+        mock.return_value = True
+        yield mock
+
+@pytest.fixture
+def mock_rank_not_in_group():
+    """Mock _rank_not_in_group to return False (rank is in group)."""
+    with patch('torch.distributed.distributed_c10d._rank_not_in_group') as mock:
+        mock.return_value = False
+        yield mock
+
+@pytest.fixture
+def mock_warn_not_in_group():
+    """Mock _warn_not_in_group to do nothing."""
+    with patch('torch.distributed.distributed_c10d._warn_not_in_group') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_check_single_tensor():
+    """Mock _check_single_tensor to do nothing."""
+    with patch('torch.distributed.distributed_c10d._check_single_tensor') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_supports_complex():
+    """Mock supports_complex to return True."""
+    with patch('torch.distributed.distributed_c10d.supports_complex') as mock:
+        mock.return_value = True
+        yield mock
+
+@pytest.fixture
+def mock_get_group_rank():
+    """Mock get_group_rank to return same rank."""
+    with patch('torch.distributed.distributed_c10d.get_group_rank') as mock:
+        mock.return_value = 0
+        yield mock
+
+# Test class for G2 group
+class TestDistributedC10DCollectiveOps:
+    """Test collective communication operations in torch.distributed.distributed_c10d."""
+    
+    # ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize(
+        "tensor_shape,dtype,device,op,async_op,world_size",
+        [
+            # Base case from test plan
+            ([2, 2], "float32", "cpu", "SUM", False, 2),
+        ]
+    )
+    def test_all_reduce_basic_operations(
+        self,
+        tensor_shape,
+        dtype,
+        device,
+        op,
+        async_op,
+        world_size,
+        mock_default_group,
+        mock_is_initialized,
+        mock_rank_not_in_group,
+        mock_warn_not_in_group,
+        mock_check_single_tensor,
+        mock_supports_complex,
+        mock_process_group,
+        mock_work
+    ):
+        """
+        Test all_reduce basic functionality with SUM operation.
+        """
+        # Setup mocks
+        mock_pg = mock_process_group
+        mock_pg.size.return_value = world_size
+        mock_pg.allreduce.return_value = mock_work
+        
+        # Convert string parameters to actual types
+        dtype_map = {"float32": torch.float32}
+        op_map = {"SUM": dist.ReduceOp.SUM}
+        
+        torch_dtype = dtype_map[dtype]
+        reduce_op = op_map[op]
+        
+        # Create test tensor
+        torch.manual_seed(42)
+        tensor = torch.randn(*tensor_shape, dtype=torch_dtype)
+        original_tensor = tensor.clone().detach()
+        
+        # Mock the allreduce call
+        def mock_allreduce_effect(tensors, opts):
+            tensors[0].mul_(world_size)
+            return mock_work
+        
+        mock_pg.allreduce.side_effect = mock_allreduce_effect
+        
+        # Execute all_reduce
+        result = dist.all_reduce(
+            tensor,
+            op=reduce_op,
+            group=None,
+            async_op=async_op
+        )
+        
+        # Weak assertions
+        assert not torch.equal(tensor, original_tensor)
+        assert tensor.dtype == original_tensor.dtype
+        assert tensor.shape == original_tensor.shape
+        
+        expected = original_tensor * world_size
+        torch.testing.assert_close(tensor, expected, rtol=1e-5, atol=1e-8)
+        
+        if async_op:
+            assert result is mock_work
+            mock_work.wait.assert_not_called()
+        else:
+            assert result is None
+            mock_work.wait.assert_called_once()
+        
+        mock_check_single_tensor.assert_called_once_with(tensor, "tensor")
+        mock_pg.allreduce.assert_called_once()
+    # ==== BLOCK:CASE_03 END ====
+    
+    # ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize(
+        "tensor_shape,dtype,device,src_rank,async_op,world_size",
+        [
+            # Base case from test plan
+            ([3, 3], "float32", "cpu", 0, False, 2),
+        ]
+    )
+    def test_broadcast_basic_functionality(
+        self,
+        tensor_shape,
+        dtype,
+        device,
+        src_rank,
+        async_op,
+        world_size,
+        mock_default_group,
+        mock_is_initialized,
+        mock_rank_not_in_group,
+        mock_warn_not_in_group,
+        mock_check_single_tensor,
+        mock_get_group_rank,
+        mock_process_group,
+        mock_work
+    ):
+        """
+        Test broadcast basic functionality.
+        """
+        # Setup mocks
+        mock_pg = mock_process_group
+        mock_pg.size.return_value = world_size
+        mock_pg.rank.return_value = 0
+        mock_pg.broadcast.return_value = mock_work
+        
+        # Convert string parameters
+        dtype_map = {"float32": torch.float32}
+        torch_dtype = dtype_map[dtype]
+        
+        # Create test tensor
+        torch.manual_seed(42)
+        tensor = torch.randn(*tensor_shape, dtype=torch_dtype)
+        original_tensor = tensor.clone().detach()
+        
+        # Create source tensor
+        torch.manual_seed(123)
+        source_tensor = torch.randn(*tensor_shape, dtype=torch_dtype)
+        
+        # Mock the broadcast call
+        def mock_broadcast_effect(tensors, opts):
+            current_rank = mock_pg.rank()
+            if current_rank != opts.rootRank:
+                tensors[0].copy_(source_tensor)
+            return mock_work
+        
+        mock_pg.broadcast.side_effect = mock_broadcast_effect
+        
+        # Execute broadcast
+        result = dist.broadcast(
+            tensor,
+            src=src_rank,
+            group=None,
+            async_op=async_op
+        )
+        
+        # Weak assertions
+        assert tensor.dtype == original_tensor.dtype
+        assert tensor.shape == original_tensor.shape
+        
+        if src_rank == 0:
+            assert torch.equal(tensor, original_tensor)
+            torch.testing.assert_close(tensor, original_tensor, rtol=1e-5, atol=1e-8)
+        else:
+            assert torch.equal(tensor, source_tensor)
+            torch.testing.assert_close(tensor, source_tensor, rtol=1e-5, atol=1e-8)
+        
+        if async_op:
+            assert result is mock_work
+            mock_work.wait.assert_not_called()
+        else:
+            assert result is None
+            mock_work.wait.assert_called_once()
+        
+        mock_check_single_tensor.assert_called_once_with(tensor, "tensor")
+        mock_pg.broadcast.assert_called_once()
+    # ==== BLOCK:CASE_04 END ====
+    
+    # ==== BLOCK:CASE_09 START ====
+    # Placeholder for CASE_09: deferred test
+    # ==== BLOCK:CASE_09 END ====
+    
+    # ==== BLOCK:CASE_10 START ====
+    # Placeholder for CASE_10: deferred test
+    # ==== BLOCK:CASE_10 END ====
+    
+    # ==== BLOCK:FOOTER START ====
+    # Additional tests for edge cases (deferred)
+    
+    def test_all_reduce_complex_tensor(self):
+        """Test all_reduce with complex tensor (deferred)."""
+        pass
+    
+    def test_broadcast_large_tensor(self):
+        """Test broadcast with large tensor (deferred)."""
+        pass
+    
+    def test_all_reduce_async_timeout(self):
+        """Test all_reduce async operation timeout (deferred)."""
+        pass
+    
+    def test_broadcast_multiple_ranks(self):
+        """Test broadcast with multiple ranks (deferred)."""
+        pass
+    # ==== BLOCK:FOOTER END ====

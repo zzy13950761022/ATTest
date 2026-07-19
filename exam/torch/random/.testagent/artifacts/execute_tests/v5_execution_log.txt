@@ -1,0 +1,18 @@
+=== Run Tests ===
+............                                                             [100%]
+=============================== warnings summary ===============================
+exam/torch_group/random/tests/test_torch_random.py::TestTorchRandom::test_fork_rng_basic_context[None-True-basic]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/random.py:99: UserWarning: CUDA reports that you have 2 available devices, and you have used fork_rng without explicitly specifying which devices are being used. For safety, we initialize *every* CUDA device by default, which can be quite slow if you have a lot of GPUs.  If you know that you are only making use of a few CUDA devices, set the environment variable CUDA_VISIBLE_DEVICES or the 'devices' keyword argument of fork_rng with the set of devices you are actually using.  For example, if you are using CPU only, set CUDA_VISIBLE_DEVICES= or devices=[]; if you are using GPU 0 only, set CUDA_VISIBLE_DEVICES=0 or devices=[0].  To initialize all devices and suppress this warning, set the 'devices' keyword argument to `range(torch.cuda.device_count())`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                         Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------
+tests/test_torch_random.py     161      1     24      3    98%   136->exit, 162, 321->353
+------------------------------------------------------------------------
+TOTAL                          161      1     24      3    98%
+Coverage XML written to file coverage.xml
+12 passed, 1 warning in 0.74s

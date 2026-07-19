@@ -1,0 +1,129 @@
+=== Run Tests ===
+.F.                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_checkpoint_rng_state_management[random_operation-input_shape0-float32-cpu-True-True] _
+
+function_type = 'random_operation', input_shape = [2, 3], dtype = 'float32'
+device = 'cpu', use_reentrant = True, preserve_rng_state = True
+
+    @pytest.mark.parametrize("function_type,input_shape,dtype,device,use_reentrant,preserve_rng_state", [
+        # Base case from test plan
+        ("random_operation", [2, 3], "float32", "cpu", True, True),
+    ])
+    def test_checkpoint_rng_state_management(
+        function_type, input_shape, dtype, device, use_reentrant, preserve_rng_state
+    ):
+        """
+        Test RNG state management in checkpointed functions.
+        """
+        # Skip CUDA tests if CUDA not available
+        if device == "cuda" and not torch.cuda.is_available():
+            pytest.skip("CUDA not available")
+    
+        # Set random seed for reproducibility
+        set_random_seed(42)
+    
+        # Create input tensor
+        if dtype == "float32":
+            torch_dtype = torch.float32
+        else:
+            raise ValueError(f"Unsupported dtype: {dtype}")
+    
+        x = torch.randn(*input_shape, dtype=torch_dtype)
+        if device == "cuda":
+            x = x.cuda()
+    
+        # Define function based on type
+        if function_type == "random_operation":
+            def func(tensor):
+                return random_operation(tensor)
+        else:
+            raise ValueError(f"Unsupported function_type: {function_type}")
+    
+        # Mock RNG state management functions to track calls
+        original_get_rng_state = torch.get_rng_state
+        original_set_rng_state = torch.set_rng_state
+        get_rng_state_calls = []
+        set_rng_state_calls = []
+    
+        def mock_get_rng_state():
+            get_rng_state_calls.append('cpu')
+            return original_get_rng_state()
+    
+        def mock_set_rng_state(state):
+            set_rng_state_calls.append('cpu')
+            return original_set_rng_state(state)
+    
+        # Mock CUDA RNG functions if CUDA is available
+        if torch.cuda.is_available():
+            original_cuda_get_rng_state = torch.cuda.get_rng_state
+            original_cuda_set_rng_state = torch.cuda.set_rng_state
+            cuda_get_rng_state_calls = []
+            cuda_set_rng_state_calls = []
+    
+            def mock_cuda_get_rng_state(device='cuda'):
+                cuda_get_rng_state_calls.append(device)
+                return original_cuda_get_rng_state(device)
+    
+            def mock_cuda_set_rng_state(state, device='cuda'):
+                cuda_set_rng_state_calls.append(device)
+                return original_cuda_set_rng_state(state, device)
+    
+        # Compute direct result with fixed seed
+        set_random_seed(42)
+        direct_result = func(x)
+    
+        # Reset seed and compute checkpoint result with mocked RNG functions
+        set_random_seed(42)
+    
+        with patch('torch.get_rng_state', side_effect=mock_get_rng_state), \
+             patch('torch.set_rng_state', side_effect=mock_set_rng_state):
+    
+            if torch.cuda.is_available():
+                with patch('torch.cuda.get_rng_state', side_effect=mock_cuda_get_rng_state), \
+                     patch('torch.cuda.set_rng_state', side_effect=mock_cuda_set_rng_state):
+    
+                    checkpoint_result = checkpoint(
+                        func, x,
+                        use_reentrant=use_reentrant,
+                        preserve_rng_state=preserve_rng_state
+                    )
+            else:
+                checkpoint_result = checkpoint(
+                    func, x,
+                    use_reentrant=use_reentrant,
+                    preserve_rng_state=preserve_rng_state
+                )
+    
+        # WEAK ASSERTIONS (epoch 2)
+        # 1. RNG state consistent when preserve_rng_state=True
+        if preserve_rng_state:
+            # Check that RNG state was saved and restored
+            assert len(get_rng_state_calls) > 0, "get_rng_state should be called"
+>           assert len(set_rng_state_calls) > 0, "set_rng_state should be called"
+E           AssertionError: set_rng_state should be called
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests/test_torch_utils_checkpoint_gradients.py:216: AssertionError
+=============================== warnings summary ===============================
+exam/torch_group/utils.checkpoint/tests/test_torch_utils_checkpoint_gradients.py::test_checkpoint_rng_state_management[random_operation-input_shape0-float32-cpu-True-True]
+exam/torch_group/utils.checkpoint/tests/test_torch_utils_checkpoint_gradients.py::test_checkpoint_nested_output_structure[nested_output-input_shape0-float32-cpu-True-True]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/utils/checkpoint.py:31: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+    warnings.warn("None of the inputs have requires_grad=True. Gradients will be None")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                             Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------
+tests/test_torch_utils_checkpoint_gradients.py     189     58     76     15    66%   20, 24-28, 33, 48-50, 54-66, 71-72, 77-80, 134, 143, 147, 154, 167-168, 172-183, 196-199, 218-233, 257, 266, 270, 277, 296->319, 389-390
+--------------------------------------------------------------------------------------------
+TOTAL                                              189     58     76     15    66%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_utils_checkpoint_gradients.py::test_checkpoint_rng_state_management[random_operation-input_shape0-float32-cpu-True-True]
+1 failed, 2 passed, 2 warnings in 0.56s
+
+Error: exit 1

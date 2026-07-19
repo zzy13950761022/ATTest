@@ -1,0 +1,135 @@
+=== Run Tests ===
+......F............                                                      [100%]
+=================================== FAILURES ===================================
+__________________________ test_svd_lowrank_invalid_q __________________________
+
+    def test_svd_lowrank_invalid_q():
+        """测试无效 q 参数"""
+        set_random_seed()
+        A = torch.randn(5, 3, dtype=torch.float32)
+    
+        # q > min(m,n) 应引发 AssertionError（根据实际实现）
+        # 注意：实际实现中，svd_lowrank 内部会检查 B_t.shape[-2] == q
+        # 当 q > min(m,n) 时，这个断言会失败
+        with pytest.raises(AssertionError):
+            svd_lowrank(A, q=10)  # q=10 > min(5,3)=3
+    
+        # q < 0 应引发 ValueError
+        # 注意：根据实际实现，get_approximate_basis 可能先被调用
+        # 而它可能不接受负的 q 值
+        try:
+>           svd_lowrank(A, q=-1)
+
+tests/test_torch_lowrank_g1.py:295: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lowrank.py:137: in svd_lowrank
+    return _svd_lowrank(A, q=q, niter=niter, M=M)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lowrank.py:161: in _svd_lowrank
+    Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A = tensor([[ 0.3367,  0.2303,  2.2082,  0.2674,  1.1103],
+        [ 0.1288, -1.1229, -0.6380,  0.5349, -1.6898],
+        [ 0.2345, -0.1863,  0.4617,  0.8094, -0.9890]])
+q = -1, niter = 2, M = None
+
+    def get_approximate_basis(
+        A: Tensor, q: int, niter: Optional[int] = 2, M: Optional[Tensor] = None
+    ) -> Tensor:
+        """Return tensor :math:`Q` with :math:`q` orthonormal columns such
+        that :math:`Q Q^H A` approximates :math:`A`. If :math:`M` is
+        specified, then :math:`Q` is such that :math:`Q Q^H (A - M)`
+        approximates :math:`A - M`.
+    
+        .. note:: The implementation is based on the Algorithm 4.4 from
+                  Halko et al, 2009.
+    
+        .. note:: For an adequate approximation of a k-rank matrix
+                  :math:`A`, where k is not known in advance but could be
+                  estimated, the number of :math:`Q` columns, q, can be
+                  choosen according to the following criteria: in general,
+                  :math:`k <= q <= min(2*k, m, n)`. For large low-rank
+                  matrices, take :math:`q = k + 5..10`.  If k is
+                  relatively small compared to :math:`min(m, n)`, choosing
+                  :math:`q = k + 0..2` may be sufficient.
+    
+        .. note:: To obtain repeatable results, reset the seed for the
+                  pseudorandom number generator
+    
+        Args::
+            A (Tensor): the input tensor of size :math:`(*, m, n)`
+    
+            q (int): the dimension of subspace spanned by :math:`Q`
+                     columns.
+    
+            niter (int, optional): the number of subspace iterations to
+                                   conduct; ``niter`` must be a
+                                   nonnegative integer. In most cases, the
+                                   default value 2 is more than enough.
+    
+            M (Tensor, optional): the input tensor's mean of size
+                                  :math:`(*, 1, n)`.
+    
+        References::
+            - Nathan Halko, Per-Gunnar Martinsson, and Joel Tropp, Finding
+              structure with randomness: probabilistic algorithms for
+              constructing approximate matrix decompositions,
+              arXiv:0909.4061 [math.NA; math.PR], 2009 (available at
+              `arXiv <http://arxiv.org/abs/0909.4061>`_).
+        """
+    
+        niter = 2 if niter is None else niter
+        m, n = A.shape[-2:]
+        dtype = _utils.get_floating_dtype(A)
+        matmul = _utils.matmul
+    
+>       R = torch.randn(n, q, dtype=dtype, device=A.device)
+E       RuntimeError: Trying to create tensor with negative dimension -1: [5, -1]
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/_lowrank.py:64: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+    def test_svd_lowrank_invalid_q():
+        """测试无效 q 参数"""
+        set_random_seed()
+        A = torch.randn(5, 3, dtype=torch.float32)
+    
+        # q > min(m,n) 应引发 AssertionError（根据实际实现）
+        # 注意：实际实现中，svd_lowrank 内部会检查 B_t.shape[-2] == q
+        # 当 q > min(m,n) 时，这个断言会失败
+        with pytest.raises(AssertionError):
+            svd_lowrank(A, q=10)  # q=10 > min(5,3)=3
+    
+        # q < 0 应引发 ValueError
+        # 注意：根据实际实现，get_approximate_basis 可能先被调用
+        # 而它可能不接受负的 q 值
+        try:
+            svd_lowrank(A, q=-1)
+            # 如果函数没有验证 q，它会继续执行
+            # 但可能在其他地方失败
+        except Exception as e:
+            # 可能引发 ValueError 或 AssertionError
+            # 我们只确保函数不会静默成功
+>           assert isinstance(e, (ValueError, AssertionError)), \
+                f"期望 ValueError 或 AssertionError，实际得到 {type(e).__name__}: {e}"
+E           AssertionError: 期望 ValueError 或 AssertionError，实际得到 RuntimeError: Trying to create tensor with negative dimension -1: [5, -1]
+E           assert False
+E            +  where False = isinstance(RuntimeError('Trying to create tensor with negative dimension -1: [5, -1]'), (<class 'ValueError'>, <class 'AssertionError'>))
+
+tests/test_torch_lowrank_g1.py:301: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+tests/test_torch_lowrank_g1.py     156      5     28      9    92%   15, 27, 33-35, 42->44, 44->exit, 79->86, 94->102, 157->164, 245->233
+tests/test_torch_lowrank_g2.py     214     29     34     10    81%   15, 34, 41->43, 43->exit, 94->100, 135->142, 154->161, 239->246, 259-269, 295-302, 310, 315, 321, 336-343, 423-427, 432-434, 444-450
+----------------------------------------------------------------------------
+TOTAL                              370     34     62     19    86%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_lowrank_g1.py::test_svd_lowrank_invalid_q - Assertion...
+1 failed, 18 passed in 0.86s
+
+Error: exit 1

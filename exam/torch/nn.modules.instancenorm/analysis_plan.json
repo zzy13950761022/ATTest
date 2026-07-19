@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 15,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_instance_norm_channel_mismatch",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "InstanceNorm通道不匹配时抛出RuntimeError，但错误消息为'weight should contain 8 elements not 6'，不是预期的shape/size/dimension相关错误。需要调整断言以匹配实际错误消息"
+    },
+    {
+      "test": "test_lazy_instance_norm_parameter_validation",
+      "block_id": "HEADER",
+      "error_type": "AssertionError",
+      "action": "fix_dependency",
+      "note": "LazyInstanceNorm构造函数未验证momentum参数，期望抛出ValueError但未抛出。需要检查LazyInstanceNorm参数验证逻辑"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

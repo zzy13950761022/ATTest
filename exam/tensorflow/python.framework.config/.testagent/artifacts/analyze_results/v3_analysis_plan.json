@@ -1,0 +1,29 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 0,
+  "errors": 3,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_framework_config_g1.py::test_device_list_query_basic_functionality[CPU-mock_devices0]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "tensorflow.python模块路径不存在，需要修正mock路径"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_framework_config_g1.py::test_thread_configuration_set_and_query_consistency[4-intra_op]",
+      "reason": "依赖HEADER块的mock_context fixture，等待HEADER修复"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_config_g1.py::test_invalid_device_type_exception_handling[INVALID-ValueError]",
+      "reason": "依赖HEADER块的mock_context fixture，等待HEADER修复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

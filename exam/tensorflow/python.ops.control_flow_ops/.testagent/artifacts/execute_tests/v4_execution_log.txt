@@ -1,0 +1,518 @@
+=== Run Tests ===
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+___________________ test_cond_basic_functionality[True-1.0] ___________________
+
+pred = True, expected_value = 1.0
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662212829296'>, <MagicMock name='context' id='2662212845472'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662212873712'>, <MagicMock name='while_loop' id='2662212894048'>, <MagicMock id='2662212906144'>)
+
+    @pytest.mark.parametrize("pred,expected_value", [
+        (True, 1.0),
+        (False, 0.0),
+    ])
+    def test_cond_basic_functionality(pred, expected_value, mock_tensorflow_context, mock_control_flow_ops):
+        """
+        测试cond基本功能：布尔标量控制分支执行
+        验证条件分支选择正确，返回值符合预期
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+    
+        # 设置eager模式
+        mock_eager.return_value = True
+    
+        # 定义测试函数
+        true_fn = lambda: tf.constant(1.0)
+        false_fn = lambda: tf.constant(0.0)
+    
+        # 执行cond操作
+>       result = control_flow_ops.cond(pred, true_fn, false_fn)
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = True, ctx = <MagicMock name='context()' id='2662212861616'>
+dtype = None
+
+    def convert_to_eager_tensor(value, ctx, dtype=None):
+      """Converts the given `value` to an `EagerTensor`.
+    
+      Note that this function could return cached copies of created constants for
+      performance reasons.
+    
+      Args:
+        value: value to convert to EagerTensor.
+        ctx: value of context.context().
+        dtype: optional desired dtype of the converted EagerTensor.
+    
+      Returns:
+        EagerTensor created from value.
+    
+      Raises:
+        TypeError: if `dtype` is not compatible with the type of t.
+      """
+      if isinstance(value, ops.EagerTensor):
+        if dtype is not None and value.dtype != dtype:
+          raise TypeError(f"Expected tensor {value} with dtype {dtype!r}, but got "
+                          f"dtype {value.dtype!r}.")
+        return value
+      if dtype is not None:
+        try:
+          dtype = dtype.as_datatype_enum
+        except AttributeError:
+          dtype = dtypes.as_dtype(dtype).as_datatype_enum
+      ctx.ensure_initialized()
+>     return ops.EagerTensor(value, ctx.device_name, dtype)
+E     TypeError: Error parsing device argument.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:102: TypeError
+__________________ test_cond_basic_functionality[False-0.0] ___________________
+
+pred = False, expected_value = 0.0
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662212906000'>, <MagicMock name='context' id='2662214568064'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662214510768'>, <MagicMock name='while_loop' id='2662214572256'>, <MagicMock id='2662214649696'>)
+
+    @pytest.mark.parametrize("pred,expected_value", [
+        (True, 1.0),
+        (False, 0.0),
+    ])
+    def test_cond_basic_functionality(pred, expected_value, mock_tensorflow_context, mock_control_flow_ops):
+        """
+        测试cond基本功能：布尔标量控制分支执行
+        验证条件分支选择正确，返回值符合预期
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+    
+        # 设置eager模式
+        mock_eager.return_value = True
+    
+        # 定义测试函数
+        true_fn = lambda: tf.constant(1.0)
+        false_fn = lambda: tf.constant(0.0)
+    
+        # 执行cond操作
+>       result = control_flow_ops.cond(pred, true_fn, false_fn)
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = False, ctx = <MagicMock name='context()' id='2662231664912'>
+dtype = None
+
+    def convert_to_eager_tensor(value, ctx, dtype=None):
+      """Converts the given `value` to an `EagerTensor`.
+    
+      Note that this function could return cached copies of created constants for
+      performance reasons.
+    
+      Args:
+        value: value to convert to EagerTensor.
+        ctx: value of context.context().
+        dtype: optional desired dtype of the converted EagerTensor.
+    
+      Returns:
+        EagerTensor created from value.
+    
+      Raises:
+        TypeError: if `dtype` is not compatible with the type of t.
+      """
+      if isinstance(value, ops.EagerTensor):
+        if dtype is not None and value.dtype != dtype:
+          raise TypeError(f"Expected tensor {value} with dtype {dtype!r}, but got "
+                          f"dtype {value.dtype!r}.")
+        return value
+      if dtype is not None:
+        try:
+          dtype = dtype.as_datatype_enum
+        except AttributeError:
+          dtype = dtypes.as_dtype(dtype).as_datatype_enum
+      ctx.ensure_initialized()
+>     return ops.EagerTensor(value, ctx.device_name, dtype)
+E     TypeError: Error parsing device argument.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:102: TypeError
+______ test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0] _______
+
+pred_fn_pairs = [(True, <function <lambda> at 0x0000026BD83CBDC0>), (False, <function <lambda> at 0x0000026BD83CBE50>)]
+default_fn = <function <lambda> at 0x0000026BD83CBEE0>, exclusive = False
+expected_value = 1.0
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662231635040'>, <MagicMock name='context' id='2662231527040'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662231745392'>, <MagicMock name='while_loop' id='2662231535280'>, <MagicMock id='2662231540256'>)
+
+    @pytest.mark.parametrize("pred_fn_pairs,default_fn,exclusive,expected_value", [
+        (
+            [(True, lambda: tf.constant(1.0)), (False, lambda: tf.constant(2.0))],
+            lambda: tf.constant(0.0),
+            False,
+            1.0
+        ),
+    ])
+    def test_case_basic_functionality(pred_fn_pairs, default_fn, exclusive, expected_value,
+                                     mock_tensorflow_context, mock_control_flow_ops):
+        """
+        测试case多分支选择：基本匹配功能
+        验证多个条件分支正确匹配第一个真条件
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+    
+        # 设置eager模式
+        mock_eager.return_value = True
+    
+        # 执行case操作
+>       result = control_flow_ops.case(pred_fn_pairs, default=default_fn, exclusive=exclusive)
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+pred_fn_pairs = [(True, <function <lambda> at 0x0000026BD83CBDC0>), (False, <function <lambda> at 0x0000026BD83CBE50>)]
+exclusive = False, name = 'case', allow_python_preds = False
+
+    def _case_verify_and_canonicalize_args(pred_fn_pairs, exclusive, name,
+                                           allow_python_preds):
+      """Verifies input arguments for the case function.
+    
+      Args:
+        pred_fn_pairs: Dict or list of pairs of a boolean scalar tensor, and a
+          callable which returns a list of tensors.
+        exclusive: True iff at most one predicate is allowed to evaluate to `True`.
+        name: A name for the case operation.
+        allow_python_preds: if true, pred_fn_pairs may contain Python bools in
+          addition to boolean Tensors
+    
+      Raises:
+        TypeError: If `pred_fn_pairs` is not a list/dictionary.
+        TypeError: If `pred_fn_pairs` is a list but does not contain 2-tuples.
+        TypeError: If `fns[i]` is not callable for any i, or `default` is not
+                   callable.
+    
+      Returns:
+        a tuple <list of scalar bool tensors, list of callables>.
+      """
+      if not isinstance(pred_fn_pairs, (list, _basetuple, dict)):
+        raise TypeError("'pred_fn_pairs' must be a list, tuple, or dict. "
+                        f"Received: {type(pred_fn_pairs)}")
+    
+      if isinstance(pred_fn_pairs, collections.OrderedDict):
+        pred_fn_pairs = pred_fn_pairs.items()
+      elif isinstance(pred_fn_pairs, dict):
+        if context.executing_eagerly():
+          # No name to sort on in eager mode. Use dictionary traversal order,
+          # which is nondeterministic in versions of Python < 3.6
+          if not exclusive:
+            raise ValueError("Unordered dictionaries are not supported for the "
+                             "'pred_fn_pairs' argument when `exclusive=False` and "
+                             "eager mode is enabled.")
+          pred_fn_pairs = list(pred_fn_pairs.items())
+        else:
+          pred_fn_pairs = sorted(
+              pred_fn_pairs.items(), key=lambda item: item[0].name)
+          if not exclusive:
+            logging.warn(
+                "%s: An unordered dictionary of predicate/fn pairs was "
+                "provided, but exclusive=False. The order of conditional "
+                "tests is deterministic but not guaranteed.", name)
+      for pred_fn_pair in pred_fn_pairs:
+        if not isinstance(pred_fn_pair, _basetuple) or len(pred_fn_pair) != 2:
+          raise TypeError("Each entry in 'pred_fn_pairs' must be a 2-tuple. "
+                          f"Received {pred_fn_pair}.")
+        pred, fn = pred_fn_pair
+    
+        if isinstance(pred, ops.Tensor):
+          if pred.dtype != dtypes.bool:
+            raise TypeError("pred must be Tensor of type bool: %s" % pred.name)
+        elif not allow_python_preds:
+>         raise TypeError("pred must be a Tensor, got: %s" % pred)
+E         TypeError: pred must be a Tensor, got: True
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\control_flow_ops.py:3223: TypeError
+___ test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5] ____
+
+cond_fn = <function <lambda> at 0x0000026BD83D9040>
+body_fn = <function <lambda> at 0x0000026BD83D90D0>, loop_vars = [0]
+parallel_iterations = 10, expected_value = 5
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662231948400'>, <MagicMock name='context' id='2662232458864'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662231927728'>, <MagicMock name='while_loop' id='2662231958480'>, <MagicMock id='2662231850576'>)
+
+    @pytest.mark.parametrize("cond_fn,body_fn,loop_vars,parallel_iterations,expected_value", [
+        (
+            lambda i: i < 5,
+            lambda i: i + 1,
+            [0],
+            10,
+            5
+        ),
+    ])
+    def test_while_loop_basic_functionality(cond_fn, body_fn, loop_vars, parallel_iterations, expected_value,
+                                           mock_tensorflow_context, mock_control_flow_ops):
+        """
+        测试while_loop基本循环：固定次数循环执行
+        验证循环正确终止，最终值符合预期
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+    
+        # 设置eager模式
+        mock_eager.return_value = True
+    
+        # 配置while_v2模拟行为
+        # 模拟5次循环：0 -> 1 -> 2 -> 3 -> 4 -> 5
+        call_count = 0
+        def mock_while_side_effect(cond, body, loop_vars, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 5:
+                # 继续循环
+                return body(loop_vars[0])
+            else:
+                # 循环结束
+                return loop_vars[0]
+    
+        mock_while_v2.side_effect = mock_while_side_effect
+    
+        # 执行while_loop操作
+>       result = control_flow_ops.while_loop(
+            cond_fn,
+            body_fn,
+            loop_vars,
+            parallel_iterations=parallel_iterations
+        )
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\ops\control_flow_ops.py:2792: in while_loop
+    loop_var_structure = nest.map_structure(type_spec.type_spec_from_value,
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:914: in map_structure
+    structure[0], [func(*x) for x in entries],
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\nest.py:914: in <listcomp>
+    structure[0], [func(*x) for x in entries],
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 0
+
+    @tf_export("type_spec_from_value")
+    def type_spec_from_value(value) -> TypeSpec:
+      """Returns a `tf.TypeSpec` that represents the given `value`.
+    
+      Examples:
+    
+        >>> tf.type_spec_from_value(tf.constant([1, 2, 3]))
+        TensorSpec(shape=(3,), dtype=tf.int32, name=None)
+        >>> tf.type_spec_from_value(np.array([4.0, 5.0], np.float64))
+        TensorSpec(shape=(2,), dtype=tf.float64, name=None)
+        >>> tf.type_spec_from_value(tf.ragged.constant([[1, 2], [3, 4, 5]]))
+        RaggedTensorSpec(TensorShape([2, None]), tf.int32, 1, tf.int64)
+    
+        >>> example_input = tf.ragged.constant([[1, 2], [3]])
+        >>> @tf.function(input_signature=[tf.type_spec_from_value(example_input)])
+        ... def f(x):
+        ...   return tf.reduce_sum(x, axis=1)
+    
+      Args:
+        value: A value that can be accepted or returned by TensorFlow APIs. Accepted
+          types for `value` include `tf.Tensor`, any value that can be converted to
+          `tf.Tensor` using `tf.convert_to_tensor`, and any subclass of
+          `CompositeTensor` (such as `tf.RaggedTensor`).
+    
+      Returns:
+        A `TypeSpec` that is compatible with `value`.
+    
+      Raises:
+        TypeError: If a TypeSpec cannot be built for `value`, because its type
+          is not supported.
+      """
+      spec = _type_spec_from_value(value)
+      if spec is not None:
+        return spec
+    
+      # Fallback: try converting value to a tensor.
+      try:
+        tensor = ops.convert_to_tensor(value)
+        spec = _type_spec_from_value(tensor)
+        if spec is not None:
+          return spec
+      except (ValueError, TypeError) as e:
+        logging.vlog(
+            3, "Failed to convert %r to tensor: %s" % (type(value).__name__, e))
+    
+>     raise TypeError(f"Could not build a TypeSpec for {value} of "
+                      f"unsupported type {type(value)}.")
+E     TypeError: Could not build a TypeSpec for 0 of unsupported type <class 'int'>.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\type_spec.py:890: TypeError
+_________________ test_gradient_verification[cond-eager-True] _________________
+
+func_type = 'cond', mode = 'eager', use_gradient = True
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662212998768'>, <MagicMock name='context' id='2662212720672'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662213158032'>, <MagicMock name='while_loop' id='2662231605936'>, <MagicMock id='2662231665632'>)
+
+    @pytest.mark.parametrize("func_type,mode,use_gradient", [
+        ("cond", "eager", True),
+    ])
+    def test_gradient_verification(func_type, mode, use_gradient, mock_tensorflow_context, mock_control_flow_ops):
+        """
+        测试梯度计算验证：控制流中的自动微分
+        验证cond操作在梯度计算时的正确性
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+    
+        # 设置执行模式
+        if mode == "eager":
+            mock_eager.return_value = True
+        else:
+            mock_eager.return_value = False
+    
+        # 注意：在真实测试中，我们不应该mock梯度计算，因为我们要测试真实的梯度行为
+        # 但为了测试的可靠性，我们使用真实的TensorFlow梯度计算
+    
+        # 创建可训练变量
+>       x = tf.Variable(2.0)
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:304: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = 2.0, ctx = <MagicMock name='context()' id='2662212872080'>, dtype = None
+
+    def convert_to_eager_tensor(value, ctx, dtype=None):
+      """Converts the given `value` to an `EagerTensor`.
+    
+      Note that this function could return cached copies of created constants for
+      performance reasons.
+    
+      Args:
+        value: value to convert to EagerTensor.
+        ctx: value of context.context().
+        dtype: optional desired dtype of the converted EagerTensor.
+    
+      Returns:
+        EagerTensor created from value.
+    
+      Raises:
+        TypeError: if `dtype` is not compatible with the type of t.
+      """
+      if isinstance(value, ops.EagerTensor):
+        if dtype is not None and value.dtype != dtype:
+          raise TypeError(f"Expected tensor {value} with dtype {dtype!r}, but got "
+                          f"dtype {value.dtype!r}.")
+        return value
+      if dtype is not None:
+        try:
+          dtype = dtype.as_datatype_enum
+        except AttributeError:
+          dtype = dtypes.as_dtype(dtype).as_datatype_enum
+      ctx.ensure_initialized()
+>     return ops.EagerTensor(value, ctx.device_name, dtype)
+E     TypeError: Error parsing device argument.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:102: TypeError
+________________ test_eager_graph_mode_consistency[cond-True] _________________
+
+func_type = 'cond', compare_modes = True
+mock_tensorflow_context = (<MagicMock name='executing_eagerly_outside_functions' id='2662231665680'>, <MagicMock name='context' id='2662214575104'>)
+mock_control_flow_ops = (<MagicMock name='cond_v2' id='2662214646848'>, <MagicMock name='while_loop' id='2662214653600'>, <MagicMock id='2662214612544'>)
+mock_graph_context = <MagicMock name='get_default_graph' id='2662231711648'>
+
+    @pytest.mark.parametrize("func_type,compare_modes", [
+        ("cond", True),
+    ])
+    def test_eager_graph_mode_consistency(func_type, compare_modes, mock_tensorflow_context, mock_control_flow_ops, mock_graph_context):
+        """
+        测试eager与graph模式一致性
+        验证cond操作在两种执行模式下结果相同
+        """
+        mock_eager, mock_context = mock_tensorflow_context
+        mock_cond_v2, mock_while_v2, mock_gen_ops = mock_control_flow_ops
+        mock_graph = mock_graph_context
+    
+        if func_type == "cond":
+            # 测试cond函数在eager和graph模式下的一致性
+    
+            # 首先测试eager模式
+            mock_eager.return_value = True  # 设置为eager模式
+    
+            # 定义测试函数
+            def true_fn():
+                return tf.constant(5.0)
+    
+            def false_fn():
+                return tf.constant(10.0)
+    
+            # 在eager模式下执行cond
+            pred = True
+>           eager_result = control_flow_ops.cond(pred, true_fn, false_fn)
+
+tests\test_tensorflow_python_ops_control_flow_ops.py:376: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+value = True, ctx = <MagicMock name='context()' id='2662214589552'>
+dtype = None
+
+    def convert_to_eager_tensor(value, ctx, dtype=None):
+      """Converts the given `value` to an `EagerTensor`.
+    
+      Note that this function could return cached copies of created constants for
+      performance reasons.
+    
+      Args:
+        value: value to convert to EagerTensor.
+        ctx: value of context.context().
+        dtype: optional desired dtype of the converted EagerTensor.
+    
+      Returns:
+        EagerTensor created from value.
+    
+      Raises:
+        TypeError: if `dtype` is not compatible with the type of t.
+      """
+      if isinstance(value, ops.EagerTensor):
+        if dtype is not None and value.dtype != dtype:
+          raise TypeError(f"Expected tensor {value} with dtype {dtype!r}, but got "
+                          f"dtype {value.dtype!r}.")
+        return value
+      if dtype is not None:
+        try:
+          dtype = dtype.as_datatype_enum
+        except AttributeError:
+          dtype = dtypes.as_dtype(dtype).as_datatype_enum
+      ctx.ensure_initialized()
+>     return ops.EagerTensor(value, ctx.device_name, dtype)
+E     TypeError: Error parsing device argument.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\constant_op.py:102: TypeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                   Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_control_flow_ops.py     179     86     38      4    45%   17-18, 59-62, 86, 100-104, 108-111, 115-118, 145-165, 193-208, 238-244, 258-279, 298, 307-345, 369, 372, 379-425, 430
+--------------------------------------------------------------------------------------------------
+TOTAL                                                    179     86     38      4    45%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[True-1.0]
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_cond_basic_functionality[False-0.0]
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_case_basic_functionality[pred_fn_pairs0-<lambda>-False-1.0]
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_while_loop_basic_functionality[<lambda>-<lambda>-loop_vars0-10-5]
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_gradient_verification[cond-eager-True]
+FAILED tests\test_tensorflow_python_ops_control_flow_ops.py::test_eager_graph_mode_consistency[cond-True]
+6 failed in 1.70s
+
+Error: exit 1

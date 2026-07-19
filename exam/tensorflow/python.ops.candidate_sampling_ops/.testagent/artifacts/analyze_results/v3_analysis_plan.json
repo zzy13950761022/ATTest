@@ -1,0 +1,47 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestUniformCandidateSampler::test_uniform_candidate_sampler_basic[true_classes_shape0-3-5-10-False-42]",
+      "block_id": "HEADER",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "tf.Session()在TensorFlow 2.x中不存在，需要更新helper函数"
+    },
+    {
+      "test": "TestUniformCandidateSampler::test_uniform_candidate_sampler_basic[true_classes_shape1-2-8-20-False-999]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "测试中使用tf.Session()需要更新为TensorFlow 2.x兼容方式"
+    },
+    {
+      "test": "TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape0-sampled_candidates_shape0-2-456]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "seed参数验证失败，实际值为87654321，需要检查compute_accidental_hits函数实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestUniqueConstraint::test_unique_constraint_validation[true_classes_shape0-2-3-5-True-123]",
+      "reason": "错误类型重复（AttributeError），与HEADER和CASE_01相同，优先修复基础问题"
+    },
+    {
+      "test": "TestUniqueConstraint::test_unique_constraint_validation[true_classes_shape1-1-4-4-True-777]",
+      "reason": "错误类型重复（AttributeError），与HEADER和CASE_01相同，优先修复基础问题"
+    },
+    {
+      "test": "TestComputeAccidentalHits::test_compute_accidental_hits_basic[true_classes_shape1-sampled_candidates_shape1-5-555]",
+      "reason": "错误类型重复（AssertionError），与CASE_03相同，优先修复基础问题"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

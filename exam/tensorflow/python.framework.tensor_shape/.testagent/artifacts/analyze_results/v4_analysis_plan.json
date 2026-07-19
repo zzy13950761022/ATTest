@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 12,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_tensorshape_construction[dims0-2-expected_dims0]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "is_fully_defined 属性实现错误：对于已知维度 [2,3] 返回 False，应为 True"
+    },
+    {
+      "test": "test_tensorshape_construction[dims1-0-expected_dims1]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "is_fully_defined 属性实现错误：对于空列表 [] 返回 False，应为 True"
+    },
+    {
+      "test": "test_tensorshape_construction[None-None-None]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "is_fully_defined 属性实现错误：对于 None 输入返回 True，应为 False"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

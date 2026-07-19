@@ -1,0 +1,169 @@
+{
+  "workflow_id": "ab5e63fc",
+  "created_at": "2026-01-25T15:49:28.137001",
+  "op": "tensorflow_python_ops_signal_spectral_ops",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/tensorflow/python.ops.signal.spectral_ops",
+  "target": "tensorflow.python.ops.signal.spectral_ops",
+  "target_slug": "tensorflow_python_ops_signal_spectral_ops",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "",
+  "last_error_signature": "",
+  "last_block_errors": {},
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# tensorflow.python.ops.signal.spectral_ops - 函数说明\n\n## 1. 基本信息\n- **FQN**: tensorflow.python.ops.signal.spectral_ops\n- **模块文件**: `/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/tensorflow/python/ops/signal/spectral_ops.py`\n- **签名**: 模块包含多个函数\n- **对象类型**: module\n\n## 2. 功能概述\n- 提供频谱操作函数，如短时傅里叶变换（STFT）和修正离散余弦变换（MDCT）\n- 支持TPU/GPU兼容操作和梯度计算\n- 包含正向变换和逆变换函数对\n\n## 3. 参数说明\n模块包含4个主要函数：\n\n**stft(signals, frame_length, frame_step, fft_length=None, window_fn=window_ops.hann_window, pad_end=False, name=None)**\n- signals: `[..., samples]` float32/float64 张量，实值信号\n- frame_length: 整数标量张量，窗口长度（样本数）\n- frame_step: 整数标量张量，步长（样本数）\n- fft_length: 整数标量张量，FFT大小（可选）\n- window_fn: 可调用函数，生成窗口函数（默认汉宁窗）\n- pad_end: 布尔值，是否在信号末尾填充零\n\n**inverse_stft(stfts, frame_length, frame_step, fft_length=None, window_fn=window_ops.hann_window, name=None)**\n- stfts: `complex64/complex128` `[..., frames, fft_unique_bins]` 张量\n- 其他参数与stft类似\n\n**mdct(signals, frame_length, window_fn=window_ops.vorbis_window, pad_end=False, norm=None, name=None)**\n- signals: `[..., samples]` float32/float64 张量\n- frame_length: 必须能被4整除的整数标量张量\n- window_fn: 可调用函数（默认vorbis窗）\n- norm: \"ortho\"或None，控制归一化\n\n**inverse_mdct(mdcts, window_fn=window_ops.vorbis_window, norm=None, name=None)**\n- mdcts: `float32/float64` `[..., frames, frame_length // 2]` 张量\n\n## 4. 返回值\n- stft: `[..., frames, fft_unique_bins]` complex64/complex128 张量\n- inverse_stft: `[..., samples]` float32/float64 信号张量\n- mdct: `[..., frames, frame_length // 2]` float32/float64 张量\n- inverse_mdct: `[..., samples]` float32/float64 信号张量\n\n## 5. 文档要点\n- 所有函数支持TPU/GPU和梯度计算\n- stft使用shape_ops.frame进行分帧，fft_ops.rfft进行FFT\n- inverse_stft使用fft_ops.irfft和reconstruction_ops.overlap_and_add\n- mdct要求frame_length能被4整除\n- 窗口函数必须满足特定条件以实现完美重构\n\n## 6. 源码摘要\n- stft: 分帧 → 加窗 → rfft\n- inverse_stft: irfft → 截断/填充 → 加窗 → 重叠相加\n- mdct: 分帧 → 加窗 → 重排 → dct4变换\n- inverse_mdct: dct4逆变换 → 重排 → 加窗 → 重叠相加\n- 依赖: shape_ops, fft_ops, dct_ops, reconstruction_ops, window_ops\n\n## 7. 示例与用法（如有）\n- inverse_stft文档包含完整示例代码\n- 展示了如何与inverse_stft_window_fn配合使用\n- mdct示例展示了完美重构的验证方法\n\n## 8. 风险与空白\n- 模块包含多个函数实体（stft, inverse_stft, mdct, inverse_mdct）\n- 需要为每个函数单独设计测试用例\n- 窗口函数的约束条件需要验证\n- 边界情况：frame_length=0, 信号长度小于窗口长度\n- 数据类型兼容性：float32/float64, complex64/complex128\n- 未提供性能基准和内存使用信息",
+    "requirements.md": "# tensorflow.python.ops.signal.spectral_ops 测试需求\n\n## 1. 目标与范围\n- 验证STFT/MDCT正向/逆向变换的正确性和可逆性\n- 确保TPU/GPU兼容性和梯度计算支持\n- 验证窗口函数约束和完美重构条件\n- 不在范围内：性能基准测试、内存使用分析、第三方窗口函数验证\n\n## 2. 输入与约束\n- **stft**: signals([..., samples], float32/64), frame_length(int), frame_step(int), fft_length(int|None), window_fn(callable), pad_end(bool)\n- **inverse_stft**: stfts([..., frames, fft_unique_bins], complex64/128), frame_length(int), frame_step(int), fft_length(int|None), window_fn(callable)\n- **mdct**: signals([..., samples], float32/64), frame_length(int, 必须被4整除), window_fn(callable), pad_end(bool), norm(\"ortho\"|None)\n- **inverse_mdct**: mdcts([..., frames, frame_length//2], float32/64), window_fn(callable), norm(\"ortho\"|None)\n- 必需组合：frame_length > 0, frame_step > 0, fft_length >= frame_length\n- 随机性要求：无全局状态依赖，确定性计算\n\n## 3. 输出与判定\n- stft返回：[..., frames, fft_unique_bins] complex64/128张量，fft_unique_bins = fft_length//2 + 1\n- inverse_stft返回：[..., samples] float32/64信号张量，长度 = (frames-1)*frame_step + frame_length\n- mdct返回：[..., frames, frame_length//2] float32/64张量\n- inverse_mdct返回：[..., samples] float32/64信号张量\n- 容差：浮点误差<1e-6，复数相位误差<1e-8\n- 副作用检查：无外部状态修改，无文件/网络操作\n\n## 4. 错误与异常场景\n- 非法输入：frame_length <= 0, frame_step <= 0, fft_length < frame_length\n- 类型错误：非数值张量，非整数参数，非可调用window_fn\n- 维度错误：signals维度<1，stfts维度<2，mdcts维度<2\n- 边界值：空张量，零长度信号，frame_length=1，极端形状(1x1, 1000x1000)\n- 数值边界：NaN, Inf, 极大/极小浮点数\n- mdct专用：frame_length不能被4整除，无效norm值\n\n## 5. 依赖与环境\n- 外部依赖：无网络/文件/数据库依赖\n- 需要mock：无外部服务调用\n- 需要monkeypatch：无\n- 设备要求：支持CPU/GPU/TPU测试环境\n- 资源依赖：tensorflow运行时，numpy用于参考实现验证\n\n## 6. 覆盖与优先级\n- **必测路径（高优先级）**：\n  1. STFT正向+逆向变换的完美重构验证\n  2. MDCT正向+逆向变换的完美重构验证（frame_length能被4整除）\n  3. 不同数据类型组合：float32/complex64, float64/complex128\n  4. 边界情况：信号长度小于窗口长度，pad_end=True/False\n  5. 梯度计算验证（所有可微参数）\n\n- **可选路径（中/低优先级）**：\n  - 自定义窗口函数验证\n  - 不同fft_length值的影响\n  - 多维输入张量处理\n  - 批量处理性能\n  - 与numpy/scipy参考实现的对比\n  - 内存使用和形状推断\n\n- **已知风险/缺失信息**：\n  - 窗口函数的数学约束条件验证\n  - 极端数值稳定性测试\n  - TPU特定行为差异\n  - 并发/并行执行安全性\n  - 版本兼容性（不同TF版本）",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"tensorflow.python.ops.signal.spectral_ops\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\n      \"include\": \"SMOKE_SET\",\n      \"assert_level\": \"weak\",\n      \"max_blocks\": 5\n    },\n    \"roundN\": {\n      \"only_fix_failed_blocks\": true,\n      \"block_limit\": 3,\n      \"promote_deferred\": true\n    },\n    \"final\": {\n      \"enable_strong_asserts\": true,\n      \"coverage_optional\": true\n    }\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_tensorflow_python_ops_signal_spectral_ops.py\",\n    \"all_pattern\": \"tests/test_tensorflow_python_ops_signal_spectral_ops.py\"\n  },\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"name\": \"STFT正向变换基本功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"dtype\": \"float32\",\n          \"device\": \"cpu\",\n          \"signal_shape\": [100],\n          \"frame_length\": 32,\n          \"frame_step\": 16,\n          \"fft_length\": 32,\n          \"pad_end\": false,\n          \"window_fn\": \"hann_window\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"finite\", \"basic_property\"],\n        \"strong\": [\"approx_equal\", \"hermitian_symmetry\", \"energy_conservation\"]\n      },\n      \"oracle\": \"numpy.fft.rfft\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 80,\n      \"max_params\": 8,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"name\": \"STFT逆向变换基本功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"dtype\": \"complex64\",\n          \"device\": \"cpu\",\n          \"stft_shape\": [5, 17],\n          \"frame_length\": 32,\n          \"frame_step\": 16,\n          \"fft_length\": 32,\n          \"window_fn\": \"hann_window\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"finite\", \"real_value\"],\n        \"strong\": [\"approx_equal\", \"reconstruction_accuracy\"]\n      },\n      \"oracle\": \"numpy.fft.irfft\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 80,\n      \"max_params\": 7,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"name\": \"STFT正向+逆向完美重构\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"dtype\": \"float32\",\n          \"device\": \"cpu\",\n          \"signal_shape\": [100],\n          \"frame_length\": 32,\n          \"frame_step\": 16,\n          \"fft_length\": 32,\n          \"pad_end\": false,\n          \"window_fn\": \"hann_window\"\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"dtype_match\", \"finite\", \"reconstruction_error\"],\n        \"strong\": [\"approx_equal\", \"perfect_reconstruction\", \"energy_conservation\"]\n      },\n      \"oracle\": \"self_consistency\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 100,\n      \"max_params\": 8,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"name\": \"MDCT正向变换基本功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"dtype\": \"float32\",\n          \"device\": \"cpu\",\n          \"signal_shape\": [100],\n          \"frame_length\": 64,\n          \"pad_end\": false,\n          \"window_fn\": \"vorbis_window\",\n          \"norm\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape\", \"dtype\", \"finite\", \"basic_property\"],\n        \"strong\": [\"approx_equal\", \"orthogonality\", \"energy_conservation\"]\n      },\n      \"oracle\": \"scipy.fft.dct\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 80,\n      \"max_params\": 7,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    },\n    {\n      \"tc_id\": \"TC-05\",\n      \"block_id\": \"CASE_05\",\n      \"name\": \"MDCT正向+逆向完美重构\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\n          \"dtype\": \"float32\",\n          \"device\": \"cpu\",\n          \"signal_shape\": [100],\n          \"frame_length\": 64,\n          \"pad_end\": false,\n          \"window_fn\": \"vorbis_window\",\n          \"norm\": null\n        }\n      ],\n      \"asserts\": {\n        \"weak\": [\"shape_match\", \"dtype_match\", \"finite\", \"reconstruction_error\"],\n        \"strong\": [\"approx_equal\", \"perfect_reconstruction\", \"orthonormal\"]\n      },\n      \"oracle\": \"self_consistency\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 100,\n      \"max_params\": 7,\n      \"is_parametrized\": true,\n      \"requires_mock\": false,\n      \"mock_targets\": []\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_01\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"dtype\": \"float64\",\n        \"device\": \"cpu\",\n        \"signal_shape\": [200],\n        \"frame_length\": 64,\n        \"frame_step\": 32,\n        \"fft_length\": 64,\n        \"pad_end\": true,\n        \"window_fn\": \"hann_window\"\n      },\n      \"note\": \"作为参数扩展：float64数据类型，更大尺寸，pad_end=True\"\n    },\n    {\n      \"base_block_id\": \"CASE_03\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"dtype\": \"float64\",\n        \"device\": \"cpu\",\n        \"signal_shape\": [150],\n        \"frame_length\": 48,\n        \"frame_step\": 24,\n        \"fft_length\": 48,\n        \"pad_end\": false,\n        \"window_fn\": \"hann_window\"\n      },\n      \"note\": \"作为参数扩展：不同参数组合的完美重构验证\"\n    },\n    {\n      \"base_block_id\": \"CASE_04\",\n      \"priority\": \"Medium\",\n      \"params\": {\n        \"dtype\": \"float64\",\n        \"device\": \"cpu\",\n        \"signal_shape\": [200],\n        \"frame_length\": 128,\n        \"pad_end\": true,\n        \"window_fn\": \"vorbis_window\",\n        \"norm\": \"ortho\"\n      },\n      \"note\": \"作为参数扩展：float64数据类型，正交归一化，更大尺寸\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_03\", \"CASE_04\"],\n  \"deferred_set\": [\"CASE_02\", \"CASE_05\"]\n}",
+    "test_plan.md": "# tensorflow.python.ops.signal.spectral_ops 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：使用tensorflow测试工具，固定随机种子\n- 随机性处理：使用确定性随机数生成器，固定随机种子\n- 设备支持：优先CPU测试，支持GPU/TPU环境检测\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- **SMOKE_SET**: CASE_01 (STFT正向变换), CASE_03 (STFT完美重构), CASE_04 (MDCT正向变换)\n- **DEFERRED_SET**: CASE_02 (STFT逆向变换), CASE_05 (MDCT完美重构)\n- **测试文件路径**: tests/test_tensorflow_python_ops_signal_spectral_ops.py\n- **断言分级策略**: 首轮使用weak断言，最终轮启用strong断言\n- **预算策略**: \n  - S级用例: max_lines=80, max_params=8\n  - M级用例: max_lines=100, max_params=8\n  - 所有用例均为参数化测试\n\n## 3. 数据与边界\n- **正常数据集**: 随机生成的正态分布信号，形状[100-200]\n- **边界值**: 信号长度小于窗口长度，frame_length=1，极端形状(1x1)\n- **空输入**: 零长度信号张量，空维度\n- **负例场景**: \n  - frame_length <= 0, frame_step <= 0\n  - fft_length < frame_length\n  - frame_length不能被4整除（MDCT）\n  - 无效norm值\n  - 非数值张量输入\n- **数值边界**: NaN, Inf, 极大/极小浮点数\n\n## 4. 覆盖映射\n| TC ID | 对应需求 | 覆盖函数 | 关键约束 |\n|-------|----------|----------|----------|\n| TC-01 | STFT正向变换 | stft | 数据类型兼容，形状推断 |\n| TC-02 | STFT逆向变换 | inverse_stft | 复数输入处理，重构长度 |\n| TC-03 | STFT完美重构 | stft+inverse_stft | 可逆性验证，窗口函数约束 |\n| TC-04 | MDCT正向变换 | mdct | frame_length整除4，正交性 |\n| TC-05 | MDCT完美重构 | mdct+inverse_mdct | 完美重构，归一化选项 |\n\n## 5. 尚未覆盖的风险点\n- 窗口函数的数学约束条件验证\n- 梯度计算正确性（所有可微参数）\n- TPU特定行为差异测试\n- 并发/并行执行安全性\n- 自定义窗口函数兼容性\n- 极端数值稳定性（下溢/上溢）\n\n## 6. 迭代策略\n1. **首轮**: 仅生成SMOKE_SET用例，使用weak断言\n2. **后续轮**: 修复失败用例，从DEFERRED_SET提升用例\n3. **最终轮**: 启用strong断言，可选覆盖率目标\n\n## 7. 参考实现\n- STFT: numpy.fft.rfft / numpy.fft.irfft\n- MDCT: scipy.fft.dct (DCT-IV变换)\n- 自一致性验证: 正向+逆向变换的完美重构",
+    "tests/test_tensorflow_python_ops_signal_spectral_ops.py": "\"\"\"\nTest cases for tensorflow.python.ops.signal.spectral_ops\n\"\"\"\nimport numpy as np\nimport tensorflow as tf\nimport pytest\nfrom tensorflow.python.ops.signal import spectral_ops\n\n# ==== BLOCK:HEADER START ====\n# Header block - imports and fixtures\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# STFT正向变换基本功能\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# STFT逆向变换基本功能 (DEFERRED - placeholder only)\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# STFT正向+逆向完美重构\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# MDCT正向变换基本功能\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# MDCT正向+逆向完美重构 (DEFERRED - placeholder only)\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:FOOTER START ====\n# Footer block - additional helper functions\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\n\n==================================== ERRORS ====================================\n_ ERROR collecting exam/tensorflow/python.ops.signal.spectral_ops/tests/test_tensorflow_python_ops_signal_spectral_ops.py _\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/python.py:507: in importtestmodule\n    mod = import_path(\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n<frozen importlib._bootstrap>:1050: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1027: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1006: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:688: in _load_unlocked\n    ???\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/assertion/rewrite.py:188: in exec_module\n    source_stat, co = _rewrite_test(fn, self.config)\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/_pytest/assertion/rewrite.py:357: in _rewrite_test\n    tree = ast.parse(source, filename=strfn)\n/opt/anaconda3/envs/testagent-experiment/lib/python3.10/ast.py:50: in parse\n    return compile(source, filename, mode, flags,\nE     File \"/Users/zzf1sh/Documents/Project/TestAgent-CLI-main/exam/tensorflow/python.ops.signal.spectral_ops/tests/test_tensorflow_python_ops_signal_spectral_ops.py\", line 283\nE       stft_frame_np = stft_input.numpy()[batch_indices + (single_frame_idx, :)]\nE                                                                             ^\nE   SyntaxError: invalid syntax\n=========================== short test summary info ============================\nERROR tests/test_tensorflow_python_ops_signal_spectral_ops.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.15s\n\nError: exit 2",
+    "exit_code.txt": "1",
+    "analysis_plan.json": "{\n  \"status\": \"失败\",\n  \"passed\": 0,\n  \"failed\": 0,\n  \"errors\": 1,\n  \"collection_errors\": true,\n  \"block_limit\": 3,\n  \"failures\": [\n    {\n      \"test\": \"tests/test_tensorflow_python_ops_signal_spectral_ops.py::test_inverse_stft_basic\",\n      \"block_id\": \"CASE_02\",\n      \"error_type\": \"SyntaxError\",\n      \"action\": \"rewrite_block\",\n      \"note\": \"第283行语法错误：batch_indices + (single_frame_idx, :) 应为 batch_indices + (single_frame_idx, slice(None))\"\n    }\n  ],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "## 测试执行结果分析\n\n### 状态与统计\n- **状态**: 失败（收集错误）\n- **通过**: 0\n- **失败**: 0\n- **错误**: 1\n- **跳过**: 0\n\n### 待修复 BLOCK 列表\n1. **BLOCK_ID**: CASE_02\n   - **Action**: rewrite_block\n   - **Error Type**: SyntaxError\n   - **Note**: 第283行语法错误：`batch_indices + (single_frame_idx, :)` 应为 `batch_indices + (single_frame_idx, slice(None))` 或类似结构\n\n### 停止建议\n- **stop_recommended**: false",
+    "test_frame_zero.py": "import tensorflow as tf\nimport numpy as np\n\n# Test frame function with frame_length=0\nsignal = tf.constant(np.random.randn(100).astype(np.float32))\n\ntry:\n    result = tf.signal.frame(signal, frame_length=0, frame_step=16)\n    print(f\"frame_length=0 succeeded, result shape: {result.shape}\")\nexcept Exception as e:\n    print(f\"frame_length=0 failed with error: {type(e).__name__}: {e}\")\n\ntry:\n    result = tf.signal.frame(signal, frame_length=32, frame_step=0)\n    print(f\"frame_step=0 succeeded, result shape: {result.shape}\")\nexcept Exception as e:\n    print(f\"frame_step=0 failed with error: {type(e).__name__}: {e}\")\n\ntry:\n    result = tf.signal.frame(signal, frame_length=-1, frame_step=16)\n    print(f\"frame_length=-1 succeeded, result shape: {result.shape}\")\nexcept Exception as e:\n    print(f\"frame_length=-1 failed with error: {type(e).__name__}: {e}\")",
+    "final_report.md": "# tensorflow.python.ops.signal.spectral_ops 测试报告\n\n## 1. 执行摘要\n测试执行因语法错误而失败，关键阻塞项为CASE_02中的索引语法错误，导致所有测试用例无法执行。\n\n## 2. 测试范围\n- **目标FQN**: tensorflow.python.ops.signal.spectral_ops\n- **测试环境**: pytest + TensorFlow运行时，支持CPU/GPU/TPU\n- **覆盖函数**: stft, inverse_stft, mdct, inverse_mdct\n- **覆盖场景**: \n  - STFT正向变换（CASE_01）\n  - STFT完美重构（CASE_03）\n  - MDCT正向变换（CASE_04）\n- **未覆盖项**: \n  - STFT逆向变换（CASE_02 - 语法错误阻塞）\n  - MDCT完美重构（CASE_05 - 未执行）\n  - 梯度计算验证\n  - 边界值测试（负例场景）\n\n## 3. 结果概览\n- **用例总数**: 5个计划用例\n- **通过**: 0个\n- **失败**: 0个\n- **错误**: 1个（CASE_02语法错误）\n- **主要失败点**: 测试代码生成错误，非被测函数问题\n\n## 4. 详细发现\n\n### 严重级别：阻塞（BLOCKER）\n**问题**: CASE_02测试用例存在语法错误\n- **位置**: 第283行\n- **错误代码**: `batch_indices + (single_frame_idx, :)`\n- **根因**: Python切片语法错误，`:`不能直接作为元组元素\n- **影响**: 导致整个测试套件无法执行\n- **建议修复**: \n  - 修改为 `batch_indices + (single_frame_idx, slice(None))`\n  - 或使用 `batch_indices + (single_frame_idx,) + (slice(None),)`\n  - 重新生成CASE_02测试代码\n\n### 严重级别：未验证（UNVERIFIED）\n**问题**: 核心功能未测试\n- **影响范围**: STFT逆向变换、MDCT完美重构\n- **风险**: 无法验证频谱操作的可逆性和正确性\n- **建议**: 修复语法错误后重新执行完整测试套件\n\n## 5. 覆盖与风险\n\n### 需求覆盖情况\n- ✅ STFT正向变换（部分覆盖）\n- ❌ STFT逆向变换（语法错误阻塞）\n- ❌ STFT完美重构（依赖逆向变换）\n- ✅ MDCT正向变换（计划覆盖）\n- ❌ MDCT完美重构（未执行）\n- ❌ 梯度计算验证（未覆盖）\n- ❌ 边界值测试（未覆盖）\n\n### 尚未覆盖的边界/缺失信息\n1. **窗口函数约束验证**: 未测试窗口函数的数学约束条件\n2. **梯度计算**: 所有可微参数的梯度正确性未验证\n3. **TPU特定行为**: 设备兼容性测试缺失\n4. **数值稳定性**: 极端数值（NaN, Inf, 极小/极大值）未测试\n5. **并发安全性**: 并行执行场景未覆盖\n6. **自定义窗口函数**: 第三方窗口函数兼容性未验证\n\n## 6. 后续动作\n\n### 优先级：高（立即修复）\n1. **修复语法错误**（CASE_02）\n   - 修改第283行索引语法\n   - 重新生成测试代码\n   - 验证修复后测试可执行\n\n2. **执行完整测试套件**\n   - 运行所有5个测试用例\n   - 收集实际功能测试结果\n   - 分析函数级问题（如有）\n\n### 优先级：中（功能验证）\n3. **补充缺失测试**\n   - 梯度计算验证（所有可微参数）\n   - 边界值测试（负例场景）\n   - 数据类型兼容性（float32/64, complex64/128）\n\n4. **环境验证**\n   - 确认TensorFlow版本兼容性\n   - 验证GPU/TPU环境支持\n   - 检查依赖库版本（numpy等）\n\n### 优先级：低（增强覆盖）\n5. **扩展测试范围**\n   - 窗口函数约束条件验证\n   - 极端数值稳定性测试\n   - 多维输入张量处理\n   - 批量处理性能验证\n\n6. **参考实现对比**\n   - 与numpy/scipy参考实现对比\n   - 验证数值精度和容差\n   - 建立基准测试数据\n\n---\n\n**报告生成时间**: 基于当前测试执行状态  \n**测试状态**: 阻塞（语法错误）  \n**建议**: 立即修复CASE_02语法错误，重新执行测试以获取实际功能测试结果"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:50:24.918793",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:51:06.084738",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:52:46.435839",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:57:22.415684",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:57:24.909288",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-25T15:59:23.743181",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:26:49.704446",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:26:52.694214",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:27:59.031632",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:30:04.877531",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:30:07.694637",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:31:23.701044",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:33:38.187527",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:33:40.634119",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:34:40.125584",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:40:06.605224",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:40:07.063361",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:41:57.729266",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-25T16:42:49.101783",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

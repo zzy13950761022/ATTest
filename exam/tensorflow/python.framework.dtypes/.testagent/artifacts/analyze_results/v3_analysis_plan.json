@@ -1,0 +1,44 @@
+{
+  "status": "成功",
+  "passed": 9,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "block_id": "CASE_03",
+      "error_type": "MissingCoverage",
+      "action": "add_case",
+      "note": "覆盖率缺口：CASE_03占位符需要实现"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "block_id": "CASE_04",
+      "error_type": "MissingCoverage",
+      "action": "add_case",
+      "note": "覆盖率缺口：CASE_04占位符需要实现"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "reason": "CASE_05已在测试计划中标记为deferred"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "reason": "CASE_06已在测试计划中标记为deferred"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "reason": "CASE_07已在测试计划中标记为deferred"
+    },
+    {
+      "test": "tests/test_tensorflow_python_framework_dtypes_g1.py::TestDTypeAndBasicTypes",
+      "reason": "CASE_08已在测试计划中标记为deferred"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

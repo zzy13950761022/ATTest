@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 18,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "tests/test_torch_ao_quantization_fuse_modules_g1.py::test_unsupported_sequence_unchanged[False]",
+      "reason": "CASE_05: 连续两轮错误类型重复，跳过该代码块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": "",
+  "skipped_blocks": [
+    {
+      "test": "tests/test_torch_ao_quantization_fuse_modules_g1.py::test_unsupported_sequence_unchanged[False]",
+      "block_id": "CASE_05",
+      "error_type": "AssertionError",
+      "reason": "连续两轮错误类型重复，跳过该代码块"
+    }
+  ]
+}

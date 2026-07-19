@@ -1,0 +1,189 @@
+=== Run Tests ===
+...FF.....                                                               [100%]
+================================== FAILURES ===================================
+_____________________ test_tensor_property_access_methods _____________________
+
+    def test_tensor_property_access_methods():
+        """TC-04: Tensor属性访问方法
+    
+        Test plan: TC-04
+        Priority: High
+        Assertion level: weak
+        """
+        # Create a graph for testing
+        graph = ops.Graph()
+    
+        with graph.as_default():
+            # Create a tensor with specific properties
+            # Parameters from test plan: dtype=int32, shape=[4, 4], device=cpu
+            tensor = tf.constant(
+                np.ones((4, 4), dtype=np.int32),
+                dtype=tf.int32,
+                name="property_test_tensor"
+            )
+    
+        # Weak assertions from test plan
+        # 1. dtype_accessible
+        dtype = tensor.dtype
+        assert dtype is not None
+        assert dtype == tf.int32
+        assert isinstance(dtype, tf.DType)
+    
+        # 2. shape_accessible
+        shape = tensor.shape
+        assert shape is not None
+        assert shape.as_list() == [4, 4]
+        assert shape.rank == 2
+        assert shape.dims is not None
+        assert len(shape.dims) == 2
+        assert shape.dims[0].value == 4
+        assert shape.dims[1].value == 4
+    
+        # 3. device_accessible
+        device = tensor.device
+        assert device is not None
+        # Device could be empty string or specific device string
+        assert isinstance(device, str)
+    
+        # 4. name_accessible
+        name = tensor.name
+        assert name is not None
+        assert isinstance(name, str)
+        assert name == "property_test_tensor:0"
+    
+        # Additional property access tests
+        # Test op property
+        op = tensor.op
+        assert op is not None
+        assert op.name == "property_test_tensor"
+        assert op.type == "Const"
+        assert op.graph is graph
+    
+        # Test value_index property
+        value_index = tensor.value_index
+        assert value_index == 0
+    
+        # Test graph property
+        tensor_graph = tensor.graph
+        assert tensor_graph is graph
+    
+        # Test consumers property
+        consumers = tensor.consumers()
+        assert consumers is not None
+        # Initially no consumers
+        assert len(consumers) == 0
+    
+        # Add a consumer and test again
+        with graph.as_default():
+            add_op = tf.add(tensor, 1, name="add_consumer")
+            consumers_after = tensor.consumers()
+            assert len(consumers_after) > 0
+            assert add_op.op in consumers_after
+    
+        # Test tensor ID (unique identifier)
+        tensor_id = tensor._id
+        assert tensor_id is not None
+    
+        # Test tensor string conversion methods
+        # __str__ method
+        str_repr = str(tensor)
+        assert "Tensor" in str_repr
+        assert "property_test_tensor:0" in str_repr
+        assert "shape=(4, 4)" in str_repr or "shape=[4, 4]" in str_repr
+        assert "dtype=int32" in str_repr
+    
+        # __repr__ method
+        repr_str = repr(tensor)
+        assert "Tensor" in repr_str
+    
+        # Test tensor equality and hash
+        # Tensors should be comparable by identity
+        with graph.as_default():
+            same_tensor = graph.get_tensor_by_name("property_test_tensor:0")
+            assert same_tensor is tensor
+            assert hash(same_tensor) == hash(tensor)
+    
+            # Different tensor should not be equal
+            other_tensor = tf.constant(1, dtype=tf.int32, name="other")
+            assert other_tensor is not tensor
+            assert hash(other_tensor) != hash(tensor)
+    
+        # Test tensor property immutability
+        # These properties should be read-only
+        # We can't directly test immutability by assignment since they're properties
+        # But we can verify they return consistent values
+    
+        original_properties = {
+            'dtype': tensor.dtype,
+            'shape': tensor.shape.as_list(),
+            'name': tensor.name,
+            'device': tensor.device
+        }
+    
+        # Access multiple times to ensure consistency
+        for _ in range(3):
+            assert tensor.dtype == original_properties['dtype']
+            assert tensor.shape.as_list() == original_properties['shape']
+            assert tensor.name == original_properties['name']
+            assert tensor.device == original_properties['device']
+    
+        # Test tensor in different contexts
+        # Tensor should maintain properties across contexts
+>       with tf.Session(graph=graph) as sess:
+E       AttributeError: module 'tensorflow' has no attribute 'Session'
+
+tests\test_tensorflow_python_framework_ops.py:432: AttributeError
+___________________ test_convert_to_tensor_basic_conversion ___________________
+
+    def test_convert_to_tensor_basic_conversion():
+        """TC-08: convert_to_tensor基本转换
+    
+        Test plan: TC-08
+        Priority: High
+        Assertion level: weak
+        """
+        # Parameters from test plan: input_type=numpy_array, dtype=float32, shape=[3, 3], data=random
+    
+        # Create test data
+        np.random.seed(42)
+        numpy_array = np.random.randn(3, 3).astype(np.float32)
+    
+        # Test conversion using TensorFlow's convert_to_tensor
+        # Note: tf.convert_to_tensor is the public API
+        tensor = tf.convert_to_tensor(numpy_array, dtype=tf.float32)
+    
+        # Weak assertions from test plan
+        # 1. conversion_success
+        assert tensor is not None
+        assert isinstance(tensor, tf.Tensor)
+    
+        # 2. dtype_matches
+        assert tensor.dtype == tf.float32
+    
+        # 3. shape_matches
+        assert tensor.shape.as_list() == [3, 3]
+    
+        # 4. value_preserved
+        # To check value preservation, we need to evaluate the tensor
+>       with tf.Session() as sess:
+E       AttributeError: module 'tensorflow' has no attribute 'Session'
+
+tests\test_tensorflow_python_framework_ops.py:484: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-20 14:57:14.710331: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_ops.py     310     66     18      1    78%   26, 31, 35-38, 42-50, 434-438, 485-567, 677-678
+-------------------------------------------------------------------------------------------
+TOTAL                                             310     66     18      1    78%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_framework_ops.py::test_tensor_property_access_methods
+FAILED tests\test_tensorflow_python_framework_ops.py::test_convert_to_tensor_basic_conversion
+2 failed, 8 passed in 1.65s
+
+Error: exit 1

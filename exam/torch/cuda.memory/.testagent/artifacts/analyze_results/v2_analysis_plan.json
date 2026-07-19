@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_memory_stats_dict_structure",
+      "block_id": "HEADER",
+      "error_type": "SkipTest",
+      "action": "rewrite_block",
+      "note": "CUDA可用性检查导致所有测试被跳过，需要修改HEADER中的CUDA检查逻辑或添加mock支持"
+    },
+    {
+      "test": "test_memory_stats_dict_structure",
+      "block_id": "CASE_05",
+      "error_type": "SkipTest",
+      "action": "adjust_assertion",
+      "note": "测试因CUDA不可用被跳过，需要调整测试逻辑以在没有CUDA的环境中运行"
+    },
+    {
+      "test": "test_memory_summary_formatting",
+      "block_id": "CASE_06",
+      "error_type": "SkipTest",
+      "action": "adjust_assertion",
+      "note": "测试因CUDA不可用被跳过，需要调整测试逻辑以在没有CUDA的环境中运行"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_memory_stats_function_signatures",
+      "reason": "依赖HEADER修复，错误类型重复"
+    },
+    {
+      "test": "test_module_import",
+      "reason": "依赖HEADER修复，错误类型重复"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

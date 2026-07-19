@@ -1,0 +1,144 @@
+=== Run Tests ===
+....FFFF                                                                 [100%]
+================================== FAILURES ===================================
+______ test_forward_compatible_invalid_parameters[2021-13-1-ValueError] _______
+
+year = 2021, month = 13, day = 1, expected_exception = <class 'ValueError'>
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,expected_exception",
+        [
+            ("invalid", 12, 1, TypeError),  # Invalid year type
+            (2021, 13, 1, ValueError),  # Invalid month (13)
+            (2021, 2, 30, ValueError),  # Invalid day for February
+            (2021, 0, 1, ValueError),  # Extension: month boundary 0
+            (2021, 12, 0, ValueError),  # Extension: day boundary 0
+        ]
+    )
+    def test_forward_compatible_invalid_parameters(
+        year, month, day, expected_exception, mock_global_state
+    ):
+        """
+        Test invalid parameter handling for forward_compatible function.
+    
+        Weak assertions:
+        1. Triggers specified exception
+        2. Exception type is correct
+        3. No other exceptions
+        """
+        with pytest.raises(expected_exception) as exc_info:
+>           compat.forward_compatible(year, month, day)
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_compat_compat_g1.py:113: Failed
+______ test_forward_compatible_invalid_parameters[2021-2-30-ValueError] _______
+
+year = 2021, month = 2, day = 30, expected_exception = <class 'ValueError'>
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,expected_exception",
+        [
+            ("invalid", 12, 1, TypeError),  # Invalid year type
+            (2021, 13, 1, ValueError),  # Invalid month (13)
+            (2021, 2, 30, ValueError),  # Invalid day for February
+            (2021, 0, 1, ValueError),  # Extension: month boundary 0
+            (2021, 12, 0, ValueError),  # Extension: day boundary 0
+        ]
+    )
+    def test_forward_compatible_invalid_parameters(
+        year, month, day, expected_exception, mock_global_state
+    ):
+        """
+        Test invalid parameter handling for forward_compatible function.
+    
+        Weak assertions:
+        1. Triggers specified exception
+        2. Exception type is correct
+        3. No other exceptions
+        """
+        with pytest.raises(expected_exception) as exc_info:
+>           compat.forward_compatible(year, month, day)
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_compat_compat_g1.py:113: Failed
+_______ test_forward_compatible_invalid_parameters[2021-0-1-ValueError] _______
+
+year = 2021, month = 0, day = 1, expected_exception = <class 'ValueError'>
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,expected_exception",
+        [
+            ("invalid", 12, 1, TypeError),  # Invalid year type
+            (2021, 13, 1, ValueError),  # Invalid month (13)
+            (2021, 2, 30, ValueError),  # Invalid day for February
+            (2021, 0, 1, ValueError),  # Extension: month boundary 0
+            (2021, 12, 0, ValueError),  # Extension: day boundary 0
+        ]
+    )
+    def test_forward_compatible_invalid_parameters(
+        year, month, day, expected_exception, mock_global_state
+    ):
+        """
+        Test invalid parameter handling for forward_compatible function.
+    
+        Weak assertions:
+        1. Triggers specified exception
+        2. Exception type is correct
+        3. No other exceptions
+        """
+        with pytest.raises(expected_exception) as exc_info:
+>           compat.forward_compatible(year, month, day)
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_compat_compat_g1.py:113: Failed
+______ test_forward_compatible_invalid_parameters[2021-12-0-ValueError] _______
+
+year = 2021, month = 12, day = 0, expected_exception = <class 'ValueError'>
+mock_global_state = None
+
+    @pytest.mark.parametrize(
+        "year,month,day,expected_exception",
+        [
+            ("invalid", 12, 1, TypeError),  # Invalid year type
+            (2021, 13, 1, ValueError),  # Invalid month (13)
+            (2021, 2, 30, ValueError),  # Invalid day for February
+            (2021, 0, 1, ValueError),  # Extension: month boundary 0
+            (2021, 12, 0, ValueError),  # Extension: day boundary 0
+        ]
+    )
+    def test_forward_compatible_invalid_parameters(
+        year, month, day, expected_exception, mock_global_state
+    ):
+        """
+        Test invalid parameter handling for forward_compatible function.
+    
+        Weak assertions:
+        1. Triggers specified exception
+        2. Exception type is correct
+        3. No other exceptions
+        """
+        with pytest.raises(expected_exception) as exc_info:
+>           compat.forward_compatible(year, month, day)
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests\test_tensorflow_python_compat_compat_g1.py:113: Failed
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_compat_compat_g1.py      35      1      2      0    97%   49
+----------------------------------------------------------------------------------------------
+TOTAL                                                 35      1      2      0    97%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-13-1-ValueError]
+FAILED tests\test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-2-30-ValueError]
+FAILED tests\test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-0-1-ValueError]
+FAILED tests\test_tensorflow_python_compat_compat_g1.py::test_forward_compatible_invalid_parameters[2021-12-0-ValueError]
+4 failed, 4 passed in 1.54s
+
+Error: exit 1

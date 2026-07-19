@@ -1,0 +1,168 @@
+{
+  "workflow_id": "43b92411",
+  "created_at": "2026-01-19T12:14:05.070631",
+  "op": "tensorflow_python_debug_lib_check_numerics_callback",
+  "arch": "python",
+  "soc": "python",
+  "vendor": "python",
+  "project_root": "D:\\Project\\TestAgent-CLI-main\\exam\\tensorflow\\python.debug.lib.check_numerics_callback",
+  "target": "tensorflow.python.debug.lib.check_numerics_callback",
+  "target_slug": "tensorflow_python_debug_lib_check_numerics_callback",
+  "current_stage": "complete",
+  "stage_index": 6,
+  "mode": "full-auto",
+  "epoch_total": 5,
+  "epoch_current": 5,
+  "last_failure_signature": "",
+  "last_error_signature": "",
+  "last_block_errors": {},
+  "auto_stop_reason": "",
+  "artifacts": {
+    "function_doc.md": "# tensorflow.python.debug.lib.check_numerics_callback - 函数说明\n\n## 1. 基本信息\n- **FQN**: tensorflow.python.debug.lib.check_numerics_callback\n- **模块文件**: `tensorflow/python/debug/lib/check_numerics_callback.py`\n- **签名**: enable_check_numerics(stack_height_limit=30, path_length_limit=50)\n- **对象类型**: module (包含 enable_check_numerics, disable_check_numerics 函数和 CheckNumericsCallback 类)\n\n## 2. 功能概述\n启用统一的数值检查机制，在 TensorFlow 的 eager 执行和 graph 执行中检测 NaN/Infinity 值。当浮点张量包含 NaN 或 Infinity 时，会抛出 `tf.errors.InvalidArgumentError`。该机制是线程局部的。\n\n## 3. 参数说明\n- stack_height_limit (int/30): 打印堆栈跟踪的高度限制，仅适用于 tf.function 中的操作\n- path_length_limit (int/50): 打印堆栈跟踪中包含的文件路径长度限制，仅适用于 tf.function 中的操作\n\n## 4. 返回值\n- 无返回值 (None)\n- 副作用：注册操作回调以检查数值\n\n## 5. 文档要点\n- 仅对浮点数据类型 (dtype.is_floating) 进行检查\n- 忽略特定操作的输出 (IGNORE_OP_OUTPUTS 列表)\n- 跳过安全操作以减少开销 (SAFE_OPS 列表)\n- 在 TPU 上运行时需要先调用 `tf.config.set_soft_device_placement(True)`\n- 幂等性：多次调用与一次调用效果相同\n- 线程局部：仅在调用线程中生效\n\n## 6. 源码摘要\n- 检查线程局部状态中是否已存在回调实例\n- 创建 CheckNumericsCallback 实例（如果不存在）\n- 通过 op_callbacks.add_op_callback 注册回调\n- 记录日志并增加计数器\n- 依赖：op_callbacks, CheckNumericsCallback 类, 监控计数器\n\n## 7. 示例与用法\n```python\nimport tensorflow as tf\ntf.debugging.enable_check_numerics()\n\n@tf.function\ndef square_log_x_plus_1(x):\n    v = tf.math.log(x + 1)\n    return tf.math.square(v)\n\nx = -1.0\ny = square_log_x_plus_1(x)  # 会抛出 InvalidArgumentError\n```\n\n## 8. 风险与空白\n- 模块包含多个实体：enable_check_numerics, disable_check_numerics, CheckNumericsCallback 类\n- 需要测试 enable/disable 的幂等性\n- 需要测试线程局部行为\n- 需要测试 TPU 环境下的特殊要求\n- 需要验证 IGNORE_OP_OUTPUTS 和 SAFE_OPS 列表的覆盖范围\n- 缺少对非浮点数据类型的明确处理说明\n- 缺少性能开销的具体量化信息",
+    "requirements.md": "# tensorflow.python.debug.lib.check_numerics_callback 测试需求\n\n## 1. 目标与范围\n- 主要功能与期望行为：启用数值检查机制，在 TensorFlow eager/graph 执行中检测浮点张量的 NaN/Infinity 值，检测到异常时抛出 `tf.errors.InvalidArgumentError`\n- 不在范围内的内容：非浮点数据类型的数值检查、性能开销量化、非 TensorFlow 环境\n\n## 2. 输入与约束\n- 参数列表：\n  - stack_height_limit: int, 默认值 30，仅对 tf.function 操作生效\n  - path_length_limit: int, 默认值 50，仅对 tf.function 操作生效\n- 有效取值范围/维度/设备要求：\n  - 参数必须为正整数\n  - 仅对浮点数据类型 (dtype.is_floating) 进行检查\n  - TPU 环境需先调用 `tf.config.set_soft_device_placement(True)`\n- 必需与可选组合：两个参数均为可选，使用默认值\n- 随机性/全局状态要求：线程局部状态，幂等性（多次调用效果相同）\n\n## 3. 输出与判定\n- 期望返回结构及关键字段：无返回值 (None)\n- 容差/误差界（如浮点）：不适用\n- 状态变化或副作用检查点：\n  - 注册操作回调成功\n  - 线程局部状态中记录回调实例\n  - 监控计数器增加\n  - 日志记录启用状态\n\n## 4. 错误与异常场景\n- 非法输入/维度/类型触发的异常或警告：\n  - 非整数参数类型\n  - 零或负整数参数\n  - TPU 环境未设置软设备放置\n- 边界值（空、None、0 长度、极端形状/数值）：\n  - 参数值为 0 或负数\n  - 极大参数值（可能的内存/性能影响）\n  - 浮点张量包含 NaN/Infinity 的边界情况\n\n## 5. 依赖与环境\n- 外部资源/设备/网络/文件依赖：\n  - TensorFlow 运行时环境\n  - TPU 设备（可选）\n  - 线程局部存储\n- 需要 mock/monkeypatch 的部分：\n  - op_callbacks.add_op_callback\n  - 线程局部状态管理\n  - 日志记录系统\n  - TPU 环境检测\n\n## 6. 覆盖与优先级\n- 必测路径（高优先级，最多 5 条，短句）：\n  1. 基本启用功能验证浮点张量 NaN/Infinity 检测\n  2. 幂等性测试（多次调用 enable_check_numerics）\n  3. 线程局部行为验证\n  4. 参数边界值测试（stack_height_limit, path_length_limit）\n  5. TPU 环境特殊要求验证\n- 可选路径（中/低优先级合并为一组列表）：\n  - 非浮点数据类型忽略测试\n  - IGNORE_OP_OUTPUTS 列表覆盖验证\n  - SAFE_OPS 列表跳过验证\n  - disable_check_numerics 功能测试\n  - 与 tf.function 集成测试\n  - 极端形状/数值边界测试\n  - 性能基准测试（可选）\n- 已知风险/缺失信息（仅列条目，不展开）：\n  - 非浮点数据类型处理不明确\n  - 性能开销未量化\n  - IGNORE_OP_OUTPUTS/SAFE_OPS 列表完整性\n  - 并发环境下的线程安全性\n  - 内存泄漏风险",
+    "test_plan.json": "{\n  \"plan_version\": 2,\n  \"target\": \"tensorflow.python.debug.lib.check_numerics_callback\",\n  \"block_rules\": {\n    \"header_block\": \"HEADER\",\n    \"footer_block\": \"FOOTER\",\n    \"case_prefix\": \"CASE_\",\n    \"case_format\": \"CASE_01\"\n  },\n  \"iteration_strategy\": {\n    \"round1\": {\"include\": \"SMOKE_SET\", \"assert_level\": \"weak\", \"max_blocks\": 5},\n    \"roundN\": {\"only_fix_failed_blocks\": true, \"block_limit\": 3, \"promote_deferred\": true},\n    \"final\": {\"enable_strong_asserts\": true, \"coverage_optional\": true}\n  },\n  \"test_files\": {\n    \"default\": \"tests/test_tensorflow_python_debug_lib_check_numerics_callback.py\",\n    \"all_pattern\": \"tests/test_tensorflow_python_debug_lib_check_numerics_callback_*.py\",\n    \"groups\": {\n      \"G1\": \"tests/test_tensorflow_python_debug_lib_check_numerics_callback_g1.py\",\n      \"G2\": \"tests/test_tensorflow_python_debug_lib_check_numerics_callback_g2.py\",\n      \"G3\": \"tests/test_tensorflow_python_debug_lib_check_numerics_callback_g3.py\"\n    }\n  },\n  \"active_group_order\": [\"G1\", \"G2\", \"G3\"],\n  \"groups\": [\n    {\n      \"group_id\": \"G1\",\n      \"title\": \"enable_check_numerics 核心功能\",\n      \"entrypoints\": [\"enable_check_numerics\"],\n      \"smoke_set\": [\"CASE_01\", \"CASE_02\"],\n      \"deferred_set\": [\"CASE_03\", \"CASE_04\", \"CASE_05\"],\n      \"note\": \"测试基本启用功能和浮点张量异常检测\"\n    },\n    {\n      \"group_id\": \"G2\",\n      \"title\": \"disable_check_numerics 和状态管理\",\n      \"entrypoints\": [\"disable_check_numerics\"],\n      \"smoke_set\": [\"CASE_06\"],\n      \"deferred_set\": [\"CASE_07\", \"CASE_08\"],\n      \"note\": \"测试禁用功能和状态管理\"\n    },\n    {\n      \"group_id\": \"G3\",\n      \"title\": \"CheckNumericsCallback 类测试\",\n      \"entrypoints\": [\"CheckNumericsCallback\"],\n      \"smoke_set\": [\"CASE_09\"],\n      \"deferred_set\": [\"CASE_10\", \"CASE_11\"],\n      \"note\": \"测试回调类内部逻辑\"\n    }\n  ],\n  \"cases\": [\n    {\n      \"tc_id\": \"TC-01\",\n      \"block_id\": \"CASE_01\",\n      \"group_id\": \"G1\",\n      \"name\": \"基本启用功能验证\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"stack_height_limit\": 30, \"path_length_limit\": 50}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"callback_registered\", \"state_updated\"],\n        \"strong\": [\"exact_state_check\", \"counter_incremented\", \"log_recorded\"]\n      },\n      \"oracle\": \"enable_check_numerics\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 60,\n      \"max_params\": 2,\n      \"is_parametrized\": false,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-02\",\n      \"block_id\": \"CASE_02\",\n      \"group_id\": \"G1\",\n      \"name\": \"浮点张量 NaN 检测\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"dtype\": \"float32\", \"value\": \"nan\"},\n        {\"dtype\": \"float64\", \"value\": \"nan\"}\n      ],\n      \"asserts\": {\n        \"weak\": [\"exception_raised\", \"exception_type\", \"contains_nan\"],\n        \"strong\": [\"exception_message\", \"stack_trace\", \"exact_error_code\"]\n      },\n      \"oracle\": \"InvalidArgumentError\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-03\",\n      \"block_id\": \"CASE_03\",\n      \"group_id\": \"G1\",\n      \"name\": \"幂等性测试\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"call_count\": 3}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"single_callback\", \"state_consistent\"],\n        \"strong\": [\"counter_check\", \"no_duplicate_registration\", \"thread_local_consistent\"]\n      },\n      \"oracle\": \"enable_check_numerics\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 65,\n      \"max_params\": 1,\n      \"is_parametrized\": false,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-04\",\n      \"block_id\": \"CASE_04\",\n      \"group_id\": \"G1\",\n      \"name\": \"参数边界值测试\",\n      \"priority\": \"Medium\",\n      \"param_matrix\": [\n        {\"stack_height_limit\": 1, \"path_length_limit\": 1},\n        {\"stack_height_limit\": 100, \"path_length_limit\": 200}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"callback_registered\"],\n        \"strong\": [\"parameter_applied\", \"stack_limit_effective\", \"path_limit_effective\"]\n      },\n      \"oracle\": \"enable_check_numerics\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-05\",\n      \"block_id\": \"CASE_05\",\n      \"group_id\": \"G1\",\n      \"name\": \"浮点张量 Infinity 检测\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {\"dtype\": \"float32\", \"value\": \"inf\"},\n        {\"dtype\": \"float32\", \"value\": \"-inf\"}\n      ],\n      \"asserts\": {\n        \"weak\": [\"exception_raised\", \"exception_type\", \"contains_inf\"],\n        \"strong\": [\"exception_message\", \"positive_vs_negative\", \"exact_error_code\"]\n      },\n      \"oracle\": \"InvalidArgumentError\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-06\",\n      \"block_id\": \"CASE_06\",\n      \"group_id\": \"G2\",\n      \"name\": \"基本禁用功能\",\n      \"priority\": \"High\",\n      \"param_matrix\": [\n        {}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"callback_removed\", \"state_cleared\"],\n        \"strong\": [\"exact_state_clear\", \"counter_reset\", \"log_recorded\"]\n      },\n      \"oracle\": \"disable_check_numerics\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 60,\n      \"max_params\": 0,\n      \"is_parametrized\": false,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-07\",\n      \"block_id\": \"CASE_07\",\n      \"group_id\": \"G2\",\n      \"name\": \"启用-禁用循环测试\",\n      \"priority\": \"Medium\",\n      \"param_matrix\": [\n        {\"cycles\": 2}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"state_transitions\", \"callback_management\"],\n        \"strong\": [\"no_leaks\", \"counter_consistency\", \"thread_safety\"]\n      },\n      \"oracle\": \"enable/disable_check_numerics\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 75,\n      \"max_params\": 1,\n      \"is_parametrized\": false,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-08\",\n      \"block_id\": \"CASE_08\",\n      \"group_id\": \"G2\",\n      \"name\": \"线程局部行为验证\",\n      \"priority\": \"Medium\",\n      \"param_matrix\": [\n        {\"thread_count\": 2}\n      ],\n      \"asserts\": {\n        \"weak\": [\"thread_isolation\", \"independent_states\", \"no_interference\"],\n        \"strong\": [\"exact_thread_local\", \"memory_isolation\", \"concurrent_safety\"]\n      },\n      \"oracle\": \"threading.Thread\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 90,\n      \"max_params\": 1,\n      \"is_parametrized\": false,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-09\",\n      \"block_id\": \"CASE_09\",\n      \"group_id\": \"G3\",\n      \"name\": \"回调类实例化\",\n      \"priority\": \"Medium\",\n      \"param_matrix\": [\n        {\"stack_height_limit\": 30, \"path_length_limit\": 50}\n      ],\n      \"asserts\": {\n        \"weak\": [\"instance_created\", \"attributes_set\", \"no_exception\"],\n        \"strong\": [\"attribute_values\", \"method_availability\", \"internal_state\"]\n      },\n      \"oracle\": \"CheckNumericsCallback\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 65,\n      \"max_params\": 2,\n      \"is_parametrized\": false,\n      \"requires_mock\": false\n    },\n    {\n      \"tc_id\": \"TC-10\",\n      \"block_id\": \"CASE_10\",\n      \"group_id\": \"G3\",\n      \"name\": \"非浮点数据类型忽略\",\n      \"priority\": \"Low\",\n      \"param_matrix\": [\n        {\"dtype\": \"int32\", \"value\": 1},\n        {\"dtype\": \"bool\", \"value\": true}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"operation_completes\"],\n        \"strong\": [\"callback_invoked\", \"check_skipped\", \"performance_ok\"]\n      },\n      \"oracle\": \"CheckNumericsCallback.__call__\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"S\",\n      \"max_lines\": 70,\n      \"max_params\": 4,\n      \"is_parametrized\": true,\n      \"requires_mock\": true\n    },\n    {\n      \"tc_id\": \"TC-11\",\n      \"block_id\": \"CASE_11\",\n      \"group_id\": \"G3\",\n      \"name\": \"IGNORE_OP_OUTPUTS 列表验证\",\n      \"priority\": \"Low\",\n      \"param_matrix\": [\n        {\"op_type\": \"Const\"},\n        {\"op_type\": \"Identity\"}\n      ],\n      \"asserts\": {\n        \"weak\": [\"no_exception\", \"operation_completes\"],\n        \"strong\": [\"callback_skipped\", \"exact_op_check\", \"list_coverage\"]\n      },\n      \"oracle\": \"CheckNumericsCallback.__call__\",\n      \"assertion_level\": \"weak\",\n      \"size\": \"M\",\n      \"max_lines\": 85,\n      \"max_params\": 2,\n      \"is_parametrized\": true,\n      \"requires_mock\": true\n    }\n  ],\n  \"param_extensions\": [\n    {\n      \"base_block_id\": \"CASE_02\",\n      \"priority\": \"Medium\",\n      \"params\": {\"dtype\": \"float16\", \"value\": \"nan\"},\n      \"note\": \"扩展支持 float16 数据类型\"\n    },\n    {\n      \"base_block_id\": \"CASE_04\",\n      \"priority\": \"Low\",\n      \"params\": {\"stack_height_limit\": 0, \"path_length_limit\": 0},\n      \"note\": \"测试零值参数边界\"\n    },\n    {\n      \"base_block_id\": \"CASE_05\",\n      \"priority\": \"Medium\",\n      \"params\": {\"dtype\": \"float64\", \"value\": \"inf\"},\n      \"note\": \"扩展支持 float64 Infinity 检测\"\n    }\n  ],\n  \"smoke_set\": [\"CASE_01\", \"CASE_02\", \"CASE_03\", \"CASE_06\", \"CASE_09\"],\n  \"deferred_set\": [\"CASE_04\", \"CASE_05\", \"CASE_07\", \"CASE_08\", \"CASE_10\", \"CASE_11\"]\n}",
+    "test_plan.md": "# tensorflow.python.debug.lib.check_numerics_callback 测试计划\n\n## 1. 测试策略\n- 单元测试框架：pytest\n- 隔离策略：mock op_callbacks.add_op_callback、线程局部状态、日志系统\n- 随机性处理：固定随机种子，控制张量生成\n\n## 2. 生成规格摘要（来自 test_plan.json）\n- SMOKE_SET: CASE_01, CASE_02, CASE_03, CASE_06, CASE_09 (5个核心用例)\n- DEFERRED_SET: CASE_04, CASE_05, CASE_07, CASE_08, CASE_10, CASE_11 (6个延期用例)\n- group 列表与 active_group_order: G1, G2, G3\n- 断言分级策略：首轮使用weak断言，最终轮启用strong断言\n- 预算策略：size=S(60-90行), max_params≤4, 优先非参数化\n\n## 3. 数据与边界\n- 正常数据集：浮点张量(32/64位)，正常数值范围\n- 边界值：NaN, Infinity, -Infinity浮点值\n- 极端形状：小/大参数值(1-100)，零值边界\n- 空输入：不适用（无张量输入参数）\n- 负例：非浮点数据类型(int32, bool)，无效参数(零/负值)\n- 异常场景：TPU环境要求，线程并发，重复调用\n\n## 4. 覆盖映射\n| TC-ID | 需求覆盖 | 约束覆盖 |\n|-------|----------|----------|\n| TC-01 | 基本启用功能 | 参数默认值，副作用检查 |\n| TC-02 | NaN检测，异常抛出 | 浮点数据类型，InvalidArgumentError |\n| TC-03 | 幂等性 | 线程局部，多次调用 |\n| TC-04 | 参数边界 | stack_height_limit, path_length_limit |\n| TC-05 | Infinity检测 | 正负无穷值处理 |\n| TC-06 | 禁用功能 | 状态清理 |\n| TC-07 | 启用禁用循环 | 状态管理 |\n| TC-08 | 线程局部 | 线程隔离 |\n| TC-09 | 回调类 | CheckNumericsCallback实例 |\n| TC-10 | 非浮点忽略 | dtype.is_floating检查 |\n| TC-11 | 忽略列表 | IGNORE_OP_OUTPUTS覆盖 |\n\n## 5. 尚未覆盖的风险点\n- TPU环境特殊要求（需硬件）\n- SAFE_OPS列表完整性验证\n- 性能开销量化测试\n- 并发环境线程安全性深度测试\n- 内存泄漏长期运行验证",
+    "tests/test_tensorflow_python_debug_lib_check_numerics_callback.py": "\"\"\"\nUnit tests for tensorflow.python.debug.lib.check_numerics_callback\n\"\"\"\nimport math\nimport threading\nimport numpy as np\nimport pytest\nimport tensorflow as tf\nfrom unittest import mock\n\n# Import the target functions\nfrom tensorflow.python.debug.lib.check_numerics_callback import (\n    enable_check_numerics,\n    disable_check_numerics,\n    CheckNumericsCallback,\n    IGNORE_OP_OUTPUTS,\n    SAFE_OPS\n)\n\n# Set random seed for reproducibility\nnp.random.seed(42)\ntf.random.set_seed(42)\n\n# ==== BLOCK:HEADER START ====\n# Test fixtures and helper functions\n@pytest.fixture\ndef mock_op_callbacks():\n    \"\"\"Mock op_callbacks module to track callback registration.\"\"\"\n    with mock.patch('tensorflow.python.debug.lib.check_numerics_callback.op_callbacks') as mock_callbacks:\n        mock_callbacks.add_op_callback = mock.MagicMock()\n        mock_callbacks.remove_op_callback = mock.MagicMock()\n        yield mock_callbacks\n\n@pytest.fixture\ndef mock_logging():\n    \"\"\"Mock logging to verify info messages.\"\"\"\n    with mock.patch('tensorflow.python.debug.lib.check_numerics_callback.logging') as mock_log:\n        mock_log.info = mock.MagicMock()\n        yield mock_log\n\n@pytest.fixture\ndef mock_threading():\n    \"\"\"Mock threading for thread name verification.\"\"\"\n    with mock.patch('tensorflow.python.debug.lib.check_numerics_callback.threading') as mock_thread:\n        mock_thread.current_thread.return_value.name = \"TestThread\"\n        yield mock_thread\n\n@pytest.fixture\ndef clear_state():\n    \"\"\"Clear thread-local state before each test.\"\"\"\n    from tensorflow.python.debug.lib.check_numerics_callback import _state\n    if hasattr(_state, 'check_numerics_callback'):\n        delattr(_state, 'check_numerics_callback')\n    yield\n    if hasattr(_state, 'check_numerics_callback'):\n        delattr(_state, 'check_numerics_callback')\n# ==== BLOCK:HEADER END ====\n\n# ==== BLOCK:CASE_01 START ====\n# Placeholder for CASE_01: 基本启用功能验证\n# ==== BLOCK:CASE_01 END ====\n\n# ==== BLOCK:CASE_02 START ====\n# Placeholder for CASE_02: 浮点张量 NaN 检测\n# ==== BLOCK:CASE_02 END ====\n\n# ==== BLOCK:CASE_03 START ====\n# Placeholder for CASE_03: 幂等性测试\n# ==== BLOCK:CASE_03 END ====\n\n# ==== BLOCK:CASE_04 START ====\n# Placeholder for CASE_04: 参数边界值测试 (DEFERRED)\n# ==== BLOCK:CASE_04 END ====\n\n# ==== BLOCK:CASE_05 START ====\n# Placeholder for CASE_05: 浮点张量 Infinity 检测 (DEFERRED)\n# ==== BLOCK:CASE_05 END ====\n\n# ==== BLOCK:CASE_06 START ====\n# Placeholder for CASE_06: 基本禁用功能 (SMOKE_SET - G2)\n# ==== BLOCK:CASE_06 END ====\n\n# ==== BLOCK:CASE_07 START ====\n# Placeholder for CASE_07: 启用-禁用循环测试 (DEFERRED)\n# ==== BLOCK:CASE_07 END ====\n\n# ==== BLOCK:CASE_08 START ====\n# Placeholder for CASE_08: 线程局部行为验证 (DEFERRED)\n# ==== BLOCK:CASE_08 END ====\n\n# ==== BLOCK:CASE_09 START ====\n# Placeholder for CASE_09: 回调类实例化 (SMOKE_SET - G3)\n# ==== BLOCK:CASE_09 END ====\n\n# ==== BLOCK:CASE_10 START ====\n# Placeholder for CASE_10: 非浮点数据类型忽略 (DEFERRED)\n# ==== BLOCK:CASE_10 END ====\n\n# ==== BLOCK:CASE_11 START ====\n# Placeholder for CASE_11: IGNORE_OP_OUTPUTS 列表验证 (DEFERRED)\n# ==== BLOCK:CASE_11 END ====\n\n# ==== BLOCK:FOOTER START ====\n# Additional test classes and helper functions\nclass TestCheckNumericsCallback:\n    \"\"\"Test class for CheckNumericsCallback functionality.\"\"\"\n    \n    def test_callback_initialization(self):\n        \"\"\"Test CheckNumericsCallback initialization with parameters.\"\"\"\n        callback = CheckNumericsCallback(stack_height_limit=30, path_length_limit=50)\n        assert callback._stack_height_limit == 30\n        assert callback._path_length_limit == 50\n        assert isinstance(callback._placeholder_to_debug_tensor, dict)\n        assert len(callback._placeholder_to_debug_tensor) == 0\n\n# Helper function to create test tensors\ndef create_test_tensor(dtype, value, shape=(2, 2)):\n    \"\"\"Create a test tensor with specified dtype and value.\"\"\"\n    if dtype == \"float32\":\n        if value == \"nan\":\n            return tf.constant(np.full(shape, np.nan, dtype=np.float32))\n        elif value == \"inf\":\n            return tf.constant(np.full(shape, np.inf, dtype=np.float32))\n        elif value == \"-inf\":\n            return tf.constant(np.full(shape, -np.inf, dtype=np.float32))\n        else:\n            return tf.constant(np.ones(shape, dtype=np.float32))\n    elif dtype == \"float64\":\n        if value == \"nan\":\n            return tf.constant(np.full(shape, np.nan, dtype=np.float64))\n        elif value == \"inf\":\n            return tf.constant(np.full(shape, np.inf, dtype=np.float64))\n        elif value == \"-inf\":\n            return tf.constant(np.full(shape, -np.inf, dtype=np.float64))\n        else:\n            return tf.constant(np.ones(shape, dtype=np.float64))\n    else:\n        raise ValueError(f\"Unsupported dtype: {dtype}\")\n\n# Cleanup function to ensure proper state reset\ndef cleanup_check_numerics():\n    \"\"\"Ensure check numerics is disabled after tests.\"\"\"\n    try:\n        disable_check_numerics()\n    except:\n        pass\n# ==== BLOCK:FOOTER END ====",
+    "execution_log.txt": "=== Run Tests ===\n.....................                                                    [100%]\n\n---------- coverage: platform win32, python 3.9.25-final-0 -----------\nName                                                                Stmts   Miss Branch BrPart  Cover   Missing\n---------------------------------------------------------------------------------------------------------------\ntests\\test_tensorflow_python_debug_lib_check_numerics_callback.py     389     56     62     16    80%   29-32, 37-39, 44-46, 53, 56, 73->76, 105, 106->113, 110, 204, 235, 277, 327->336, 333, 447, 454-455, 468, 513, 577, 585, 767-786, 791-794, 801-818\n---------------------------------------------------------------------------------------------------------------\nTOTAL                                                                 389     56     62     16    80%\nCoverage XML written to file coverage.xml\n\n21 passed in 1.40s\n",
+    "exit_code.txt": "0",
+    "analysis_plan.json": "{\n  \"status\": \"成功\",\n  \"passed\": 21,\n  \"failed\": 0,\n  \"errors\": 0,\n  \"collection_errors\": false,\n  \"block_limit\": 3,\n  \"failures\": [\n    {\n      \"test\": \"coverage_gap\",\n      \"block_id\": \"CASE_10\",\n      \"error_type\": \"CoverageGap\",\n      \"action\": \"add_case\",\n      \"note\": \"非浮点数据类型忽略测试未实现，覆盖率缺口\"\n    },\n    {\n      \"test\": \"coverage_gap\",\n      \"block_id\": \"CASE_11\",\n      \"error_type\": \"CoverageGap\",\n      \"action\": \"add_case\",\n      \"note\": \"IGNORE_OP_OUTPUTS列表验证测试未实现，覆盖率缺口\"\n    },\n    {\n      \"test\": \"coverage_gap\",\n      \"block_id\": \"CASE_08\",\n      \"error_type\": \"CoverageGap\",\n      \"action\": \"add_case\",\n      \"note\": \"线程局部行为验证测试未实现，覆盖率缺口\"\n    }\n  ],\n  \"deferred\": [],\n  \"stop_recommended\": false,\n  \"stop_reason\": \"\"\n}",
+    "analysis.md": "## 测试结果分析\n\n### 状态与统计\n- **状态**: 成功\n- **通过**: 21 个测试\n- **失败**: 0 个测试\n- **错误**: 0 个\n- **覆盖率**: 80%\n\n### 待修复 BLOCK 列表\n1. **BLOCK_ID**: CASE_10\n   - **测试**: coverage_gap\n   - **错误类型**: CoverageGap\n   - **Action**: add_case\n   - **原因**: 非浮点数据类型忽略测试未实现，覆盖率缺口\n\n2. **BLOCK_ID**: CASE_11\n   - **测试**: coverage_gap\n   - **错误类型**: CoverageGap\n   - **Action**: add_case\n   - **原因**: IGNORE_OP_OUTPUTS列表验证测试未实现，覆盖率缺口\n\n3. **BLOCK_ID**: CASE_08\n   - **测试**: coverage_gap\n   - **错误类型**: CoverageGap\n   - **Action**: add_case\n   - **原因**: 线程局部行为验证测试未实现，覆盖率缺口\n\n### 停止建议\n- **stop_recommended**: false\n- **stop_reason**: 无",
+    "final_report.md": "# tensorflow.python.debug.lib.check_numerics_callback 测试报告\n\n## 1. 执行摘要\n**基本功能测试通过，但存在关键覆盖率缺口需要补充** - 核心数值检查机制验证成功，但线程局部行为、非浮点数据类型忽略和忽略列表验证等关键场景未覆盖，影响功能完整性评估。\n\n## 2. 测试范围\n- **目标 FQN**: tensorflow.python.debug.lib.check_numerics_callback\n- **测试环境**: pytest + TensorFlow 运行时，使用 mock 隔离策略（op_callbacks、线程局部状态、日志系统）\n- **覆盖场景**:\n  - 基本启用/禁用功能\n  - NaN/Infinity 检测与异常抛出\n  - 幂等性验证（多次调用）\n  - 参数边界值测试\n  - CheckNumericsCallback 类实例化\n- **未覆盖项**:\n  - 线程局部行为验证（CASE_08）\n  - 非浮点数据类型忽略测试（CASE_10）\n  - IGNORE_OP_OUTPUTS 列表验证（CASE_11）\n  - TPU 环境特殊要求（需硬件）\n  - SAFE_OPS 列表完整性验证\n\n## 3. 结果概览\n- **用例总数**: 11个计划用例\n- **已执行**: 8个（21个测试实例）\n- **通过**: 21个测试（100%通过率）\n- **失败**: 0个\n- **错误**: 0个\n- **代码覆盖率**: 80%\n- **主要失败点**: 无测试失败，但存在3个关键覆盖率缺口\n\n## 4. 详细发现\n\n### 高优先级问题\n1. **线程局部行为未验证** (CASE_08)\n   - **根因**: 测试用例未实现，无法验证 enable_check_numerics 的线程局部特性\n   - **影响**: 无法确认多线程环境下的正确隔离行为\n   - **建议**: 补充多线程测试，验证回调实例的线程局部存储\n\n2. **非浮点数据类型处理未测试** (CASE_10)\n   - **根因**: 测试用例未实现，无法验证 dtype.is_floating 检查机制\n   - **影响**: 无法确认 int32、bool 等非浮点类型是否被正确忽略\n   - **建议**: 补充整数、布尔等数据类型的数值检查忽略测试\n\n3. **忽略列表覆盖未验证** (CASE_11)\n   - **根因**: 测试用例未实现，无法验证 IGNORE_OP_OUTPUTS 列表功能\n   - **影响**: 无法确认特定操作输出是否被正确跳过检查\n   - **建议**: 补充 IGNORE_OP_OUTPUTS 列表中操作的测试\n\n### 中优先级问题\n4. **TPU 环境特殊要求未测试**\n   - **根因**: 需要 TPU 硬件环境，测试计划中标记为延期\n   - **影响**: 无法验证 `tf.config.set_soft_device_placement(True)` 前置要求\n   - **建议**: 标记为硬件依赖，在 CI/CD 中配置条件执行\n\n5. **SAFE_OPS 列表完整性未验证**\n   - **根因**: 测试计划中未包含该验证项\n   - **影响**: 无法确认安全操作跳过机制的正确性\n   - **建议**: 补充 SAFE_OPS 列表覆盖测试\n\n## 5. 覆盖与风险\n- **需求覆盖**: 80% - 核心功能（启用/禁用、异常检测、幂等性）已覆盖\n- **边界覆盖**: 参数边界值（stack_height_limit, path_length_limit）已测试\n- **未覆盖风险**:\n  1. **线程安全性风险**: 多线程环境下可能存在的状态污染\n  2. **类型处理风险**: 非浮点数据类型可能被错误检查\n  3. **操作覆盖风险**: IGNORE_OP_OUTPUTS 列表可能不完整或错误\n  4. **设备兼容性风险**: TPU 环境特殊要求未验证\n  5. **性能风险**: SAFE_OPS 跳过机制未验证，可能影响性能\n\n## 6. 后续动作\n\n### P0（立即修复）\n1. **补充线程局部测试** (CASE_08)\n   - 实现多线程环境下的 enable/disable 测试\n   - 验证回调实例的线程隔离性\n   - 预计工作量：1-2人日\n\n2. **补充非浮点类型测试** (CASE_10)\n   - 测试 int32、int64、bool 等数据类型的忽略行为\n   - 验证 dtype.is_floating 检查逻辑\n   - 预计工作量：1人日\n\n3. **补充忽略列表测试** (CASE_11)\n   - 验证 IGNORE_OP_OUTPUTS 列表中的操作输出被正确跳过\n   - 测试列表完整性边界\n   - 预计工作量：1-2人日\n\n### P1（下一迭代）\n4. **SAFE_OPS 列表验证**\n   - 补充安全操作跳过机制的测试\n   - 验证性能优化逻辑的正确性\n   - 预计工作量：2人日\n\n5. **TPU 环境条件测试**\n   - 设计条件执行的 TPU 测试套件\n   - 验证软设备放置前置要求\n   - 预计工作量：3人日（含环境配置）\n\n### P2（长期优化）\n6. **性能基准测试**\n   - 量化启用检查的性能开销\n   - 建立性能基线用于回归测试\n   - 预计工作量：3人日\n\n7. **并发深度测试**\n   - 高并发场景下的线程安全性验证\n   - 内存泄漏长期运行测试\n   - 预计工作量：4人日\n\n**预计总工作量**: 15-17人日完成全部测试覆盖\n\n---\n\n*报告生成时间: 2024年*\n*测试状态: 基本功能验证通过，关键覆盖率缺口待补充*\n*建议: 优先补充 P0 级别的三个测试用例，确保核心功能完整性*"
+  },
+  "stage_history": [
+    {
+      "stage": "understand_function",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:14:56.470550",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_requirements",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:15:33.437467",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "design_test_plan",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:17:46.662361",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:21:59.903713",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:22:02.254106",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:22:52.893346",
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:28:28.726219",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:28:30.451330",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:29:20.886407",
+      "attempts": 2,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:32:54.152620",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:32:56.180157",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:33:39.359987",
+      "attempts": 3,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:36:56.027125",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:36:58.067174",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:37:40.702234",
+      "attempts": 4,
+      "error": null
+    },
+    {
+      "stage": "generate_code",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:40:28.001470",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "execute_tests",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:40:29.749551",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "analyze_results",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:41:31.718309",
+      "attempts": 5,
+      "error": null
+    },
+    {
+      "stage": "generate_report",
+      "status": "completed",
+      "timestamp": "2026-01-19T12:42:34.864691",
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "user_feedback": []
+}

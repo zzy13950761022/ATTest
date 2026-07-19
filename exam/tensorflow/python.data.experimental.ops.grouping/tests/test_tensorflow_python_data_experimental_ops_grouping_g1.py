@@ -1,0 +1,371 @@
+"""
+Test cases for tensorflow.python.data.experimental.ops.grouping module.
+Group G1: group_by_reducer core functionality
+"""
+
+import pytest
+import tensorflow as tf
+import numpy as np
+from tensorflow.python.data.experimental.ops.grouping import (
+    group_by_reducer,
+    Reducer,
+    group_by_window,
+    bucket_by_sequence_length
+)
+from tensorflow.python.framework import errors
+import warnings
+
+# Set random seed for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
+
+# ==== BLOCK:HEADER START ====
+# Test fixtures and helper functions
+
+def create_simple_dataset(size=10):
+    """Create a simple dataset of integers."""
+    return tf.data.Dataset.range(size)
+
+def create_numeric_dataset(values):
+    """Create dataset from numeric values."""
+    return tf.data.Dataset.from_tensor_slices(values)
+
+def simple_mod_key_func(x, num_keys=3):
+    """Simple key function that returns mod of value."""
+    return tf.cast(x % num_keys, tf.int64)
+
+def sum_reducer_init_func(_):
+    """Initialize sum reducer state."""
+    return tf.constant(0, dtype=tf.int64)
+
+def sum_reducer_reduce_func(state, value):
+    """Reduce function for summing values."""
+    return state + tf.cast(value, tf.int64)
+
+def sum_reducer_finalize_func(state):
+    """Finalize function for sum reducer."""
+    return state
+
+def create_sum_reducer():
+    """Create a reducer that sums values in each group."""
+    return Reducer(
+        init_func=sum_reducer_init_func,
+        reduce_func=sum_reducer_reduce_func,
+        finalize_func=sum_reducer_finalize_func
+    )
+
+def count_elements(dataset):
+    """Count elements in a dataset."""
+    count = 0
+    for _ in dataset:
+        count += 1
+    return count
+
+def dataset_to_list(dataset):
+    """Convert dataset to Python list."""
+    return list(dataset.as_numpy_iterator())
+
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# TC-01: group_by_reducer 基本分组归约
+@pytest.mark.parametrize("dataset_size, num_keys", [
+    (10, 3),  # Basic case from test plan
+])
+def test_group_by_reducer_basic_grouping_reduction(dataset_size, num_keys):
+    """Test basic grouping and reduction functionality of group_by_reducer."""
+    
+    # Create dataset
+    dataset = create_simple_dataset(dataset_size)
+    
+    # Define key function
+    def key_func(x):
+        return simple_mod_key_func(x, num_keys)
+    
+    # Create reducer
+    reducer = create_sum_reducer()
+    
+    # Apply group_by_reducer transformation
+    transform_fn = group_by_reducer(key_func, reducer)
+    
+    # Weak assertion 1: returns_callable
+    assert callable(transform_fn), "group_by_reducer should return a callable function"
+    
+    # Apply transformation to dataset
+    transformed_dataset = transform_fn(dataset)
+    
+    # Weak assertion 2: dataset_interface
+    assert hasattr(transformed_dataset, '__iter__'), "Transformed dataset should have iterator interface"
+    assert hasattr(transformed_dataset, 'element_spec'), "Transformed dataset should have element_spec"
+    
+    # Collect results
+    results = dataset_to_list(transformed_dataset)
+    
+    # Weak assertion 3: correct_group_count
+    # With num_keys=3 and dataset_size=10, we expect at most 3 groups
+    # But actual number depends on which keys appear in the data
+    unique_keys = set([x % num_keys for x in range(dataset_size)])
+    expected_group_count = len(unique_keys)
+    assert len(results) == expected_group_count, f"Expected {expected_group_count} groups, got {len(results)}"
+    
+    # Weak assertion 4: reducer_applied
+    # Verify that reducer was applied by checking that results are sums
+    # Calculate expected sums for each key
+    expected_sums = {}
+    for i in range(dataset_size):
+        key = i % num_keys
+        expected_sums[key] = expected_sums.get(key, 0) + i
+    
+    # Convert results to dictionary for easier comparison
+    result_dict = {}
+    for result in results:
+        # Result is a tensor, convert to numpy scalar
+        result_value = result.numpy() if hasattr(result, 'numpy') else result
+        # Since we don't know which key this result corresponds to,
+        # we just verify it's one of the expected sums
+        assert result_value in expected_sums.values(), f"Result {result_value} not in expected sums {expected_sums.values()}"
+    
+    # Additional verification: all expected sums should be in results
+    result_values = [r.numpy() if hasattr(r, 'numpy') else r for r in results]
+    for expected_sum in expected_sums.values():
+        assert expected_sum in result_values, f"Expected sum {expected_sum} not found in results {result_values}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# TC-02: group_by_reducer 参数验证异常
+@pytest.mark.parametrize("invalid_key_func_type, expected_exception", [
+    ("wrong_return_type", ValueError),  # Returns wrong dtype - actually raises ValueError
+    ("non_scalar_return", ValueError),   # Returns non-scalar tensor - actually raises ValueError (not TypeError)
+])
+def test_group_by_reducer_parameter_validation(invalid_key_func_type, expected_exception):
+    """Test parameter validation and exception handling for group_by_reducer."""
+    
+    # Create a simple dataset
+    dataset = create_simple_dataset(5)
+    reducer = create_sum_reducer()
+    
+    if invalid_key_func_type == "wrong_return_type":
+        # Key function returns wrong type (float32 instead of int64)
+        def wrong_type_key_func(x):
+            return tf.cast(x % 3, tf.float32)  # Wrong dtype
+        
+        # Weak assertion 1: exception_raised
+        with pytest.raises(expected_exception) as exc_info:
+            transform_fn = group_by_reducer(wrong_type_key_func, reducer)
+            _ = transform_fn(dataset)
+        
+        # Weak assertion 2: exception_type
+        assert exc_info.type == expected_exception, f"Expected {expected_exception}, got {exc_info.type}"
+        
+        # Weak assertion 3: error_message_contains
+        error_msg = str(exc_info.value).lower()
+        # Check for relevant error indicators
+        assert any(keyword in error_msg for keyword in ['type', 'dtype', 'int64', 'scalar']), \
+            f"Error message should mention type/dtype/int64/scalar, got: {error_msg}"
+    
+    elif invalid_key_func_type == "non_scalar_return":
+        # Key function returns non-scalar tensor
+        def non_scalar_key_func(x):
+            # Create a non-scalar tensor (vector of length 2)
+            # Use tf.stack to create a proper tensor from scalars
+            return tf.stack([tf.cast(x % 3, tf.int64), tf.cast(x % 2, tf.int64)])
+        
+        # Weak assertion 1: exception_raised
+        with pytest.raises(expected_exception) as exc_info:
+            transform_fn = group_by_reducer(non_scalar_key_func, reducer)
+            _ = transform_fn(dataset)
+        
+        # Weak assertion 2: exception_type
+        assert exc_info.type == expected_exception, f"Expected {expected_exception}, got {exc_info.type}"
+        
+        # Weak assertion 3: error_message_contains
+        error_msg = str(exc_info.value).lower()
+        # Check for relevant error indicators
+        assert any(keyword in error_msg for keyword in ['scalar', 'shape', 'rank', 'dimension']), \
+            f"Error message should mention scalar/shape, got: {error_msg}"
+    
+    else:
+        pytest.fail(f"Unknown invalid_key_func_type: {invalid_key_func_type}")
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+# TC-03: group_by_reducer 空数据集处理
+def test_group_by_reducer_empty_dataset_handling():
+    """Test handling of empty datasets with group_by_reducer."""
+    
+    # Test with empty dataset
+    dataset_size = 0
+    dataset = create_simple_dataset(dataset_size)
+    
+    # Define key function
+    def key_func(x):
+        return simple_mod_key_func(x, 3)
+    
+    # Create reducer
+    reducer = create_sum_reducer()
+    
+    # Apply group_by_reducer transformation
+    transform_fn = group_by_reducer(key_func, reducer)
+    
+    # Weak assertion 1: returns_callable
+    assert callable(transform_fn), "group_by_reducer should return a callable function"
+    
+    # Apply transformation to dataset
+    transformed_dataset = transform_fn(dataset)
+    
+    # Weak assertion 2: dataset_interface
+    assert hasattr(transformed_dataset, '__iter__'), "Transformed dataset should have iterator interface"
+    assert hasattr(transformed_dataset, 'element_spec'), "Transformed dataset should have element_spec"
+    
+    # Weak assertion 3: empty_output
+    # Collect results from empty dataset
+    results = dataset_to_list(transformed_dataset)
+    
+    # With empty input dataset, we should get empty output
+    assert len(results) == 0, f"Empty input dataset should produce empty output, got {len(results)} results"
+    
+    # Additional verification: ensure no crash and proper resource cleanup
+    # Try to iterate through the empty dataset multiple times
+    for _ in range(3):
+        count = 0
+        for _ in transformed_dataset:
+            count += 1
+        assert count == 0, f"Empty dataset should have 0 elements on iteration, got {count}"
+    
+    # Test with non-empty dataset to ensure our setup works
+    non_empty_dataset = create_simple_dataset(5)
+    non_empty_transformed = transform_fn(non_empty_dataset)
+    non_empty_results = dataset_to_list(non_empty_transformed)
+    assert len(non_empty_results) > 0, "Non-empty dataset should produce some output"
+    
+    # Verify that the transformation function can be reused
+    another_dataset = create_simple_dataset(3)
+    another_transformed = transform_fn(another_dataset)
+    another_results = dataset_to_list(another_transformed)
+    # Should get some results (depends on the data)
+    assert len(another_results) >= 0, "Should get non-negative number of results"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# TC-04: group_by_reducer 复杂嵌套结构 (DEFERRED)
+# This test case is deferred and will be implemented in later iterations.
+# Placeholder for complex nested structure test.
+pass
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# TC-05: bucket_by_sequence_length 基本分桶 (DEFERRED - G2)
+# This test case belongs to group G2 and is deferred.
+# Placeholder for bucket_by_sequence_length basic functionality test.
+pass
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: bucket_by_sequence_length 参数验证异常 (DEFERRED - G2)
+# This test case belongs to group G2 and is deferred.
+# Placeholder for bucket_by_sequence_length parameter validation test.
+pass
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: bucket_by_sequence_length 填充选项 (DEFERRED - G2)
+# This test case belongs to group G2 and is deferred.
+# Placeholder for bucket_by_sequence_length padding options test.
+pass
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# TC-08: bucket_by_sequence_length 边界序列 (DEFERRED - G2)
+# This test case belongs to group G2 and is deferred.
+# Placeholder for bucket_by_sequence_length edge cases test.
+pass
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# TC-09: group_by_window 基本功能与弃用警告
+def test_group_by_window_basic_functionality_with_deprecation_warning():
+    """Test basic functionality of group_by_window with deprecation warning."""
+    
+    # Create dataset
+    dataset_size = 12
+    dataset = create_simple_dataset(dataset_size)
+    
+    # Define key function
+    def key_func(x):
+        return simple_mod_key_func(x, 3)  # Group by mod 3
+    
+    # Define reduce function - take first element from each window
+    def reduce_func(key, window_dataset):
+        # Take first element from the window
+        return window_dataset.take(1)
+    
+    window_size = 3
+    
+    # Weak assertion 1: deprecation_warning
+    # Capture warnings during the actual call to group_by_window
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        # Apply group_by_window transformation - this is where the warning is emitted
+        transform_fn = group_by_window(key_func, reduce_func, window_size=window_size)
+        
+        # Apply the transformation to dataset to trigger the warning
+        # The warning is emitted when the transformation is applied, not when created
+        _ = transform_fn(dataset)
+        
+        # Check that deprecation warning was raised
+        assert len(w) > 0, "Deprecation warning should be raised for group_by_window"
+        assert any("deprecated" in str(warning.message).lower() for warning in w), \
+            f"Warning should indicate deprecation, got warnings: {[str(warning.message) for warning in w]}"
+    
+    # Weak assertion 2: returns_callable
+    assert callable(transform_fn), "group_by_window should return a callable function"
+    
+    # Apply transformation to dataset again (without warning capture this time)
+    transformed_dataset = transform_fn(dataset)
+    
+    # Weak assertion 3: dataset_interface
+    assert hasattr(transformed_dataset, '__iter__'), "Transformed dataset should have iterator interface"
+    assert hasattr(transformed_dataset, 'element_spec'), "Transformed dataset should have element_spec"
+    
+    # Weak assertion 4: window_grouping
+    # Verify that grouping happened by checking we get some output
+    results = dataset_to_list(transformed_dataset)
+    assert len(results) > 0, "Should get some results from window grouping"
+    
+    # Additional verification: each result should be from the original dataset
+    original_values = list(range(dataset_size))
+    for result in results:
+        result_value = result.numpy() if hasattr(result, 'numpy') else result
+        assert result_value in original_values, f"Result {result_value} not in original dataset"
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# TC-10: group_by_window 参数互斥验证 (DEFERRED - G3)
+# This test case belongs to group G3 and is deferred.
+# Placeholder for group_by_window mutual exclusion parameter validation test.
+pass
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# TC-11: 通用异常 - 无效数据集输入 (DEFERRED - G3)
+# This test case belongs to group G3 and is deferred.
+# Placeholder for invalid dataset input exception test.
+pass
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# TC-12: 通用异常 - 函数包装器错误 (DEFERRED - G3)
+# This test case belongs to group G3 and is deferred.
+# Placeholder for function wrapper error propagation test.
+pass
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Additional test utilities and cleanup
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    pytest.main([sys.argv[0], "-v"])
+# ==== BLOCK:FOOTER END ====

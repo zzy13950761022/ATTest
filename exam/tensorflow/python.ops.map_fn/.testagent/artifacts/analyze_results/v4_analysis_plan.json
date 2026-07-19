@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 12,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_tensorflow_python_ops_map_fn.py::TestMapFn::test_ragged_tensor_input[2-fn_output_signature1-10-True-ragged_test]",
+      "block_id": "CASE_03",
+      "error_type": "ValueError",
+      "action": "rewrite_block",
+      "note": "RaggedTensor处理形状不匹配：期望形状(2,)但实际形状(1,)，需要修复fn函数或调整map_fn调用"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

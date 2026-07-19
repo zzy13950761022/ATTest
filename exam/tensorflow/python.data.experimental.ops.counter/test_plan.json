@@ -1,0 +1,224 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.data.experimental.ops.counter",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_data_experimental_ops_counter.py",
+    "all_pattern": "tests/test_tensorflow_python_data_experimental_ops_counter_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_data_experimental_ops_counter_g1.py",
+      "G2": "tests/test_tensorflow_python_data_experimental_ops_counter_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心计数功能",
+      "entrypoints": ["CounterV2"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_05"],
+      "note": "验证基本计数功能和参数组合"
+    },
+    {
+      "group_id": "G2",
+      "title": "数据类型与边界",
+      "entrypoints": ["CounterV2"],
+      "smoke_set": ["CASE_03"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "验证不同数据类型和边界条件"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "默认参数计数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "start": 0,
+          "step": 1,
+          "dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "element_shape", "dtype_match", "sequence_start"],
+        "strong": ["exact_sequence", "infinite_generation", "independent_instances"]
+      },
+      "oracle": "手动计算序列",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "指定start和step参数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "start": 5,
+          "step": 2,
+          "dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "element_shape", "dtype_match", "sequence_correctness"],
+        "strong": ["exact_sequence", "step_consistency", "negative_step_support"]
+      },
+      "oracle": "手动计算序列",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G2",
+      "name": "不同数据类型验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "start": 0,
+          "step": 1,
+          "dtype": "int32"
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "element_shape", "dtype_match", "sequence_start"],
+        "strong": ["float_dtype_support", "type_conversion", "precision_limits"]
+      },
+      "oracle": "手动计算序列",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "负步长递减计数",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "start": 10,
+          "step": -1,
+          "dtype": "int64"
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "element_shape", "dtype_match", "decreasing_sequence"],
+        "strong": ["exact_sequence", "negative_step_edge_cases", "zero_crossing"]
+      },
+      "oracle": "手动计算序列",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G1",
+      "name": "浮点参数验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "start": 0.5,
+          "step": 0.1,
+          "dtype": "float32"
+        }
+      ],
+      "asserts": {
+        "weak": ["dataset_type", "element_shape", "dtype_match", "float_sequence"],
+        "strong": ["float_precision", "accumulated_error", "extreme_float_values"]
+      },
+      "oracle": "手动计算序列",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "start": 100,
+        "step": 10,
+        "dtype": "int64"
+      },
+      "note": "大数值起始和步长扩展"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "start": -5,
+        "step": 3,
+        "dtype": "int64"
+      },
+      "note": "负起始值扩展"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "start": 0,
+        "step": 1,
+        "dtype": "float64"
+      },
+      "note": "float64数据类型扩展"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Low",
+      "params": {
+        "start": 100,
+        "step": -10,
+        "dtype": "int64"
+      },
+      "note": "大数值负步长扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04"],
+  "deferred_set": ["CASE_05"]
+}

@@ -1,0 +1,172 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.special_math_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {"include": "SMOKE_SET", "assert_level": "weak", "max_blocks": 5},
+    "roundN": {"only_fix_failed_blocks": true, "block_limit": 3, "promote_deferred": true},
+    "final": {"enable_strong_asserts": true, "coverage_optional": true}
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_special_math_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_special_math_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "贝塞尔函数基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {"function": "i0", "dtype": "float32", "shape": [3, 4], "values": "random_normal"}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_scipy", "numerical_stability"]
+      },
+      "oracle": "scipy.special.i0",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "einsum核心操作",
+      "priority": "High",
+      "param_matrix": [
+        {"equation": "ij,jk->ik", "shape_a": [2, 3], "shape_b": [3, 4], "dtype": "float32", "optimize": "greedy"}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_numpy", "optimization_consistency"]
+      },
+      "oracle": "numpy.einsum",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "特殊函数边界值",
+      "priority": "High",
+      "param_matrix": [
+        {"function": "dawsn", "dtype": "float32", "values": "boundary", "boundary_type": "zero"}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_scipy", "symmetry_property"]
+      },
+      "oracle": "scipy.special.dawsn",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "数据类型兼容性",
+      "priority": "High",
+      "param_matrix": [
+        {"function": "fresnel_cos", "dtype": "float64", "shape": [2, 2], "values": "random_uniform"}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_scipy", "precision_consistency"]
+      },
+      "oracle": "scipy.special.fresnel",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "lbeta基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {"dtype": "float32", "shape": [3, 4, 2], "values": "random_positive"}
+      ],
+      "asserts": {
+        "weak": ["shape", "dtype", "finite", "basic_property"],
+        "strong": ["approx_equal_scipy", "reduction_correctness"]
+      },
+      "oracle": "scipy.special.betaln",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"function": "i0e", "dtype": "float32", "shape": [3, 4], "values": "random_normal"},
+      "note": "修改的贝塞尔函数数值稳定性"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"function": "i1", "dtype": "float64", "shape": [2, 3], "values": "random_normal"},
+      "note": "不同贝塞尔函数类型"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"equation": "i,i->", "shape_a": [5], "shape_b": [5], "dtype": "float32", "optimize": "optimal"},
+      "note": "点积操作与优化策略"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {"equation": "ij->ji", "shape_a": [3, 4], "dtype": "float64", "optimize": "auto"},
+      "note": "转置操作"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {"function": "dawsn", "dtype": "float32", "values": "boundary", "boundary_type": "large"},
+      "note": "大值边界处理"
+    },
+    {
+      "base_block_id": "CASE_04",
+      "priority": "Medium",
+      "params": {"function": "fresnel_sin", "dtype": "float32", "shape": [2, 2], "values": "random_uniform"},
+      "note": "Fresnel正弦函数"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"dtype": "float64", "shape": [2, 2, 2], "values": "random_positive"},
+      "note": "高精度计算"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_04", "CASE_05"],
+  "deferred_set": []
+}

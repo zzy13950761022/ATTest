@@ -1,0 +1,75 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 13,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestLoadCheckpoint.test_load_checkpoint_basic[valid_checkpoint.ckpt-True-True]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.training.checkpoint_utils.checkpoint_management.latest_checkpoint不存在"
+    },
+    {
+      "test": "TestLoadVariable.test_load_variable_basic[valid_checkpoint.ckpt-layer1/weights-var_shape0-float32-random_array]",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.training.checkpoint_utils.checkpoint_management.latest_checkpoint不存在"
+    },
+    {
+      "test": "TestListVariables.test_list_variables_basic[valid_checkpoint.ckpt-var_list0]",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：tensorflow.python.training.checkpoint_utils.checkpoint_management.latest_checkpoint不存在"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "TestLoadCheckpoint.test_load_checkpoint_basic[checkpoint_dir/-True-True]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadCheckpoint.test_load_checkpoint_file_not_found",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadCheckpoint.test_load_checkpoint_empty_directory",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadVariable.test_load_variable_basic[valid_checkpoint.ckpt-layer1/weights:0-var_shape1-float32-random_array]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadVariable.test_load_variable_basic[valid_checkpoint.ckpt-partitioned_var/part_0-var_shape2-float64-partitioned_array]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadVariable.test_load_variable_with_directory_path",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestLoadVariable.test_load_variable_nonexistent_variable",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestListVariables.test_list_variables_empty_checkpoint",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestListVariables.test_list_variables_with_directory_path",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "TestListVariables.test_list_variables_preserves_order_from_reader",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

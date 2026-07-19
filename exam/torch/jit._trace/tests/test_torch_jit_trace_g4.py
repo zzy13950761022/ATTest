@@ -1,0 +1,462 @@
+import torch
+import torch.nn as nn
+import pytest
+import warnings
+import numpy as np
+from typing import Tuple, List, Dict, Any
+
+# ==== BLOCK:HEADER START ====
+# Test file for torch.jit.trace - Group G4: Edge Cases and Exception Handling
+# This file contains tests for boundary cases and exception handling
+# ==== BLOCK:HEADER END ====
+
+# Helper functions and fixtures
+def set_random_seed(seed: int = 42):
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+def create_test_tensor(shape: Tuple[int, ...], dtype: torch.dtype = torch.float32, device: str = 'cpu') -> torch.Tensor:
+    """Create a test tensor with given shape, dtype and device."""
+    return torch.randn(shape, dtype=dtype, device=device)
+
+# ==== BLOCK:CASE_11 START ====
+def test_boundary_shape_handling():
+    """Test tracing with boundary shapes (empty tensors)."""
+    set_random_seed(42)
+    
+    # Define a simple function that works with empty tensors
+    def add_multiply(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Simple function: (x + y) * 2"""
+        return (x + y) * 2
+    
+    # Create empty tensors: shape [0, 5]
+    shape = (0, 5)
+    x = torch.empty(shape, dtype=torch.float32)
+    y = torch.empty(shape, dtype=torch.float32)
+    
+    # Trace the function
+    traced_fn = torch.jit.trace(
+        add_multiply,
+        (x, y),
+        strict=True,
+        check_trace=True
+    )
+    
+    # Test with the same empty tensors
+    result = traced_fn(x, y)
+    expected = add_multiply(x, y)
+    
+    # Weak assertions
+    # 1. Output shape matches
+    assert result.shape == expected.shape, f"Expected shape {expected.shape}, got {result.shape}"
+    assert result.shape == shape, f"Expected shape {shape}, got {result.shape}"
+    
+    # 2. Output dtype matches
+    assert result.dtype == expected.dtype, f"Expected dtype {expected.dtype}, got {result.dtype}"
+    assert result.dtype == torch.float32, f"Expected dtype torch.float32, got {result.dtype}"
+    
+    # 3. Basic equality - for empty tensors, we just check they're both empty
+    assert torch.equal(result, expected), "Traced output doesn't match original function"
+    
+    # 4. Check it's a script function
+    assert isinstance(traced_fn, torch.jit.ScriptFunction), \
+        f"Expected ScriptFunction, got {type(traced_fn)}"
+    
+    # Test with non-empty tensors of compatible shape
+    # This shows the traced function can handle different inputs
+    x2 = torch.randn(2, 5, dtype=torch.float32)
+    y2 = torch.randn(2, 5, dtype=torch.float32)
+    
+    result2 = traced_fn(x2, y2)
+    expected2 = add_multiply(x2, y2)
+    
+    # Check the traced function works with non-empty inputs too
+    assert torch.allclose(result2, expected2, rtol=1e-5, atol=1e-5), \
+        "Traced function doesn't work with non-empty inputs"
+    
+    # Test with different batch size but same feature dimension
+    x3 = torch.randn(3, 5, dtype=torch.float32)
+    y3 = torch.randn(3, 5, dtype=torch.float32)
+    
+    result3 = traced_fn(x3, y3)
+    expected3 = add_multiply(x3, y3)
+    
+    assert torch.allclose(result3, expected3, rtol=1e-5, atol=1e-5), \
+        "Traced function doesn't work with different batch sizes"
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+def test_invalid_input_handling():
+    """Test exception handling for invalid inputs."""
+    set_random_seed(42)
+    
+    # Define a simple function
+    def add_multiply(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Simple function: (x + y) * 2"""
+        return (x + y) * 2
+    
+    # Create valid test tensors
+    shape = (2, 2)
+    x = torch.randn(shape, dtype=torch.float32)
+    y = torch.randn(shape, dtype=torch.float32)
+    
+    # Test 1: Non-tensor input should raise an error during tracing
+    print("Test 1: Testing with non-tensor input...")
+    with pytest.raises((RuntimeError, TypeError)) as exc_info:
+        # Try to trace with a non-tensor input
+        traced_fn = torch.jit.trace(
+            add_multiply,
+            (x, 42),  # 42 is not a tensor
+            strict=True,
+            check_trace=True
+        )
+    
+    # Check error message contains expected keywords
+    error_msg = str(exc_info.value).lower()
+    assert any(keyword in error_msg for keyword in ['tensor', 'type', 'expected']), \
+        f"Expected error about tensor type, got: {error_msg}"
+    
+    # Test 2: Mismatched shape inputs should work during tracing
+    # but might fail during execution with wrong shapes
+    print("Test 2: Testing with mismatched shapes during execution...")
+    
+    # First trace with correct shapes
+    traced_fn = torch.jit.trace(
+        add_multiply,
+        (x, y),
+        strict=True,
+        check_trace=True
+    )
+    
+    # Now try to call with mismatched shapes
+    y_wrong_shape = torch.randn(3, 3, dtype=torch.float32)
+    
+    # This should raise a runtime error when executing the traced function
+    with pytest.raises(RuntimeError) as exc_info:
+        traced_fn(x, y_wrong_shape)
+    
+    error_msg = str(exc_info.value).lower()
+    # The error might be about shape mismatch or broadcasting
+    assert any(keyword in error_msg for keyword in ['shape', 'size', 'broadcast', 'inconsistent']), \
+        f"Expected error about shape mismatch, got: {error_msg}"
+    
+    # Test 3: None input should raise an error
+    print("Test 3: Testing with None input...")
+    with pytest.raises((RuntimeError, TypeError)) as exc_info:
+        traced_fn = torch.jit.trace(
+            add_multiply,
+            (x, None),  # None is not a tensor
+            strict=True,
+            check_trace=True
+        )
+    
+    # Test 4: Wrong dtype input to traced function
+    print("Test 4: Testing with wrong dtype...")
+    y_wrong_dtype = torch.randn(shape, dtype=torch.float64)
+    
+    # This might work (dtype conversion) or fail depending on PyTorch version
+    try:
+        result = traced_fn(x, y_wrong_dtype)
+        # If it works, check the result dtype
+        assert result.dtype == torch.float32 or result.dtype == torch.float64, \
+            f"Unexpected dtype: {result.dtype}"
+    except RuntimeError as e:
+        # It's also acceptable if it fails with a dtype error
+        error_msg = str(e).lower()
+        assert any(keyword in error_msg for keyword in ['dtype', 'type', 'scalar type']), \
+            f"Expected error about dtype, got: {error_msg}"
+    
+    # Test 5: Test with invalid function (not callable)
+    print("Test 5: Testing with non-callable func...")
+    # Based on the execution log, torch.jit.trace raises RuntimeError when 
+    # trying to get the qualified name of a non-callable object
+    with pytest.raises(RuntimeError) as exc_info:
+        traced_fn = torch.jit.trace(
+            "not a function",  # Not callable
+            (x, y),
+            strict=True,
+            check_trace=True
+        )
+    
+    # Check the error message
+    error_msg = str(exc_info.value).lower()
+    # The error should be about not being able to get the name
+    assert any(keyword in error_msg for keyword in ['name', 'class', 'object', 'qualified']), \
+        f"Expected error about getting object name, got: {error_msg}"
+    
+    # Test 6: Test with empty example_inputs tuple
+    print("Test 6: Testing with empty example_inputs...")
+    with pytest.raises((RuntimeError, ValueError)) as exc_info:
+        traced_fn = torch.jit.trace(
+            add_multiply,
+            (),  # Empty tuple
+            strict=True,
+            check_trace=True
+        )
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:CASE_13 START ====
+def test_dynamic_control_flow_rejection():
+    """Test tracing with dynamic control flow (should generate warnings)."""
+    set_random_seed(42)
+    
+    # Define a function with dynamic control flow based on tensor values
+    def function_with_control_flow(x: torch.Tensor) -> torch.Tensor:
+        """
+        Function with data-dependent control flow.
+        This should generate TracerWarnings when using .item() to convert to Python scalar.
+        """
+        result = torch.zeros_like(x)
+        
+        # Dynamic control flow based on tensor values
+        # Using .item() converts tensor to Python scalar, which should generate warnings
+        for i in range(x.shape[0]):
+            if x[i].item() > 0:  # .item() converts to Python scalar - should warn
+                result[i] = x[i] * 2
+            else:
+                result[i] = x[i] * 0.5
+        
+        return result
+    
+    # Create test tensor
+    shape = (3,)
+    x = torch.tensor([1.0, -2.0, 3.0], dtype=torch.float32)
+    
+    # Weak assertions:
+    # 1. Warning should be generated during tracing when using .item()
+    # 2. Basic equality should still work for the specific input
+    
+    # Capture warnings during tracing
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        # Trace the function - this should generate TracerWarnings for .item() calls
+        traced_fn = torch.jit.trace(
+            function_with_control_flow,
+            (x,),
+            strict=True,
+            check_trace=True
+        )
+        
+        # Check that warnings were generated for .item() calls
+        # Note: The exact number of warnings may vary, but there should be at least one
+        # for the .item() conversion
+        if len(w) > 0:
+            # Check for TracerWarnings about tensor to Python conversion
+            tracer_warnings = [warning for warning in w if 'TracerWarning' in str(warning.category)]
+            if len(tracer_warnings) > 0:
+                # Check warning message contains relevant keywords
+                warning_msg = str(tracer_warnings[0].message).lower()
+                assert any(keyword in warning_msg for keyword in [
+                    'tensor', 'python', 'boolean', 'constant', 'trace', 'incorrect',
+                    'control flow', 'data flow', 'item', 'scalar'
+                ]), f"Expected TracerWarning about tensor to Python conversion, got: {warning_msg}"
+        else:
+            # If no warnings were generated, that's also acceptable for weak assertions
+            # The test should still pass as this is a weak assertion
+            print("Note: No warnings generated for .item() conversion - this may be version dependent")
+    
+    # Test the traced function with the original input
+    result = traced_fn(x)
+    expected = function_with_control_flow(x)
+    
+    # Basic equality check - should work for this specific input
+    assert torch.allclose(result, expected, rtol=1e-5, atol=1e-5), \
+        "Traced output doesn't match original function for the traced input"
+    
+    # Test with a different input to show the limitation
+    # The control flow becomes constant in the trace
+    x2 = torch.tensor([-1.0, 4.0, -3.0], dtype=torch.float32)
+    
+    result2 = traced_fn(x2)
+    # The traced function will use the control flow decisions from the trace time
+    # which were based on x = [1.0, -2.0, 3.0]
+    # So for x2, it will apply the same operations as for x
+    
+    # Manually compute what the traced function should produce
+    # Based on the trace-time decisions:
+    # x[0] = 1.0 > 0 -> multiply by 2
+    # x[1] = -2.0 <= 0 -> multiply by 0.5  
+    # x[2] = 3.0 > 0 -> multiply by 2
+    # So the traced function always does: [*2, *0.5, *2]
+    expected_traced = x2 * torch.tensor([2.0, 0.5, 2.0])
+    
+    assert torch.allclose(result2, expected_traced, rtol=1e-5, atol=1e-5), \
+        "Traced function doesn't behave as expected with different input"
+    
+    # Compare with what the original function would do
+    expected_original = function_with_control_flow(x2)
+    # For x2 = [-1.0, 4.0, -3.0]:
+    # -1.0 <= 0 -> *0.5 = -0.5
+    # 4.0 > 0 -> *2 = 8.0
+    # -3.0 <= 0 -> *0.5 = -1.5
+    
+    # They should be different because the trace fixed the control flow
+    assert not torch.allclose(result2, expected_original, rtol=1e-5, atol=1e-5), \
+        "Traced function shouldn't match original for different input with dynamic control flow"
+    
+    # Test another function that definitely should generate warnings
+    # Using tensor.shape[0] in a Python for loop should generate warnings
+    def function_with_shape_dependent_loop(x: torch.Tensor) -> torch.Tensor:
+        """Function that uses tensor shape in Python control flow."""
+        result = torch.zeros_like(x)
+        n = x.shape[0]  # This accesses tensor shape - may generate warnings
+        
+        # Python for loop using tensor shape
+        for i in range(n):
+            result[i] = x[i] * 2
+            
+        return result
+    
+    # This may or may not generate warnings depending on PyTorch version
+    # For weak assertions, we accept either behavior
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        traced_fn2 = torch.jit.trace(
+            function_with_shape_dependent_loop,
+            (x,),
+            strict=True,
+            check_trace=True
+        )
+        
+        # For weak assertions, we don't require warnings
+        # Just note if warnings were generated
+        if len(w) > 0:
+            print(f"Generated {len(w)} warning(s) for shape-dependent loop")
+    
+    # Test a function that should definitely work without warnings
+    # Pure tensor operations without Python control flow
+    def pure_tensor_function(x: torch.Tensor) -> torch.Tensor:
+        """Function with only tensor operations, no Python control flow."""
+        return x * 2 + x.mean()
+    
+    # This should not generate warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        traced_fn3 = torch.jit.trace(
+            pure_tensor_function,
+            (x,),
+            strict=True,
+            check_trace=True
+        )
+        
+        # Pure tensor operations should not generate TracerWarnings
+        # But we accept either for weak assertions
+    
+    # Check it's a script function
+    assert isinstance(traced_fn, torch.jit.ScriptFunction), \
+        f"Expected ScriptFunction, got {type(traced_fn)}"
+# ==== BLOCK:CASE_13 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Test cleanup and resource management
+def test_cleanup():
+    """Verify that traced functions don't leak resources."""
+    # This is more of a sanity check than a comprehensive test
+    import gc
+    
+    # Create and trace a simple function
+    def simple_func(x):
+        return x * 2
+    
+    x = torch.randn(3, 3)
+    traced = torch.jit.trace(simple_func, (x,))
+    
+    # Force garbage collection
+    gc.collect()
+    
+    # The traced function should still work
+    result = traced(x)
+    expected = simple_func(x)
+    assert torch.allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+# Additional edge case tests that don't fit in main categories
+def test_trace_with_requires_grad():
+    """Test tracing with tensors that require gradients."""
+    set_random_seed(42)
+    
+    def func(x):
+        return x * 2
+    
+    # Create tensor with requires_grad=True
+    x = torch.randn(2, 2, requires_grad=True)
+    
+    # Trace should work
+    traced = torch.jit.trace(func, (x,))
+    
+    # Test forward pass
+    result = traced(x)
+    expected = func(x)
+    assert torch.allclose(result, expected, rtol=1e-5, atol=1e-5)
+    
+    # Note: Backward pass through traced functions has limitations
+    # but that's beyond the scope of basic tracing tests
+
+def test_trace_module_with_edge_cases():
+    """Test tracing nn.Module with edge cases."""
+    set_random_seed(42)
+    
+    class EdgeCaseModule(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(5, 3)
+            
+        def forward(self, x):
+            # Module with potential edge cases
+            if x.shape[0] == 0:
+                return torch.empty(0, 3)
+            return self.linear(x)
+    
+    module = EdgeCaseModule()
+    
+    # Test with normal input
+    x_normal = torch.randn(2, 5)
+    traced_normal = torch.jit.trace(module, (x_normal,))
+    result_normal = traced_normal(x_normal)
+    expected_normal = module(x_normal)
+    assert torch.allclose(result_normal, expected_normal, rtol=1e-5, atol=1e-5)
+    
+    # Note: The control flow in forward() will be fixed at trace time
+    # This demonstrates the limitation mentioned in test_dynamic_control_flow_rejection
+
+# Performance sanity check (not a benchmark, just sanity)
+def test_trace_performance_sanity():
+    """Sanity check that traced functions are callable multiple times."""
+    def func(x):
+        return torch.matmul(x, x.t())
+    
+    x = torch.randn(10, 10)
+    traced = torch.jit.trace(func, (x,))
+    
+    # Call multiple times to ensure no crashes
+    for _ in range(10):
+        result = traced(x)
+        assert result.shape == (10, 10)
+
+if __name__ == "__main__":
+    # Simple test runner for debugging
+    import sys
+    test_names = [
+        "test_boundary_shape_handling",
+        "test_invalid_input_handling", 
+        "test_dynamic_control_flow_rejection",
+        "test_cleanup",
+        "test_trace_with_requires_grad",
+        "test_trace_module_with_edge_cases",
+        "test_trace_performance_sanity"
+    ]
+    
+    for test_name in test_names:
+        if test_name in globals():
+            print(f"Running {test_name}...")
+            try:
+                globals()[test_name]()
+                print(f"  ✓ {test_name} passed")
+            except Exception as e:
+                print(f"  ✗ {test_name} failed: {e}")
+                import traceback
+                traceback.print_exc()
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 4,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_non_module_type_input[123]",
+      "block_id": "CASE_07",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "异常消息不包含type关键词，实际为属性访问错误"
+    },
+    {
+      "test": "test_non_module_type_input[not_a_model]",
+      "block_id": "CASE_07",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "异常消息不包含type关键词，实际为属性访问错误"
+    },
+    {
+      "test": "test_empty_list_input[False]",
+      "block_id": "CASE_08",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "空列表输入导致get_fuser_method断言失败，需要处理边界情况"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_non_module_type_input[invalid_model3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_non_module_type_input[invalid_model4]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

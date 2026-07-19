@@ -1,0 +1,430 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.linear",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_linear.py",
+    "all_pattern": "tests/test_torch_nn_modules_linear_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_linear_g1.py",
+      "G2": "tests/test_torch_nn_modules_linear_g2.py",
+      "G3": "tests/test_torch_nn_modules_linear_g3.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "Linear 核心功能",
+      "entrypoints": ["Linear.__init__", "Linear.forward", "Linear.reset_parameters"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试 Linear 类的基础正向传播和初始化"
+    },
+    {
+      "group_id": "G2",
+      "title": "特殊线性层",
+      "entrypoints": ["Bilinear.__init__", "Bilinear.forward", "Identity.__init__", "Identity.forward"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试 Bilinear 和 Identity 类的特殊功能"
+    },
+    {
+      "group_id": "G3",
+      "title": "延迟初始化与边界",
+      "entrypoints": ["LazyLinear.__init__", "LazyLinear.forward", "LazyLinear.reset_parameters"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试 LazyLinear 延迟初始化和边界情况"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "Linear 基础正向传播",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "in_features": 20,
+          "out_features": 30,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [128, 20],
+          "flags": []
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "basic_linearity"],
+        "strong": ["numerical_accuracy", "gradient_check", "device_consistency"]
+      },
+      "oracle": "torch.nn.functional.linear",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "Linear 无偏置配置",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "in_features": 10,
+          "out_features": 5,
+          "bias": false,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [64, 10],
+          "flags": ["no_bias"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "no_bias_present", "finite_check"],
+        "strong": ["numerical_accuracy_no_bias", "gradient_check_no_bias"]
+      },
+      "oracle": "torch.nn.functional.linear",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "Linear 不同数据类型",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "in_features": 8,
+          "out_features": 4,
+          "bias": true,
+          "dtype": "float64",
+          "device": "cpu",
+          "input_shape": [32, 8],
+          "flags": ["high_precision"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check"],
+        "strong": ["precision_consistency", "gradient_precision"]
+      },
+      "oracle": "torch.nn.functional.linear",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "Linear 不同输入形状",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "in_features": 6,
+          "out_features": 3,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [16, 8, 6],
+          "flags": ["multi_dim"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "shape_preservation", "finite_check"],
+        "strong": ["batch_independence", "shape_consistency"]
+      },
+      "oracle": "torch.nn.functional.linear",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "Bilinear 基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "in1_features": 5,
+          "in2_features": 3,
+          "out_features": 7,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input1_shape": [10, 5],
+          "input2_shape": [10, 3],
+          "flags": ["bilinear"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "output_dtype", "finite_check", "bilinear_form"],
+        "strong": ["numerical_accuracy_bilinear", "gradient_check_bilinear"]
+      },
+      "oracle": "manual_bilinear_implementation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 90,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "Identity 恒等映射",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "features": 10,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [20, 10],
+          "flags": ["identity"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_equals_input", "shape_preservation", "dtype_preservation"],
+        "strong": ["gradient_identity", "device_consistency"]
+      },
+      "oracle": "input_tensor",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "Bilinear 无偏置配置",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "in1_features": 4,
+          "in2_features": 2,
+          "out_features": 3,
+          "bias": false,
+          "dtype": "float32",
+          "device": "cpu",
+          "input1_shape": [8, 4],
+          "input2_shape": [8, 2],
+          "flags": ["bilinear", "no_bias"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "no_bias_present", "finite_check"],
+        "strong": ["numerical_accuracy_no_bias", "gradient_check_no_bias"]
+      },
+      "oracle": "manual_bilinear_implementation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "LazyLinear 延迟初始化",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "out_features": 15,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [40, 25],
+          "flags": ["lazy"]
+        }
+      ],
+      "asserts": {
+        "weak": ["output_shape", "in_features_inferred", "parameters_initialized", "finite_check"],
+        "strong": ["lazy_consistency", "reinitialization_blocked"]
+      },
+      "oracle": "Linear_with_inferred_features",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "Linear 异常输入",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "in_features": 5,
+          "out_features": 3,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [10, 4],
+          "flags": ["wrong_dimension", "expect_error"]
+        }
+      ],
+      "asserts": {
+        "weak": ["raises_runtime_error", "error_message_contains"],
+        "strong": ["error_type_specific", "state_preserved"]
+      },
+      "oracle": "expected_exception",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "Linear 初始化验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "in_features": 7,
+          "out_features": 4,
+          "bias": true,
+          "dtype": "float32",
+          "device": "cpu",
+          "input_shape": [1, 7],
+          "flags": ["check_init", "fixed_seed"]
+        }
+      ],
+      "asserts": {
+        "weak": ["weight_shape", "bias_shape", "parameters_not_nan", "initialization_range"],
+        "strong": ["kaiming_distribution", "bias_uniform_distribution"]
+      },
+      "oracle": "kaiming_uniform_expected",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "in_features": 50,
+        "out_features": 100,
+        "bias": true,
+        "dtype": "float16",
+        "device": "cpu",
+        "input_shape": [256, 50],
+        "flags": ["half_precision"]
+      },
+      "note": "float16 精度扩展"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {
+        "in_features": 1000,
+        "out_features": 500,
+        "bias": true,
+        "dtype": "float32",
+        "device": "cpu",
+        "input_shape": [10, 1000],
+        "flags": ["large_dimension"]
+      },
+      "note": "大维度内存检查"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "in_features": 1,
+        "out_features": 1,
+        "bias": false,
+        "dtype": "float32",
+        "device": "cpu",
+        "input_shape": [5, 1],
+        "flags": ["minimal_dimension"]
+      },
+      "note": "最小维度边界"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "in1_features": 10,
+        "in2_features": 8,
+        "out_features": 6,
+        "bias": true,
+        "dtype": "float64",
+        "device": "cpu",
+        "input1_shape": [20, 10],
+        "input2_shape": [20, 8],
+        "flags": ["bilinear", "high_precision"]
+      },
+      "note": "Bilinear 高精度扩展"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Medium",
+      "params": {
+        "out_features": 20,
+        "bias": false,
+        "dtype": "float32",
+        "device": "cpu",
+        "input_shape": [30, 15],
+        "flags": ["lazy", "no_bias"]
+      },
+      "note": "LazyLinear 无偏置扩展"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_08"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_09", "CASE_10"]
+}

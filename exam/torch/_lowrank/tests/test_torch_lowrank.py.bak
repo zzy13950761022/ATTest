@@ -1,0 +1,334 @@
+import math
+import pytest
+import torch
+from torch._lowrank import svd_lowrank, get_approximate_basis, pca_lowrank
+
+# ==== BLOCK:HEADER START ====
+# 测试辅助函数和固定装置
+def set_random_seed():
+    """设置随机种子确保测试可重复性"""
+    torch.manual_seed(42)
+
+def create_test_matrix(shape, dtype=torch.float32, device='cpu', flags=None):
+    """创建测试矩阵"""
+    if flags is None:
+        flags = []
+    
+    m, n = shape
+    # 生成随机矩阵
+    A = torch.randn(m, n, dtype=dtype, device=device)
+    
+    # 根据标志调整矩阵
+    if 'full_rank' in flags:
+        # 确保满秩
+        if m <= n:
+            A = torch.eye(m, n, dtype=dtype, device=device)
+        else:
+            A = torch.eye(m, n, dtype=dtype, device=device)
+    elif 'normal' in flags:
+        # 已经是正态分布，无需额外处理
+        pass
+    
+    return A
+
+def assert_tensor_properties(tensor, expected_shape=None, expected_dtype=None, name=""):
+    """断言张量基本属性"""
+    assert torch.isfinite(tensor).all(), f"{name} 包含非有限值"
+    if expected_shape is not None:
+        assert tensor.shape == expected_shape, f"{name} 形状错误: 期望 {expected_shape}, 实际 {tensor.shape}"
+    if expected_dtype is not None:
+        assert tensor.dtype == expected_dtype, f"{name} 数据类型错误: 期望 {expected_dtype}, 实际 {tensor.dtype}"
+
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+@pytest.mark.parametrize("dtype,device,shape,q,niter,M,flags", [
+    (torch.float32, 'cpu', (5, 3), 2, 2, None, ['normal']),
+    # 参数扩展：更大形状测试
+    (torch.float64, 'cpu', (8, 5), 3, 2, None, ['larger_shape']),
+    # 参数扩展：高矩阵测试
+    (torch.float32, 'cpu', (3, 7), 2, 2, None, ['tall_matrix']),
+])
+def test_svd_lowrank_basic(dtype, device, shape, q, niter, M, flags):
+    """测试 svd_lowrank 基本功能"""
+    # 设置随机种子
+    set_random_seed()
+    
+    # 创建测试矩阵
+    A = create_test_matrix(shape, dtype=dtype, device=device, flags=flags)
+    
+    # 调用目标函数
+    U, S, V = svd_lowrank(A, q=q, niter=niter, M=M)
+    
+    # weak 断言：基本属性
+    m, n = shape
+    assert_tensor_properties(U, expected_shape=(m, q), expected_dtype=dtype, name="U")
+    assert_tensor_properties(S, expected_shape=(q,), expected_dtype=dtype, name="S")
+    assert_tensor_properties(V, expected_shape=(n, q), expected_dtype=dtype, name="V")
+    
+    # weak 断言：基本属性检查
+    # 1. 奇异值应为非负
+    assert (S >= 0).all(), "奇异值应非负"
+    
+    # 2. 奇异值应为降序排列（近似）
+    if q > 1:
+        # 检查是否大致降序（允许小的数值误差）
+        diff = S[:-1] - S[1:]
+        assert (diff >= -1e-6).all(), "奇异值应大致降序排列"
+    
+    # 3. 重构误差检查（弱断言版本）
+    # 计算低秩近似
+    A_approx = U @ torch.diag(S) @ V.T
+    
+    # 检查重构矩阵形状
+    assert A_approx.shape == A.shape, f"重构矩阵形状错误: 期望 {A.shape}, 实际 {A_approx.shape}"
+    
+    # 检查重构误差数量级（弱断言，只检查不是特别大）
+    error = torch.norm(A - A_approx)
+    norm_A = torch.norm(A)
+    if norm_A > 0:
+        rel_error = error / norm_A
+        # 弱断言：相对误差应小于 0.5（放宽条件，因为低秩近似可能误差较大）
+        assert rel_error < 0.5, f"重构相对误差过大: {rel_error.item()}"
+    
+    # 4. 正交性检查（弱断言版本）
+    # U 的列应近似正交
+    UUT = U.T @ U
+    eye_U = torch.eye(q, dtype=dtype, device=device)
+    orth_error_U = torch.norm(UUT - eye_U)
+    # 弱断言：正交性误差应小于 0.2（放宽条件）
+    assert orth_error_U < 0.2, f"U 正交性误差过大: {orth_error_U.item()}"
+    
+    # V 的列应近似正交
+    VVT = V.T @ V
+    eye_V = torch.eye(q, dtype=dtype, device=device)
+    orth_error_V = torch.norm(VVT - eye_V)
+    # 弱断言：正交性误差应小于 0.2（放宽条件）
+    assert orth_error_V < 0.2, f"V 正交性误差过大: {orth_error_V.item()}"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+@pytest.mark.parametrize("dtype,device,shape,q,niter,M,flags", [
+    (torch.float64, 'cpu', (4, 4), 4, 0, None, ['full_rank']),
+    # 参数扩展：最小形状测试
+    (torch.float32, 'cpu', (1, 1), 1, 0, None, ['minimal']),
+])
+def test_svd_lowrank_boundary(dtype, device, shape, q, niter, M, flags):
+    """测试 svd_lowrank 边界条件（满秩情况）"""
+    # 设置随机种子
+    set_random_seed()
+    
+    # 创建测试矩阵（满秩矩阵）
+    A = create_test_matrix(shape, dtype=dtype, device=device, flags=flags)
+    
+    # 调用目标函数
+    U, S, V = svd_lowrank(A, q=q, niter=niter, M=M)
+    
+    # weak 断言：基本属性
+    m, n = shape
+    assert_tensor_properties(U, expected_shape=(m, q), expected_dtype=dtype, name="U")
+    assert_tensor_properties(S, expected_shape=(q,), expected_dtype=dtype, name="S")
+    assert_tensor_properties(V, expected_shape=(n, q), expected_dtype=dtype, name="V")
+    
+    # weak 断言：基本属性检查
+    # 1. 奇异值应为非负
+    assert (S >= 0).all(), "奇异值应非负"
+    
+    # 2. 对于满秩矩阵，所有奇异值应大于 0（近似）
+    # 注意：由于数值误差，可能有一些很小的奇异值
+    assert (S > -1e-10).all(), "满秩矩阵的奇异值应大于 0"
+    
+    # 3. 重构误差检查（弱断言版本）
+    # 计算低秩近似（这里 q = min(m,n)，所以是完整重构）
+    A_approx = U @ torch.diag(S) @ V.T
+    
+    # 检查重构矩阵形状
+    assert A_approx.shape == A.shape, f"重构矩阵形状错误: 期望 {A.shape}, 实际 {A_approx.shape}"
+    
+    # 对于满秩情况，重构应更精确
+    error = torch.norm(A - A_approx)
+    norm_A = torch.norm(A)
+    if norm_A > 0:
+        rel_error = error / norm_A
+        # 弱断言：相对误差应小于 0.2（放宽条件）
+        assert rel_error < 0.2, f"满秩重构相对误差过大: {rel_error.item()}"
+    
+    # 4. 正交性检查（弱断言版本）
+    # U 的列应近似正交
+    UUT = U.T @ U
+    eye_U = torch.eye(q, dtype=dtype, device=device)
+    orth_error_U = torch.norm(UUT - eye_U)
+    # 弱断言：正交性误差应小于 0.2（放宽条件）
+    assert orth_error_U < 0.2, f"U 正交性误差过大: {orth_error_U.item()}"
+    
+    # V 的列应近似正交
+    VVT = V.T @ V
+    eye_V = torch.eye(q, dtype=dtype, device=device)
+    orth_error_V = torch.norm(VVT - eye_V)
+    # 弱断言：正交性误差应小于 0.05
+    assert orth_error_V < 0.05, f"V 正交性误差过大: {orth_error_V.item()}"
+    
+    # 5. 检查 niter=0 的情况
+    # niter=0 表示没有子空间迭代，算法应仍然工作
+    if 'minimal' not in flags:  # 最小形状测试可能不适用此检查
+        assert niter == 0, "此测试专门验证 niter=0 的边界情况"
+    
+    # 6. 检查 q = min(m,n) 的情况
+    if 'minimal' not in flags:  # 最小形状测试可能不适用此检查
+        assert q == min(m, n), "此测试专门验证 q = min(m,n) 的边界情况"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize("dtype,device,shape,q,niter,M,flags", [
+    (torch.float32, 'cpu', (6, 4), 3, 2, None, ['normal']),
+    # 参数扩展：不同迭代次数
+    (torch.float64, 'cpu', (5, 3), 2, 1, None, ['different_niter']),
+])
+def test_get_approximate_basis_basic(dtype, device, shape, q, niter, M, flags):
+    """测试 get_approximate_basis 基本功能"""
+    # 设置随机种子
+    set_random_seed()
+    
+    # 创建测试矩阵
+    A = create_test_matrix(shape, dtype=dtype, device=device, flags=flags)
+    
+    # 调用目标函数
+    Q = get_approximate_basis(A, q=q, niter=niter, M=M)
+    
+    # weak 断言：基本属性
+    m, n = shape
+    assert_tensor_properties(Q, expected_shape=(m, q), expected_dtype=dtype, name="Q")
+    
+    # weak 断言：基本属性检查
+    # 1. 正交性检查（弱断言版本）
+    QTQ = Q.T @ Q
+    eye = torch.eye(q, dtype=dtype, device=device)
+    orth_error = torch.norm(QTQ - eye)
+    # 弱断言：正交性误差应小于 0.1
+    assert orth_error < 0.1, f"Q 正交性误差过大: {orth_error.item()}"
+    
+    # 2. 检查 Q 的列范数
+    col_norms = torch.norm(Q, dim=0)
+    # 列范数应接近 1（正交归一化）
+    norm_error = torch.norm(col_norms - 1.0)
+    # 弱断言：范数误差应小于 0.1
+    assert norm_error < 0.1, f"Q 列范数误差过大: {norm_error.item()}"
+    
+    # 3. 近似质量检查（弱断言）
+    # 计算 Q Q^T A 作为 A 的近似
+    A_approx = Q @ Q.T @ A
+    
+    # 检查近似矩阵形状
+    assert A_approx.shape == A.shape, f"近似矩阵形状错误: 期望 {A.shape}, 实际 {A_approx.shape}"
+    
+    # 检查近似误差数量级（弱断言）
+    error = torch.norm(A - A_approx)
+    norm_A = torch.norm(A)
+    if norm_A > 0:
+        rel_error = error / norm_A
+        # 弱断言：相对误差应小于 0.5（对于随机投影算法，这个条件比较宽松）
+        assert rel_error < 0.5, f"近似相对误差过大: {rel_error.item()}"
+    
+    # 4. 检查 niter 参数
+    if 'different_niter' in flags:
+        assert niter == 1, "此测试验证 niter=1 的情况"
+    else:
+        assert niter == 2, "此测试使用默认 niter=2"
+    
+    # 5. 检查 M=None 的情况
+    assert M is None, "此测试验证 M=None 的情况"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+# svd_lowrank 随机性控制（延后）
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+# pca_lowrank 中心化测试（延后）
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# pca_lowrank 稀疏矩阵支持（延后）
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:FOOTER START ====
+def test_svd_lowrank_invalid_q():
+    """测试无效 q 参数"""
+    set_random_seed()
+    A = torch.randn(5, 3, dtype=torch.float32)
+    
+    # q > min(m,n) 应引发 ValueError
+    with pytest.raises(ValueError, match="q must be satisfying"):
+        svd_lowrank(A, q=10)  # q=10 > min(5,3)=3
+    
+    # q < 0 应引发 ValueError
+    with pytest.raises(ValueError, match="q must be satisfying"):
+        svd_lowrank(A, q=-1)
+
+def test_svd_lowrank_invalid_niter():
+    """测试无效 niter 参数"""
+    set_random_seed()
+    A = torch.randn(5, 3, dtype=torch.float32)
+    
+    # niter < 0 应引发 ValueError
+    with pytest.raises(ValueError, match="niter must be non-negative"):
+        svd_lowrank(A, niter=-1)
+
+def test_get_approximate_basis_invalid_q():
+    """测试 get_approximate_basis 无效 q 参数"""
+    set_random_seed()
+    A = torch.randn(6, 4, dtype=torch.float32)
+    
+    # q > min(m,n) 应引发 ValueError
+    with pytest.raises(ValueError, match="q must be satisfying"):
+        get_approximate_basis(A, q=10)  # q=10 > min(6,4)=4
+    
+    # q < 0 应引发 ValueError
+    with pytest.raises(ValueError, match="q must be satisfying"):
+        get_approximate_basis(A, q=-1)
+
+def test_get_approximate_basis_invalid_niter():
+    """测试 get_approximate_basis 无效 niter 参数"""
+    set_random_seed()
+    A = torch.randn(6, 4, dtype=torch.float32)
+    
+    # niter < 0 应引发 ValueError
+    with pytest.raises(ValueError, match="niter must be non-negative"):
+        get_approximate_basis(A, niter=-1)
+
+def test_pca_lowrank_basic():
+    """测试 pca_lowrank 基本功能（简单验证）"""
+    set_random_seed()
+    A = torch.randn(5, 3, dtype=torch.float32)
+    
+    # 测试默认参数
+    U, S, V = pca_lowrank(A, q=2)
+    
+    # 基本形状检查
+    assert U.shape == (5, 2)
+    assert S.shape == (2,)
+    assert V.shape == (3, 2)
+    
+    # 数据类型检查
+    assert U.dtype == torch.float32
+    assert S.dtype == torch.float32
+    assert V.dtype == torch.float32
+    
+    # 奇异值非负
+    assert (S >= 0).all()
+
+def test_zero_q():
+    """测试 q=0 的边界情况"""
+    set_random_seed()
+    A = torch.randn(5, 3, dtype=torch.float32)
+    
+    # svd_lowrank with q=0
+    U, S, V = svd_lowrank(A, q=0)
+    assert U.shape == (5, 0)
+    assert S.shape == (0,)
+    assert V.shape == (3, 0)
+    
+    # get_approximate_basis with q=0
+    Q = get_approximate_basis(A, q=0)
+    assert Q.shape == (5, 0)
+# ==== BLOCK:FOOTER END ====

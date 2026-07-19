@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 5,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_non_positive_eps_exception",
+      "block_id": "CASE_11",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "eps=0未触发ValueError异常，需要检查spectral_norm的eps参数验证逻辑"
+    },
+    {
+      "test": "test_invalid_dim_index_exception",
+      "block_id": "CASE_12",
+      "error_type": "RuntimeError",
+      "action": "rewrite_block",
+      "note": "dim=2触发RuntimeError而非期望的IndexError，需要调整异常处理逻辑"
+    }
+  ],
+  "deferred": [
+    {"test": "TC-03", "reason": "deferred test case"},
+    {"test": "TC-04", "reason": "deferred test case"},
+    {"test": "TC-06", "reason": "deferred test case"},
+    {"test": "TC-07", "reason": "deferred test case"},
+    {"test": "TC-08", "reason": "deferred test case"},
+    {"test": "TC-10", "reason": "deferred test case"}
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

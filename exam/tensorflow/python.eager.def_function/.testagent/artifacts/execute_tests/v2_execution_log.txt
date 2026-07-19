@@ -1,0 +1,139 @@
+=== Run Tests ===
+F.                                                                       [100%]
+================================== FAILURES ===================================
+_______ TestDefFunctionG2.test_variable_creation_and_state_preservation _______
+
+self = <test_tensorflow_python_eager_def_function_g2.TestDefFunctionG2 object at 0x000001B5E2122D60>
+
+    def test_variable_creation_and_state_preservation(self):
+        """CASE_03: 变量创建与状态保持 - 测试变量创建和状态保持"""
+        # Test stateful counter function
+        @def_function.function
+        def stateful_counter():
+            # Variable should be created only on first call
+            if not hasattr(stateful_counter, 'counter'):
+                stateful_counter.counter = tf.Variable(0, dtype=tf.int32)
+            stateful_counter.counter.assign_add(1)
+            return stateful_counter.counter.read_value()
+    
+        # Weak assertions
+        # 1. variable_created_once: Variable should be created only on first call
+        # We'll test this by checking that the variable is created and persists
+        # First, ensure no counter attribute exists
+        if hasattr(stateful_counter, 'counter'):
+            delattr(stateful_counter, 'counter')
+    
+        # First call - should create variable
+        result1 = stateful_counter()
+        assert hasattr(stateful_counter, 'counter'), "Variable should be created on first call"
+        assert isinstance(stateful_counter.counter, tf.Variable), "counter should be a tf.Variable"
+        assert result1.numpy() == 1, f"First call should return 1, got {result1.numpy()}"
+    
+        # Store the variable reference to check it's the same object
+        var_ref = stateful_counter.counter
+    
+        # Second call - should use existing variable, not create new one
+        result2 = stateful_counter()
+        assert stateful_counter.counter is var_ref, "Variable should be the same object on subsequent calls"
+        assert result2.numpy() == 2, f"Second call should return 2, got {result2.numpy()}"
+    
+        # 2. state_preserved: State should be preserved between calls
+        # Third call - should increment again
+        result3 = stateful_counter()
+        assert result3.numpy() == 3, f"Third call should return 3, got {result3.numpy()}"
+    
+        # 3. callable: Verify function is callable
+        assert callable(stateful_counter), "Function should be callable"
+    
+        # 4. basic_execution: Test basic execution works with different patterns
+        # Test with a fresh function that uses closure variable
+        counter_value = [0]  # Use list to allow modification in closure
+    
+        @def_function.function
+        def closure_counter():
+            # Create variable only once
+            if not hasattr(closure_counter, 'counter_var'):
+                closure_counter.counter_var = tf.Variable(counter_value[0], dtype=tf.int32)
+            closure_counter.counter_var.assign_add(1)
+            return closure_counter.counter_var.read_value()
+    
+        # First call with initial value 0
+        result_a = closure_counter()
+        assert result_a.numpy() == 1, f"Should return 1, got {result_a.numpy()}"
+    
+        # Modify the closure variable - should not affect the already created variable
+        counter_value[0] = 100
+    
+        # Second call - should continue from previous state (2), not from 100
+        result_b = closure_counter()
+        assert result_b.numpy() == 2, f"Should return 2, got {result_b.numpy()}"
+    
+        # Test with explicit variable creation pattern
+        @def_function.function
+        def explicit_counter(initial_value):
+            # This pattern creates variable on first call with given initial_value
+            if not hasattr(explicit_counter, 'counter_dict'):
+                explicit_counter.counter_dict = {}
+    
+            key = str(initial_value)
+            if key not in explicit_counter.counter_dict:
+                explicit_counter.counter_dict[key] = tf.Variable(initial_value, dtype=tf.int32)
+    
+            explicit_counter.counter_dict[key].assign_add(1)
+            return explicit_counter.counter_dict[key].read_value()
+    
+        # Test with different initial values
+        result_10 = explicit_counter(10)
+        assert result_10.numpy() == 11, f"Should return 11, got {result_10.numpy()}"
+    
+>       result_20 = explicit_counter(20)
+
+tests\test_tensorflow_python_eager_def_function_g2.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\util\traceback_utils.py:153: in error_handler
+    raise e.with_traceback(filtered_tb) from None
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (20,), kwargs = {}
+
+    def autograph_handler(*args, **kwargs):
+      """Calls a converted version of original_func."""
+      # TODO(mdan): Push this block higher in tf.function's call stack.
+      try:
+        return autograph.converted_call(
+            original_func,
+            args,
+            kwargs,
+            options=autograph.ConversionOptions(
+                recursive=True,
+                optional_features=autograph_options,
+                user_requested=True,
+            ))
+      except Exception as e:  # pylint:disable=broad-except
+        if hasattr(e, "ag_error_metadata"):
+>         raise e.ag_error_metadata.to_exception(e)
+E         ValueError: in user code:
+E         
+E             File "D:\Project\TestAgent-CLI-main\exam\tensorflow\python.eager.def_function\tests\test_tensorflow_python_eager_def_function_g2.py", line 102, in explicit_counter  *
+E                 explicit_counter.counter_dict[key] = tf.Variable(initial_value, dtype=tf.int32)
+E         
+E             ValueError: tf.function only supports singleton tf.Variables created on the first call. Make sure the tf.Variable is only created once or created outside tf.function. See https://www.tensorflow.org/guide/function#creating_tfvariables for more information.
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\site-packages\tensorflow\python\framework\func_graph.py:1147: ValueError
+---------------------------- Captured stderr call -----------------------------
+2026-01-19 19:02:04.942304: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                    Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_eager_def_function_g2.py     149     54     38      2    52%   36-39, 46, 77-80, 97-105, 112-122, 132-135, 159-162, 174-180, 210-227, 251-258, 284
+---------------------------------------------------------------------------------------------------
+TOTAL                                                     149     54     38      2    52%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+FAILED tests\test_tensorflow_python_eager_def_function_g2.py::TestDefFunctionG2::test_variable_creation_and_state_preservation
+1 failed, 1 passed in 2.14s
+
+Error: exit 1

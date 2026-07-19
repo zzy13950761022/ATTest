@@ -1,0 +1,427 @@
+{
+  "plan_version": 2,
+  "target": "torch.nn.modules.pooling",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_torch_nn_modules_pooling.py",
+    "all_pattern": "tests/test_torch_nn_modules_pooling_*.py",
+    "groups": {
+      "G1": "tests/test_torch_nn_modules_pooling_basic.py",
+      "G2": "tests/test_torch_nn_modules_pooling_advanced.py",
+      "G3": "tests/test_torch_nn_modules_pooling_special.py"
+    }
+  },
+  "active_group_order": ["G1", "G2", "G3"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "基础池化功能",
+      "entrypoints": ["MaxPool1d", "AvgPool1d", "MaxPool2d", "AvgPool2d"],
+      "smoke_set": ["CASE_01", "CASE_02"],
+      "deferred_set": ["CASE_03", "CASE_04"],
+      "note": "测试基本池化类的实例化和前向传播"
+    },
+    {
+      "group_id": "G2",
+      "title": "高级池化功能",
+      "entrypoints": ["AdaptiveMaxPool1d", "AdaptiveAvgPool1d", "AdaptiveMaxPool2d", "AdaptiveAvgPool2d"],
+      "smoke_set": ["CASE_05"],
+      "deferred_set": ["CASE_06", "CASE_07"],
+      "note": "测试自适应池化和特殊参数"
+    },
+    {
+      "group_id": "G3",
+      "title": "特殊池化功能",
+      "entrypoints": ["FractionalMaxPool2d", "LPPool1d", "MaxUnpool1d"],
+      "smoke_set": ["CASE_08"],
+      "deferred_set": ["CASE_09", "CASE_10"],
+      "note": "测试分数池化、LP池化和反池化"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "MaxPool1d基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "MaxPool1d",
+          "kernel_size": 3,
+          "stride": 2,
+          "padding": 1,
+          "dilation": 1,
+          "return_indices": false,
+          "ceil_mode": false,
+          "input_shape": [2, 3, 10],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "output_dtype_preserved"],
+        "strong": ["exact_values_match", "indices_correct", "gradient_flow"]
+      },
+      "oracle": "torch.nn.functional.max_pool1d",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "AvgPool2d基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "AvgPool2d",
+          "kernel_size": [2, 2],
+          "stride": [2, 2],
+          "padding": 0,
+          "dilation": 1,
+          "ceil_mode": false,
+          "input_shape": [4, 3, 8, 8],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "output_dtype_preserved"],
+        "strong": ["exact_values_match", "average_calculation_correct", "gradient_flow"]
+      },
+      "oracle": "torch.nn.functional.avg_pool2d",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "MaxPool3d与return_indices",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "MaxPool3d",
+          "kernel_size": 2,
+          "stride": 2,
+          "padding": 0,
+          "dilation": 1,
+          "return_indices": true,
+          "ceil_mode": false,
+          "input_shape": [2, 3, 6, 6, 6],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "returns_tuple_with_indices"],
+        "strong": ["indices_match_max_positions", "tuple_structure_correct", "gradient_flow"]
+      },
+      "oracle": "torch.nn.functional.max_pool3d",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 9,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "池化参数边界验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "MaxPool1d",
+          "kernel_size": 1,
+          "stride": 1,
+          "padding": 0,
+          "dilation": 1,
+          "return_indices": false,
+          "ceil_mode": true,
+          "input_shape": [1, 1, 5],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "ceil_mode_effect"],
+        "strong": ["boundary_conditions", "edge_cases", "extreme_values"]
+      },
+      "oracle": "shape_calculation_formula",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 9,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "AdaptiveAvgPool2d基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "AdaptiveAvgPool2d",
+          "output_size": [4, 4],
+          "input_shape": [2, 3, 8, 8],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_matches_output_size", "output_dtype_preserved"],
+        "strong": ["adaptive_calculation_correct", "various_output_sizes", "gradient_flow"]
+      },
+      "oracle": "torch.nn.functional.adaptive_avg_pool2d",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 55,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "AdaptiveMaxPool1d与return_indices",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "pool_class": "AdaptiveMaxPool1d",
+          "output_size": 3,
+          "return_indices": true,
+          "input_shape": [2, 3, 10],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_matches_output_size", "returns_tuple_with_indices"],
+        "strong": ["indices_correct_for_adaptive", "adaptive_logic", "gradient_flow"]
+      },
+      "oracle": "torch.nn.functional.adaptive_max_pool1d",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 65,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-07",
+      "block_id": "CASE_07",
+      "group_id": "G2",
+      "name": "池化参数异常验证",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "pool_class": "MaxPool1d",
+          "kernel_size": 0,
+          "input_shape": [2, 3, 10],
+          "dtype": "float32",
+          "device": "cpu",
+          "expect_error": "ValueError"
+        }
+      ],
+      "asserts": {
+        "weak": ["exception_raised", "exception_type_correct", "error_message_contains_keywords"],
+        "strong": ["all_invalid_params_tested", "edge_case_coverage"]
+      },
+      "oracle": "parameter_validation_logic",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 50,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-08",
+      "block_id": "CASE_08",
+      "group_id": "G3",
+      "name": "FractionalMaxPool2d基本功能",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "pool_class": "FractionalMaxPool2d",
+          "kernel_size": 2,
+          "output_size": [3, 3],
+          "output_ratio": null,
+          "return_indices": false,
+          "input_shape": [2, 3, 8, 8],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "output_dtype_preserved"],
+        "strong": ["fractional_logic", "random_seed_control", "gradient_flow"]
+      },
+      "oracle": "fractional_pooling_algorithm",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 8,
+      "is_parametrized": true,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-09",
+      "block_id": "CASE_09",
+      "group_id": "G3",
+      "name": "LPPool1d基本功能",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "pool_class": "LPPool1d",
+          "norm_type": 2,
+          "kernel_size": 3,
+          "stride": 2,
+          "ceil_mode": false,
+          "input_shape": [2, 3, 10],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works", "output_shape_correct", "output_dtype_preserved"],
+        "strong": ["lp_norm_calculation", "different_norm_types", "gradient_flow"]
+      },
+      "oracle": "lp_norm_formula",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 65,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-10",
+      "block_id": "CASE_10",
+      "group_id": "G3",
+      "name": "MaxUnpool1d基本功能",
+      "priority": "Medium",
+      "param_matrix": [
+        {
+          "pool_class": "MaxUnpool1d",
+          "kernel_size": 3,
+          "stride": 2,
+          "padding": 1,
+          "input_shape": [2, 3, 10],
+          "dtype": "float32",
+          "device": "cpu"
+        }
+      ],
+      "asserts": {
+        "weak": ["instance_created", "forward_works_with_indices", "output_shape_correct", "output_dtype_preserved"],
+        "strong": ["unpooling_reconstruction", "indices_consistency", "gradient_flow"]
+      },
+      "oracle": "max_unpooling_algorithm",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 70,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "pool_class": "MaxPool1d",
+        "kernel_size": 5,
+        "stride": 3,
+        "padding": 2,
+        "dilation": 2,
+        "return_indices": true,
+        "ceil_mode": true,
+        "input_shape": [4, 5, 20],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "扩展参数组合测试"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "pool_class": "AvgPool2d",
+        "kernel_size": [3, 3],
+        "stride": [1, 1],
+        "padding": [1, 1],
+        "dilation": 2,
+        "ceil_mode": true,
+        "input_shape": [1, 1, 5, 5],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "测试不同参数组合"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {
+        "pool_class": "AdaptiveAvgPool2d",
+        "output_size": [2, 2],
+        "input_shape": [1, 1, 6, 6],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "测试不同输出尺寸"
+    },
+    {
+      "base_block_id": "CASE_08",
+      "priority": "Low",
+      "params": {
+        "pool_class": "FractionalMaxPool2d",
+        "kernel_size": 3,
+        "output_size": null,
+        "output_ratio": [0.5, 0.5],
+        "return_indices": true,
+        "input_shape": [2, 3, 12, 12],
+        "dtype": "float64",
+        "device": "cpu"
+      },
+      "note": "测试output_ratio参数"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_05", "CASE_08"],
+  "deferred_set": ["CASE_03", "CASE_04", "CASE_06", "CASE_07", "CASE_09", "CASE_10"]
+}

@@ -1,0 +1,478 @@
+"""
+Test module for torch.random functions.
+"""
+import pytest
+import torch
+import torch.random
+from unittest.mock import patch, MagicMock
+import warnings
+
+# ==== BLOCK:HEADER START ====
+class TestTorchRandom:
+    """Test class for torch.random module functions."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """Save and restore RNG state before/after each test."""
+        # Save current RNG state
+        original_state = torch.random.get_rng_state()
+        yield
+        # Restore RNG state
+        torch.random.set_rng_state(original_state)
+    
+    @pytest.fixture
+    def mock_cuda_functions(self):
+        """Mock CUDA functions for tests that don't require real CUDA."""
+        with patch('torch.cuda.device_count', return_value=2) as mock_device_count, \
+             patch('torch.cuda.get_rng_state_all') as mock_get_state_all, \
+             patch('torch.cuda.set_rng_state_all') as mock_set_state_all, \
+             patch('torch.cuda.manual_seed_all') as mock_manual_seed_all, \
+             patch('torch.cuda._is_in_bad_fork', return_value=False) as mock_bad_fork, \
+             patch('torch.cuda.get_rng_state') as mock_get_rng_state, \
+             patch('torch.cuda.set_rng_state') as mock_set_rng_state:
+            
+            # Setup default return values for get_rng_state
+            mock_cuda_state = torch.ByteTensor([1, 2, 3, 4, 5])
+            mock_get_rng_state.return_value = mock_cuda_state
+            mock_get_state_all.return_value = [mock_cuda_state] * 2  # 2 devices
+            
+            yield {
+                'device_count': mock_device_count,
+                'get_state_all': mock_get_state_all,
+                'set_state_all': mock_set_state_all,
+                'manual_seed_all': mock_manual_seed_all,
+                'bad_fork': mock_bad_fork,
+                'get_rng_state': mock_get_rng_state,
+                'set_rng_state': mock_set_rng_state
+            }
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("seed,expected_type", [
+        (42, torch._C.Generator),
+        (0, torch._C.Generator),   # param_extensions: zero seed
+        (-1, torch._C.Generator),  # param_extensions: negative seed mapping
+    ])
+    def test_manual_seed_basic(self, seed, expected_type, mock_cuda_functions):
+        """Test basic manual_seed functionality (TC-01)."""
+        # Reset mock call count before test
+        mock_cuda_functions['manual_seed_all'].reset_mock()
+        
+        # Call manual_seed once and capture result
+        result = torch.random.manual_seed(seed)
+        
+        # Weak assertions
+        # 1. Return type is correct
+        assert isinstance(result, expected_type), \
+            f"manual_seed should return {expected_type}, got {type(result)}"
+        
+        # 2. Verify CUDA functions were called exactly once
+        # manual_seed_all should be called when manual_seed is called
+        mock_cuda_functions['manual_seed_all'].assert_called_once_with(seed)
+        
+        # 3. Seed setting is successful (verify by checking random sequence)
+        # Set seed again (this will call manual_seed_all again, but we don't assert on it)
+        torch.random.manual_seed(seed)
+        tensor1 = torch.randn(10)
+        
+        # Reset seed and generate same sequence
+        torch.random.manual_seed(seed)
+        tensor2 = torch.randn(10)
+        
+        assert torch.allclose(tensor1, tensor2), \
+            "Random sequence should be deterministic with same seed"
+        
+        # 4. Verify negative seed mapping (for completeness)
+        if seed < 0:
+            # According to docs, negative seeds are remapped with formula:
+            # 0xffff_ffff_ffff_ffff + seed
+            mapped_seed = 0xffff_ffff_ffff_ffff + seed
+            # Verify the actual seed used
+            torch.random.manual_seed(seed)
+            actual_seed = torch.random.initial_seed()
+            # Note: This is a weak assertion - we just check it's positive
+            assert actual_seed >= 0, \
+                f"Negative seed {seed} should be mapped to positive value"
+        
+        # 5. Additional verification for zero seed
+        if seed == 0:
+            # Zero seed should work without issues
+            assert result is not None, "Zero seed should return a valid generator"
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("operation,expected_type", [
+        ("seed", int),
+        ("initial_seed", int),
+    ])
+    def test_seed_and_initial_seed_basic(self, operation, expected_type, mock_cuda_functions):
+        """Test basic seed and initial_seed functionality (TC-02)."""
+        
+        if operation == "seed":
+            # Test seed() function
+            result = torch.random.seed()
+            
+            # Weak assertions for seed()
+            # 1. Return type is correct
+            assert isinstance(result, expected_type), \
+                f"seed() should return {expected_type}, got {type(result)}"
+            
+            # 2. Value is in valid range (64-bit integer)
+            assert -0x8000_0000_0000_0000 <= result <= 0xffff_ffff_ffff_ffff, \
+                f"seed() returned value {result} outside valid 64-bit range"
+            
+            # 3. Verify CUDA functions were called
+            mock_cuda_functions['manual_seed_all'].assert_called_once_with(result)
+            
+            # 4. Check that seed() is non-deterministic (weak check)
+            # Call seed() twice and verify they're likely different
+            # (This is probabilistic but should work in practice)
+            seed1 = torch.random.seed()
+            seed2 = torch.random.seed()
+            # We can't assert they're different, but we can assert they're valid
+            assert -0x8000_0000_0000_0000 <= seed1 <= 0xffff_ffff_ffff_ffff
+            assert -0x8000_0000_0000_0000 <= seed2 <= 0xffff_ffff_ffff_ffff
+            
+        elif operation == "initial_seed":
+            # Test initial_seed() function
+            # First set a known seed
+            test_seed = 12345
+            torch.random.manual_seed(test_seed)
+            
+            # Get initial seed
+            result = torch.random.initial_seed()
+            
+            # Weak assertions for initial_seed()
+            # 1. Return type is correct
+            assert isinstance(result, expected_type), \
+                f"initial_seed() should return {expected_type}, got {type(result)}"
+            
+            # 2. Value is in valid range
+            assert -0x8000_0000_0000_0000 <= result <= 0xffff_ffff_ffff_ffff, \
+                f"initial_seed() returned value {result} outside valid 64-bit range"
+            
+            # 3. initial_seed consistency check
+            # After manual_seed, initial_seed should return the seed we set
+            # (or its mapped version if negative)
+            if test_seed >= 0:
+                assert result == test_seed, \
+                    f"initial_seed() should return {test_seed} after manual_seed({test_seed}), got {result}"
+            else:
+                # For negative seeds, check it's positive (mapped)
+                assert result >= 0, \
+                    f"initial_seed() should return positive value for negative seed {test_seed}, got {result}"
+            
+            # 4. Verify initial_seed is stable across calls
+            result2 = torch.random.initial_seed()
+            assert result == result2, \
+                "initial_seed() should return same value on consecutive calls"
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("state_type,operation_sequence", [
+        ("valid", ["get", "set"]),
+        ("empty", ["get", "set"]),  # param_extensions: empty state handling
+    ])
+    def test_state_save_restore_basic(self, state_type, operation_sequence):
+        """Test basic state save/restore functionality (TC-03)."""
+        
+        # Set a known seed for reproducibility
+        torch.random.manual_seed(42)
+        
+        # Generate initial random data
+        original_random_data = torch.randn(5, 5)
+        
+        # Save the exact RNG state AFTER generating the first random data
+        state = torch.random.get_rng_state()
+        
+        # Handle empty state case
+        if state_type == "empty":
+            # Create an empty tensor (should trigger error)
+            empty_state = torch.tensor([], dtype=torch.uint8)
+            # This should raise an exception
+            with pytest.raises((RuntimeError, ValueError)):
+                torch.random.set_rng_state(empty_state)
+            return  # Skip the rest of the test for empty state
+        
+        # Weak assertions for get_rng_state()
+        # 1. Returns ByteTensor
+        assert isinstance(state, torch.Tensor), \
+            f"get_rng_state() should return Tensor, got {type(state)}"
+        assert state.dtype == torch.uint8, \
+            f"get_rng_state() should return ByteTensor (uint8), got {state.dtype}"
+        
+        # 2. State tensor has valid structure
+        assert state.dim() == 1, \
+            f"RNG state should be 1D tensor, got shape {state.shape}"
+        assert state.numel() > 0, \
+            "RNG state tensor should not be empty"
+        
+        # Generate more random data to change state
+        changed_random_data = torch.randn(5, 5)
+        
+        # Verify state changed (random sequences are different)
+        assert not torch.allclose(original_random_data, changed_random_data), \
+            "Random sequences should differ after state change"
+        
+        # Restore to the saved state
+        torch.random.set_rng_state(state)
+        
+        # Generate random data again from the restored state
+        # This should produce the SAME sequence as changed_random_data
+        # because we're continuing from where we left off
+        restored_random_data = torch.randn(5, 5)
+        
+        # To verify the state was properly restored, we need to:
+        # 1. Save current state again
+        # 2. Reset to original state
+        # 3. Generate the same sequence
+        
+        # Save current state after restoration
+        current_state = torch.random.get_rng_state()
+        
+        # Reset back to the original saved state
+        torch.random.set_rng_state(state)
+        
+        # Generate verification data - this should match restored_random_data
+        verification_data = torch.randn(5, 5)
+        
+        assert torch.allclose(restored_random_data, verification_data), \
+            f"Random sequence should be restored after set_rng_state. " \
+            f"Max diff: {(restored_random_data - verification_data).abs().max().item()}"
+        
+        # Additional weak checks
+        # 3. State tensor can be saved and loaded multiple times
+        state_copy = state.clone()
+        torch.random.set_rng_state(state_copy)
+        double_restored_data = torch.randn(5, 5)
+        
+        # Reset and verify again
+        torch.random.set_rng_state(state)
+        verification_data2 = torch.randn(5, 5)
+        
+        assert torch.allclose(double_restored_data, verification_data2), \
+            "State should be restorable from cloned tensor"
+        
+        # 4. Verify operation sequence was followed
+        assert operation_sequence == ["get", "set"], \
+            f"Expected operation sequence ['get', 'set'], got {operation_sequence}"
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("devices,enabled,context_type", [
+        (None, True, "basic"),
+    ])
+    def test_fork_rng_basic_context(self, devices, enabled, context_type, mock_cuda_functions):
+        """Test basic fork_rng context management (TC-04)."""
+        
+        # Setup mock CUDA state - only if CUDA is available in the mock
+        mock_cuda_state = torch.ByteTensor([1, 2, 3, 4, 5])
+        mock_cuda_functions['get_rng_state'].return_value = mock_cuda_state
+        
+        # Save original CPU RNG state
+        original_cpu_state = torch.random.get_rng_state()
+        
+        # Generate some random data before context
+        before_random = torch.randn(3, 3)
+        
+        # Enter fork_rng context
+        with torch.random.fork_rng(devices=devices, enabled=enabled):
+            # Inside context, RNG should be forked
+            # Generate random data inside context
+            inside_random = torch.randn(3, 3)
+            
+            # Change RNG state inside context
+            torch.random.manual_seed(999)
+            changed_inside_random = torch.randn(3, 3)
+        
+        # Weak assertions
+        # 1. Context manager works (no exceptions)
+        # 2. External state is restored after context exit
+        
+        # Generate random data after context
+        after_random = torch.randn(3, 3)
+        
+        # Save state after context
+        after_state = torch.random.get_rng_state()
+        
+        # Verify external state restoration
+        # Reset to original state and generate same sequence
+        torch.random.set_rng_state(original_cpu_state)
+        # Skip the 'before_random' generation (we already consumed it)
+        _ = torch.randn(3, 3)  # This should match before_random
+        verification_after = torch.randn(3, 3)  # This should match after_random
+        
+        assert torch.allclose(after_random, verification_after, rtol=1e-5, atol=1e-5), \
+            f"External RNG state should be restored after fork_rng context. " \
+            f"Max diff: {(after_random - verification_after).abs().max().item()}"
+        
+        # 3. Internal isolation was effective
+        # The random sequence inside context should be different from outside
+        # (This is probabilistic but should hold)
+        assert not torch.allclose(before_random, inside_random, rtol=1e-5, atol=1e-5), \
+            "Random sequences inside and outside context should differ"
+        
+        # 4. Verify CUDA functions were called correctly
+        # When devices=None and enabled=True, fork_rng should:
+        # - Get device_count (to determine number of devices)
+        # - For each device (2 in our mock), call get_rng_state(device)
+        # - For each device, call set_rng_state(state, device) on exit
+        
+        if enabled and mock_cuda_functions['device_count'].return_value > 0:
+            # Check device_count was called
+            assert mock_cuda_functions['device_count'].call_count >= 1, \
+                "device_count should be called to determine number of devices"
+            
+            # Check get_rng_state was called for each device
+            # With 2 mock devices, it should be called twice
+            assert mock_cuda_functions['get_rng_state'].call_count == 2, \
+                f"Expected get_rng_state to be called 2 times (once per device), " \
+                f"but called {mock_cuda_functions['get_rng_state'].call_count} times"
+            
+            # Check set_rng_state was called for each device
+            assert mock_cuda_functions['set_rng_state'].call_count == 2, \
+                f"Expected set_rng_state to be called 2 times (once per device), " \
+                f"but called {mock_cuda_functions['set_rng_state'].call_count} times"
+            
+            # Check the calls were made with correct arguments
+            get_calls = mock_cuda_functions['get_rng_state'].call_args_list
+            for i, call in enumerate(get_calls):
+                args, kwargs = call
+                # get_rng_state should be called with device index
+                assert args[0] == i, f"Expected get_rng_state device index {i}, got {args[0]}"
+            
+            set_calls = mock_cuda_functions['set_rng_state'].call_args_list
+            for i, call in enumerate(set_calls):
+                args, kwargs = call
+                # First arg should be the state tensor
+                assert isinstance(args[0], torch.Tensor)
+                # Second arg should be device index
+                assert args[1] == i, f"Expected set_rng_state device index {i}, got {args[1]}"
+        
+        # 5. Context type verification
+        assert context_type == "basic", \
+            f"Expected context_type 'basic', got {context_type}"
+        
+        # 6. Test with enabled=False (should not fork)
+        # Reset mocks for the disabled test
+        mock_cuda_functions['get_rng_state'].reset_mock()
+        mock_cuda_functions['set_rng_state'].reset_mock()
+        mock_cuda_functions['device_count'].reset_mock()
+        
+        with torch.random.fork_rng(enabled=False):
+            # No state saving should occur when enabled=False
+            pass
+        
+        # Verify no CUDA calls were made when enabled=False
+        mock_cuda_functions['device_count'].assert_not_called()
+        mock_cuda_functions['get_rng_state'].assert_not_called()
+        mock_cuda_functions['set_rng_state'].assert_not_called()
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("seed,description", [
+        (-9223372036854775808, "负边界值"),
+        (18446744073709551615, "正边界值"),
+    ])
+    def test_manual_seed_boundary_values(self, seed, description, mock_cuda_functions):
+        """Test manual_seed with boundary values (TC-05)."""
+        # Reset mock call count before test
+        mock_cuda_functions['manual_seed_all'].reset_mock()
+        
+        # Call manual_seed with boundary value
+        result = torch.random.manual_seed(seed)
+        
+        # Weak assertions
+        # 1. Boundary values are accepted (no exception)
+        # 2. Return type is correct
+        assert isinstance(result, torch._C.Generator), \
+            f"manual_seed should return torch._C.Generator for seed={seed} ({description}), got {type(result)}"
+        
+        # 3. Verify CUDA functions were called exactly once
+        mock_cuda_functions['manual_seed_all'].assert_called_once_with(seed)
+        
+        # 4. Seed setting is successful (verify by checking random sequence)
+        # Set seed again
+        torch.random.manual_seed(seed)
+        tensor1 = torch.randn(10)
+        
+        # Reset seed and generate same sequence
+        torch.random.manual_seed(seed)
+        tensor2 = torch.randn(10)
+        
+        assert torch.allclose(tensor1, tensor2), \
+            f"Random sequence should be deterministic with boundary seed {seed} ({description})"
+        
+        # 5. Additional verification for negative boundary
+        if seed < 0:
+            # Negative seeds should be mapped to positive values
+            torch.random.manual_seed(seed)
+            actual_seed = torch.random.initial_seed()
+            assert actual_seed >= 0, \
+                f"Negative boundary seed {seed} should be mapped to positive value, got {actual_seed}"
+        
+        # 6. Verify generator functionality is normal
+        # Generate multiple tensors to ensure generator works
+        tensors = [torch.randn(5) for _ in range(3)]
+        # All tensors should be different (probabilistic but should hold)
+        for i in range(len(tensors)):
+            for j in range(i + 1, len(tensors)):
+                assert not torch.allclose(tensors[i], tensors[j]), \
+                    f"Generated tensors should be different with boundary seed {seed}"
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# Deferred test case - state operation exception handling
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Deferred test case - G1 deferred test
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# Deferred test case - G1 deferred test
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# Deferred test case - G2 deferred test
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# Deferred test case - G2 deferred test
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:CASE_11 START ====
+# Deferred test case - G3 deferred test
+# ==== BLOCK:CASE_11 END ====
+
+# ==== BLOCK:CASE_12 START ====
+# Deferred test case - G3 deferred test
+# ==== BLOCK:CASE_12 END ====
+
+# ==== BLOCK:FOOTER START ====
+    # Additional helper tests can be added here
+    
+    def test_module_import(self):
+        """Verify torch.random module can be imported and has expected functions."""
+        # Check all expected functions are present
+        assert hasattr(torch.random, 'manual_seed')
+        assert hasattr(torch.random, 'seed')
+        assert hasattr(torch.random, 'initial_seed')
+        assert hasattr(torch.random, 'get_rng_state')
+        assert hasattr(torch.random, 'set_rng_state')
+        assert hasattr(torch.random, 'fork_rng')
+        
+        # Verify they are callable
+        assert callable(torch.random.manual_seed)
+        assert callable(torch.random.seed)
+        assert callable(torch.random.initial_seed)
+        assert callable(torch.random.get_rng_state)
+        assert callable(torch.random.set_rng_state)
+        assert callable(torch.random.fork_rng)
+    
+    def test_default_generator_exists(self):
+        """Verify default_generator is accessible."""
+        assert hasattr(torch.random, 'default_generator')
+        # default_generator should be a Generator instance
+        assert isinstance(torch.random.default_generator, torch._C.Generator)
+# ==== BLOCK:FOOTER END ====

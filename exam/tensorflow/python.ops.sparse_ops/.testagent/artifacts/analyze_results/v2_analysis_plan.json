@@ -1,0 +1,21 @@
+{
+  "status": "成功",
+  "passed": 7,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "CASE_04",
+      "reason": "测试已通过，覆盖率缺口，但当前轮次优先处理失败用例"
+    },
+    {
+      "test": "CASE_05",
+      "reason": "测试已通过，覆盖率缺口，但当前轮次优先处理失败用例"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,192 @@
+=== Run Tests ===
+.F....................                                                   [100%]
+=================================== FAILURES ===================================
+_ test_transformer_standard_forward[dtype1-cpu-False-8-32-3-3-128-0.1-gelu-src_shape1-tgt_shape1] _
+
+dtype = torch.float64, device = 'cpu', batch_first = False, nhead = 8
+d_model = 32, num_encoder_layers = 3, num_decoder_layers = 3
+dim_feedforward = 128, dropout = 0.1, activation = 'gelu'
+src_shape = (15, 8, 32), tgt_shape = (25, 8, 32), set_random_seed = None
+
+    @pytest.mark.parametrize(
+        "dtype,device,batch_first,nhead,d_model,num_encoder_layers,num_decoder_layers,"
+        "dim_feedforward,dropout,activation,src_shape,tgt_shape",
+        [
+            (
+                torch.float32,
+                "cpu",
+                False,
+                4,
+                16,
+                2,
+                2,
+                64,
+                0.0,
+                "relu",
+                (10, 32, 16),
+                (20, 32, 16),
+            ),
+            # Param extension: double precision, more heads, more layers, GELU activation
+            (
+                torch.float64,
+                "cpu",
+                False,
+                8,
+                32,
+                3,
+                3,
+                128,
+                0.1,
+                "gelu",
+                (15, 8, 32),
+                (25, 8, 32),
+            ),
+        ]
+    )
+    def test_transformer_standard_forward(
+        dtype,
+        device,
+        batch_first,
+        nhead,
+        d_model,
+        num_encoder_layers,
+        num_decoder_layers,
+        dim_feedforward,
+        dropout,
+        activation,
+        src_shape,
+        tgt_shape,
+        set_random_seed,
+    ):
+        """TC-01: Transformer 标准前向传播"""
+        # Create model
+        model = Transformer(
+            d_model=d_model,
+            nhead=nhead,
+            num_encoder_layers=num_encoder_layers,
+            num_decoder_layers=num_decoder_layers,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            batch_first=batch_first,
+        )
+        model.to(device)
+        model.eval()  # Disable dropout for deterministic output
+    
+        # Create input tensors
+        src = create_test_tensor(src_shape, dtype=dtype, device=device)
+        tgt = create_test_tensor(tgt_shape, dtype=dtype, device=device)
+    
+        # Forward pass
+        with torch.no_grad():
+>           output = model(src, tgt)
+
+tests/test_torch_nn_modules_transformer_g1.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/transformer.py:146: in forward
+    memory = self.encoder(src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/transformer.py:280: in forward
+    output = mod(output, src_mask=mask, src_key_padding_mask=src_key_padding_mask_for_layers)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/transformer.py:538: in forward
+    x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/transformer.py:546: in _sa_block
+    x = self.self_attn(x, x, x,
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/module.py:1190: in _call_impl
+    return forward_call(*input, **kwargs)
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/modules/activation.py:1167: in forward
+    attn_output, attn_output_weights = F.multi_head_attention_forward(
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/functional.py:5046: in multi_head_attention_forward
+    q, k, v = _in_projection_packed(query, key, value, in_proj_weight, in_proj_bias)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+q = tensor([[[ 9.0976e-01,  1.5376e-01,  6.3435e-01,  ...,  1.4190e+00,
+          -1.1132e+00,  9.5424e-01],
+         [ 6.... [ 6.5824e-01,  1.6419e+00, -3.7644e-01,  ..., -5.2509e-01,
+          -6.3357e-01, -4.0628e-01]]], dtype=torch.float64)
+k = tensor([[[ 9.0976e-01,  1.5376e-01,  6.3435e-01,  ...,  1.4190e+00,
+          -1.1132e+00,  9.5424e-01],
+         [ 6.... [ 6.5824e-01,  1.6419e+00, -3.7644e-01,  ..., -5.2509e-01,
+          -6.3357e-01, -4.0628e-01]]], dtype=torch.float64)
+v = tensor([[[ 9.0976e-01,  1.5376e-01,  6.3435e-01,  ...,  1.4190e+00,
+          -1.1132e+00,  9.5424e-01],
+         [ 6.... [ 6.5824e-01,  1.6419e+00, -3.7644e-01,  ..., -5.2509e-01,
+          -6.3357e-01, -4.0628e-01]]], dtype=torch.float64)
+w = Parameter containing:
+tensor([[-0.1774,  0.1861, -0.0686,  ...,  0.0590, -0.1570,  0.0450],
+        [-0.0188,  0.0427,...3,  0.0611,  0.0052],
+        [ 0.0058,  0.1273, -0.0778,  ...,  0.1599, -0.0859,  0.1713]],
+       requires_grad=True)
+b = Parameter containing:
+tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., ...0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       requires_grad=True)
+
+    def _in_projection_packed(
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        w: Tensor,
+        b: Optional[Tensor] = None,
+    ) -> List[Tensor]:
+        r"""
+        Performs the in-projection step of the attention operation, using packed weights.
+        Output is a triple containing projection tensors for query, key and value.
+    
+        Args:
+            q, k, v: query, key and value tensors to be projected. For self-attention,
+                these are typically the same tensor; for encoder-decoder attention,
+                k and v are typically the same tensor. (We take advantage of these
+                identities for performance if they are present.) Regardless, q, k and v
+                must share a common embedding dimension; otherwise their shapes may vary.
+            w: projection weights for q, k and v, packed into a single tensor. Weights
+                are packed along dimension 0, in q, k, v order.
+            b: optional projection biases for q, k and v, packed into a single tensor
+                in q, k, v order.
+    
+        Shape:
+            Inputs:
+            - q: :math:`(..., E)` where E is the embedding dimension
+            - k: :math:`(..., E)` where E is the embedding dimension
+            - v: :math:`(..., E)` where E is the embedding dimension
+            - w: :math:`(E * 3, E)` where E is the embedding dimension
+            - b: :math:`E * 3` where E is the embedding dimension
+    
+            Output:
+            - in output list :math:`[q', k', v']`, each output tensor will have the
+                same shape as the corresponding input tensor.
+        """
+        E = q.size(-1)
+        if k is v:
+            if q is k:
+                # self-attention
+>               return linear(q, w, b).chunk(3, dim=-1)
+E               RuntimeError: mat1 and mat2 must have the same dtype
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/functional.py:4737: RuntimeError
+=============================== warnings summary ===============================
+exam/torch_group/nn.modules.transformer/tests/test_torch_nn_modules_transformer_g3.py::test_transformer_mask_handling_basic[dtype1-cpu-2-8-1-byte-src_shape1-mask_shape1]
+  /opt/anaconda3/envs/testagent-experiment/lib/python3.10/site-packages/torch/nn/functional.py:5060: UserWarning: Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead.
+    warnings.warn("Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_transformer_g1.py     117     15     16      3    79%   20, 25, 35-46, 126, 525-529
+tests/test_torch_nn_modules_transformer_g2.py     163     11     10      1    88%   20, 25, 35-46
+tests/test_torch_nn_modules_transformer_g3.py      83     27     20      3    63%   20, 25, 35-46, 116, 262-304
+-------------------------------------------------------------------------------------------
+TOTAL                                             363     53     46      7    79%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_nn_modules_transformer_g1.py::test_transformer_standard_forward[dtype1-cpu-False-8-32-3-3-128-0.1-gelu-src_shape1-tgt_shape1]
+1 failed, 21 passed, 1 warning in 0.89s
+
+Error: exit 1

@@ -1,0 +1,577 @@
+=== Run Tests ===
+EEEEEEE.EEEE                                                             [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of test_reshape_basic_shape_transform[input_shape0-target_shape0-float32] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_reshape_basic_shape_transform[input_shape1-target_shape1-float64] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_expand_dims_dimension_insertion[input_shape0-0-float32] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_expand_dims_dimension_insertion[input_shape1--1-int32] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_concat_tensor_concatenation[input_shapes0-0-float32] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+_ ERROR at setup of test_concat_tensor_concatenation[input_shapes1-1-float64] _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+____ ERROR at setup of test_stack_tensor_stacking[input_shapes0-0-float32] ____
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+__________ ERROR at setup of TestArrayOps.test_reshape_invalid_shape __________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+________ ERROR at setup of TestArrayOps.test_expand_dims_invalid_axis _________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+____________ ERROR at setup of TestArrayOps.test_concat_empty_list ____________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+________ ERROR at setup of TestArrayOps.test_stack_incompatible_shapes ________
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1226: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.fixture
+    def mock_tensor_ops():
+        """Mock TensorFlow底层操作以隔离测试"""
+        # 修复mock路径：使用正确的TensorFlow 2.x导入路径
+        # 注意：array_ops模块内部使用gen_array_ops，但我们需要mock正确的路径
+>       with mock.patch('tensorflow.python.ops.gen_array_ops.reshape') as mock_reshape, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.expand_dims') as mock_expand_dims, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.concat_v2') as mock_concat, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.pack') as mock_pack, \
+             mock.patch('tensorflow.python.ops.gen_array_ops.unpack') as mock_unpack, \
+             mock.patch('tensorflow.python.framework.tensor_util.maybe_set_static_shape') as mock_set_shape, \
+             mock.patch('tensorflow.python.framework.ops.convert_to_tensor') as mock_convert_tensor, \
+             mock.patch('tensorflow.python.framework.constant_op.constant') as mock_constant:
+
+tests\test_tensorflow_python_ops_array_ops.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1388: in __enter__
+    self.target = self.getter()
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1563: in <lambda>
+    getter = lambda: _importer(target)
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1239: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+thing = <module 'tensorflow' from 'D:\\Coding\\Anaconda\\envs\\testagent-experiment\\lib\\site-packages\\tensorflow\\__init__.py'>
+comp = 'python', import_path = 'tensorflow.python'
+
+    def _dot_lookup(thing, comp, import_path):
+        try:
+            return getattr(thing, comp)
+        except AttributeError:
+            __import__(import_path)
+>           return getattr(thing, comp)
+E           AttributeError: module 'tensorflow' has no attribute 'python'
+
+D:\Coding\Anaconda\envs\testagent-experiment\lib\unittest\mock.py:1229: AttributeError
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_ops_array_ops.py     162    132     14      0    17%   34-39, 52-67, 72-83, 94-126, 137-175, 186-233, 243-297, 323-336, 340-353, 358-368, 372-386
+-------------------------------------------------------------------------------------------
+TOTAL                                             162    132     14      0    17%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ===========================
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape0-target_shape0-float32]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_reshape_basic_shape_transform[input_shape1-target_shape1-float64]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape0-0-float32]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_expand_dims_dimension_insertion[input_shape1--1-int32]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes0-0-float32]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_concat_tensor_concatenation[input_shapes1-1-float64]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::test_stack_tensor_stacking[input_shapes0-0-float32]
+ERROR tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_reshape_invalid_shape
+ERROR tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_expand_dims_invalid_axis
+ERROR tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_concat_empty_list
+ERROR tests\test_tensorflow_python_ops_array_ops.py::TestArrayOps::test_stack_incompatible_shapes
+1 passed, 11 errors in 2.47s
+
+Error: exit 1

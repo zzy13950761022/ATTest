@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 19,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_constant_dtype_specification_and_inference",
+      "block_id": "CASE_02",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：dtype推断逻辑未完全测试（第183-185行）"
+    },
+    {
+      "test": "test_constant_with_numpy_array",
+      "block_id": "FOOTER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：numpy数组测试未覆盖所有分支（第368、375、382、389行）"
+    },
+    {
+      "test": "get_expected_dtype",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖率缺口：dtype推断函数分支未覆盖（第62、68、76行）"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,39 @@
+{
+  "status": "成功",
+  "passed": 4,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "HEADER",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "辅助函数create_tensor_slices_dataset中float64/int64分支未覆盖"
+    },
+    {
+      "test": "HEADER",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "辅助函数create_tensor_slices_dataset中多维数据reshape逻辑未覆盖"
+    },
+    {
+      "test": "test_prefetch_to_device_invalid_parameters",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "CASE_03测试中行169未覆盖，需要添加测试用例"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "FOOTER",
+      "reason": "FOOTER块行248未覆盖，但属于收尾代码，优先级较低"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

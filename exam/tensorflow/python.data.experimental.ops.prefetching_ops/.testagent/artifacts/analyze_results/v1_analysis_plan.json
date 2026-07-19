@@ -1,0 +1,34 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "coverage_gap_1",
+      "block_id": "CASE_03",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖create_tensor_slices_dataset中的float64/int64分支和多维数据reshape逻辑"
+    },
+    {
+      "test": "coverage_gap_2",
+      "block_id": "CASE_04",
+      "error_type": "CoverageGap",
+      "action": "add_case",
+      "note": "覆盖create_empty_dataset函数和空数据集处理逻辑"
+    },
+    {
+      "test": "coverage_gap_3",
+      "block_id": "HEADER",
+      "error_type": "CoverageGap",
+      "action": "fix_dependency",
+      "note": "tf_seed fixture未被使用，需要添加到测试用例中"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

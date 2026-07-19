@@ -1,0 +1,27 @@
+{
+  "status": "未完全通过",
+  "passed": 6,
+  "failed": 2,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "tests/test_torch_lowrank_g2.py::test_get_approximate_basis_invalid_q",
+      "block_id": "FOOTER",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "get_approximate_basis未验证q参数边界，应添加参数验证逻辑"
+    },
+    {
+      "test": "tests/test_torch_lowrank_g2.py::test_get_approximate_basis_invalid_niter",
+      "block_id": "FOOTER",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "测试调用缺少q参数，应修复测试调用方式"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

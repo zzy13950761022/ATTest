@@ -1,0 +1,34 @@
+{
+  "status": "未完全通过",
+  "passed": 10,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestDatasetOps::test_shuffle_operation[tensor-data_shape0-float32-cpu-None-True-42]",
+      "block_id": "CASE_06",
+      "error_type": "InvalidArgumentError",
+      "action": "rewrite_block",
+      "note": "reshape错误：尝试将10个元素的tensor重塑为需要20个元素的形状[10,2]"
+    },
+    {
+      "test": "TestDatasetOps::test_filter_operation[tensor-data_shape0-int32-cpu-None-False-lambda x: x % 2 == 0]",
+      "block_id": "CASE_07",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "numpy()调用错误：当data_type为tensor时，filtered_elements中的元素已经是numpy标量"
+    },
+    {
+      "test": "TestDatasetOps::test_filter_operation[list-data_shape1-int32-cpu-None-False-lambda x: x > 5]",
+      "block_id": "CASE_07",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "无效filter函数测试：创建返回tensor而不是boolean的filter函数，应正确处理错误"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

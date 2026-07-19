@@ -1,0 +1,56 @@
+=== Run Tests ===
+..........F.....                                                         [100%]
+=================================== FAILURES ===================================
+_____________ TestNvtxContext.test_context_manager_with_exception ______________
+
+self = <test_torch_cuda_nvtx_context.TestNvtxContext object at 0x13a0d69b0>
+
+    def test_context_manager_with_exception(self):
+        """Test context manager behavior when exception occurs inside context."""
+        self.mock_nvtx.rangePushA.return_value = 0
+        self.mock_nvtx.rangePop.return_value = 0
+    
+        # Test that range_pop is called even when exception occurs
+        try:
+            with nvtx.range("test_with_exception"):
+                self.mock_nvtx.rangePushA.assert_called_once_with("test_with_exception")
+                raise ValueError("Test exception")
+        except ValueError:
+            pass
+    
+        # Verify range_pop was called despite the exception
+>       self.mock_nvtx.rangePop.assert_called_once()
+
+tests/test_torch_cuda_nvtx_context.py:109: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='mock.rangePop' id='5269690384'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'rangePop' to have been called once. Called 0 times.
+
+/opt/anaconda3/envs/testagent-experiment/lib/python3.10/unittest/mock.py:908: AssertionError
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+tests/test_torch_cuda_nvtx_basic.py        91      5      8      1    92%   185-189, 234
+tests/test_torch_cuda_nvtx_context.py      54      1      4      2    95%   70->exit, 133
+tests/test_torch_cuda_nvtx_range.py        63      1     10      1    97%   147
+-----------------------------------------------------------------------------------
+TOTAL                                     208      7     22      4    94%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/test_torch_cuda_nvtx_context.py::TestNvtxContext::test_context_manager_with_exception
+1 failed, 15 passed in 0.78s
+
+Error: exit 1

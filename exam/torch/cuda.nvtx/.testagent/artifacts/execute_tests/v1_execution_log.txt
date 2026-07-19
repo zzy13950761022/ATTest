@@ -1,0 +1,12 @@
+=== Run Tests ===
+........                                                                 [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+tests/test_torch_cuda_nvtx_basic.py      66      1      6      1    97%   176
+---------------------------------------------------------------------------------
+TOTAL                                    66      1      6      1    97%
+Coverage XML written to file coverage.xml
+8 passed in 0.69s

@@ -1,0 +1,12 @@
+=== Run Tests ===
+.......                                                                  [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.19-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+tests/test_torch_nn_modules_linear_g2.py     191      9     16      5    92%   35, 112, 165, 205->213, 431, 441-443, 447-448
+--------------------------------------------------------------------------------------
+TOTAL                                        191      9     16      5    92%
+Coverage XML written to file coverage.xml
+7 passed in 0.75s

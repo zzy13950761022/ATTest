@@ -1,0 +1,12 @@
+=== Run Tests ===
+.....                                                                    [100%]
+
+---------- coverage: platform win32, python 3.9.25-final-0 -----------
+Name                                                                      Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------------------------
+tests\test_tensorflow_python_framework_tensor_conversion_registry_g1.py      87     14     12      4    82%   19-21, 33-35, 40-42, 47-49, 90->94, 91->90, 152->166, 161-163, 166->175
+---------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                        87     14     12      4    82%
+Coverage XML written to file coverage.xml
+
+5 passed in 1.36s

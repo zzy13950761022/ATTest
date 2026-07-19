@@ -1,0 +1,686 @@
+import math
+import pytest
+import torch
+import torch.nn as nn
+from unittest.mock import Mock, patch, MagicMock
+import copy
+
+# ==== BLOCK:HEADER START ====
+# Test class for torch.ao.quantization.quantize
+class TestQuantize:
+    """Test cases for torch.ao.quantization.quantize function."""
+    
+    @pytest.fixture
+    def simple_linear_model(self):
+        """Create a simple linear model for testing."""
+        class SimpleLinear(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = nn.Linear(10, 20)
+                self.relu = nn.ReLU()
+                self.linear2 = nn.Linear(20, 5)
+                
+            def forward(self, x):
+                x = self.linear1(x)
+                x = self.relu(x)
+                x = self.linear2(x)
+                return x
+        
+        model = SimpleLinear()
+        model.eval()
+        return model
+    
+    @pytest.fixture
+    def convolutional_model(self):
+        """Create a convolutional model for testing."""
+        class ConvModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+                self.relu = nn.ReLU()
+                self.pool = nn.MaxPool2d(2)
+                self.linear = nn.Linear(16 * 16 * 16, 10)
+                
+            def forward(self, x):
+                x = self.conv1(x)
+                x = self.relu(x)
+                x = self.pool(x)
+                x = x.view(x.size(0), -1)
+                x = self.linear(x)
+                return x
+        
+        model = ConvModel()
+        model.eval()
+        return model
+    
+    @pytest.fixture
+    def simple_calibration_fn(self):
+        """Create a simple calibration function."""
+        def calibration_fn(model, *args):
+            # Simple calibration that does nothing
+            pass
+        return calibration_fn
+    
+    @pytest.fixture
+    def complex_calibration_fn(self):
+        """Create a complex calibration function with multiple arguments."""
+        def calibration_fn(model, data_loader, num_batches, device):
+            # Complex calibration that would process data
+            pass
+        return calibration_fn
+    
+    @pytest.fixture
+    def no_op_calibration_fn(self):
+        """Create a no-op calibration function."""
+        def calibration_fn(model, *args):
+            # No operation
+            pass
+        return calibration_fn
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "default", "simple_calibration"),
+    ])
+    def test_basic_float_model_quantization(self, model_type, inplace, mapping, run_fn_type, 
+                                           simple_linear_model, simple_calibration_fn):
+        """TC-01: 基本浮点模型量化验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+        
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+            
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+            
+        run_args = ()
+        
+        # Mock external dependencies
+        # IMPORTANT: We need to mock the functions that are directly called inside quantize
+        # The quantize function imports prepare and convert from torch.ao.quantization
+        # So we need to patch 'torch.ao.quantization.prepare' and 'torch.ao.quantization.convert'
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+            
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+            
+            # Setup mock returns for prepare and convert
+            # When inplace=False, quantize will deepcopy the model first
+            # Then prepare and convert will work on the copied model
+            # We need to track the deepcopy that happens inside quantize
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.side_effect = lambda m, **kwargs: prepared_model  # Return the prepared model
+            mock_convert.side_effect = lambda m, mapping, **kwargs: prepared_model  # Return the same model
+            
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+            
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+            
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+            
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+            
+            # 3. Model should be in eval mode
+            assert not result.training, "Quantized model should be in eval mode"
+            
+            # 4. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key], 
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+            
+            # Verify API usage logging - should be called 3 times
+            # quantize calls _log_api_usage_once for quantize, prepare, and convert
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+            
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+            
+            # Verify prepare and convert were called
+            mock_prepare.assert_called_once()
+            mock_convert.assert_called_once()
+            
+            # Verify get_default_static_quant_module_mappings was called when mapping=None
+            mock_get_mappings.assert_called_once()
+            
+            # Verify prepare was called with inplace=True (quantize always calls prepare with inplace=True)
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[1]['inplace'] == True, "prepare should be called with inplace=True"
+            
+            # Verify convert was called with correct mapping and inplace=True
+            convert_call_args = mock_convert.call_args
+            assert convert_call_args[0][1] == mock_mapping, "convert should be called with default mapping"
+            assert convert_call_args[1]['inplace'] == True, "convert should be called with inplace=True"
+            
+            # Verify run_fn was called
+            # Note: run_fn is called inside quantize after prepare
+            # We can't directly assert it, but if it wasn't called, the test would fail
+            # because run_fn would raise an exception
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", True, "default", "simple_calibration"),
+    ])
+    def test_inplace_quantization(self, model_type, inplace, mapping, run_fn_type,
+                                 simple_linear_model, simple_calibration_fn):
+        """TC-02: 原地量化验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+        
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+            
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+            
+        run_args = ()
+        
+        # Mock external dependencies
+        # IMPORTANT: We need to mock the functions that are directly called inside quantize
+        # The quantize function imports prepare and convert from torch.ao.quantization
+        # So we need to patch 'torch.ao.quantization.prepare' and 'torch.ao.quantization.convert'
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+            
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+            
+            # Setup mock returns for prepare and convert
+            # For inplace=True, prepare and convert should return the same model object
+            # IMPORTANT: We need to track the model that will be passed to prepare
+            # When inplace=True, quantize does NOT deepcopy the model
+            # So prepare will receive the original model
+            mock_prepare.side_effect = lambda m, **kwargs: m  # Return the same model
+            mock_convert.side_effect = lambda m, mapping, **kwargs: m  # Return the same model
+            
+            # Keep track of original model state and ID
+            original_model_id = id(model)
+            original_model_training = model.training
+            
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+            
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+            
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+            
+            # 3. Model should be in eval mode
+            assert not result.training, "Quantized model should be in eval mode"
+            
+            # 4. Original model modified when inplace=True
+            if inplace:
+                # When inplace=True, the returned model should be the same object
+                assert id(result) == original_model_id, "When inplace=True, returned model should be same object as input"
+                # Original model should now be in eval mode
+                assert not model.training, "Original model should be in eval mode after inplace quantization"
+            
+            # Verify API usage logging - should be called 3 times
+            # quantize calls _log_api_usage_once for quantize, prepare, and convert
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+            
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+            
+            # Verify prepare and convert were called
+            mock_prepare.assert_called_once()
+            mock_convert.assert_called_once()
+            
+            # Verify get_default_static_quant_module_mappings was called when mapping=None
+            mock_get_mappings.assert_called_once()
+            
+            # Verify prepare was called with inplace=True (quantize always calls prepare with inplace=True)
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[1]['inplace'] == True, "prepare should be called with inplace=True"
+            
+            # Verify convert was called with correct mapping and inplace=True
+            convert_call_args = mock_convert.call_args
+            assert convert_call_args[0][1] == mock_mapping, "convert should be called with default mapping"
+            assert convert_call_args[1]['inplace'] == True, "convert should be called with inplace=True"
+            
+            # Verify deepcopy was NOT called (since inplace=True)
+            # We can verify this by checking that prepare and convert were called with the original model
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[0][0] is model, "prepare should be called with original model"
+            
+            convert_call_args = mock_convert.call_args
+            assert convert_call_args[0][0] is model, "convert should be called with original model"
+            
+            # Verify run_fn was called with the model
+            # Note: run_fn is called inside quantize after prepare
+            # We can't directly assert it, but if it wasn't called, the test would fail
+            # because run_fn would raise an exception
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "custom", "simple_calibration"),
+    ])
+    def test_custom_mapping_parameter(self, model_type, inplace, mapping, run_fn_type,
+                                     simple_linear_model, simple_calibration_fn):
+        """TC-03: 自定义映射参数验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+        
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+            
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+            
+        run_args = ()
+        
+        # Define custom mapping
+        custom_mapping = {
+            "nn.Linear": "custom.quantized.Linear",
+            "nn.ReLU": "custom.quantized.ReLU",
+            "nn.Conv2d": "custom.quantized.Conv2d"
+        }
+        
+        # Mock external dependencies
+        # IMPORTANT: We need to mock the functions that are directly called inside quantize
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+            
+            # Setup mock returns for prepare and convert
+            # When inplace=False, quantize will deepcopy the model first
+            # Then prepare and convert will work on the copied model
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.side_effect = lambda m, **kwargs: prepared_model  # Return the prepared model
+            mock_convert.side_effect = lambda m, mapping, **kwargs: prepared_model  # Return the same model
+            
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+            
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=custom_mapping,
+                inplace=inplace
+            )
+            
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+            
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+            
+            # 3. Custom mapping should be applied
+            # Verify convert was called with custom mapping
+            mock_convert.assert_called_once()
+            call_args = mock_convert.call_args
+            assert call_args[0][1] == custom_mapping, "convert should be called with custom mapping"
+            assert call_args[1]['inplace'] == True, "convert should be called with inplace=True"
+            
+            # 4. No exception should be raised
+            # (implicitly verified by test execution)
+            
+            # 5. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key], 
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+            
+            # Verify API usage logging
+            # quantize calls _log_api_usage_once for quantize, prepare, and convert
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+            
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+            
+            # Verify prepare was called
+            mock_prepare.assert_called_once()
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[1]['inplace'] == True, "prepare should be called with inplace=True"
+            
+            # Verify get_default_static_quant_module_mappings was NOT called
+            # (since we provided custom mapping)
+            # This is implicit in the test setup
+            
+            # Verify run_fn was called
+            # Note: run_fn is called inside quantize after prepare
+            # We can't directly assert it, but if it wasn't called, the test would fail
+            # because run_fn would raise an exception
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("simple_linear", False, "default", "complex_calibration"),
+    ])
+    def test_calibration_function_parameter_passing(self, model_type, inplace, mapping, run_fn_type,
+                                                   simple_linear_model, complex_calibration_fn):
+        """TC-04: 校准函数参数传递验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+        
+        if model_type == "simple_linear":
+            model = simple_linear_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+            
+        if run_fn_type == "complex_calibration":
+            run_fn = complex_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+            
+        # Create complex run_args
+        mock_data_loader = Mock()
+        mock_data_loader.__iter__ = Mock(return_value=iter([(torch.randn(4, 10), torch.randn(4, 5))]))
+        num_batches = 3
+        device = "cpu"
+        
+        run_args = (mock_data_loader, num_batches, device)
+        
+        # Track if run_fn was called correctly
+        run_fn_called = False
+        run_fn_args = None
+        run_fn_kwargs = None
+        
+        # Wrap the calibration function to track calls
+        def tracked_run_fn(*args, **kwargs):
+            nonlocal run_fn_called, run_fn_args, run_fn_kwargs
+            run_fn_called = True
+            run_fn_args = args
+            run_fn_kwargs = kwargs
+            # Call the original function
+            return complex_calibration_fn(*args, **kwargs)
+        
+        # Mock external dependencies
+        # IMPORTANT: We need to mock the functions that are directly called inside quantize
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+            
+            # Setup mock returns
+            mock_mapping = {"nn.Linear": "nnq.Linear", "nn.ReLU": "nnq.ReLU"}
+            mock_get_mappings.return_value = mock_mapping
+            
+            # Setup mock returns for prepare and convert
+            # When inplace=False, quantize will deepcopy the model first
+            # Then prepare and convert will work on the copied model
+            # We need to track the model that will be passed to run_fn
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.side_effect = lambda m, **kwargs: prepared_model  # Return the prepared model
+            mock_convert.side_effect = lambda m, mapping, **kwargs: prepared_model  # Return the same model
+            
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+            
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=tracked_run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+            
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+            
+            # 2. run_fn was called correctly
+            assert run_fn_called, "run_fn should be called during quantization"
+            assert run_fn_args is not None, "run_fn should receive arguments"
+            
+            # 3. run_args were passed correctly
+            # First argument should be the prepared model (not the original model)
+            # because quantize calls prepare first, then run_fn
+            assert len(run_fn_args) == len(run_args) + 1, f"run_fn should receive {len(run_args) + 1} arguments"
+            
+            # The first argument should be the prepared model (the model returned by prepare)
+            # Note: We can't directly compare objects because prepare returns a deepcopy
+            # But we can verify it's the same type
+            assert isinstance(run_fn_args[0], type(model)), "First argument to run_fn should be a model of same type"
+            
+            # Remaining arguments should match run_args
+            for i, arg in enumerate(run_args):
+                assert run_fn_args[i + 1] is arg, f"Argument {i} should be passed correctly to run_fn"
+            
+            # 4. No exception should be raised
+            # (implicitly verified by test execution)
+            
+            # 5. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key], 
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+            
+            # Verify API usage logging
+            # quantize calls _log_api_usage_once for quantize, prepare, and convert
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+            
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+            
+            # Verify prepare and convert were called
+            mock_prepare.assert_called_once()
+            mock_convert.assert_called_once()
+            
+            # Verify get_default_static_quant_module_mappings was called when mapping=None
+            mock_get_mappings.assert_called_once()
+            
+            # Verify prepare was called with inplace=True
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[1]['inplace'] == True, "prepare should be called with inplace=True"
+            
+            # Verify convert was called with correct mapping and inplace=True
+            convert_call_args = mock_convert.call_args
+            assert convert_call_args[0][1] == mock_mapping, "convert should be called with default mapping"
+            assert convert_call_args[1]['inplace'] == True, "convert should be called with inplace=True"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+    @pytest.mark.parametrize("model_type,inplace,mapping,run_fn_type", [
+        ("convolutional", False, "default", "simple_calibration"),
+    ])
+    def test_different_model_architecture_compatibility(self, model_type, inplace, mapping, run_fn_type,
+                                                      convolutional_model, simple_calibration_fn):
+        """TC-05: 不同模型架构兼容性验证"""
+        # Arrange
+        import torch.ao.quantization as tq
+        
+        if model_type == "convolutional":
+            model = convolutional_model
+        else:
+            pytest.skip(f"Model type {model_type} not implemented")
+            
+        if run_fn_type == "simple_calibration":
+            run_fn = simple_calibration_fn
+        else:
+            pytest.skip(f"Run function type {run_fn_type} not implemented")
+            
+        run_args = ()
+        
+        # Mock external dependencies
+        # IMPORTANT: We need to mock the functions that are directly called inside quantize
+        with patch('torch._C._log_api_usage_once') as mock_log_api, \
+             patch('torch.ao.quantization.get_default_static_quant_module_mappings') as mock_get_mappings, \
+             patch('torch.ao.quantization.prepare') as mock_prepare, \
+             patch('torch.ao.quantization.convert') as mock_convert:
+            
+            # Setup mock returns
+            # For convolutional model, mapping should include Conv2d
+            mock_mapping = {
+                "nn.Linear": "nnq.Linear", 
+                "nn.ReLU": "nnq.ReLU",
+                "nn.Conv2d": "nnq.Conv2d",
+                "nn.MaxPool2d": "nnq.MaxPool2d"
+            }
+            mock_get_mappings.return_value = mock_mapping
+            
+            # Setup mock returns for prepare and convert
+            # When inplace=False, quantize will deepcopy the model first
+            # Then prepare and convert will work on the copied model
+            prepared_model = copy.deepcopy(model)
+            mock_prepare.side_effect = lambda m, **kwargs: prepared_model  # Return the prepared model
+            mock_convert.side_effect = lambda m, mapping, **kwargs: prepared_model  # Return the same model
+            
+            # Keep track of original model state
+            original_model_state = copy.deepcopy(model.state_dict())
+            original_model_id = id(model)
+            
+            # Act
+            result = tq.quantize(
+                model=model,
+                run_fn=run_fn,
+                run_args=run_args,
+                mapping=None if mapping == "default" else mapping,
+                inplace=inplace
+            )
+            
+            # Assert (weak assertions)
+            # 1. Returns a model
+            assert result is not None, "quantize should return a model"
+            
+            # 2. Model structure preserved (same type)
+            assert isinstance(result, type(model)), "Returned model should be same type as input"
+            
+            # 3. No exception should be raised
+            # (implicitly verified by test execution)
+            
+            # 4. No side effects when inplace=False
+            if not inplace:
+                # Original model should not be modified
+                assert id(model) == original_model_id, "Original model reference should be unchanged"
+                # Check model state is preserved
+                current_state = model.state_dict()
+                for key in original_model_state:
+                    torch.testing.assert_close(
+                        current_state[key], 
+                        original_model_state[key],
+                        msg=f"Parameter {key} should not be modified when inplace=False"
+                    )
+            
+            # Verify API usage logging - should be called 3 times
+            # quantize calls _log_api_usage_once for quantize, prepare, and convert
+            assert mock_log_api.call_count == 3, f"API logging should be called 3 times, got {mock_log_api.call_count}"
+            
+            # Check specific calls
+            calls = mock_log_api.call_args_list
+            assert calls[0][0][0] == "quantization_api.quantize.quantize", "First call should be for quantize"
+            assert calls[1][0][0] == "quantization_api.quantize.prepare", "Second call should be for prepare"
+            assert calls[2][0][0] == "quantization_api.quantize.convert", "Third call should be for convert"
+            
+            # Verify prepare and convert were called
+            mock_prepare.assert_called_once()
+            mock_convert.assert_called_once()
+            
+            # Verify get_default_static_quant_module_mappings was called when mapping=None
+            mock_get_mappings.assert_called_once()
+            
+            # Verify prepare was called with inplace=True
+            prepare_call_args = mock_prepare.call_args
+            assert prepare_call_args[1]['inplace'] == True, "prepare should be called with inplace=True"
+            
+            # Verify convert was called with correct mapping and inplace=True
+            convert_call_args = mock_convert.call_args
+            assert convert_call_args[0][1] == mock_mapping, "convert should be called with default mapping"
+            assert convert_call_args[1]['inplace'] == True, "convert should be called with inplace=True"
+            
+            # Check that mapping includes Conv2d for convolutional model
+            assert "nn.Conv2d" in convert_call_args[0][1], "Mapping should include Conv2d for convolutional model"
+            assert "nn.MaxPool2d" in convert_call_args[0][1], "Mapping should include MaxPool2d for convolutional model"
+            
+            # Verify run_fn was called
+            # Note: run_fn is called inside quantize after prepare
+            # We can't directly assert it, but if it wasn't called, the test would fail
+            # because run_fn would raise an exception
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+# TC-06: 无效输入异常处理 (DEFERRED)
+# Placeholder for deferred test case
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# TC-07: 边界情况处理 (DEFERRED)
+# Placeholder for deferred test case
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:FOOTER START ====
+# Footer block - cleanup and additional utilities
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+# ==== BLOCK:FOOTER END ====

@@ -1,0 +1,71 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 1,
+  "errors": 11,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_file_exists_basic[/tmp/test_file.txt-True]",
+      "block_id": "HEADER",
+      "error_type": "FixtureNotFoundError",
+      "action": "rewrite_block",
+      "note": "缺少mock_pywrap_file_io fixture定义"
+    },
+    {
+      "test": "test_stat_basic",
+      "block_id": "CASE_02",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "mock导入路径错误：tensorflow.python不存在"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/test_text.txt-Hello TensorFlow-w]",
+      "block_id": "HEADER",
+      "error_type": "FixtureNotFoundError",
+      "action": "rewrite_block",
+      "note": "缺少mock_pywrap_file_io fixture定义"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_file_exists_basic[/tmp/nonexistent.txt-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_exists_basic[-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/empty.txt--w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_file_read_write_string[/tmp/unicode.txt-\\u4e2d\\u6587\\u6d4b\\u8bd5 \\U0001f680-w]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_fileio_basic_read_write[/tmp/test_io.bin-binary_data-wb]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_list_directory_basic[/tmp/test_dir-expected_files0]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_list_directory_basic[/tmp/empty_dir-expected_files1]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_copy_basic[/tmp/source.txt-/tmp/destination.txt-False]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_copy_basic[/tmp/source.txt-/tmp/destination.txt-True]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

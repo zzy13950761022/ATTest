@@ -1,0 +1,25 @@
+{
+  "status": "未完全通过",
+  "passed": 40,
+  "failed": 3,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_dct_ops.py::TestIDCTBasic::test_idct_inverse_relationship",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_dct_ops.py::TestIDCTBasic::test_idct_with_ortho_normalization",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "tests/test_tensorflow_python_ops_signal_dct_ops.py::TestPrecisionCompatibility::test_dct_precision_error_bounds",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": true,
+  "stop_reason": "失败集合与上一轮完全重复，需要人工介入检查IDCT实现问题"
+}

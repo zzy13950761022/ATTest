@@ -1,0 +1,27 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_parallel_interleave_error_handling[0-1-simple_range-True]",
+      "block_id": "CASE_05",
+      "error_type": "已修复",
+      "action": "add_case",
+      "note": "之前失败，现已修复，需要验证修复效果并提高覆盖率"
+    },
+    {
+      "test": "test_sample_from_datasets_v2_basic[2-[0.5,0.5]-42-20-False]",
+      "block_id": "CASE_03",
+      "error_type": "覆盖率缺口",
+      "action": "add_case",
+      "note": "添加扩展参数测试以提高覆盖率，覆盖缺失的分支条件"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

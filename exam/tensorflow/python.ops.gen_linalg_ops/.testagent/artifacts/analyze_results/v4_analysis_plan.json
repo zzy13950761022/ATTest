@@ -1,0 +1,12 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 5,
+  "errors": 7,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [],
+  "stop_recommended": true,
+  "stop_reason": "所有测试因相同AttributeError失败，与上一轮失败集合完全重复：mock路径'tensorflow.python'在当前TensorFlow版本中不存在，需要修复HEADER中的mock fixture但上一轮已尝试修复但未成功"
+}

@@ -1,0 +1,20 @@
+{
+  "status": "成功",
+  "passed": 8,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "新增测试用例",
+      "block_id": "CASE_05",
+      "error_type": "N/A",
+      "action": "add_case",
+      "note": "实现deferred的装饰器用法验证测试，提高覆盖率"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

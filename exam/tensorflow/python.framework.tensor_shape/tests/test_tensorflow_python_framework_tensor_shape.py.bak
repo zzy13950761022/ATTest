@@ -1,0 +1,372 @@
+"""
+测试 tensorflow.python.framework.tensor_shape 模块
+"""
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import tensor_shape
+
+# ==== BLOCK:HEADER START ====
+"""
+测试 tensorflow.python.framework.tensor_shape 模块
+"""
+import pytest
+import tensorflow as tf
+from tensorflow.python.framework import tensor_shape
+
+# 设置随机种子以确保测试可重复性
+import random
+import numpy as np
+random.seed(42)
+np.random.seed(42)
+
+# 测试 tensor_shape 模块的基本功能
+# 注意：CASE_01 和 CASE_02 已在分组文件中实现
+# test_tensorflow_python_framework_tensor_shape_dimension.py
+# ==== BLOCK:HEADER END ====
+
+# ==== BLOCK:CASE_01 START ====
+# Dimension 基本构造与属性测试（deferred - 已在分组文件中实现）
+# ==== BLOCK:CASE_01 END ====
+
+# ==== BLOCK:CASE_02 START ====
+# Dimension 算术运算测试（deferred - 已在分组文件中实现）
+# ==== BLOCK:CASE_02 END ====
+
+# ==== BLOCK:CASE_03 START ====
+@pytest.mark.parametrize(
+    "dims,expected_rank,expected_dims",
+    [
+        ([2, 3], 2, [2, 3]),
+        ([], 0, []),
+        (None, None, None),
+    ]
+)
+def test_tensorshape_construction(dims, expected_rank, expected_dims):
+    """测试 TensorShape 基本构造"""
+    # 创建 TensorShape 对象
+    shape = tensor_shape.TensorShape(dims)
+    
+    # 验证 rank 属性
+    assert shape.rank == expected_rank
+    
+    # 验证 dims 属性
+    if expected_dims is None:
+        assert shape.dims is None
+    else:
+        assert shape.dims is not None
+        assert len(shape.dims) == len(expected_dims)
+        
+        # 验证每个维度的值
+        for i, (dim, expected) in enumerate(zip(shape.dims, expected_dims)):
+            if expected is None:
+                assert dim.value is None
+            else:
+                assert dim.value == expected
+    
+    # 验证 is_fully_defined 属性
+    if expected_dims is None:
+        # 对于 None 输入，is_fully_defined 应该为 False
+        assert not shape.is_fully_defined
+    else:
+        # 根据 TensorFlow 实现，is_fully_defined 检查所有维度值是否不为 None
+        # 对于空列表 []，所有维度都已知（因为没有维度）
+        # 对于 [2, 3]，所有维度都已知
+        # 注意：这里需要检查 dims 是否为 None，而不是 expected_dims
+        if dims is None:
+            assert not shape.is_fully_defined
+        else:
+            # 检查是否所有维度都已知
+            all_known = all(d is not None for d in expected_dims)
+            assert shape.is_fully_defined == all_known
+    
+    # 验证 __len__ 方法
+    if expected_rank is not None:
+        assert len(shape) == expected_rank
+    else:
+        # 对于未知形状，len 应该引发 ValueError
+        with pytest.raises(ValueError):
+            len(shape)
+    
+    # 验证 __repr__ 和 __str__
+    repr_str = repr(shape)
+    str_str = str(shape)
+    assert isinstance(repr_str, str)
+    assert isinstance(str_str, str)
+    
+    # 对于已知形状，repr 应该包含维度信息
+    if expected_dims is not None and expected_dims:
+        assert "TensorShape" in repr_str
+        for dim in expected_dims:
+            if dim is not None:
+                assert str(dim) in repr_str
+# ==== BLOCK:CASE_03 END ====
+
+# ==== BLOCK:CASE_04 START ====
+@pytest.mark.parametrize(
+    "shape1,shape2,expected",
+    [
+        ([2, 3], [2, 3], True),
+        ([2, None], [2, 5], True),
+        ([2, 3], [3, 2], False),
+    ]
+)
+def test_shape_compatibility(shape1, shape2, expected):
+    """测试形状兼容性检查"""
+    # 创建 TensorShape 对象
+    ts1 = tensor_shape.TensorShape(shape1)
+    ts2 = tensor_shape.TensorShape(shape2)
+    
+    # 测试 is_compatible_with 方法
+    result = ts1.is_compatible_with(ts2)
+    assert result == expected
+    
+    # 验证对称性：如果 shape1 兼容 shape2，则 shape2 也应该兼容 shape1
+    # 注意：兼容性应该是对称的
+    symmetric_result = ts2.is_compatible_with(ts1)
+    assert symmetric_result == expected, "兼容性检查应该是对称的"
+    
+    # 验证与自身的兼容性
+    assert ts1.is_compatible_with(ts1), "形状应该与自身兼容"
+    assert ts2.is_compatible_with(ts2), "形状应该与自身兼容"
+    
+    # 验证与列表/元组的兼容性
+    list_result = ts1.is_compatible_with(shape2)
+    assert list_result == expected, "应该支持与列表的兼容性检查"
+    
+    tuple_result = ts1.is_compatible_with(tuple(shape2))
+    assert tuple_result == expected, "应该支持与元组的兼容性检查"
+    
+    # 验证与 Dimension 对象的兼容性（单维度情况）
+    if len(shape1) == 1 and len(shape2) == 1:
+        dim1 = tensor_shape.Dimension(shape1[0])
+        dim2 = tensor_shape.Dimension(shape2[0])
+        
+        # Dimension 也应该有兼容性检查
+        dim_result = dim1.is_compatible_with(dim2)
+        # 对于单维度，兼容性逻辑应该与形状相同
+        assert dim_result == expected, "Dimension 兼容性检查应该与形状一致"
+    
+    # 验证边缘情况：完全未知形状
+    if shape1 is None or shape2 is None:
+        # 如果任一形状完全未知，它们应该兼容
+        unknown_shape = tensor_shape.TensorShape(None)
+        assert unknown_shape.is_compatible_with(ts1), "完全未知形状应该与任何形状兼容"
+        assert unknown_shape.is_compatible_with(ts2), "完全未知形状应该与任何形状兼容"
+# ==== BLOCK:CASE_04 END ====
+
+# ==== BLOCK:CASE_05 START ====
+@pytest.mark.parametrize(
+    "func,input_val,expected,expected_type",
+    [
+        ("dimension_value", 5, 5, None),
+        ("dimension_value", None, None, None),
+        ("as_dimension", 3, None, "Dimension"),
+        ("as_shape", [2, 3], None, "TensorShape"),
+    ]
+)
+def test_helper_functions(func, input_val, expected, expected_type):
+    """测试辅助函数基本功能"""
+    
+    if func == "dimension_value":
+        # 测试 dimension_value 函数
+        # 输入可以是整数
+        result = tensor_shape.dimension_value(input_val)
+        assert result == expected
+        
+        # 输入可以是 Dimension 对象
+        dim = tensor_shape.Dimension(input_val)
+        result_from_dim = tensor_shape.dimension_value(dim)
+        assert result_from_dim == expected
+        
+        # 验证 idempotent 性质：对结果再次应用应该得到相同结果
+        if result is not None:
+            result2 = tensor_shape.dimension_value(result)
+            assert result2 == result
+        
+    elif func == "as_dimension":
+        # 测试 as_dimension 函数
+        result = tensor_shape.as_dimension(input_val)
+        
+        # 验证类型
+        assert isinstance(result, tensor_shape.Dimension)
+        
+        # 验证值
+        assert result.value == input_val
+        
+        # 验证 idempotent 性质：对 Dimension 对象应用应该返回相同对象
+        dim = tensor_shape.Dimension(input_val)
+        result2 = tensor_shape.as_dimension(dim)
+        assert result2 is dim  # 应该返回相同的对象
+        
+        # 测试 None 输入
+        none_result = tensor_shape.as_dimension(None)
+        assert isinstance(none_result, tensor_shape.Dimension)
+        assert none_result.value is None
+        
+    elif func == "as_shape":
+        # 测试 as_shape 函数
+        result = tensor_shape.as_shape(input_val)
+        
+        # 验证类型
+        assert isinstance(result, tensor_shape.TensorShape)
+        
+        # 验证维度
+        expected_shape = tensor_shape.TensorShape(input_val)
+        assert result.rank == expected_shape.rank
+        
+        # 验证 idempotent 性质：对 TensorShape 对象应用应该返回相同对象
+        shape = tensor_shape.TensorShape(input_val)
+        result2 = tensor_shape.as_shape(shape)
+        assert result2 is shape  # 应该返回相同的对象
+        
+        # 测试 None 输入
+        none_result = tensor_shape.as_shape(None)
+        assert isinstance(none_result, tensor_shape.TensorShape)
+        assert none_result.rank is None
+        
+        # 测试列表和元组输入
+        list_result = tensor_shape.as_shape([2, 3])
+        tuple_result = tensor_shape.as_shape((2, 3))
+        assert list_result.rank == 2
+        assert tuple_result.rank == 2
+        assert list_result.dims[0].value == 2
+        assert list_result.dims[1].value == 3
+
+# 单独测试 unknown_shape 函数
+@pytest.mark.parametrize("rank", [None, 0, 1, 3])
+def test_unknown_shape(rank):
+    """测试 unknown_shape 函数"""
+    result = tensor_shape.unknown_shape(rank)
+    
+    # 验证类型
+    assert isinstance(result, tensor_shape.TensorShape)
+    
+    # 验证 rank
+    assert result.rank == rank
+    
+    # 验证所有维度都是未知的
+    if rank is not None:
+        assert result.dims is not None
+        assert len(result.dims) == rank
+        for dim in result.dims:
+            assert dim.value is None
+            # Dimension 类没有 is_known 属性，只检查 value 是否为 None
+# ==== BLOCK:CASE_05 END ====
+
+# ==== BLOCK:CASE_06 START ====
+def test_dimension_advanced_features():
+    """测试 Dimension 高级功能"""
+    # 测试 assert_is_compatible_with 方法
+    dim5 = tensor_shape.Dimension(5)
+    dim5_2 = tensor_shape.Dimension(5)
+    dim_unknown = tensor_shape.Dimension(None)
+    dim3 = tensor_shape.Dimension(3)
+    
+    # 相同维度应该兼容
+    dim5.assert_is_compatible_with(dim5_2)
+    dim5.assert_is_compatible_with(5)
+    
+    # 未知维度应该与任何维度兼容
+    dim_unknown.assert_is_compatible_with(dim5)
+    dim_unknown.assert_is_compatible_with(dim3)
+    dim_unknown.assert_is_compatible_with(None)
+    
+    # 不同已知维度应该不兼容
+    with pytest.raises(ValueError):
+        dim5.assert_is_compatible_with(dim3)
+    with pytest.raises(ValueError):
+        dim5.assert_is_compatible_with(3)
+    
+    # 测试 merge_with 方法
+    # 相同维度合并
+    merged_same = dim5.merge_with(dim5_2)
+    assert merged_same.value == 5
+    
+    # 已知维度与未知维度合并
+    merged_with_unknown = dim5.merge_with(dim_unknown)
+    assert merged_with_unknown.value == 5
+    
+    merged_unknown_with_known = dim_unknown.merge_with(dim5)
+    assert merged_unknown_with_known.value == 5
+    
+    # 不同已知维度合并应该失败
+    with pytest.raises(ValueError):
+        dim5.merge_with(dim3)
+    
+    # 注意：Dimension 类没有实现 __hash__ 方法
+    # 因此不能测试 hash 功能
+    
+    # 测试 __lt__, __le__, __gt__, __ge__ 方法
+    # 比较操作
+    assert dim3 < dim5
+    assert dim3 <= dim5
+    assert dim5 > dim3
+    assert dim5 >= dim3
+    assert dim5 >= dim5_2
+    assert dim5 <= dim5_2
+    
+    # 未知维度的比较
+    # 未知维度与已知维度的比较应该返回 NotImplemented
+    # 或者根据实现可能引发错误
+    try:
+        result = dim_unknown < dim5
+        # 如果执行到这里，检查结果
+        if result is not NotImplemented:
+            # 记录结果但不断言，因为行为可能变化
+            pass
+    except (TypeError, ValueError):
+        # 这是可接受的行为
+        pass
+    
+    # 测试 __floordiv__ 和 __mod__ 方法
+    dim10 = tensor_shape.Dimension(10)
+    dim3 = tensor_shape.Dimension(3)
+    
+    # 整数除法
+    div_result = dim10 // dim3
+    assert isinstance(div_result, tensor_shape.Dimension)
+    assert div_result.value == 3  # 10 // 3 = 3
+    
+    # 取模运算
+    mod_result = dim10 % dim3
+    assert isinstance(mod_result, tensor_shape.Dimension)
+    assert mod_result.value == 1  # 10 % 3 = 1
+    
+    # 与整数的运算
+    assert dim10 // 3 == 3
+    assert dim10 % 3 == 1
+    assert 10 // dim3 == 3
+    assert 10 % dim3 == 1
+    
+    # 测试 __bool__ 方法
+    dim0 = tensor_shape.Dimension(0)
+    dim1 = tensor_shape.Dimension(1)
+    
+    # 非零维度应该为 True
+    assert bool(dim1) is True
+    # 零维度应该为 False
+    assert bool(dim0) is False
+    # 根据 TensorFlow 实现，Dimension(None).__bool__() 返回 bool(None) 即 False
+    # 因为 bool(None) 是 False
+    assert bool(dim_unknown) is False
+# ==== BLOCK:CASE_06 END ====
+
+# ==== BLOCK:CASE_07 START ====
+# Dimension 边缘情况测试（deferred）
+# ==== BLOCK:CASE_07 END ====
+
+# ==== BLOCK:CASE_08 START ====
+# TensorShape 高级功能测试（deferred）
+# ==== BLOCK:CASE_08 END ====
+
+# ==== BLOCK:CASE_09 START ====
+# TensorShape 边缘情况测试（deferred）
+# ==== BLOCK:CASE_09 END ====
+
+# ==== BLOCK:CASE_10 START ====
+# 辅助函数高级功能测试（deferred）
+# ==== BLOCK:CASE_10 END ====
+
+# ==== BLOCK:FOOTER START ====
+# 测试结束
+# ==== BLOCK:FOOTER END ====

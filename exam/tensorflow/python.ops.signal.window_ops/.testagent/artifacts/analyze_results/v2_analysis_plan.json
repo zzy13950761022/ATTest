@@ -1,0 +1,43 @@
+{
+  "status": "未完全通过",
+  "passed": 8,
+  "failed": 5,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_basic_window_shapes[hann_window-10-True-dtype0-hanning]",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "adjust_assertion",
+      "note": "周期性窗口端点检查过于严格，TensorFlow的periodic=True窗口端点不为0"
+    },
+    {
+      "test": "test_kaiser_bessel_derived_window_edge_case",
+      "block_id": "CASE_02",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "kaiser_bessel_derived_window对奇数长度返回floor(n/2)个元素，需要修正测试逻辑"
+    },
+    {
+      "test": "test_parameter_validation_errors[hamming_window-0-True-dtype0-InvalidArgumentError-requires start <= limit when delta > 0]",
+      "block_id": "CASE_03",
+      "error_type": "Failed",
+      "action": "adjust_assertion",
+      "note": "TensorFlow窗口函数不验证window_length>0，需要调整异常测试逻辑"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_basic_window_shapes[hamming_window-10-True-dtype2-<lambda>]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_parameter_validation_errors[hann_window--1-True-dtype1-InvalidArgumentError-requires start <= limit when delta > 0]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

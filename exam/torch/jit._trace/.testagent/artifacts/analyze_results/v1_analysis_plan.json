@@ -1,0 +1,21 @@
+{
+  "status": "成功",
+  "passed": 2,
+  "failed": 0,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [],
+  "deferred": [
+    {
+      "test": "test_torch_jit_trace_g1.py::CASE_03",
+      "reason": "Deferred test case - different dtype support"
+    },
+    {
+      "test": "test_torch_jit_trace_g1.py::CASE_04",
+      "reason": "Deferred test case - GPU device support"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

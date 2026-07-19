@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 1,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_fixed_len_feature_basic_parsing",
+      "block_id": "CASE_01",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "输入数据集形状错误：应为字符串向量(shape=[None])，实际为标量(shape=[])。需要修复create_string_dataset函数或调整数据集创建方式。"
+    },
+    {
+      "test": "test_features_parameter_validation[features1-ValueError]",
+      "block_id": "CASE_02",
+      "error_type": "TypeError",
+      "action": "adjust_assertion",
+      "note": "错误类型不匹配：期望ValueError，实际得到TypeError。需要调整断言或理解parse_example_dataset的实际验证逻辑。"
+    },
+    {
+      "test": "test_parallel_parsing_functionality",
+      "block_id": "CASE_03",
+      "error_type": "AttributeError",
+      "action": "fix_dependency",
+      "note": "mock路径错误：'tensorflow.python'模块不存在。需要修复mock路径或使用正确的导入路径。"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_multiple_feature_types_support",
+      "reason": "错误类型重复：与CASE_03相同的AttributeError，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

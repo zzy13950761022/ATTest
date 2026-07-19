@@ -1,0 +1,213 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.eager.context",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_eager_context.py",
+    "all_pattern": "tests/test_tensorflow_python_eager_context_*.py",
+    "groups": {
+      "G1": "tests/test_tensorflow_python_eager_context_g1.py",
+      "G2": "tests/test_tensorflow_python_eager_context_g2.py"
+    }
+  },
+  "active_group_order": ["G1", "G2"],
+  "groups": [
+    {
+      "group_id": "G1",
+      "title": "核心上下文函数族",
+      "entrypoints": ["executing_eagerly", "context_safe", "ensure_initialized"],
+      "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+      "deferred_set": ["CASE_04"],
+      "note": "测试核心上下文状态管理函数"
+    },
+    {
+      "group_id": "G2",
+      "title": "Context类与设备策略",
+      "entrypoints": ["Context", "device_policy", "execution_mode"],
+      "smoke_set": ["CASE_05", "CASE_06"],
+      "deferred_set": ["CASE_07", "CASE_08", "CASE_09"],
+      "note": "测试Context类初始化和设备策略设置"
+    }
+  ],
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "group_id": "G1",
+      "name": "executing_eagerly基础功能",
+      "priority": "High",
+      "param_matrix": [
+        {"test_scenario": "normal_eager_mode"}
+      ],
+      "asserts": {
+        "weak": ["returns_bool", "is_true_in_eager", "no_exception"],
+        "strong": ["consistent_across_calls", "thread_local_behavior"]
+      },
+      "oracle": "文档示例行为",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 60,
+      "max_params": 3,
+      "is_parametrized": false,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "group_id": "G1",
+      "name": "context_safe上下文获取",
+      "priority": "High",
+      "param_matrix": [
+        {"context_state": "initialized"},
+        {"context_state": "uninitialized"}
+      ],
+      "asserts": {
+        "weak": ["returns_context_or_none", "no_exception", "type_check"],
+        "strong": ["context_identity", "thread_isolation"]
+      },
+      "oracle": "文档说明",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "group_id": "G1",
+      "name": "ensure_initialized幂等性",
+      "priority": "High",
+      "param_matrix": [
+        {"call_count": 1},
+        {"call_count": 3}
+      ],
+      "asserts": {
+        "weak": ["no_exception", "context_initialized", "no_side_effects"],
+        "strong": ["idempotent_behavior", "thread_safety"]
+      },
+      "oracle": "幂等函数定义",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 65,
+      "max_params": 4,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "group_id": "G1",
+      "name": "executing_eagerly在tf.function内部",
+      "priority": "Medium",
+      "param_matrix": [
+        {"function_type": "tf_function"}
+      ],
+      "asserts": {
+        "weak": ["returns_false_in_function", "no_exception"],
+        "strong": ["consistent_with_docs", "init_scope_behavior"]
+      },
+      "oracle": "文档示例",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 5,
+      "is_parametrized": false,
+      "requires_mock": true
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "group_id": "G2",
+      "name": "Context基础初始化",
+      "priority": "High",
+      "param_matrix": [
+        {"device_policy": "SILENT", "execution_mode": "SYNC"},
+        {"device_policy": "EXPLICIT", "execution_mode": "ASYNC"}
+      ],
+      "asserts": {
+        "weak": ["creates_context", "sets_device_policy", "sets_execution_mode", "no_exception"],
+        "strong": ["config_persistence", "default_values_correct"]
+      },
+      "oracle": "Context类文档",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": false
+    },
+    {
+      "tc_id": "TC-06",
+      "block_id": "CASE_06",
+      "group_id": "G2",
+      "name": "Context无效参数验证",
+      "priority": "High",
+      "param_matrix": [
+        {"invalid_param": "device_policy", "value": "INVALID"},
+        {"invalid_param": "execution_mode", "value": "INVALID"}
+      ],
+      "asserts": {
+        "weak": ["raises_value_error", "error_message_contains_param"],
+        "strong": ["specific_error_type", "clean_state_after_error"]
+      },
+      "oracle": "参数验证逻辑",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {"test_scenario": "init_scope"},
+      "note": "测试tf.init_scope内部行为"
+    },
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Low",
+      "params": {"test_scenario": "dataset_transform"},
+      "note": "测试tf.dataset转换函数中行为"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"device_policy": "WARN", "execution_mode": "SYNC"},
+      "note": "测试WARN设备策略"
+    },
+    {
+      "base_block_id": "CASE_05",
+      "priority": "Medium",
+      "params": {"device_policy": "SILENT_FOR_INT32", "execution_mode": "ASYNC"},
+      "note": "测试SILENT_FOR_INT32策略"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03", "CASE_05", "CASE_06"],
+  "deferred_set": ["CASE_04", "CASE_07", "CASE_08", "CASE_09"]
+}

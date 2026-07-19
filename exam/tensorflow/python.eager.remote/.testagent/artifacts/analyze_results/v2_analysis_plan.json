@@ -1,0 +1,39 @@
+{
+  "status": "失败",
+  "passed": 0,
+  "failed": 4,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_connect_to_remote_host_basic",
+      "block_id": "HEADER",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "mock对象不够真实，需要提供真实的ConfigProto和ClusterDef对象"
+    },
+    {
+      "test": "test_connect_to_remote_host_default_job_name",
+      "block_id": "HEADER",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "与CASE_01相同错误，修复HEADER后应解决"
+    },
+    {
+      "test": "test_connect_to_cluster_eager_mode_required",
+      "block_id": "HEADER",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "需要真实的ClusterDef对象，而不是MagicMock"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_connect_to_remote_host_multiple_calls_overwrite",
+      "reason": "错误类型重复，与CASE_01相同问题，修复HEADER后应解决"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

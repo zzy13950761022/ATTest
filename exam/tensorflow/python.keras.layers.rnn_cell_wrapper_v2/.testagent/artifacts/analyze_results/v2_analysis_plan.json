@@ -1,0 +1,47 @@
+{
+  "status": "未完全通过",
+  "passed": 2,
+  "failed": 6,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "test_dropout_wrapper_basic_functionality[BasicRNNCell-1.0-1.0-1.0-False-float32-2-3-4-5]",
+      "block_id": "CASE_01",
+      "error_type": "AttributeError",
+      "action": "rewrite_block",
+      "note": "assert_shapes_match函数期望tensor但传入tuple，需修复辅助函数"
+    },
+    {
+      "test": "test_dropout_wrapper_probability_boundaries[BasicRNNCell-0.0-0.5-1.0-False-float32-1-2-3-4]",
+      "block_id": "CASE_02",
+      "error_type": "ValueError",
+      "action": "adjust_assertion",
+      "note": "TensorFlow dropout_v2不允许rate=1.0，需处理keep_prob=0.0边界情况"
+    },
+    {
+      "test": "test_device_wrapper_device_placement[BasicRNNCell-/cpu:0-float32-1-2-3-4]",
+      "block_id": "CASE_04",
+      "error_type": "TypeError",
+      "action": "rewrite_block",
+      "note": "BasicRNNCell构造函数参数名应为num_units而非units"
+    }
+  ],
+  "deferred": [
+    {
+      "test": "test_dropout_wrapper_probability_boundaries[BasicRNNCell-1.0-0.0-0.0-False-float32-3-1-5-5]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_residual_wrapper_dimension_matching[BasicRNNCell-6-6-float32-2-3]",
+      "reason": "错误类型重复，跳过该块"
+    },
+    {
+      "test": "test_wrapper_serialization_cycle[DropoutWrapper-BasicRNNCell-0.6-0.7-float32-4]",
+      "reason": "错误类型重复，跳过该块"
+    }
+  ],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

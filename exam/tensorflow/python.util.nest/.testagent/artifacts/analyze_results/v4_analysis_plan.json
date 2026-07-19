@@ -1,0 +1,20 @@
+{
+  "status": "未完全通过",
+  "passed": 19,
+  "failed": 1,
+  "errors": 0,
+  "collection_errors": false,
+  "block_limit": 3,
+  "failures": [
+    {
+      "test": "TestAssertSameStructure.test_assert_same_structure[struct13-struct23-False-True-不同长度结构]",
+      "block_id": "CASE_03",
+      "error_type": "AssertionError",
+      "action": "rewrite_block",
+      "note": "测试逻辑错误：对于should_pass=False的用例，在强断言部分不应再次尝试assert_same_structure并期望通过"
+    }
+  ],
+  "deferred": [],
+  "stop_recommended": false,
+  "stop_reason": ""
+}

@@ -1,0 +1,237 @@
+{
+  "plan_version": 2,
+  "target": "tensorflow.python.ops.embedding_ops",
+  "block_rules": {
+    "header_block": "HEADER",
+    "footer_block": "FOOTER",
+    "case_prefix": "CASE_",
+    "case_format": "CASE_01"
+  },
+  "iteration_strategy": {
+    "round1": {
+      "include": "SMOKE_SET",
+      "assert_level": "weak",
+      "max_blocks": 5
+    },
+    "roundN": {
+      "only_fix_failed_blocks": true,
+      "block_limit": 3,
+      "promote_deferred": true
+    },
+    "final": {
+      "enable_strong_asserts": true,
+      "coverage_optional": true
+    }
+  },
+  "test_files": {
+    "default": "tests/test_tensorflow_python_ops_embedding_ops.py",
+    "all_pattern": "tests/test_tensorflow_python_ops_embedding_ops.py"
+  },
+  "cases": [
+    {
+      "tc_id": "TC-01",
+      "block_id": "CASE_01",
+      "name": "embedding_lookup_v2 基本功能验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "embedding_lookup_v2",
+          "params_shape": [5, 3],
+          "ids_shape": [3],
+          "dtype": "float32",
+          "device": "cpu",
+          "max_norm": null,
+          "partition_strategy": "mod"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "values_correct", "no_nan_inf"],
+        "strong": ["exact_values", "gradient_correct", "device_consistent"]
+      },
+      "oracle": "manual_computation",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 70,
+      "max_params": 5,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-02",
+      "block_id": "CASE_02",
+      "name": "embedding_lookup_sparse_v2 组合器验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "embedding_lookup_sparse_v2",
+          "params_shape": [10, 4],
+          "sparse_indices": [[0, 0], [0, 1], [1, 0]],
+          "sparse_values": [1, 3, 0],
+          "combiner": "mean",
+          "dtype": "float32",
+          "device": "cpu",
+          "with_weights": false
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "dtype_match", "combiner_logic", "no_nan_inf"],
+        "strong": ["exact_combiner_values", "weighted_combiner", "gradient_check"]
+      },
+      "oracle": "manual_sparse_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.sparse_ops.sparse_segment_mean",
+        "tensorflow.python.ops.sparse_ops.sparse_segment_sum",
+        "tensorflow.python.ops.sparse_ops.sparse_segment_sqrt_n"
+      ]
+    },
+    {
+      "tc_id": "TC-03",
+      "block_id": "CASE_03",
+      "name": "L2范数裁剪边界条件",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "embedding_lookup_v2",
+          "params_shape": [3, 2],
+          "ids_shape": [2],
+          "dtype": "float32",
+          "device": "cpu",
+          "max_norm": 1.0,
+          "partition_strategy": "mod"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "norm_clipped", "no_nan_inf", "max_norm_respected"],
+        "strong": ["exact_norm_values", "gradient_clipping", "edge_cases"]
+      },
+      "oracle": "manual_norm_clipping",
+      "assertion_level": "weak",
+      "size": "S",
+      "max_lines": 75,
+      "max_params": 6,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.math_ops._clip_by_norm"
+      ]
+    },
+    {
+      "tc_id": "TC-04",
+      "block_id": "CASE_04",
+      "name": "分区策略差异验证",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "embedding_lookup_v2",
+          "params_shape": [8, 3],
+          "ids_shape": [4],
+          "dtype": "float32",
+          "device": "cpu",
+          "max_norm": null,
+          "partition_strategy": "mod",
+          "params_partitions": 2
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "values_consistent", "partition_logic", "no_nan_inf"],
+        "strong": ["exact_partition_values", "mod_vs_div_difference", "large_scale"]
+      },
+      "oracle": "manual_partition_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 80,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": false,
+      "mock_targets": []
+    },
+    {
+      "tc_id": "TC-05",
+      "block_id": "CASE_05",
+      "name": "safe_embedding_lookup_sparse_v2 默认ID处理",
+      "priority": "High",
+      "param_matrix": [
+        {
+          "function": "safe_embedding_lookup_sparse_v2",
+          "params_shape": [5, 3],
+          "sparse_indices": [[0, 0], [0, 1]],
+          "sparse_values": [1, 10],
+          "default_id": 0,
+          "dtype": "float32",
+          "device": "cpu",
+          "combiner": "sum"
+        }
+      ],
+      "asserts": {
+        "weak": ["shape_match", "default_id_handled", "no_crash", "no_nan_inf"],
+        "strong": ["exact_default_values", "invalid_id_handling", "edge_cases"]
+      },
+      "oracle": "manual_safe_computation",
+      "assertion_level": "weak",
+      "size": "M",
+      "max_lines": 85,
+      "max_params": 7,
+      "is_parametrized": true,
+      "requires_mock": true,
+      "mock_targets": [
+        "tensorflow.python.ops.sparse_ops.sparse_segment_sum",
+        "tensorflow.python.ops.array_ops.gather"
+      ]
+    }
+  ],
+  "param_extensions": [
+    {
+      "base_block_id": "CASE_01",
+      "priority": "Medium",
+      "params": {
+        "function": "embedding_lookup_v2",
+        "params_shape": [100, 16],
+        "ids_shape": [10],
+        "dtype": "float64",
+        "device": "cpu",
+        "max_norm": null,
+        "partition_strategy": "div"
+      },
+      "note": "作为参数扩展：更大规模、float64精度、div分区策略"
+    },
+    {
+      "base_block_id": "CASE_02",
+      "priority": "Medium",
+      "params": {
+        "function": "embedding_lookup_sparse_v2",
+        "params_shape": [20, 8],
+        "sparse_indices": [[0, 0], [0, 1], [1, 0], [1, 1]],
+        "sparse_values": [2, 5, 8, 12],
+        "combiner": "sqrtn",
+        "dtype": "float32",
+        "device": "cpu",
+        "with_weights": true,
+        "weights_values": [0.5, 1.0, 2.0, 0.25]
+      },
+      "note": "作为参数扩展：sqrtn组合器、带权重、更多稀疏条目"
+    },
+    {
+      "base_block_id": "CASE_03",
+      "priority": "Medium",
+      "params": {
+        "function": "embedding_lookup_v2",
+        "params_shape": [4, 3],
+        "ids_shape": [3],
+        "dtype": "float16",
+        "device": "cpu",
+        "max_norm": 0.5,
+        "partition_strategy": "mod"
+      },
+      "note": "作为参数扩展：float16精度、更严格的裁剪阈值"
+    }
+  ],
+  "smoke_set": ["CASE_01", "CASE_02", "CASE_03"],
+  "deferred_set": ["CASE_04", "CASE_05"]
+}
