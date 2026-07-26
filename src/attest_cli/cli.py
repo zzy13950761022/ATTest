@@ -186,6 +186,7 @@ def _launch_ascend_workflow(
     resume: bool,
     epochs: int,
     profile: str = "ascend_ut",
+    workers: int = 1,
 ):
     from .workflow import WorkflowEngine
     from .ascend import DEFAULT_ASCEND_SKILL_ROOT, normalize_operator_path
@@ -231,6 +232,7 @@ def _launch_ascend_workflow(
         coverage_mode="single_run",
         enabled_layers=[],
         skill_root=selected_skill_root,
+        workers=workers,
     )
     engine.run(mode=mode)
 
@@ -272,9 +274,10 @@ def run_ascend_ut(
     resume: bool = typer.Option(False, "-r", "--resume", help="Resume the previously interrupted workflow"),
     epoch: int = typer.Option(1, "-e", "--epoch", help="Iteration count in full-auto mode"),
     profile: str = typer.Option("ascend_ut", "--profile", help="Workflow profile: ascend_ut | ascend_ut_continuous"),
+    workers: int = typer.Option(1, "--workers", help="Parallel per-layer generator agents (1=sequential, legacy behaviour)"),
 ):
     """Generate and run Ascend C operator UT in the dedicated Ascend workflow."""
-    _launch_ascend_workflow(op_path, workspace, project_root, soc, skill_root, mode, resume, epoch, profile)
+    _launch_ascend_workflow(op_path, workspace, project_root, soc, skill_root, mode, resume, epoch, profile, workers)
 
 
 if __name__ == "__main__":

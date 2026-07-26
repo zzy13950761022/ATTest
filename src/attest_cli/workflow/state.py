@@ -286,6 +286,7 @@ class WorkflowState:
             "mode": self.mode,
             "epoch_total": self.epoch_total,
             "epoch_current": self.epoch_current,
+            "workers": getattr(self, "workers", 1),
             "last_failure_signature": self.last_failure_signature,
             "last_error_signature": self.last_error_signature,
             "last_block_errors": self.last_block_errors,
@@ -345,6 +346,7 @@ class WorkflowState:
         state.current_stage = data["current_stage"]
         state.stage_index = data["stage_index"]
         state.mode = data["mode"]
+        state.workers = data.get("workers", 1)
         state.target_slug = data.get("target_slug", slugify_target(state.target))
         state.workflow_kind = data.get("workflow_kind", "python")
         state.op_path = data.get("op_path", "")

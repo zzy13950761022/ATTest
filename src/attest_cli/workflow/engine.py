@@ -60,6 +60,7 @@ class WorkflowEngine:
         coverage_mode: str = "single_run",
         enabled_layers: Optional[List[str]] = None,
         skill_root: str = "",
+        workers: int = 1,
     ):
         self.llm = llm
         self.workspace = Path(workspace)
@@ -121,7 +122,9 @@ class WorkflowEngine:
             # load_or_create already set for fresh state; ensure defaults exist for old state files
             self.state.epoch_total = max(1, getattr(self.state, "epoch_total", epochs))
             self.state.epoch_current = max(1, getattr(self.state, "epoch_current", 1))
-        
+        # Parallel workers config (respect persisted value on resume; mirror epoch pattern)
+        self.state.workers = max(1, getattr(self.state, "workers", workers))
+
         # Initialize tool system
         self.tool_registry = build_default_registry()
         self.tool_runner = ToolRunner(self.tool_registry)
@@ -135,6 +138,10 @@ class WorkflowEngine:
         Register all workflow stages.
         """
         self.stages = self.profile.build_stages(self.llm, self.tool_runner)
+        # Inject parallel worker count into the continuous generation loop stage if supported
+        loop_stage = self.stages.get("generate_code")
+        if loop_stage is not None and hasattr(loop_stage, "set_workers"):
+            loop_stage.set_workers(getattr(self.state, "workers", 1))
 
     def _load_analysis_plan(self) -> Optional[Dict[str, Any]]:
         plan_path = self.state.artifacts_dir / "analyze_results" / "current_analysis_plan.json"
@@ -481,10 +488,26 @@ class WorkflowEngine:
                             self.state.advance_stage(self.STAGE_NAMES)
                         elif getattr(self.state, "epoch_current", 1) < getattr(self.state, "epoch_total", 1):
                             self.state.epoch_current += 1
-                            print(
-                                f"\n🔁 Iteration {self.state.epoch_current}/{self.state.epoch_total}: return to the Generate Code stage to continue improving the tests."
+                            # Phase 2: if the reviewer requested planner augmentation
+                            # for plateaued layers, re-enter design_test_plan instead of
+                            # jumping straight back to generation.
+                            _plan = self._load_analysis_plan() or {}
+                            _replan = (
+                                bool(_plan.get("replan_recommended"))
+                                and "design_test_plan" in self.STAGE_NAMES
                             )
-                            self.state.jump_to_stage("generate_code", self.STAGE_NAMES)
+                            if _replan:
+                                _layers = (_plan.get("augment_request") or {}).get("layers", [])
+                                print(
+                                    f"\n🔁 Iteration {self.state.epoch_current}/{self.state.epoch_total}: "
+                                    f"augmenting test plan for layers {_layers} (reviewer requested re-plan)."
+                                )
+                                self.state.jump_to_stage("design_test_plan", self.STAGE_NAMES)
+                            else:
+                                print(
+                                    f"\n🔁 Iteration {self.state.epoch_current}/{self.state.epoch_total}: return to the Generate Code stage to continue improving the tests."
+                                )
+                                self.state.jump_to_stage("generate_code", self.STAGE_NAMES)
                         else:
                             self.state.advance_stage(self.STAGE_NAMES)
                     else:

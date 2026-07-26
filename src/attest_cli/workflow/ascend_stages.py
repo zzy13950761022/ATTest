@@ -4,11 +4,14 @@ Ascend-specific workflow stages.
 from __future__ import annotations
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import copy
 from dataclasses import dataclass
 import json
 import re
 import shlex
 import shutil
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,10 +25,26 @@ from ..block_utils import (
     start_marker,
 )
 from ..config import load_config
-from ..session import append_message
+from ..session import append_message as _raw_append_message
 from ..tools import ToolContext
 from ..utils import ensure_parent
 from .stage import Stage, StageConfig, StageResult
+
+
+# Guards the shared session-history JSONL writes (append_message) when multiple
+# per-layer generator agents run concurrently in the parallel generation path.
+_APPEND_LOCK = threading.Lock()
+
+
+def append_message(*args, **kwargs):
+    """Thread-safe wrapper around session.append_message.
+
+    The parallel generation path runs multiple _run_llm_session loops in worker
+    threads that all append to the same session JSONL; serialize those writes.
+    """
+    with _APPEND_LOCK:
+        return _raw_append_message(*args, **kwargs)
+
 
 
 LAYER_ORDER = {
@@ -1092,6 +1111,118 @@ class AscendTestPlanStage(AscendBaseStage):
             "deferred_set": deferred_set,
         }
 
+    def _llm_augment_cases(
+        self,
+        state,
+        context: Dict[str, Any],
+        augment_request: Dict[str, Any],
+        existing_cases: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Hybrid planning: on a coverage plateau, ask the LLM to design targeted
+        test cases aimed at the specific uncovered branches (from augment_request),
+        instead of re-enumerating generic rule-based cases.
+
+        Returns a list of NEW case dicts (same schema as _build_cases) with fresh
+        CASE_NN / TC-NN ids continuing after the existing rule cases. On any failure
+        it returns [] so the caller falls back to the deterministic plan.
+        """
+        target_layers = [str(l) for l in augment_request.get("layers", [])]
+        uncovered = augment_request.get("uncovered", [])
+        if not target_layers or not uncovered:
+            return []
+
+        # file_id/path map for the plateaued layers so the LLM references real files
+        files = context.get("suggested_files", [])
+        layer_files = [
+            {"file_id": f.get("file_id"), "path": f.get("path"), "layer_id": f.get("layer_id")}
+            for f in files
+            if isinstance(f, dict)
+            and f.get("kind") == "cpp"
+            and str(f.get("layer_id")) in target_layers
+        ]
+        if not layer_files:
+            return []
+
+        # Next block/tc index continues after the rule-generated cases
+        start_idx = len(existing_cases) + 1
+        op_name = context.get("op_name", state.op_name or state.op)
+
+        prompt = f"""You are a test requirement planner for Ascend C++ operator `{op_name}`.
+Coverage has PLATEAUED for layers {target_layers}. Below are the exact uncovered source
+lines (with sample line numbers). Design NEW, TARGETED test cases that would exercise those
+specific branches — not generic dtype/shape enumeration.
+
+## Uncovered code (per layer)
+```json
+{json.dumps(uncovered, ensure_ascii=False, indent=2)[:3500]}
+```
+
+## Files you may target (use these exact file_id / layer_id values)
+```json
+{json.dumps(layer_files, ensure_ascii=False, indent=2)[:1500]}
+```
+
+## Output
+Return ONLY a JSON array (no prose) of 3-8 case objects. Each object MUST have:
+{{"file_id": "<one of the file_ids above>", "layer_id": "<matching layer>",
+  "case_type": "snake_case_short", "priority": "High|Medium|Low",
+  "name": "one-line intent describing which uncovered branch it hits",
+  "inputs": {{"key": "value"}}, "expected": ["assertion or status"]}}
+Focus each case on a concrete uncovered branch above. Wrap the array in ```json ... ```.
+"""
+        try:
+            resp = self.llm.chat([{"role": "user", "content": prompt}])
+            text = getattr(resp, "content", "") or ""
+        except Exception:
+            return []
+
+        raw = self._extract_json_array(text)
+        if not isinstance(raw, list) or not raw:
+            return []
+
+        valid_file_ids = {str(f["file_id"]) for f in layer_files}
+        fid_to_layer = {str(f["file_id"]): str(f["layer_id"]) for f in layer_files}
+        new_cases: List[Dict[str, Any]] = []
+        idx = start_idx
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            fid = str(item.get("file_id", ""))
+            if fid not in valid_file_ids:
+                continue
+            block_id = f"CASE_{idx:02d}"
+            layer_id = fid_to_layer.get(fid, str(item.get("layer_id", "")))
+            case_type = str(item.get("case_type") or "augment")[:40]
+            new_cases.append({
+                "tc_id": f"TC-{idx:02d}",
+                "block_id": block_id,
+                "file_id": fid,
+                "layer_id": layer_id,
+                "case_type": case_type,
+                "priority": item.get("priority") if item.get("priority") in {"High", "Medium", "Low"} else "High",
+                "name": str(item.get("name") or f"augment case for {layer_id}")[:200],
+                "inputs": item.get("inputs") if isinstance(item.get("inputs"), dict) else {},
+                "expected": item.get("expected") if isinstance(item.get("expected"), list) else [],
+                "depends_on": [],
+                "test_name_hint": f"{block_id}_{case_type}",
+                "origin": "llm_augment",
+            })
+            idx += 1
+        return new_cases
+
+    @staticmethod
+    def _extract_json_array(text: str) -> Any:
+        """Extract a JSON array from LLM output (fenced ```json ... ``` or bare)."""
+        m = re.search(r"```json\s*(\[[\s\S]*?\])\s*```", text or "")
+        if not m:
+            m = re.search(r"(\[[\s\S]*\])", text or "")
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(1))
+        except Exception:
+            return None
+
     def execute(self, state) -> StageResult:
         context = _load_json_artifact(state, "operator_context.json")
         provider = self._skill_provider(state)
@@ -1101,7 +1232,34 @@ class AscendTestPlanStage(AscendBaseStage):
         coverage_mode = _coverage_mode(context)
         guidance = provider.get_stage_packet("design_test_plan", generation_mode=generation_mode)
 
+        # Phase 2: when the reviewer requested planner augmentation for plateaued
+        # layers (replan loop), carry the directive into the emitted test plan so
+        # the downstream generator focuses on the named layers' uncovered lines.
+        prev_analysis = _load_json_artifact(state, "analysis_plan.json", default={})
+        augment_request = None
+        if int(getattr(state, "epoch_current", 1) or 1) > 1 and prev_analysis.get("augment_request"):
+            augment_request = prev_analysis.get("augment_request")
+
         case_payload = self._build_cases(state, context)
+
+        # Hybrid planning: on an augment (plateau) re-plan, ask the LLM to design
+        # targeted cases for the uncovered branches and APPEND them to the rule
+        # cases. Falls back to pure rule cases if the LLM call fails.
+        llm_augment_count = 0
+        if augment_request:
+            try:
+                new_cases = self._llm_augment_cases(
+                    state, context, augment_request, case_payload["cases"]
+                )
+            except Exception:
+                new_cases = []
+            if new_cases:
+                case_payload["cases"].extend(new_cases)
+                for c in new_cases:
+                    (case_payload["smoke_set"] if c["priority"] == "High"
+                     else case_payload["deferred_set"]).append(c["block_id"])
+                llm_augment_count = len(new_cases)
+
         files = context.get("suggested_files", [])
         build_plan: Dict[str, Dict[str, str]] = {}
         combined_layers = []
@@ -1160,6 +1318,8 @@ class AscendTestPlanStage(AscendBaseStage):
             "build_plan": build_plan,
             "reference_context": context.get("reference_context", {}),
         }
+        if augment_request:
+            plan["augment_directive"] = augment_request
 
         md_lines = [
             f"# Ascend UT Test Plan - {context.get('op_path', state.target)}",
@@ -1219,10 +1379,11 @@ class AscendTestPlanStage(AscendBaseStage):
 
         state.save_artifact("test_plan.json", plan_json)
         state.save_artifact("test_plan.md", plan_md)
+        augment_note = f" (+{llm_augment_count} LLM-augmented cases)" if llm_augment_count else ""
         return StageResult(
             True,
             {"test_plan.json": plan_json, "test_plan.md": plan_md},
-            message=f"Generated multi-file Ascend test plan with {len(plan['files'])} files and {len(plan['cases'])} cases",
+            message=f"Generated multi-file Ascend test plan with {len(plan['files'])} files and {len(plan['cases'])} cases{augment_note}",
         )
 
 
@@ -3831,6 +3992,35 @@ class AscendAnalysisStage(AscendBaseStage):
             )
         return failures[:6]
 
+    @staticmethod
+    def _augment_uncovered_digest(
+        uncovered_analysis: Optional[Dict[str, Any]],
+        layers: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Compact per-layer uncovered digest for the augment_request handed to the
+        planner. Only includes the plateaued layers; keeps a few sample files/lines
+        so design_test_plan can target new cases without bloating the prompt."""
+        if not uncovered_analysis:
+            return []
+        wanted = {str(l) for l in layers}
+        digest: List[Dict[str, Any]] = []
+        for layer_data in uncovered_analysis.get("layers", []):
+            if str(layer_data.get("layer")) not in wanted:
+                continue
+            digest.append({
+                "layer": layer_data.get("layer"),
+                "total_uncovered": layer_data.get("total_uncovered"),
+                "files": [
+                    {
+                        "source": f.get("source"),
+                        "uncovered_count": f.get("uncovered_count"),
+                        "sample_lines": (f.get("uncovered_lines") or [])[:8],
+                    }
+                    for f in (layer_data.get("files", []) or [])[:5]
+                ],
+            })
+        return digest
+
     def execute(self, state) -> StageResult:
         log_text = str(state.load_artifact("execution_log.txt") or "")
         exit_payload = _parse_exit_payload(state.load_artifact("exit_code.txt"))
@@ -3922,13 +4112,41 @@ class AscendAnalysisStage(AscendBaseStage):
                         analysis["stop_reason"] = "All enabled layers passed and reached the coverage threshold"
                     state.auto_stop_reason = analysis["stop_reason"]
                 elif coverage_progress.get("no_improvement_rounds", 0) >= stop_policy["patience_no_improvement"]:
-                    analysis["stop_recommended"] = True
-                    analysis["stop_reason"] = (
-                        "Enhanced coverage did not improve for "
-                        f"{coverage_progress['no_improvement_rounds']} consecutive rounds; "
-                        "stop at the current best coverage"
-                    )
-                    state.auto_stop_reason = analysis["stop_reason"]
+                    # Phase 2: before giving up on a plateau, try ONE round of
+                    # planner augmentation for layers still below threshold. The
+                    # reviewer (this stage) emits an augment_request that the engine
+                    # routes back to design_test_plan instead of stopping.
+                    prev_plan = _load_json_artifact(state, "analysis_plan.json", default={})
+                    augment_rounds = int(prev_plan.get("augment_rounds", 0) or 0)
+                    MAX_AUGMENT = 1
+                    layer_threshold = _layer_coverage_threshold(plan)
+                    below = [
+                        str(layer)
+                        for layer in plan.get("enabled_layers", [])
+                        if float((coverage.get("per_layer") or {}).get(str(layer), {}).get("line_coverage", 0.0))
+                        < layer_threshold
+                    ]
+                    if augment_rounds < MAX_AUGMENT and below:
+                        analysis["augment_rounds"] = augment_rounds + 1
+                        analysis["replan_recommended"] = True
+                        analysis["augment_request"] = {
+                            "layers": below,
+                            "reason": "coverage plateau",
+                            "uncovered": [],  # backfilled after uncovered_analysis is computed
+                        }
+                        analysis["stop_reason"] = (
+                            f"Coverage plateaued; augmenting test plan for layers {below} "
+                            f"(augment round {augment_rounds + 1}/{MAX_AUGMENT})"
+                        )
+                    else:
+                        analysis["augment_rounds"] = augment_rounds
+                        analysis["stop_recommended"] = True
+                        analysis["stop_reason"] = (
+                            "Enhanced coverage did not improve for "
+                            f"{coverage_progress['no_improvement_rounds']} consecutive rounds; "
+                            "stop at the current best coverage"
+                        )
+                        state.auto_stop_reason = analysis["stop_reason"]
 
         analysis["passed"] = passed
         analysis["failed"] = failed
@@ -3962,6 +4180,12 @@ class AscendAnalysisStage(AscendBaseStage):
                 ],
             }
             state.save_artifact("uncovered_code.json", _render_json(uncovered_analysis))
+        # Phase 2: backfill augment_request uncovered digest now that we have data
+        if analysis.get("augment_request"):
+            below = analysis["augment_request"].get("layers", [])
+            analysis["augment_request"]["uncovered"] = self._augment_uncovered_digest(
+                uncovered_analysis, below
+            )
         analysis_text = _render_json(analysis)
 
         md_lines = [
@@ -4072,6 +4296,11 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
         )
         # Mark this stage as an epoch boundary so engine.py's epoch loop fires on it
         self.is_epoch_boundary = True
+        # Parallel per-layer generator agents (1 = sequential single-session, legacy)
+        self.workers = 1
+
+    def set_workers(self, n: int) -> None:
+        self.workers = max(1, int(n or 1))
 
     # ------------------------------------------------------------------
     # Build commands helpers (reuse AscendBaseStage infrastructure)
@@ -4129,6 +4358,18 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
             pkt = provider.get_stage_packet("generate_code", str(layer), generation_mode=generation_mode)
             if pkt:
                 skill_text += f"\n### Skill [{layer}]\n{pkt}\n"
+
+        augment_text = ""
+        directive = plan.get("augment_directive") or {}
+        if directive:
+            augment_text = (
+                f"\n## ⚠️ AUGMENTATION DIRECTIVE (reviewer flagged layers "
+                f"{directive.get('layers', [])} as plateaued)\n"
+                f"Coverage stalled below threshold for these layers. Focus this epoch on the "
+                f"uncovered lines below — read the source around each, understand the branch, and ADD "
+                f"new TEST_F cases exercising those exact paths. Do NOT rewrite already-passing cases.\n"
+                f"```json\n{json.dumps(directive.get('uncovered', []), ensure_ascii=False, indent=2)[:2500]}\n```\n"
+            )
 
         return f"""You are an Ascend C++ unit-test generation agent with FULL autonomy.
 Epoch {epoch}/{epoch_total}. Operator: {slim_context.get('op_name', '?')}
@@ -4193,6 +4434,7 @@ repeat — until you are satisfied or turns are exhausted.
 {json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
 ```
 {prev_error_context}{case_inventory_context}
+{augment_text}
 {skill_text}
 Begin now. Start with the first file."""
 
@@ -4211,6 +4453,250 @@ Begin now. Start with the first file."""
             except Exception:
                 pass
         return {}
+
+    # ------------------------------------------------------------------
+    # Parallel per-layer generation helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _layer_files(plan: Dict[str, Any], layer: str) -> List[Dict[str, Any]]:
+        """Files belonging to a single layer (excludes cmake scaffolding)."""
+        return [
+            f
+            for f in plan.get("files", [])
+            if isinstance(f, dict)
+            and str(f.get("layer_id", "")) == str(layer)
+            and str(f.get("kind", "")) != "cmake"
+        ]
+
+    def _per_layer_turn_limit(self) -> int:
+        """Split the single-session 300-turn budget across parallel layer agents.
+
+        Keeps the total token/turn budget roughly constant: --workers>1 trades
+        wall-clock for parallelism, not budget.
+        """
+        return max(60, 300 // max(1, self.workers))
+
+    @staticmethod
+    def _isolated_build_prefix(project_root: Path, layer: str, op_name: str) -> str:
+        """Env prefix that pins a layer's LLM-driven compiles to its own build dir.
+
+        In the continuous loop the LLM itself issues exec_command with the compile
+        command, so the framework prefix in _run_for_root never applies. We bake
+        this exact prefix into the command strings shown in the layer prompt.
+        Label matches _collect_parallel_coverage's `generated_{layer}` so the build
+        dir names line up.
+        """
+        label = f"generated_{layer}"
+        build_dir = project_root / f"build_{label}_{op_name}"
+        build_out_dir = project_root / f"build_out_{label}_{op_name}"
+        return (
+            f"BUILD_PATH={shlex.quote(str(build_dir))} "
+            f"BUILD_OUT_PATH={shlex.quote(str(build_out_dir))} "
+        )
+
+    def _build_single_layer_prompt(
+        self,
+        state,
+        plan: Dict[str, Any],
+        layer: str,
+        project_root: Path,
+        slim_context: Dict[str, Any],
+        analysis_plan: Dict[str, Any],
+        prev_error_context: str,
+        case_inventory_context: str,
+        provider,
+        generation_mode: str,
+    ) -> str:
+        """Layer-scoped variant of _build_agent_loop_prompt for one parallel agent.
+
+        Restricts the file list and build commands to a single layer, and bakes the
+        isolated BUILD_PATH prefix into the compile/coverage command strings.
+        """
+        epoch = getattr(state, "epoch_current", 1)
+        epoch_total = getattr(state, "epoch_total", 1)
+        op_name = slim_context.get("op_name", "?")
+        files_info = [
+            f"  - {f.get('path', '?')} (layer={f.get('layer_id','?')}, kind={f.get('kind','?')})"
+            for f in self._layer_files(plan, layer)
+        ]
+        build_prefix = self._isolated_build_prefix(project_root, layer, str(op_name))
+        cmds = (plan.get("build_plan") or {}).get(layer, {})
+        compile_cmd = (cmds.get("compile") or cmds.get("compile_cmd") or "").replace(
+            "{project_root}", str(project_root)
+        )
+        coverage_cmd = (cmds.get("coverage") or cmds.get("coverage_cmd") or "").replace(
+            "{project_root}", str(project_root)
+        )
+        cmd_lines = [f"## Build and coverage commands for layer `{layer}`\n"]
+        if compile_cmd:
+            cmd_lines.append(f"**compile+run:**  `{build_prefix}{compile_cmd}`")
+        if coverage_cmd:
+            cmd_lines.append(f"**coverage:**     `{build_prefix}{coverage_cmd}`")
+        cmd_section = "\n".join(cmd_lines) + "\n"
+
+        pkt = provider.get_stage_packet("generate_code", str(layer), generation_mode=generation_mode)
+        skill_text = f"\n### Skill [{layer}]\n{pkt}\n" if pkt else ""
+
+        augment_text = ""
+        directive = plan.get("augment_directive") or {}
+        if directive and str(layer) in [str(l) for l in directive.get("layers", [])]:
+            uncovered = [u for u in directive.get("uncovered", []) if str(u.get("layer")) == str(layer)]
+            augment_text = (
+                f"\n## ⚠️ AUGMENTATION DIRECTIVE (reviewer flagged `{layer}` as plateaued)\n"
+                f"Coverage stalled below threshold. Focus this epoch on the uncovered lines below — "
+                f"read the source around each, understand the branch, and ADD new TEST_F cases that "
+                f"exercise those exact paths. Do NOT rewrite already-passing cases.\n"
+                f"```json\n{json.dumps(uncovered, ensure_ascii=False, indent=2)[:2500]}\n```\n"
+            )
+
+        return f"""You are an Ascend C++ unit-test generation agent with FULL autonomy.
+Epoch {epoch}/{epoch_total}. Operator: {op_name}. **You own ONLY the `{layer}` layer.**
+
+## Your mission
+Generate thorough GTest unit-tests that maximise LINE coverage of the `{layer}` source code.
+Work only on the files listed below. Another agent owns the other layer(s) concurrently —
+do NOT touch files outside your layer. Write code, compile, run, check coverage, fill gaps,
+repeat — until you are satisfied or turns are exhausted.
+
+## Files to write (project root: {project_root})
+{chr(10).join(files_info)}
+
+{cmd_section}
+## CRITICAL: isolated build directory
+Always run the compile/coverage command with the EXACT `BUILD_PATH=... BUILD_OUT_PATH=...`
+prefix shown above. NEVER change BUILD_PATH or run a bare `bash build.sh` — a parallel agent
+is compiling the other layer, and a shared build directory would corrupt both builds.
+
+## Mandatory workflow (loop until coverage stabilises or turns run out)
+1. For each file: read the current block index, fill every placeholder block with meaningful
+   test cases (write_file for first ~100 lines, then append_to_file for the rest).
+2. Immediately compile+run with the prefixed command above. If compile fails: read the error →
+   read the API source → fix → recompile. Do NOT move on until tests run cleanly.
+3. Run coverage (prefixed command), read the output, identify uncovered lines, add TEST_F cases
+   that exercise those paths. Recompile. Repeat until coverage plateaus or <20 turns remain.
+4. At the very end, output a JSON block (```json ... ```) with this schema:
+```json
+{{
+  "status": "success" | "partial" | "compile_failed",
+  "coverage_per_layer": {{"{layer}": 0.0}},
+  "failures": [],
+  "stop_reason": "coverage_plateau | turns_exhausted | compile_error"
+}}
+```
+
+## Key rules
+- NEVER guess an API signature. Always read_file / grep the implementation first.
+- Keep every test traceable to its BLOCK_ID marker.
+- Do NOT regenerate already-filled blocks unless improving them.
+- Each exec_command output is your ground-truth.
+
+## Operator context
+```json
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:2000]}
+```
+
+## Prior analysis plan (from previous epoch, if any)
+```json
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
+```
+{prev_error_context}{case_inventory_context}
+{augment_text}
+{skill_text}
+Begin now. Start with the first file of the `{layer}` layer."""
+
+    def _run_layer_session(
+        self,
+        state,
+        plan: Dict[str, Any],
+        layer: str,
+        project_root: Path,
+        slim_context: Dict[str, Any],
+        analysis_plan: Dict[str, Any],
+        prev_error_context: str,
+        case_inventory_context: str,
+        provider,
+        generation_mode: str,
+    ):
+        """Worker body run in a thread: one layer-scoped LLM generation session.
+
+        Never calls save_artifact and never patches build.sh — only generates.
+        """
+        prompt = self._build_single_layer_prompt(
+            state, plan, layer, project_root, slim_context, analysis_plan,
+            prev_error_context, case_inventory_context, provider, generation_mode,
+        )
+        res = self._run_llm_session(
+            state, prompt, project_root, turn_limit=self._per_layer_turn_limit()
+        )
+        return layer, res, self._parse_agent_summary(res.message or "")
+
+    def _collect_parallel_coverage(
+        self,
+        state,
+        plan: Dict[str, Any],
+        project_root: Path,
+        enabled_layers: List[str],
+    ) -> Dict[str, Any]:
+        """After parallel generation, run per-layer coverage builds SEQUENTIALLY
+        on the main thread and merge into one coverage_summary.json.
+
+        Serializing the coverage builds avoids the build.sh patch/restore race;
+        each layer still compiles into its own isolated build dir (label
+        `generated_{layer}`), matching the BUILD_PATH baked into the layer prompt.
+        """
+        exec_stage = AscendExecutionStage(self.llm, self.tool_runner)
+        merged_per_layer: Dict[str, Dict[str, Any]] = {}
+        logs: List[str] = []
+        exit_code = 0
+        for layer in enabled_layers:
+            plan_slice = copy.deepcopy(plan)
+            plan_slice["enabled_layers"] = [layer]
+            bp = plan_slice.get("build_plan") or {}
+            plan_slice["build_plan"] = {
+                k: v for k, v in bp.items() if k == layer or k == "_combined"
+            }
+            # Drop _combined so only this single layer's command runs
+            plan_slice["build_plan"].pop("_combined", None)
+            try:
+                run = exec_stage._run_for_root(
+                    plan_slice, project_root, use_coverage=True,
+                    label=f"generated_{layer}", state_obj=state,
+                )
+                layer_summary = (run.get("summary") or {}).get("per_layer", {}).get(str(layer))
+                if layer_summary is not None:
+                    merged_per_layer[str(layer)] = layer_summary
+                logs.append(run.get("log_text", ""))
+                if int(run.get("exit_code", 0)) != 0:
+                    exit_code = 1
+            except Exception as exc:  # per-layer failure must not sink the other layer
+                merged_per_layer[str(layer)] = exec_stage._default_layer_summary(
+                    threshold=_layer_coverage_threshold(plan),
+                    coverage_valid=False,
+                    error_reason=f"parallel coverage build failed: {exc}",
+                )
+                logs.append(f"=== generated_{layer} coverage build raised: {exc} ===")
+                exit_code = 1
+
+        summary = exec_stage._build_run_summary(plan, project_root, merged_per_layer, exit_code)
+        combined_log = "\n\n".join(l for l in logs if l).strip()
+        exit_payload = {"overall": int(exit_code)}
+        coverage_text = _render_json(summary)
+        state.save_artifact("execution_log.txt", combined_log)
+        state.save_artifact("exit_code.txt", _render_json(exit_payload))
+        state.save_artifact("coverage_summary.json", coverage_text)
+        prev_epoch_content = _extract_execution_summary(combined_log, max_chars=8000)
+        state.save_artifact("prev_epoch_error_log.txt", prev_epoch_content)
+        return {
+            "summary": summary,
+            "coverage_summary.json": coverage_text,
+            "execution_log.txt": combined_log,
+            "exit_code.txt": _render_json(exit_payload),
+        }
+
+    def _default_layer_summary(self, *args, **kwargs):
+        """Delegate to AscendExecutionStage's helper for consistent schema."""
+        return AscendExecutionStage._default_layer_summary(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # LLM session helpers (copied from AscendCodeGenStage)
@@ -4488,40 +4974,113 @@ Begin now. Start with the first file."""
         }
         slim_context = {k: v for k, v in slim_context.items() if v is not None}
 
-        prompt = self._build_agent_loop_prompt(
-            state, plan, context, project_root, slim_context, analysis_plan,
-            prev_error_context, case_inventory_context,
-            provider, generation_mode, coverage_mode,
-        )
-
-        stage_result = self._run_llm_session(state, prompt, project_root, turn_limit=300)
-        llm_text = stage_result.message or ""
-        agent_summary = self._parse_agent_summary(llm_text)
-
-        # ------------------------------------------------------------------
-        # Save generation_manifest.json (record all files as updated)
-        # ------------------------------------------------------------------
-        manifest = [
-            {
-                "file_id": str(f.get("file_id", "")),
-                "path": f.get("path", ""),
-                "action": "updated",
-                "target_blocks": ["ALL"],
-            }
-            for f in plan.get("files", [])
-            if isinstance(f, dict)
+        # Layers that actually have files to generate
+        enabled_layers = [
+            l for l in plan.get("enabled_layers", []) if self._layer_files(plan, l)
         ]
-        manifest_text = _render_json({"files": manifest, "project_root": str(project_root)})
-        state.save_artifact("generation_manifest.json", manifest_text)
+        use_parallel = self.workers > 1 and len(enabled_layers) > 1
+
+        if not use_parallel:
+            # ----- Legacy single-session path (unchanged, backward compatible) -----
+            prompt = self._build_agent_loop_prompt(
+                state, plan, context, project_root, slim_context, analysis_plan,
+                prev_error_context, case_inventory_context,
+                provider, generation_mode, coverage_mode,
+            )
+            stage_result = self._run_llm_session(state, prompt, project_root, turn_limit=300)
+
+            manifest = [
+                {
+                    "file_id": str(f.get("file_id", "")),
+                    "path": f.get("path", ""),
+                    "action": "updated",
+                    "target_blocks": ["ALL"],
+                }
+                for f in plan.get("files", [])
+                if isinstance(f, dict)
+            ]
+            manifest_text = _render_json({"files": manifest, "project_root": str(project_root)})
+            state.save_artifact("generation_manifest.json", manifest_text)
+
+            exec_stage = AscendExecutionStage(self.llm, self.tool_runner)
+            exec_result = exec_stage.execute(state)
+            gen_success = stage_result.success
+            exec_outputs = exec_result.outputs or {}
+            exec_ok = exec_result.success
+        else:
+            # ----- Parallel per-layer generation path -----
+            print(f"\n  ⚡ Parallel generation: {len(enabled_layers)} layer agents "
+                  f"({', '.join(enabled_layers)}), workers={self.workers}")
+            build_sh_path = project_root / "build.sh"
+            build_sh_backup: Optional[Path] = None
+            build_sh_patched = False
+            # Patch build.sh ONCE up-front on the main thread; worker threads never
+            # touch it. This eliminates the patch/restore race under parallelism.
+            if build_sh_path.exists():
+                build_sh_backup = build_sh_path.with_suffix(".sh.parallel.bak")
+                shutil.copy2(build_sh_path, build_sh_backup)
+                _patch_build_sh_for_isolation(project_root)
+                build_sh_patched = True
+                _ensure_cann_cmake_available(project_root)
+
+            gen_success = False
+            layer_summaries: Dict[str, Any] = {}
+            try:
+                with ThreadPoolExecutor(max_workers=min(self.workers, len(enabled_layers))) as pool:
+                    futures = {
+                        pool.submit(
+                            self._run_layer_session,
+                            state, plan, layer, project_root, slim_context,
+                            analysis_plan, prev_error_context, case_inventory_context,
+                            provider, generation_mode,
+                        ): layer
+                        for layer in enabled_layers
+                    }
+                    for fut in as_completed(futures):
+                        layer = futures[fut]
+                        try:
+                            _layer, res, summ = fut.result()
+                            layer_summaries[_layer] = summ
+                            if res.success:
+                                gen_success = True
+                            print(f"  ✓ layer `{_layer}` generation session done "
+                                  f"(success={res.success})")
+                        except Exception as exc:
+                            print(f"  ✗ layer `{layer}` generation raised: {exc}")
+
+                # Manifest (main thread)
+                manifest = [
+                    {
+                        "file_id": str(f.get("file_id", "")),
+                        "path": f.get("path", ""),
+                        "action": "updated",
+                        "target_blocks": ["ALL"],
+                    }
+                    for f in plan.get("files", [])
+                    if isinstance(f, dict)
+                ]
+                manifest_text = _render_json({"files": manifest, "project_root": str(project_root)})
+                state.save_artifact("generation_manifest.json", manifest_text)
+
+                # Per-layer coverage builds run SEQUENTIALLY on the main thread
+                cov = self._collect_parallel_coverage(state, plan, project_root, enabled_layers)
+                exec_outputs = {
+                    "execution_log.txt": cov["execution_log.txt"],
+                    "exit_code.txt": cov["exit_code.txt"],
+                    "coverage_summary.json": cov["coverage_summary.json"],
+                }
+                exec_ok = bool((cov.get("summary") or {}).get("coverage_valid", False))
+            finally:
+                # Always restore build.sh (crash-safe), mirroring _run_for_root finally
+                if build_sh_patched and build_sh_backup and build_sh_backup.exists():
+                    try:
+                        shutil.copy2(build_sh_backup, build_sh_path)
+                        build_sh_backup.unlink()
+                    except Exception as exc:
+                        print(f"  ⚠️  failed to restore build.sh: {exc}")
 
         # ------------------------------------------------------------------
-        # Run build + coverage collection (reuse ExecutionStage logic)
-        # ------------------------------------------------------------------
-        exec_stage = AscendExecutionStage(self.llm, self.tool_runner)
-        exec_result = exec_stage.execute(state)
-
-        # ------------------------------------------------------------------
-        # Run analysis (reuse AnalysisStage logic)
+        # Run analysis (reuse AnalysisStage logic) — same for both paths
         # ------------------------------------------------------------------
         analysis_stage = AscendAnalysisStage(self.llm, self.tool_runner)
         analysis_result = analysis_stage.execute(state)
@@ -4529,11 +5088,10 @@ Begin now. Start with the first file."""
         # ------------------------------------------------------------------
         # Return combined result
         # ------------------------------------------------------------------
-        success = stage_result.success or exec_result.success
+        success = gen_success or exec_ok
         combined_outputs: Dict[str, Any] = {}
-        combined_outputs.update(stage_result.outputs or {})
         combined_outputs["generation_manifest.json"] = manifest_text
-        combined_outputs.update(exec_result.outputs or {})
+        combined_outputs.update(exec_outputs or {})
         combined_outputs.update(analysis_result.outputs or {})
 
         cov_summary = _load_json_artifact(state, "coverage_summary.json", default={})
