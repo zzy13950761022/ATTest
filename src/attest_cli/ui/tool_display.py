@@ -3,6 +3,7 @@ Tool call display components with rich formatting.
 """
 import time
 from typing import Dict, Any, Optional
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -62,13 +63,14 @@ class ToolCallDisplay:
         
         if success:
             status = f"[green]✓ Success[/green] [dim]({duration:.2f}s)[/dim]"
-            # Truncate output to 1-2 lines preview
-            preview = self._truncate_output(output)
+            # Truncate output to 1-2 lines preview (escape to avoid rich markup parsing
+            # user-generated output that may contain literal '[' / ']', e.g. paths or arrays)
+            preview = escape(self._truncate_output(output))
             content = f"{status}\n{preview}" if preview else status
             border_style = "green"
         else:
             status = f"[red]✗ Failed[/red] [dim]({duration:.2f}s)[/dim]"
-            error_text = self._truncate_output(error or "Unknown error")
+            error_text = escape(self._truncate_output(error or "Unknown error"))
             content = f"{status}\n[red]{error_text}[/red]"
             border_style = "red"
         
@@ -100,14 +102,16 @@ class ToolCallDisplay:
         
         lines = []
         for key, value in params.items():
-            # Truncate long string values
+            # Truncate long string values (escape literal brackets so paths
+            # like '[/path/...]' are not parsed as rich markup).
             if isinstance(value, str):
+                esc_value = escape(value)
                 if len(value) > 60:
-                    display_value = f'"{value[:57]}..."'
+                    display_value = f'"{esc_value[:57]}..."'
                     char_count = f" [dim]({len(value)} chars)[/dim]"
                     lines.append(f"[cyan]{key}:[/cyan] {display_value}{char_count}")
                 else:
-                    lines.append(f"[cyan]{key}:[/cyan] \"{value}\"")
+                    lines.append(f"[cyan]{key}:[/cyan] \"{esc_value}\"")
             elif isinstance(value, (list, dict)):
                 # Show type and length for collections
                 type_name = type(value).__name__
@@ -149,7 +153,7 @@ class ToolCallDisplay:
         # Add ellipsis if we truncated lines
         total_lines = len(output.split('\n'))
         if total_lines > max_lines:
-            result += f"\n[dim]... ({total_lines - max_lines} more lines)[/dim]"
+            result += f"\n... ({total_lines - max_lines} more lines)"
         
         return result
 

@@ -185,6 +185,7 @@ def _launch_ascend_workflow(
     mode: str,
     resume: bool,
     epochs: int,
+    profile: str = "ascend_ut",
 ):
     from .workflow import WorkflowEngine
     from .ascend import DEFAULT_ASCEND_SKILL_ROOT, normalize_operator_path
@@ -221,7 +222,7 @@ def _launch_ascend_workflow(
         target=normalized["canonical_op_path"],
         resume=resume,
         epochs=epochs,
-        workflow_kind="ascend_ut",
+        workflow_kind=profile,
         op_path=normalized["canonical_op_path"],
         repo_name=normalized["repo_name"],
         category=normalized["category"],
@@ -270,9 +271,10 @@ def run_ascend_ut(
     mode: str = typer.Option("interactive", "-m", "--mode", help="Mode: `interactive` | `full-auto`"),
     resume: bool = typer.Option(False, "-r", "--resume", help="Resume the previously interrupted workflow"),
     epoch: int = typer.Option(1, "-e", "--epoch", help="Iteration count in full-auto mode"),
+    profile: str = typer.Option("ascend_ut", "--profile", help="Workflow profile: ascend_ut | ascend_ut_continuous"),
 ):
     """Generate and run Ascend C operator UT in the dedicated Ascend workflow."""
-    _launch_ascend_workflow(op_path, workspace, project_root, soc, skill_root, mode, resume, epoch)
+    _launch_ascend_workflow(op_path, workspace, project_root, soc, skill_root, mode, resume, epoch, profile)
 
 
 if __name__ == "__main__":

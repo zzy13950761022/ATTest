@@ -4,6 +4,7 @@ Deterministic repository inspection helpers for Ascend operator UT generation.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -457,7 +458,11 @@ def inspect_ascend_operator(
     enabled_layers = [name for name, meta in layers.items() if meta["exists"] and meta.get("comparable")]
     existing_ut, existing_ut_files, existing_ut_by_layer = _detect_existing_ut(op_dir, layers)
     generation_mode = "ut_enhance" if existing_ut else "ut_generate"
-    coverage_mode = "before_after_compare" if existing_ut else "single_run"
+    _force_cov = os.environ.get("ATTEST_FORCE_COVERAGE_MODE")
+    coverage_mode = (
+        _force_cov if _force_cov in ("single_run", "before_after_compare")
+        else ("before_after_compare" if existing_ut else "single_run")
+    )
     excluded_layers = [name for name, meta in layers.items() if meta["exists"] and not meta.get("comparable")]
     is_aclnn_exclude = _detect_aclnn_exclude(op_dir)
 
