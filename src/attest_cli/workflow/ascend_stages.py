@@ -422,8 +422,6 @@ def _operator_source_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
         return [
             f"{root}/op_host/*",
             f"{root}/op_host/op_api/*",
-            "*/third_party/opbase/src/op_common/op_host/infershape_broadcast_util.*",
-            "*/third_party/opbase/include/op_common/op_host/infershape_broadcast_util.*",
         ]
     if layer == "op_api":
         return [f"{root}/op_api/*", f"{root}/op_host/op_api/*"]
@@ -1430,9 +1428,13 @@ class AscendCodeGenStage(AscendBaseStage):
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
+        is_cmake = str(file_entry.get("kind")) == "cmake"
+
+        if is_cmake and not path.exists():
+            return False
 
         if path.exists():
-            if str(file_entry.get("kind")) != "cmake":
+            if not is_cmake:
                 return False
             existing_blocks = build_block_entries(path)
             if existing_blocks:
@@ -4516,10 +4518,22 @@ Begin now. Start with the first file."""
         epoch = getattr(state, "epoch_current", 1)
         epoch_total = getattr(state, "epoch_total", 1)
         op_name = slim_context.get("op_name", "?")
+        cpp_files = self._layer_files(plan, layer)
         files_info = [
             f"  - {f.get('path', '?')} (layer={f.get('layer_id','?')}, kind={f.get('kind','?')})"
-            for f in self._layer_files(plan, layer)
+            for f in cpp_files
         ]
+        cmake_file = next(
+            (f for f in plan.get("files", [])
+             if isinstance(f, dict)
+             and str(f.get("layer_id", "")) == str(layer)
+             and str(f.get("kind", "")) == "cmake"),
+            None,
+        )
+        if cmake_file and (project_root / str(cmake_file.get("path", ""))).exists():
+            files_info.append(
+                f"  - {cmake_file.get('path', '?')} (layer={layer}, kind=cmake) [BUILD REGISTRATION — see Rule 15]"
+            )
         build_prefix = self._isolated_build_prefix(project_root, layer, str(op_name))
         cmds = (plan.get("build_plan") or {}).get(layer, {})
         compile_cmd = (cmds.get("compile") or cmds.get("compile_cmd") or "").replace(
@@ -4590,6 +4604,8 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 - Keep every test traceable to its BLOCK_ID marker.
 - Do NOT regenerate already-filled blocks unless improving them.
 - Each exec_command output is your ground-truth.
+- **CRITICAL — CMakeLists.txt registration (Rule 15):** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your `*_attest.cpp` files already match these patterns and will be picked up automatically. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update its FOOTER block to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
+- NEVER rewrite an existing `CMakeLists.txt` HEADER block — it contains framework-required preamble. Only touch the FOOTER block to add source registration lines if needed.
 
 ## Operator context
 ```json
@@ -4656,8 +4672,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
             plan_slice["build_plan"] = {
                 k: v for k, v in bp.items() if k == layer or k == "_combined"
             }
-            # Drop _combined so only this single layer's command runs
-            plan_slice["build_plan"].pop("_combined", None)
+            # Keep _combined: the combined coverage command builds both layers
+            # together, ensuring CANN runtime libraries link properly (op_api
+            # depends on symbols from op_host build). Per-layer coverage is
+            # extracted from the combined build output.
             try:
                 run = exec_stage._run_for_root(
                     plan_slice, project_root, use_coverage=True,
@@ -4870,9 +4888,13 @@ Begin now. Start with the first file of the `{layer}` layer."""
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
+        is_cmake = str(file_entry.get("kind")) == "cmake"
+
+        if is_cmake and not path.exists():
+            return False
 
         if path.exists():
-            if str(file_entry.get("kind")) != "cmake":
+            if not is_cmake:
                 return False
             existing_blocks = build_block_entries(path)
             if existing_blocks:
@@ -4915,6 +4937,51 @@ Begin now. Start with the first file of the `{layer}` layer."""
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
         return True
+
+    def _ensure_cmake_attest_registration(
+        self,
+        project_root: Path,
+        file_entry: Dict[str, Any],
+    ) -> None:
+        file_path = str(file_entry.get("path", ""))
+        if not file_path.endswith("_attest.cpp"):
+            return
+        layer_id = str(file_entry.get("layer_id", ""))
+        cpp_name = Path(file_path).name
+        cmake_path = project_root / str(Path(file_path).parent / "CMakeLists.txt")
+        if not cmake_path.exists():
+            return
+        content = cmake_path.read_text(encoding="utf-8")
+        if cpp_name in content:
+            return
+        lines = content.splitlines()
+        insert_idx = None
+        footer_end_marker = "# ==== BLOCK:FOOTER END ===="
+        for i, line in enumerate(lines):
+            if footer_end_marker in line:
+                insert_idx = i
+                break
+        if insert_idx is None:
+            return
+        if layer_id == "op_api":
+            reg_lines = [
+                f"set(OP_API_TEST_SOURCES",
+                f"    {cpp_name}",
+                f")",
+                "",
+                f"if(DEFINED OP_API_MODULE_NAME)",
+                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT ${{OP_API_TEST_SOURCES}})",
+                f"endif()",
+            ]
+        else:
+            reg_lines = [
+                f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"endif()",
+            ]
+        new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
+        cmake_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
     # ------------------------------------------------------------------
     # execute()
@@ -5023,6 +5090,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 build_sh_patched = True
                 _ensure_cann_cmake_available(project_root)
 
+            for file_entry in _ordered_files(plan):
+                if str(file_entry.get("kind", "")) != "cmake":
+                    self._ensure_cmake_attest_registration(project_root, file_entry)
+
             gen_success = False
             layer_summaries: Dict[str, Any] = {}
             try:
@@ -5047,6 +5118,13 @@ Begin now. Start with the first file of the `{layer}` layer."""
                                   f"(success={res.success})")
                         except Exception as exc:
                             print(f"  ✗ layer `{layer}` generation raised: {exc}")
+
+                # CMake registration safety net (main thread) — ensures every
+                # *_attest.cpp is registered in its parent CMakeLists.txt FOOTER,
+                # even if the LLM agent forgot or wrote incorrect registration.
+                for file_entry in _ordered_files(plan):
+                    if str(file_entry.get("kind", "")) != "cmake":
+                        self._ensure_cmake_attest_registration(project_root, file_entry)
 
                 # Manifest (main thread)
                 manifest = [
