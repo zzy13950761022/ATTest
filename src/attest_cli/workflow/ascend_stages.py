@@ -421,7 +421,6 @@ def _operator_source_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
     if layer == "op_host":
         return [
             f"{root}/op_host/*",
-            f"{root}/op_host/op_api/*",
         ]
     if layer == "op_api":
         return [f"{root}/op_api/*", f"{root}/op_host/op_api/*"]
@@ -429,6 +428,14 @@ def _operator_source_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
 
 
 def _operator_remove_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
+    category = str(meta.get("category") or "")
+    op_name = str(meta.get("op_name") or "")
+    if not category or not op_name:
+        return []
+
+    root = f"*/{category}/{op_name}"
+    if layer == "op_host":
+        return [f"{root}/op_host/op_api/*"]
     return []
 
 
@@ -3273,18 +3280,6 @@ class AscendExecutionStage(AscendBaseStage):
                         operator_lcov_error,
                     ) = self._extract_operator_lcov_coverage(ctx, plan, str(layer), build_dir=build_dir)
                     
-                    # Plan B: For op_host, if coverage is 0% or missing, try opbase shared utilities
-                    # This handles operators that only do macro registration (e.g., div/mod/floor_div)
-                    if str(layer) == "op_host" and (layer_value is None or layer_value == 0.0):
-                        opbase_line, opbase_func = self._extract_opbase_shared_coverage(ctx, build_dir=build_dir)
-                        if opbase_line is not None and opbase_line > 0:
-                            layer_value = opbase_line
-                            function_value = opbase_func
-                            branch_value = None
-                            operator_lcov_valid = True
-                            operator_lcov_error = None
-                            operator_lcov_output = f"opbase shared utilities coverage: {opbase_line}% lines, {opbase_func}% functions"
-                            logs.append(f"=== {label} {layer} opbase shared coverage merged ===")
                     
                     if layer_value is not None:
                         layer_source = "operator_lcov"
