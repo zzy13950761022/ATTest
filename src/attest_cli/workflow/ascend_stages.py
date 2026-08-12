@@ -555,6 +555,48 @@ def _llm_project_root(state, context: Dict[str, Any]) -> Path:
     return Path(state.project_root)
 
 
+def _read_file_truncated(path: Path, max_chars: int) -> str:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, IOError):
+        return ""
+    total = len(text)
+    text = re.sub(r"^\s*(?:/\*.*?\*/|//.*?(?:\n|$))+", "", text, count=1, flags=re.DOTALL)
+    text = text.lstrip()
+    if len(text) > max_chars:
+        return text[:max_chars] + f"\n... [truncated, total {total} chars]"
+    return text
+
+
+def _read_op_source_code(operator_dir: Path, op_name: str) -> Dict[str, str]:
+    result: Dict[str, str] = {}
+    if not operator_dir.exists():
+        return result
+    name_lower = op_name.lower()
+    op_host = operator_dir / "op_host"
+    op_api = operator_dir / "op_api"
+    for candidate in [
+        op_host / f"{name_lower}_def.cpp",
+    ]:
+        if candidate.exists():
+            result["op_host_def"] = _read_file_truncated(candidate, 800)
+            break
+    for candidate in [
+        op_host / f"{name_lower}_infershape.cpp",
+    ]:
+        if candidate.exists():
+            result["op_host_infershape"] = _read_file_truncated(candidate, 700)
+            break
+    for candidate in [
+        op_api / f"{name_lower}.h",
+        op_api / f"aclnn_{name_lower}.h",
+    ]:
+        if candidate.exists():
+            result["op_api_header"] = _read_file_truncated(candidate, 900)
+            break
+    return {k: v for k, v in result.items() if v}
+
+
 def _parse_exit_payload(raw_value: Any) -> Dict[str, int]:
     if isinstance(raw_value, dict):
         return {str(key): int(value) for key, value in raw_value.items()}
@@ -1880,7 +1922,7 @@ NOTE: build.sh compiles AND runs tests automatically — no `--run` flag needed.
 
 Operator context:
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:1500]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4000]}
 ```
 
 {_build_ws_sig_section(layer_id, slim_context)}
@@ -2101,6 +2143,12 @@ Complete all files now, then compile and verify."""
             "build_commands": prompt_context.get("build_commands", {}),
             "workspace_signatures": prompt_context.get("workspace_signatures", []),
         }
+        slim_context.update(
+            _read_op_source_code(
+                Path(prompt_context.get("operator_dir", "")),
+                str(prompt_context.get("op_name", "")),
+            )
+        )
         slim_context = {k: v for k, v in slim_context.items() if v is not None}
 
         uncovered_for_layer: Dict[str, Dict[str, Any]] = {}
@@ -2582,7 +2630,7 @@ Mode guidance:
 
 Operator context:
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:1500]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4000]}
 ```
 
 {_build_ws_sig_section(str(file_entry['layer_id']), slim_context)}
@@ -4489,7 +4537,7 @@ repeat — until you are satisfied or turns are exhausted.
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:2000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4500]}
 ```
 
 ## Test plan (files + cases)
@@ -4675,7 +4723,7 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:2000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4500]}
 ```
 
 ## Prior analysis plan (from previous epoch, if any)
@@ -5160,6 +5208,12 @@ Begin now. Start with the first file of the `{layer}` layer."""
             "build_commands": context.get("build_commands", {}),
             "workspace_signatures": context.get("workspace_signatures", []),
         }
+        slim_context.update(
+            _read_op_source_code(
+                Path(context.get("operator_dir", "")),
+                str(context.get("op_name", "")),
+            )
+        )
         slim_context = {k: v for k, v in slim_context.items() if v is not None}
 
         # Layers that actually have files to generate
