@@ -1426,9 +1426,8 @@ class AscendCodeGenStage(AscendBaseStage):
         source_git = source_root / ".git"
         target_git = target_root / ".git"
         if target_root.exists():
-            if _is_enhance_mode(context):
+            if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
                 shutil.rmtree(target_root)
-                target_git = target_root / ".git"
             else:
                 _patch_build_sh_for_isolation(target_root)
                 return target_root
@@ -4932,9 +4931,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
         source_git = source_root / ".git"
         target_git = target_root / ".git"
         if target_root.exists():
-            if _is_enhance_mode(context):
+            if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
                 shutil.rmtree(target_root)
-                target_git = target_root / ".git"
             else:
                 _patch_build_sh_for_isolation(target_root)
                 return target_root
