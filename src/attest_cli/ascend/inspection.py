@@ -113,6 +113,29 @@ def _detect_aclnn_exclude(op_dir: Path) -> bool:
     return False
 
 
+def _detect_tiling_only(op_dir: Path) -> bool:
+    op_host_dir = op_dir / "op_host"
+    if not op_host_dir.exists():
+        return False
+    src_files = [p.name for p in op_host_dir.rglob("*.cpp")]
+    has_tiling = any("tiling" in name for name in src_files)
+    has_infershape = any("infershape" in name for name in src_files)
+    op_api_subdir_srcs = [
+        p.name for p in (op_host_dir / "op_api").rglob("*.cpp")
+    ] if (op_host_dir / "op_api").exists() else []
+    non_tiling_non_infershape = [
+        name for name in src_files
+        if "tiling" not in name
+        and "infershape" not in name
+        and name not in op_api_subdir_srcs
+        and not name.startswith("op_")
+        and not name.endswith("_def.cpp")
+    ]
+    if non_tiling_non_infershape:
+        return False
+    return has_tiling and not has_infershape
+
+
 def _detect_layers(op_dir: Path) -> Dict[str, Dict[str, Any]]:
     layers: Dict[str, Dict[str, Any]] = {}
 
@@ -353,6 +376,7 @@ def _suggested_files(
     generation_mode: str,
     existing_ut_by_layer: Optional[Dict[str, List[str]]] = None,
     is_aclnn_exclude: bool = False,
+    is_tiling_only: bool = False,
 ) -> List[Dict[str, Any]]:
     files: List[Dict[str, Any]] = []
     next_index = 1
@@ -376,9 +400,10 @@ def _suggested_files(
     if generation_mode == "ut_generate":
         if "op_host" in enabled_layers:
             add("op_host", "cmake", f"{category}/{op_name}/tests/ut/op_host/CMakeLists.txt", "#")
-            if not is_aclnn_exclude:
+            if not is_aclnn_exclude or is_tiling_only:
                 add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_tiling.cpp", "//")
-            add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_infershape.cpp", "//")
+            if not is_tiling_only:
+                add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_infershape.cpp", "//")
         if "op_api" in enabled_layers:
             add("op_api", "cmake", f"{category}/{op_name}/tests/ut/op_api/CMakeLists.txt", "#")
             add("op_api", "cpp", f"{category}/{op_name}/tests/ut/op_api/test_aclnn_{op_name}.cpp", "//")
@@ -387,7 +412,7 @@ def _suggested_files(
     if "op_host" in enabled_layers:
         op_host_existing = existing_ut_by_layer.get("op_host", [])
         add("op_host", "cmake", f"{category}/{op_name}/tests/ut/op_host/CMakeLists.txt", "#")
-        if not is_aclnn_exclude:
+        if not is_aclnn_exclude or is_tiling_only:
             has_tiling = any("tiling" in Path(p).name for p in op_host_existing)
             tiling_name = (
                 f"test_{op_name}_tiling.cpp" if not has_tiling else f"test_{op_name}_tiling_attest.cpp"
@@ -404,22 +429,23 @@ def _suggested_files(
                 ),
                 "//",
             )
-        has_infershape = any("infershape" in Path(p).name for p in op_host_existing)
-        infershape_name = (
-            f"test_{op_name}_infershape.cpp" if not has_infershape else f"test_{op_name}_infershape_attest.cpp"
-        )
-        add(
-            "op_host",
-            "cpp",
-            _companion_path(
-                op_host_existing,
-                f"{category}/{op_name}/tests/ut/op_host/{infershape_name}",
-                "infershape",
-                infershape_name,
-                op_prefix,
-            ),
-            "//",
-        )
+        if not is_tiling_only:
+            has_infershape = any("infershape" in Path(p).name for p in op_host_existing)
+            infershape_name = (
+                f"test_{op_name}_infershape.cpp" if not has_infershape else f"test_{op_name}_infershape_attest.cpp"
+            )
+            add(
+                "op_host",
+                "cpp",
+                _companion_path(
+                    op_host_existing,
+                    f"{category}/{op_name}/tests/ut/op_host/{infershape_name}",
+                    "infershape",
+                    infershape_name,
+                    op_prefix,
+                ),
+                "//",
+            )
     if "op_api" in enabled_layers:
         op_api_existing = existing_ut_by_layer.get("op_api", [])
         has_op_api = bool(op_api_existing)
@@ -465,6 +491,7 @@ def inspect_ascend_operator(
     )
     excluded_layers = [name for name, meta in layers.items() if meta["exists"] and not meta.get("comparable")]
     is_aclnn_exclude = _detect_aclnn_exclude(op_dir)
+    is_tiling_only = _detect_tiling_only(op_dir)
 
     op_host_dir = op_dir / "op_host"
     source_files = sorted(op_host_dir.rglob("*.cpp")) if op_host_dir.exists() else []
@@ -479,6 +506,7 @@ def inspect_ascend_operator(
         "existing_ut_files": existing_ut_files,
         "existing_ut_by_layer": existing_ut_by_layer,
         "is_aclnn_exclude": is_aclnn_exclude,
+        "is_tiling_only": is_tiling_only,
         "repo_name": normalized["repo_name"],
         "category": normalized["category"],
         "op_name": normalized["op_name"],
@@ -500,6 +528,7 @@ def inspect_ascend_operator(
             generation_mode,
             existing_ut_by_layer=existing_ut_by_layer,
             is_aclnn_exclude=is_aclnn_exclude,
+            is_tiling_only=is_tiling_only,
         ),
         "build_help_summary": _summarize_help_output(help_text),
         "build_help_raw": help_text[:4000],

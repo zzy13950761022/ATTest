@@ -402,9 +402,9 @@ def _coverage_stop_policy(meta: Dict[str, Any]) -> Dict[str, Any]:
     else:
         stop_on_threshold = default_stop_on_threshold
     try:
-        patience = int(cfg.get("patience_no_improvement", 2))
+        patience = int(cfg.get("patience_no_improvement", 1))
     except (TypeError, ValueError):
-        patience = 2
+        patience = 1
     return {
         "stop_on_threshold": stop_on_threshold,
         "patience_no_improvement": max(1, patience),
@@ -897,7 +897,19 @@ class AscendRequirementsStage(AscendBaseStage):
                     "### op_host",
                 ]
             )
-            if context.get("is_aclnn_exclude"):
+            if context.get("is_tiling_only"):
+                tiling_lines = [
+                    "- This operator is **tiling-only**: the `op_host/` source directory contains tiling code but NO registerable `InferShape` function.",
+                    "- Skip infershape tests entirely. Testing `InfershapeContextPara` here will SIGSEGV at runtime (the InferShape function pointer is null).",
+                ]
+                if context.get("is_aclnn_exclude"):
+                    tiling_lines.append("- The operator uses `aclnn_exclude` (composite/delegate pattern), so there is no standalone aclnn kernel, but the tiling function is still testable.")
+                tiling_lines.extend([
+                    "- Focus exclusively on `TilingContextFaker`/`TilingContextPara`-based tiling tests.",
+                    "",
+                ])
+                lines.extend(tiling_lines)
+            elif context.get("is_aclnn_exclude"):
                 lines.extend(
                     [
                         "- This operator uses `aclnn_exclude` (composite/delegate pattern) — no independent tiling kernel.",
@@ -950,6 +962,8 @@ class AscendRequirementsStage(AscendBaseStage):
                 "## 5. Coverage and Priorities",
                 "- Priority order: op_host infershape -> op_api."
                 if context.get("is_aclnn_exclude")
+                else "- Priority order: op_host tiling -> op_api."
+                if context.get("is_tiling_only")
                 else "- Priority order: op_host tiling -> op_host infershape -> op_api.",
             ]
         )
@@ -1046,7 +1060,7 @@ class AscendTestPlanStage(AscendBaseStage):
         infershape_path = _find_path("op_host", "infershape")
         api_path = _find_path("op_api", f"test_aclnn_{op_name}")
 
-        if tiling_path and not context.get("is_aclnn_exclude"):
+        if tiling_path and (not context.get("is_aclnn_exclude") or context.get("is_tiling_only")):
             file_id = file_lookup[tiling_path]["file_id"]
             add_case(file_id, "op_host", "tiling_invalid_dtype", "High", "unsupported dtype fails", {"dtype": "invalid_or_unsupported"}, ["GRAPH_FAILED"])
             add_case(file_id, "op_host", "tiling_valid_smoke", "High", "basic tiling success", {"dtype": "primary_supported_dtype"}, ["GRAPH_SUCCESS", "tiling key set"])
@@ -1412,8 +1426,9 @@ class AscendCodeGenStage(AscendBaseStage):
         source_git = source_root / ".git"
         target_git = target_root / ".git"
         if target_root.exists():
-            if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
+            if _is_enhance_mode(context):
                 shutil.rmtree(target_root)
+                target_git = target_root / ".git"
             else:
                 _patch_build_sh_for_isolation(target_root)
                 return target_root
@@ -1432,17 +1447,58 @@ class AscendCodeGenStage(AscendBaseStage):
         _patch_build_sh_for_isolation(target_root)
         return target_root
 
+    def _find_source_test_file(self, project_root: Path, attest_path: Path, op_name: str) -> Optional[Path]:
+        """Find corresponding source test file for the operator.
+        
+        For operator tests (op_api/op_host), if _attest.cpp doesn't exist,
+        look for source file like test_<op>.cpp or test_<op>.cpp.bak.
+        """
+        attest_dir = attest_path.parent
+        
+        # Try common patterns
+        patterns = [
+            f"test_{op_name}.cpp",
+            f"test_{op_name}.cpp.bak",
+            f"test_aclnn_{op_name}.cpp",
+            f"test_aclnn_{op_name}.cpp.bak",
+        ]
+        
+        for pattern in patterns:
+            source_path = attest_dir / pattern
+            if source_path.exists():
+                return source_path
+        
+        return None
+
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
         is_cmake = str(file_entry.get("kind")) == "cmake"
+        layer_id = str(file_entry.get("layer_id", ""))
 
-        if is_cmake and not path.exists():
+        # Skip all CMake files (Plan A doesn't touch existing CMakeLists.txt)
+        if is_cmake:
             return False
 
+        # Plan A: For operator tests, if _attest.cpp doesn't exist, copy source file first
+        is_op_test = layer_id in ("op_api", "op_host") and str(file_entry.get("kind", "")) == "test_file"
+        
+        if is_op_test and not path.exists():
+            op_name = str(file_entry.get("op_name", ""))
+            op_path = str(file_entry.get("op_path", ""))
+            if op_path and "/" in op_path:
+                op_name = op_path.split("/")[-1]
+            
+            if op_name:
+                source_file = self._find_source_test_file(project_root, path, op_name)
+                if source_file:
+                    print(f"📋 Found source file: {source_file.name}")
+                    shutil.copy2(source_file, path)
+                    print(f"📋 Copied source file to: {path.name}")
+                    # Now recursively call _ensure_skeleton to add BLOCK markers
+                    return self._ensure_skeleton(project_root, file_entry, file_cases)
+
         if path.exists():
-            if not is_cmake:
-                return False
             existing_blocks = build_block_entries(path)
             if existing_blocks:
                 return False
@@ -1475,11 +1531,13 @@ class AscendCodeGenStage(AscendBaseStage):
 
         ensure_parent(path)
         lines = [
-            placeholder_marker("HEADER", comment_style),
+            start_marker("HEADER", comment_style),
+            end_marker("HEADER", comment_style),
         ]
         for case in file_cases:
             lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-        lines.append(placeholder_marker("FOOTER", comment_style))
+        lines.append(start_marker("FOOTER", comment_style))
+        lines.append(end_marker("FOOTER", comment_style))
         content = "\n".join(lines) + "\n"
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
@@ -3938,6 +3996,7 @@ class AscendAnalysisStage(AscendBaseStage):
                 key: max(float(value), float(previous_best.get(key, -1.0) or -1.0))
                 for key, value in metrics.items()
             }
+            state.best_coverage_epoch = int(getattr(state, "epoch_current", 1) or 1)
             state.coverage_no_improvement_rounds = 0
         else:
             state.coverage_no_improvement_rounds = int(getattr(state, "coverage_no_improvement_rounds", 0) or 0) + 1
@@ -4245,6 +4304,19 @@ class AscendAnalysisStage(AscendBaseStage):
                 "generated_blocks": inventory_blocks,
             }
             state.save_artifact("case_inventory.json", _render_json(case_inventory))
+        except Exception:
+            pass
+
+        try:
+            epoch_num = int(getattr(state, "epoch_current", 1) or 1)
+            manifest_candidates = [
+                state.artifacts_dir / "generate_code" / f"v{epoch_num}_generation_manifest.json",
+                state.artifacts_dir / state.current_stage / f"v{epoch_num}_generation_manifest.json",
+            ]
+            for manifest_path in manifest_candidates:
+                if manifest_path.exists():
+                    state.save_epoch_snapshot(epoch_num, manifest_path)
+                    break
         except Exception:
             pass
 
@@ -4860,8 +4932,9 @@ Begin now. Start with the first file of the `{layer}` layer."""
         source_git = source_root / ".git"
         target_git = target_root / ".git"
         if target_root.exists():
-            if _is_enhance_mode(context) and source_git.exists() and not target_git.exists():
+            if _is_enhance_mode(context):
                 shutil.rmtree(target_root)
+                target_git = target_root / ".git"
             else:
                 _patch_build_sh_for_isolation(target_root)
                 return target_root
@@ -4880,22 +4953,75 @@ Begin now. Start with the first file of the `{layer}` layer."""
         _patch_build_sh_for_isolation(target_root)
         return target_root
 
+    def _find_source_test_file(self, project_root: Path, attest_path: Path, op_name: str) -> Optional[Path]:
+        """Find corresponding source test file for attTest-generated test.
+        
+        Plan A: When we need to create test_xxx_attest.cpp but it doesn't exist,
+        look for source test file (e.g., test_xxx.cpp or test_xxx.cpp.bak) to copy instead.
+        This reuses existing test structure and only modifies test body.
+        """
+        attest_dir = attest_path.parent
+        
+        # Pattern: test_<op>_attest.cpp -> test_<op>.cpp or test_<op>.cpp.bak
+        attest_name = attest_path.name
+        if not attest_name.endswith("_attest.cpp"):
+            return None
+        
+        base_name = attest_name.replace("_attest.cpp", "")
+        candidates = [
+            attest_dir / f"{base_name}.cpp",
+            attest_dir / f"{base_name}.cpp.bak",
+        ]
+        
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        
+        # Fallback: any .cpp file with op_name that's not attTest
+        for f in attest_dir.glob(f"*{op_name}*.cpp"):
+            if "_attest" not in f.name:
+                return f
+        
+        return None
+
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
         is_cmake = str(file_entry.get("kind")) == "cmake"
+        layer_id = str(file_entry.get("layer_id", ""))
+        
+        # Plan A: Don't create _attest.cpp file from scratch, reuse source test file instead
+        is_attest_gen = layer_id in ("op_api", "op_host") and path.name.endswith("_attest.cpp")
 
-        if is_cmake and not path.exists():
+        # Skip all CMake files (Plan A doesn't touch existing CMakeLists.txt)
+        if is_cmake:
             return False
 
+        # Plan A: For operator tests, if _attest.cpp doesn't exist, copy source file
+        if is_attest_gen and not path.exists() and not is_cmake:
+            op_name = str(file_entry.get("op_name", ""))
+            if not op_name:
+                # Extract from path: .../math/<op_name>/tests/ut/op_xxx/xxx.cpp
+                parts = str(path).split("/")
+                for i, part in enumerate(parts):
+                    if part == "math" and i + 1 < len(parts):
+                        op_name = parts[i + 1]
+                        break
+            
+            source_file = self._find_source_test_file(project_root, path, op_name)
+            if source_file:
+                try:
+                    shutil.copy2(source_file, path)
+                    return self._ensure_skeleton(project_root, file_entry, file_cases)
+                except Exception as e:
+                    print(f"Warning: Failed to copy source file {source_file} to {path}: {e}")
+
         if path.exists():
-            if not is_cmake:
-                return False
             existing_blocks = build_block_entries(path)
             if existing_blocks:
                 return False
             original = path.read_text(encoding="utf-8")
-            layer_id = str(file_entry.get("layer_id", ""))
+            layer_id_str = str(file_entry.get("layer_id", ""))
             lines = [
                 start_marker("HEADER", comment_style),
                 original.rstrip(),
@@ -4903,7 +5029,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
             ]
             for case in file_cases:
                 lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-            if layer_id == "op_host":
+            if layer_id_str == "op_host":
                 lines.extend([
                     start_marker("FOOTER", comment_style),
                     f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
@@ -4923,11 +5049,13 @@ Begin now. Start with the first file of the `{layer}` layer."""
 
         ensure_parent(path)
         lines = [
-            placeholder_marker("HEADER", comment_style),
+            start_marker("HEADER", comment_style),
+            end_marker("HEADER", comment_style),
         ]
         for case in file_cases:
             lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-        lines.append(placeholder_marker("FOOTER", comment_style))
+        lines.append(start_marker("FOOTER", comment_style))
+        lines.append(end_marker("FOOTER", comment_style))
         content = "\n".join(lines) + "\n"
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)

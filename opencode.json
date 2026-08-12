@@ -5,7 +5,8 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "bailian",
       "options": {
-        "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+	"apiKey": "sk-a5414f2961da4c519838f25499e52ac1"
       },
       "models": {
         "qwen3.7-plus": {

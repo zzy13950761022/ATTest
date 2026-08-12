@@ -333,6 +333,62 @@ class WorkflowEngine:
             return plan_stop_reason or "analysis_plan stop recommended"
         return None
     
+    def _restore_best_artifacts(self) -> None:
+        best = int(getattr(self.state, "best_coverage_epoch", 0) or 0)
+        current = int(getattr(self.state, "epoch_current", 1) or 1)
+        if best == 0 or best == current:
+            return
+        artifacts_dir = self.state.artifacts_dir
+        if not artifacts_dir.is_dir():
+            return
+        restored = 0
+        for stage_dir in artifacts_dir.iterdir():
+            if not stage_dir.is_dir():
+                continue
+            prefix = f"v{best}_"
+            for versioned in stage_dir.iterdir():
+                if not versioned.is_file() or not versioned.name.startswith(prefix):
+                    continue
+                name = versioned.name[len(prefix):]
+                current_link = stage_dir / f"current_{name}"
+                try:
+                    if current_link.exists() or current_link.is_symlink():
+                        current_link.unlink()
+                    current_link.symlink_to(versioned.name)
+                    restored += 1
+                except OSError:
+                    pass
+        if restored:
+            print(
+                f"\n🔄 Epoch rollback: current_epoch={current} → best_epoch={best}; "
+                f"re-linked {restored} artifact(s) in `{artifacts_dir.name}/`."
+            )
+        snap_dir = self.state.snapshots_dir / f"v{best}"
+        if snap_dir.is_dir():
+            manifest_path = artifacts_dir / "generate_code" / f"v{best}_generation_manifest.json"
+            if manifest_path.exists():
+                import json, shutil
+                try:
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    project_root = Path(manifest.get("project_root", ""))
+                    files = manifest.get("files") or []
+                    file_count = 0
+                    for entry in files:
+                        rel = Path(entry.get("path", ""))
+                        src = snap_dir / rel
+                        dst = project_root / rel
+                        if src.is_file():
+                            dst.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(str(src), str(dst))
+                            file_count += 1
+                    if file_count:
+                        print(
+                            f"\n🔄 Epoch rollback: restored {file_count} test file(s) "
+                            f"from v{best} snapshot → `{project_root.name}/`."
+                        )
+                except (json.JSONDecodeError, OSError):
+                    pass
+    
     def get_stage(self, stage_name: str) -> Optional[Stage]:
         """Get stage by name."""
         return self.stages.get(stage_name)
@@ -485,6 +541,7 @@ class WorkflowEngine:
                         auto_stop_reason = self._check_auto_stop()
                         if auto_stop_reason:
                             self.state.auto_stop_reason = auto_stop_reason
+                            self._restore_best_artifacts()
                             self.state.advance_stage(self.STAGE_NAMES)
                         elif getattr(self.state, "epoch_current", 1) < getattr(self.state, "epoch_total", 1):
                             self.state.epoch_current += 1
@@ -509,6 +566,7 @@ class WorkflowEngine:
                                 )
                                 self.state.jump_to_stage("generate_code", self.STAGE_NAMES)
                         else:
+                            self._restore_best_artifacts()
                             self.state.advance_stage(self.STAGE_NAMES)
                     else:
                         self.state.advance_stage(self.STAGE_NAMES)
@@ -528,6 +586,7 @@ class WorkflowEngine:
             ]
             print(f"\n❌ Workflow stopped due to failures in: {', '.join(failed_stages)}", file=sys.stderr)
             print("Check state.json and logs for details.", file=sys.stderr)
+            self._restore_best_artifacts()
             self.state.persist()
             sys.exit(1)
         else:

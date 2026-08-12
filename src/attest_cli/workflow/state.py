@@ -98,6 +98,7 @@ class WorkflowState:
         self.last_block_errors: Dict[str, List[str]] = {}
         self.auto_stop_reason = ""
         self.best_coverage_metrics: Dict[str, float] = {}
+        self.best_coverage_epoch: int = 0
         self.coverage_no_improvement_rounds = 0
         
         # Data storage
@@ -128,6 +129,49 @@ class WorkflowState:
     def artifacts_dir(self) -> Path:
         """Path to artifacts directory."""
         return self.workflow_dir / "artifacts"
+    
+    @property
+    def snapshots_dir(self) -> Path:
+        """Path to per-epoch test-file snapshots."""
+        return self.workflow_dir / "snapshots"
+    
+    def save_epoch_snapshot(self, epoch: int, manifest_path: Path) -> int:
+        """Copy generated test files listed in ``manifest_path`` into
+        ``snapshots/v{epoch}/``, preserving the relative tree structure.
+
+        Returns the number of files actually copied.
+        """
+        import json
+        import shutil
+
+        if not manifest_path.exists():
+            return 0
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return 0
+
+        files = manifest.get("files") or []
+        project_root = Path(manifest.get("project_root", ""))
+        if not project_root.is_dir():
+            return 0
+
+        snap_dir = self.snapshots_dir / f"v{epoch}"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for entry in files:
+            rel = Path(entry.get("path", ""))
+            src = project_root / rel
+            dst = snap_dir / rel
+            if src.is_file():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(src), str(dst))
+                copied += 1
+        if copied:
+            print(
+                f"  📸 Epoch {epoch} snapshot: {copied} file(s) → {snap_dir}"
+            )
+        return copied
     
     def save_artifact(self, name: str, content: Any, version: bool = True):
         """
@@ -292,6 +336,7 @@ class WorkflowState:
             "last_block_errors": self.last_block_errors,
             "auto_stop_reason": self.auto_stop_reason,
             "best_coverage_metrics": self.best_coverage_metrics,
+            "best_coverage_epoch": self.best_coverage_epoch,
             "coverage_no_improvement_rounds": self.coverage_no_improvement_rounds,
             "artifacts": self.artifacts,
             "stage_history": [r.to_dict() for r in self.stage_history],
@@ -365,6 +410,7 @@ class WorkflowState:
         state.last_block_errors = data.get("last_block_errors", {}) or {}
         state.auto_stop_reason = data.get("auto_stop_reason", "")
         state.best_coverage_metrics = data.get("best_coverage_metrics", {}) or {}
+        state.best_coverage_epoch = int(data.get("best_coverage_epoch", 0) or 0)
         state.coverage_no_improvement_rounds = int(data.get("coverage_no_improvement_rounds", 0) or 0)
         
         return state

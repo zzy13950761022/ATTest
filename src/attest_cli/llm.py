@@ -108,7 +108,11 @@ class LLMClient:
         - deepseek-reasoner: Preserve `reasoning_content` and add an empty string if the assistant message omits it
         - Other models: remove `reasoning_content` to avoid HTTP 400 errors from unsupported fields
         """
-        requires_reasoning = "deepseek-reasoner" in (self.model or "").lower()
+        requires_reasoning = (
+            "deepseek-reasoner" in (self.model or "").lower()
+            or "deepseek-v4" in (self.model or "").lower()
+            or "glm-5" in (self.model or "").lower()
+        )
         normalized: List[Dict[str, Any]] = []
         for msg in messages:
             m = dict(msg)  # shallow copy

@@ -1,0 +1,1640 @@
+{
+  "qwen_B2": {
+    "abs": {
+      "host": 75.0,
+      "api": 92.1
+    },
+    "add": {
+      "host": 100.0,
+      "api": 67.3
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 76.8
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 90.6
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 83.5
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 93.9
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 86.5
+    },
+    "diag_part": {
+      "host": 85.1,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 68.5
+    },
+    "div_no_nan": {
+      "host": 94.5,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 92.4
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 68.3
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 89.4
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 85.1
+    },
+    "eye": {
+      "host": 100.0,
+      "api": 88.6
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 68.2
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 91.3
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 68.8
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 70.2
+    },
+    "less": {
+      "host": 100.0,
+      "api": 54.6
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 67.6
+    },
+    "log": {
+      "host": 100.0,
+      "api": 83.3
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 90.9
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 82.9
+    },
+    "logical_not": {
+      "host": 100.0,
+      "api": 89.6
+    },
+    "logical_or": {
+      "host": 73.4,
+      "api": 82.7
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 68.7
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 72.2
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 90.7
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 49.7
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 66.8
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 83.3
+    },
+    "real_div": {
+      "host": 95.2,
+      "api": 69.8
+    },
+    "reciprocal": {
+      "host": 0.0,
+      "api": 92.5
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "rsqrt_grad": {
+      "host": 88.8,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 89.1
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "squared_difference": {
+      "host": 91.3,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 64.4
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 92.3
+    }
+  },
+  "qwen_B3": {
+    "abs": {
+      "host": 0.0,
+      "api": 88.1
+    },
+    "add": {
+      "host": 100.0,
+      "api": 67.9
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 74.2
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 98.1
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 78.0
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 91.8
+    },
+    "cross": {
+      "host": 100.0,
+      "api": 73.0
+    },
+    "diag_part": {
+      "host": 84.4,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 67.4
+    },
+    "div_no_nan": {
+      "host": 94.5,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 97.5
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 58.5
+    },
+    "exp": {
+      "host": 88.8,
+      "api": 89.4
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 94.3
+    },
+    "eye": {
+      "host": 91.1,
+      "api": 0.0
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 68.6
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 100.0,
+      "api": 95.7
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 73.2
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 70.2
+    },
+    "less": {
+      "host": 100.0,
+      "api": 54.3
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 67.6
+    },
+    "log": {
+      "host": 100.0,
+      "api": 89.2
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 90.9
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 90.5
+    },
+    "logical_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 80.8
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 70.0
+    },
+    "mul": {
+      "host": 89.9,
+      "api": 85.2
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 83.8
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 65.7
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 83.3
+    },
+    "real_div": {
+      "host": 95.2,
+      "api": 69.8
+    },
+    "reciprocal": {
+      "host": 0.0,
+      "api": 92.5
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "rsqrt_grad": {
+      "host": 88.8,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 90.1
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 90.2
+    },
+    "sqrt_grad": {
+      "host": 86.1,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 97.7
+    },
+    "squared_difference": {
+      "host": 91.3,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 83.2
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 92.3
+    }
+  },
+  "qwen_ATTest": {
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "cholesky": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "add": {
+      "host": 100.0,
+      "api": 61.2
+    },
+    "abs": {
+      "host": 0.0,
+      "api": 88.1
+    },
+    "cross": {
+      "host": 100.0,
+      "api": 73.0
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "diag_part": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "div_no_nan": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 58.5
+    },
+    "eye": {
+      "host": 78.1,
+      "api": 0.0
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 61.7
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "less": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 36.2
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 32.7
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "logical_not": {
+      "host": 100.0,
+      "api": 88.3
+    },
+    "log": {
+      "host": 100.0,
+      "api": 87.4
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 89.8
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 78.8
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 88.4
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 26.0
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 0.0
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 44.9
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 67.5
+    },
+    "pows": {
+      "host": 65.4,
+      "api": 0.0
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "reciprocal": {
+      "host": 100.0,
+      "api": 72.0
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 72.2
+    },
+    "rsqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 76.1
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 89.1
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 50.3
+    },
+    "square": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 0.0
+    }
+  },
+  "ds_B2": {
+    "abs": {
+      "host": 0.0,
+      "api": 94.4
+    },
+    "add": {
+      "host": 100.0,
+      "api": 64.4
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 75.2
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 90.6
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 82.5
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 90.8
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 86.5
+    },
+    "diag_part": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 63.9
+    },
+    "div_no_nan": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 92.4
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 67.9
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 89.4
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 83.9
+    },
+    "eye": {
+      "host": 100.0,
+      "api": 88.6
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 67.9
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 91.3
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 67.3
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 66.9
+    },
+    "less": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 67.9
+    },
+    "log": {
+      "host": 100.0,
+      "api": 83.3
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 90.9
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 82.9
+    },
+    "logical_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 82.7
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 70.0
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 68.4
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 90.7
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 49.7
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 66.4
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 83.3
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 57.1
+    },
+    "reciprocal": {
+      "host": 0.0,
+      "api": 92.5
+    },
+    "rsqrt": {
+      "host": 0.0,
+      "api": 88.9
+    },
+    "rsqrt_grad": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 90.2
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 93.0
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 83.7
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 62.9
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 92.3
+    }
+  },
+  "ds_B3": {
+    "abs": {
+      "host": 0.0,
+      "api": 95.2
+    },
+    "add": {
+      "host": 100.0,
+      "api": 65.5
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 83.0
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 90.6
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 83.5
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 93.9
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 86.5
+    },
+    "diag_part": {
+      "host": 85.1,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 65.8
+    },
+    "div_no_nan": {
+      "host": 94.5,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 92.4
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 67.9
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 89.4
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 85.1
+    },
+    "eye": {
+      "host": 100.0,
+      "api": 88.6
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 65.3
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 87.0
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 71.7
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 70.6
+    },
+    "less": {
+      "host": 100.0,
+      "api": 54.0
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 69.6
+    },
+    "log": {
+      "host": 100.0,
+      "api": 89.2
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 89.8
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 82.9
+    },
+    "logical_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 82.7
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 70.0
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 71.5
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 90.7
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 73.1
+    },
+    "pow": {
+      "host": 0.0,
+      "api": 61.8
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 83.3
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "reciprocal": {
+      "host": 0.0,
+      "api": 87.9
+    },
+    "rsqrt": {
+      "host": 0.0,
+      "api": 91.1
+    },
+    "rsqrt_grad": {
+      "host": 88.8,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 90.2
+    },
+    "sqrt_grad": {
+      "host": 54.4,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 88.4
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 64.5
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 92.3
+    }
+  },
+  "ds_ATTest": {
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "add": {
+      "host": 100.0,
+      "api": 61.2
+    },
+    "bitwise_and": {
+      "host": 100.0,
+      "api": 72.9
+    },
+    "bitwise_or": {
+      "host": 100.0,
+      "api": 82.5
+    },
+    "bitwise_xor": {
+      "host": 100.0,
+      "api": 81.4
+    },
+    "abs": {
+      "host": 0.0,
+      "api": 95.2
+    },
+    "div": {
+      "host": 0.0,
+      "api": 67.4
+    },
+    "diag_part": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 95.9
+    },
+    "div_no_nan": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 86.5
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 85.1
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 75.0
+    },
+    "eye": {
+      "host": 100.0,
+      "api": 88.6
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 67.9
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 92.4
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 66.9
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 68.0
+    },
+    "ger": {
+      "host": 100.0,
+      "api": 91.3
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 36.2
+    },
+    "less": {
+      "host": 100.0,
+      "api": 51.5
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 82.9
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 90.9
+    },
+    "log": {
+      "host": 100.0,
+      "api": 88.3
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 68.6
+    },
+    "logical_not": {
+      "host": 100.0,
+      "api": 89.6
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 78.8
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 88.4
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 70.0
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 70.8
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 0.0
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 65.5
+    },
+    "rsqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "reciprocal": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 62.9
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 95.0
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 88.9
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 64.5
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 0.0
+    }
+  },
+  "glm_B2": {
+    "abs": {
+      "host": 0.0,
+      "api": 94.4
+    },
+    "add": {
+      "host": 100.0,
+      "api": 69.1
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 97.5
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 88.1
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 65.3
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 89.2
+    },
+    "diag_part": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 69.3
+    },
+    "div_no_nan": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 97.5
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 68.5
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 98.1
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 88.5
+    },
+    "eye": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 65.7
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 72.4
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 89.3
+    },
+    "less": {
+      "host": 100.0,
+      "api": 54.9
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 69.6
+    },
+    "log": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "logical_and": {
+      "host": 91.8,
+      "api": 82.9
+    },
+    "logical_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 67.5
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 75.2
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 73.3
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 67.1
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 83.3
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "reciprocal": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "rsqrt_grad": {
+      "host": 88.8,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 91.1
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 91.3
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 98.8
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 82.9
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 96.7
+    }
+  },
+  "glm_B3": {
+    "abs": {
+      "host": 0.0,
+      "api": 95.2
+    },
+    "add": {
+      "host": 89.9,
+      "api": 61.2
+    },
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 76.1
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 92.5
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 90.5
+    },
+    "bitwise_xor": {
+      "host": 100.0,
+      "api": 97.4
+    },
+    "cholesky": {
+      "host": 2.8,
+      "api": 65.3
+    },
+    "cross": {
+      "host": 0.0,
+      "api": 90.5
+    },
+    "diag_part": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "div": {
+      "host": 53.4,
+      "api": 75.6
+    },
+    "div_no_nan": {
+      "host": 94.5,
+      "api": 0.0
+    },
+    "dot": {
+      "host": 96.9,
+      "api": 92.4
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 87.4
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 75.0
+    },
+    "expm1": {
+      "host": 90.5,
+      "api": 67.8
+    },
+    "eye": {
+      "host": 78.1,
+      "api": 80.0
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 64.3
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 70.4
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 87.0
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 87.9
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 93.6
+    },
+    "less": {
+      "host": 87.6,
+      "api": 84.3
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 88.1
+    },
+    "log": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "log1p": {
+      "host": 85.1,
+      "api": 100.0
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_not": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 92.3
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "mul": {
+      "host": 81.2,
+      "api": 0.0
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 93.3
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 61.8
+    },
+    "pows": {
+      "host": 89.2,
+      "api": 100.0
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 100.0
+    },
+    "reciprocal": {
+      "host": 100.0,
+      "api": 92.5
+    },
+    "rsqrt": {
+      "host": 0.0,
+      "api": 100.0
+    },
+    "rsqrt_grad": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 95.0
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 90.2
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "square": {
+      "host": 0.0,
+      "api": 81.4
+    },
+    "squared_difference": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 50.3
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 92.3
+    }
+  },
+  "glm_ATTest": {
+    "bitwise_and": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "bitwise_or": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "add": {
+      "host": 100.0,
+      "api": 61.2
+    },
+    "cholesky": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "bitwise_xor": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "diag_part": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "cross": {
+      "host": 100.0,
+      "api": 73.0
+    },
+    "div_no_nan": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "div": {
+      "host": 0.0,
+      "api": 63.9
+    },
+    "abs": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "bitwise_not": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "equal": {
+      "host": 100.0,
+      "api": 58.5
+    },
+    "eye": {
+      "host": 78.1,
+      "api": 0.0
+    },
+    "expm1": {
+      "host": 0.0,
+      "api": 67.8
+    },
+    "floor_div": {
+      "host": 0.0,
+      "api": 61.7
+    },
+    "ger": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "floor_mod": {
+      "host": 0.0,
+      "api": 44.9
+    },
+    "dot": {
+      "host": 100.0,
+      "api": 92.4
+    },
+    "less": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "greater_equal": {
+      "host": 100.0,
+      "api": 36.2
+    },
+    "greater": {
+      "host": 100.0,
+      "api": 32.7
+    },
+    "exp": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "less_equal": {
+      "host": 100.0,
+      "api": 56.0
+    },
+    "log": {
+      "host": 100.0,
+      "api": 81.5
+    },
+    "log1p": {
+      "host": 100.0,
+      "api": 80.7
+    },
+    "logical_and": {
+      "host": 0.0,
+      "api": 82.9
+    },
+    "logical_not": {
+      "host": 100.0,
+      "api": 88.3
+    },
+    "logical_or": {
+      "host": 100.0,
+      "api": 78.8
+    },
+    "not_equal": {
+      "host": 100.0,
+      "api": 44.9
+    },
+    "mod": {
+      "host": 0.0,
+      "api": 67.5
+    },
+    "pows": {
+      "host": 65.4,
+      "api": 0.0
+    },
+    "neg": {
+      "host": 0.0,
+      "api": 88.4
+    },
+    "mul": {
+      "host": 94.1,
+      "api": 26.0
+    },
+    "rsqrt": {
+      "host": 100.0,
+      "api": 72.2
+    },
+    "pow": {
+      "host": 12.0,
+      "api": 61.8
+    },
+    "reciprocal": {
+      "host": 100.0,
+      "api": 72.0
+    },
+    "rsqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "real_div": {
+      "host": 100.0,
+      "api": 0.0
+    },
+    "sqrt_grad": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "squared_difference": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sqrt": {
+      "host": 0.0,
+      "api": 76.1
+    },
+    "sign": {
+      "host": 100.0,
+      "api": 89.1
+    },
+    "trace": {
+      "host": 0.0,
+      "api": 0.0
+    },
+    "sub": {
+      "host": 100.0,
+      "api": 50.3
+    },
+    "square": {
+      "host": 0.0,
+      "api": 81.4
+    }
+  }
+}
