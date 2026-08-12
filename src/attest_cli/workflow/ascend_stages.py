@@ -153,7 +153,7 @@ def _compress_old_messages(messages: List[Dict[str, Any]], keep_recent: int = 60
         "role": "user",
         "content": (
             f"[Context compression: {dropped} earlier messages omitted to stay within context limits. "
-            "Your prior file edits are already on disk — use list_files/read_file to inspect current state.]"
+            "Your prior file edits are already on disk — use `ls`/`cat` to inspect current state.]"
         ),
     }
     return head + [summary_msg] + tail
@@ -1458,7 +1458,7 @@ class AscendCodeGenStage(AscendBaseStage):
             prompt_template="",
             input_artifacts=["operator_context.json", "requirements.md", "test_plan.json"],
             output_artifacts=["generation_manifest.json"],
-            tools=["list_files", "read_file", "part_read", "search", "write_file", "replace_in_file", "replace_block", "exec_command"],
+            tools=["exec_command"],
             allow_skip=False,
         )
 
@@ -1736,9 +1736,9 @@ class AscendCodeGenStage(AscendBaseStage):
 2. **Reason about the root cause**:
    - If compile error: what API did you call with wrong arguments? What type mismatch?
    - If runtime abort / assertion failure: what input value (dtype/shape/scalar) did you pass that violates the API's contract?
-3. **Read the source** of the failing function via `read_file` to confirm its actual signature / valid input contract.
+3. **Read the source** of the failing function via `cat`/`grep` to confirm its actual signature / valid input contract.
    Do NOT guess — verify.
-4. **Fix the code** via `replace_in_file`. Make the MINIMAL correct change.
+4. **Fix the code** via `sed` or re-write the file. Make the MINIMAL correct change.
 5. **Re-compile**: {recompile_hint}
 6. If compile passes, **re-run tests**: {rerun_hint}
 7. Repeat steps 1-6 until tests run cleanly without abort.
@@ -1769,7 +1769,7 @@ Compilation errors:
 ```
 
 Rules:
-1. Use only `read_file`, `replace_block`, `replace_in_file`, and `write_file`.
+1. You have ONLY `exec_command`. Use `cat`, `grep`, `sed`, heredocs, etc. for all file operations.
 2. Read the file first to understand the current state, then fix the errors.
 3. Focus on the specific error messages: type mismatches, missing includes, incorrect API usage, etc.
 4. Do not modify blocks that are not in the target set.
@@ -1907,7 +1907,7 @@ exec_command(cmd="{coverage_cmd_for_layer}")
 ```
 
 For each file:
-1. Write all target blocks using `replace_block` / `replace_in_file` / `write_file`.
+1. Write all target blocks using `cat >` heredocs or `sed`.
 2. After finishing ALL files, run the build command above.
 3. If compile errors → read the error, identify root cause, read source if needed, fix, re-compile.
 4. If runtime abort → read the error, find the bad input, fix, re-compile.
@@ -1939,7 +1939,7 @@ Analysis plan:
 ```
 
 Rules:
-1. Use only `list_files`, `read_file`, `part_read`, `search`, `replace_block`, `replace_in_file`, `write_file`, `append_to_file`, and `exec_command`.
+1. You have ONLY `exec_command` as a tool. Use it for ALL operations: read files (`cat`, `head`, `less`), search (`grep`, `find`), write files (`cat > file << 'BLOCK_MARKER_EOF'` or `tee`), edit files (`sed`, `patch`), compile, run tests, and check coverage.
 2. Fill only the listed target blocks for each file. Do not modify other blocks.
 3. Keep every test name traceable to its BLOCK_ID.
 4. For `*.cpp`, use `// ==== BLOCK:... ====`. For `CMakeLists.txt`, use `# ==== BLOCK:... ====`.
@@ -2014,9 +2014,9 @@ Complete all files now, then compile and verify."""
                         warning_msg = (
                             f"⚠️ API returned HTTP 400 (arguments too large). "
                             f"Retry {_api400_retries}/3. "
-                            f"Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
-                            f"then use `append_to_file` to add remaining content in batches of ~100 lines each. "
-                            f"Keep each tool call under 5000 characters."
+                            f"Please split your output into smaller chunks: use `cat >` heredocs for the first ~100 lines, "
+                            f"then use `cat >>` or `sed` for remaining content in batches of ~100 lines each. "
+                            f"Keep each `exec_command` under 5000 characters."
                         )
                         messages.append({"role": "user", "content": warning_msg})
                         _made_progress = True
@@ -2052,16 +2052,16 @@ Complete all files now, then compile and verify."""
                 except json.JSONDecodeError:
                     warning_msg = (
                         "⚠️ Your previous tool call was rejected — the arguments were truncated (invalid JSON). "
-                        "Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
-                        "then use `append_to_file` to add remaining content in batches of ~100 lines each. "
-                        "Keep each tool call under 5000 characters."
+                        "Please split your output into smaller chunks: use `cat >` heredocs for the first ~100 lines, "
+                        "then use `cat >>` or `sed` for remaining content in batches of ~100 lines each. "
+                        "Keep each `exec_command` under 5000 characters."
                     )
                     messages.append({"role": "user", "content": warning_msg})
                     _made_progress = True
                     continue
                 tool_result = self.tool_runner.execute(tool_name, tool_args, ctx)
                 if tool_result.ok and tool_name in {
-                    "write_file", "replace_in_file", "replace_block", "append_to_file",
+                    "exec_command", "write_file", "replace_in_file", "replace_block", "append_to_file",
                 }:
                     _made_progress = True
                 tool_msg = {
@@ -2440,7 +2440,7 @@ Complete all files now, then compile and verify."""
                         mode_rules = [
                             "9. Current-operator `op_host/op_api` UT do not exist in this mode. Generate from scratch and do not invent references to missing local UT files.",
                             "10. Use the listed shared harness, shared helpers, operator implementation files, and similar examples before doing broad recursive searches.",
-                            "11. If you need to inspect a directory, use `list_files` or `search`. Do not call `read_file` on directories.",
+                            "11. If you need to inspect a directory, use `ls` or `find` via `exec_command`. Do not call `cat` on directories.",
                             "12. Use relative paths rooted at the current working directory. Do not call any tool with an absolute path.",
                         ]
                         mode_guidance = [
@@ -2477,7 +2477,7 @@ Complete all files now, then compile and verify."""
                         reference_paths = list(dict.fromkeys(current_operator_ut_paths + similar_example_paths))
 
                     op_api_macro_rule = [
-                        "13. For op_api layers: the `OP_API_UT` / `OP_API_UT_EXPECT` macros internally token-paste `GetWorkspaceSize` (and similar helpers) onto the first argument. Always pass a plain C function name like `aclnnRealDiv`, never a function pointer or variable. If the operator header only exposes function-pointer typedefs (e.g., `const aclTensor* (*RealDiv)(...)`), first read existing op_api UT files in the same directory via `read_file` to discover the correct invocation pattern — do not guess.",
+                        "13. For op_api layers: the `OP_API_UT` / `OP_API_UT_EXPECT` macros internally token-paste `GetWorkspaceSize` (and similar helpers) onto the first argument. Always pass a plain C function name like `aclnnRealDiv`, never a function pointer or variable. If the operator header only exposes function-pointer typedefs (e.g., `const aclTensor* (*RealDiv)(...)`), first read existing op_api UT files in the same directory via `cat` to discover the correct invocation pattern — do not guess.",
                         "14. Do NOT duplicate test scenarios already covered by existing baseline UT. Review the existing scenarios below and generate tests that target DIFFERENT dtype/format/shape combinations, different error paths, or uncovered functions listed in the analysis plan.",
                         "15. CRITICAL — CMakeLists.txt registration: When you generate a new `*_attest.cpp` file (FILE_02 for op_host, FILE_04 for op_api), you MUST also update the corresponding CMakeLists.txt FOOTER block to register the new file in the build system. For op_api: add the attest `.cpp` filename to the `OP_API_TEST_SOURCES` or `OP_API_MODULE_NAME_cases_obj` source list. For op_host: add the attest `.cpp` filename to `add_modules_ut_sources` or the appropriate source list. Read the existing CMakeLists.txt structure first and follow the same pattern. Without this registration, the test file will NOT be compiled and coverage will remain unchanged.",
                         "16. DIVERSITY REQUIREMENT: Each TEST_F in a block MUST use a distinct dtype+shape+value combination. "
@@ -2499,7 +2499,7 @@ Complete all files now, then compile and verify."""
                         "18. COVERAGE-DRIVEN GENERATION (for epoch >= 2): When an 'UNCOVERED CODE' section appears below targeting this layer, "
                         "your PRIMARY goal is to design tests that trigger those specific uncovered branches. "
                         "For each uncovered conditional (if/switch/ternary) at the listed line number: "
-                        "(a) READ the source file via `read_file` to see the exact branch condition. "
+                        "(a) READ the source file via `cat` to see the exact branch condition. "
                         "(b) Analyze what dtype/shape/value/format/attribute combination makes the condition evaluate to the uncovered branch. "
                         "(c) Create a dedicated TEST_F with inputs that satisfy the uncovered path. "
                         "Name the test using the target line number for traceability (e.g. `CASE_L245_dtype_promotion_path`). "
@@ -2522,7 +2522,7 @@ Complete all files now, then compile and verify."""
                                 snippets_text_parts.append(f"\nLine {s.get('line')} is NOT covered:\n```cpp\n{s.get('context','')}\n```")
                         uncovered_section = (
                             f"\n## UNCOVERED CODE from previous epoch ({udata.get('total_uncovered', 0)} lines total in this layer)\n"
-                            "Read the source files via `read_file` using their full paths, then design TEST_F cases whose "
+                            "Read the source files via `cat` using their full paths, then design TEST_F cases whose "
                             "dtype/shape/attribute/value combinations specifically TRIGGER these uncovered branches or lines. "
                             "For each uncovered conditional (if/switch/ternary), design TEST parameters that make it evaluate to "
                             "the uncovered branch. Include the target line number in the TEST_F name for traceability."
@@ -2552,7 +2552,7 @@ All within this same conversation. Do NOT defer verification to a later stage.
 
 ### Per-block loop (repeat for EACH target block):
 
-**Step 1. Write the block** via `replace_block` / `replace_in_file` / `write_file`.
+**Step 1. Write the block** via `exec_command` with heredoc (`cat >`) or `sed` to fill/replace block content.
 
 **Step 2. Compile immediately** via `exec_command`:
 ```
@@ -2564,10 +2564,10 @@ exec_command(cmd="{compile_cmd_for_layer}")
   a. **Read the FULL error output**. Do not discard anything. Identify the exact file, line, and error message.
   b. **Reason**: why did this fail? What assumption did I make that was wrong?
   c. **Read the source**: if the error mentions a function / macro / type you used incorrectly, 
-     use `read_file` or `part_read` to look at its ACTUAL signature/implementation in the project. 
+     use `grep` or `cat` to look at its ACTUAL signature/implementation in the project. 
      DO NOT guess the API signature — verify it.
      Example: if `ScalarDesc(...)` fails, grep the codebase for `ScalarDesc::ScalarDesc` to see what arguments it actually accepts.
-  d. **Fix the code** via `replace_in_file`. Make the minimal correct change.
+  d. **Fix the code** via `sed` or re-write the file with `cat >`.  Make the minimal correct change.
   e. **Re-run the compile command**. Repeat (a)-(d) until compile passes.
 
 **Step 3. Run tests immediately** via `exec_command` to execute the built test binary:
@@ -2581,7 +2581,7 @@ exec_command(cmd="{compile_cmd_for_layer}")
   the log suddenly stops mid-output — this is a **RUNTIME BUG** in the generated code:
   a. Read the exact error message. Pay attention to WHICH assertion failed and on WHAT line.
   b. Reason: what **input value/dtype/shape** did I pass that violated the API's contract?
-  c. Read the actual source of the failing function via `read_file` to understand what inputs are valid.
+  c. Read the actual source of the failing function via `cat`/`grep` to understand what inputs are valid.
   d. Fix the code.
   e. Re-run Step 2 (compile) + Step 3 (run).
   f. **Do NOT move forward until tests run to completion without abort.**
@@ -2596,7 +2596,7 @@ read the source to understand the branch condition, then add a TEST_F that trigg
 ### Reflection principles:
 - **Write ONE block, verify it, then move to the next.** Never accumulate multiple unverified blocks.
 - **NEVER guess an API signature.** If you are unsure whether a function accepts a particular dtype/shape/value,
-  `read_file` its declaration or implementation NOW — don't find out the hard way via a compile error.
+  `cat` or `grep` its declaration or implementation NOW — don't find out the hard way via a compile error.
 - **Runtime aborts are real bugs** even if compile passes. Treat assertion failures as a signal to RE-think the inputs,
   not just to tweak syntax.
 - **If stuck after 2 failed repair rounds on the same issue**, write a minimal stub and move on. Do NOT loop forever.
@@ -2612,9 +2612,8 @@ Epoch: {getattr(state, 'epoch_current', 1)}/{getattr(state, 'epoch_total', 1)}
 Target blocks to fill or revise: {', '.join(target_blocks)}
 
 Rules:
-1. Use only `list_files`, `read_file`, `part_read`, `search`, `replace_block`, `replace_in_file`, `write_file`, `append_to_file`, and `exec_command` (for compile/test/coverage).
-   - Use `write_file` for the first ~100 lines of a file, then `append_to_file` for remaining content in batches of ~100 lines each.
-   - Use `exec_command` ONLY for build / run / coverage commands. Do not use it for arbitrary shell operations.
+1. You have ONLY `exec_command` as a tool. Use it for ALL operations: read files (`cat`, `head`), search (`grep`, `find`), write/edit files (`cat >`, `sed`, `tee`), compile, run tests, and check coverage.
+   - For writing file content, use heredoc: `exec_command(cmd="cat > path/file.cpp << 'EOF'\n...content...\nEOF")`
 2. Do not overwrite the whole file after the skeleton exists; fill only the listed blocks.
 3. Keep every generated gtest or helper name traceable to the BLOCK_ID. Include the BLOCK_ID in the test name.
 4. For `*.cpp`, use `// ==== BLOCK:... ====`.
@@ -4404,8 +4403,6 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
                 "analysis.md",
             ],
             tools=[
-                "list_files", "read_file", "part_read", "search",
-                "write_file", "replace_in_file", "replace_block", "append_to_file",
                 "exec_command",
             ],
             allow_skip=False,
@@ -4505,15 +4502,15 @@ repeat — until you are satisfied or turns are exhausted.
 1. **For each file** (in order of layer priority: op_api first, then op_host):
    a. Read the current block index to see what's already filled vs placeholder.
    b. Fill every placeholder block with meaningful test cases.
-      - Use `write_file` for first ~100 lines, then `append_to_file` for the rest.
-      - Use `replace_block` / `replace_in_file` to update existing blocks.
+      - Use `exec_command` with heredoc to write file content: `cat > path/file.cpp << 'EOF'\n...content...\nEOF`
+      - Use `sed` to replace or update existing blocks.
    c. Immediately compile+run: `exec_command(cmd="<compile_cmd_for_layer>")`
-   d. If compile fails: read the error → reason → read API source → fix → recompile.
+   d. If compile fails: read the error (`cat` log), reason, read API source (`cat`, `grep`), fix, recompile.
    e. If runtime abort/SIGSEGV: same loop. Do NOT move on until tests run cleanly.
 
-2. **After all files are done**, run coverage for each enabled layer and read the output.
+2. **After all files are done**, run coverage for each enabled layer and read the output (`cat` coverage files, `grep` for metrics).
 
-3. **Identify uncovered lines** — read the operator source around each uncovered line,
+3. **Identify uncovered lines** — read the operator source around each uncovered line (`cat -n`, `sed -n`),
    understand the branch condition, write a new TEST_F that exercises that path.
 
 4. **Recompile and re-run** after each gap-filling round. Repeat steps 2-4 until
@@ -4530,7 +4527,8 @@ repeat — until you are satisfied or turns are exhausted.
 ```
 
 ## Key rules
-- NEVER guess an API signature. Always `read_file` / grep the implementation before using a type.
+- You have ONLY `exec_command`. Use bash commands (`cat`, `grep`, `sed`, `find`, `head`, `tail`, `awk`, heredocs) for ALL file operations.
+- NEVER guess an API signature. Always `grep` / `cat` the implementation before using a type.
 - Keep every test traceable to its BLOCK_ID marker.
 - Do NOT regenerate already-filled blocks unless you are improving them.
 - Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
@@ -4697,11 +4695,11 @@ prefix shown above. NEVER change BUILD_PATH or run a bare `bash build.sh` — a 
 is compiling the other layer, and a shared build directory would corrupt both builds.
 
 ## Mandatory workflow (loop until coverage stabilises or turns run out)
-1. For each file: read the current block index, fill every placeholder block with meaningful
-   test cases (write_file for first ~100 lines, then append_to_file for the rest).
-2. Immediately compile+run with the prefixed command above. If compile fails: read the error →
-   read the API source → fix → recompile. Do NOT move on until tests run cleanly.
-3. Run coverage (prefixed command), read the output, identify uncovered lines, add TEST_F cases
+1. For each file: read the current block index (`cat`), fill every placeholder block with meaningful
+   test cases using `cat > file << 'EOF'` heredoc or `sed` for updates.
+2. Immediately compile+run with the prefixed command above. If compile fails: read the error (`cat` log),
+   read the API source (`cat`/`grep`), fix (`sed`), recompile. Do NOT move on until tests run cleanly.
+3. Run coverage (prefixed command), read the output (`cat`/`grep`), identify uncovered lines, add TEST_F cases
    that exercise those paths. Recompile. Repeat until coverage plateaus or <20 turns remain.
 4. At the very end, output a JSON block (```json ... ```) with this schema:
 ```json
@@ -4714,7 +4712,7 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 ```
 
 ## Key rules
-- NEVER guess an API signature. Always read_file / grep the implementation first.
+- NEVER guess an API signature. Always `cat` / `grep` the implementation first.
 - Keep every test traceable to its BLOCK_ID marker.
 - Do NOT regenerate already-filled blocks unless improving them.
 - Each exec_command output is your ground-truth.
@@ -4873,9 +4871,9 @@ Begin now. Start with the first file of the `{layer}` layer."""
                         warning_msg = (
                             f"⚠️ API returned HTTP 400 (arguments too large). "
                             f"Retry {_api400_retries}/3. "
-                            f"Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
-                            f"then use `append_to_file` to add remaining content in batches of ~100 lines each. "
-                            f"Keep each tool call under 5000 characters."
+                            f"Please split your output into smaller chunks: use `cat >` heredocs for the first ~100 lines, "
+                            f"then use `cat >>` or `sed` for remaining content in batches of ~100 lines each. "
+                            f"Keep each `exec_command` under 5000 characters."
                         )
                         messages.append({"role": "user", "content": warning_msg})
                         _made_progress = True
@@ -4911,16 +4909,16 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 except json.JSONDecodeError:
                     warning_msg = (
                         "⚠️ Your previous tool call was rejected — the arguments were truncated (invalid JSON). "
-                        "Please split your output into smaller chunks: use `write_file` for the first ~100 lines, "
-                        "then use `append_to_file` to add remaining content in batches of ~100 lines each. "
-                        "Keep each tool call under 5000 characters."
+                        "Please split your output into smaller chunks: use `cat >` heredocs for the first ~100 lines, "
+                        "then use `cat >>` or `sed` for remaining content in batches of ~100 lines each. "
+                        "Keep each `exec_command` under 5000 characters."
                     )
                     messages.append({"role": "user", "content": warning_msg})
                     _made_progress = True
                     continue
                 tool_result = self.tool_runner.execute(tool_name, tool_args, ctx)
                 if tool_result.ok and tool_name in {
-                    "write_file", "replace_in_file", "replace_block", "append_to_file",
+                    "exec_command", "write_file", "replace_in_file", "replace_block", "append_to_file",
                 }:
                     _made_progress = True
                 tool_msg = {
