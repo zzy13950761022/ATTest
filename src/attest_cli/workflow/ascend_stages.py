@@ -1508,8 +1508,114 @@ class AscendCodeGenStage(AscendBaseStage):
             source_path = attest_dir / pattern
             if source_path.exists():
                 return source_path
-        
+
+        if attest_dir.exists():
+            candidates = sorted([
+                f for f in attest_dir.glob("test_*.cpp")
+                if not f.name.endswith("_attest.cpp")
+            ])
+            if candidates:
+                return candidates[0]
+
         return None
+
+    def _find_aclnn_header(self, project_root: Path, op_name: str) -> Optional[str]:
+        """Find the aclnn header relative include path for the operator."""
+        math_dir = project_root / "math" / op_name
+        if not math_dir.exists():
+            return None
+        headers = sorted(math_dir.rglob("aclnn_*.h"))
+        if not headers:
+            return None
+        best = None
+        for h in headers:
+            if op_name.replace("_", "") in h.stem.replace("_", ""):
+                best = h
+                break
+        if best is None:
+            best = headers[0]
+        rel = best.relative_to(math_dir)
+        depth = 3
+        return "/".join([".."] * depth + list(rel.parts))
+
+    @staticmethod
+    def _to_pascal_case(snake: str) -> str:
+        return "".join(part.capitalize() for part in snake.split("_") if part)
+
+    def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
+        """Plan B: generate C++ test boilerplate when no source file exists."""
+        if layer_id == "op_api":
+            header_name = self._find_aclnn_header(project_root, op_name)
+            pascal = self._to_pascal_case(op_name)
+            class_name = f"{op_name}_test"
+            aclnn_func = f"aclnn{pascal}"
+            include = f'#include "{header_name}"' if header_name else f"// TODO: #include \"aclnn_{op_name}.h\""
+            return (
+                "#include <array>\n"
+                "#include <vector>\n"
+                '#include "gtest/gtest.h"\n'
+                f"{include}\n"
+                '#include "op_api_ut_common/op_api_ut.h"\n'
+                '#include "op_api_ut_common/tensor_desc.h"\n'
+                "\n"
+                "using namespace std;\n"
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
+                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
+                "};\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float32) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float16) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT16, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_int32) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_INT32, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+            )
+        elif layer_id == "op_host":
+            pascal = self._to_pascal_case(op_name)
+            class_name = f"{pascal}InferShape"
+            return (
+                "#include <gtest/gtest.h>\n"
+                "#include <iostream>\n"
+                '#include "infershape_context_faker.h"\n'
+                '#include "base/registry/op_impl_space_registry_v2.h"\n'
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ std::cout << \"{class_name} SetUp\" << std::endl; }}\n"
+                f"  static void TearDownTestCase() {{ std::cout << \"{class_name} TearDown\" << std::endl; }}\n"
+                "};\n"
+                "\n"
+                "static std::vector<int64_t> ToVector(const gert::Shape& shape) {{\n"
+                "  size_t n = shape.GetDimNum();\n"
+                "  std::vector<int64_t> v(n, 0);\n"
+                "  for (size_t i = 0; i < n; i++) v[i] = shape.GetDim(i);\n"
+                "  return v;\n"
+                "}\n"
+            )
+        return ""
 
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
@@ -1517,12 +1623,12 @@ class AscendCodeGenStage(AscendBaseStage):
         is_cmake = str(file_entry.get("kind")) == "cmake"
         layer_id = str(file_entry.get("layer_id", ""))
 
-        # Skip all CMake files (Plan A doesn't touch existing CMakeLists.txt)
-        if is_cmake:
+        # Skip cmake files that don't exist yet (nothing to wrap)
+        if is_cmake and not path.exists():
             return False
 
-        # Plan A: For operator tests, if _attest.cpp doesn't exist, copy source file first
-        is_op_test = layer_id in ("op_api", "op_host") and str(file_entry.get("kind", "")) == "test_file"
+        # Plan A: For non-cmake operator tests, if _attest.cpp doesn't exist, copy source file first
+        is_op_test = not is_cmake and layer_id in ("op_api", "op_host") and str(file_entry.get("kind", "")) in ("test_file", "cpp") and path.name.endswith("_attest.cpp")
         
         if is_op_test and not path.exists():
             op_name = str(file_entry.get("op_name", ""))
@@ -1536,7 +1642,10 @@ class AscendCodeGenStage(AscendBaseStage):
                     print(f"📋 Found source file: {source_file.name}")
                     shutil.copy2(source_file, path)
                     print(f"📋 Copied source file to: {path.name}")
-                    # Now recursively call _ensure_skeleton to add BLOCK markers
+                    bak_file = source_file.with_suffix(source_file.suffix + ".bak")
+                    if source_file != path and source_file.exists() and not bak_file.exists():
+                        source_file.rename(bak_file)
+                        print(f"📋 Renamed source to: {bak_file.name}")
                     return self._ensure_skeleton(project_root, file_entry, file_cases)
 
         if path.exists():
@@ -1544,35 +1653,81 @@ class AscendCodeGenStage(AscendBaseStage):
             if existing_blocks:
                 return False
             original = path.read_text(encoding="utf-8")
-            layer_id = str(file_entry.get("layer_id", ""))
-            lines = [
-                start_marker("HEADER", comment_style),
-                original.rstrip(),
-                end_marker("HEADER", comment_style),
-            ]
-            for case in file_cases:
-                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-            if layer_id == "op_host":
-                lines.extend([
-                    start_marker("FOOTER", comment_style),
-                    f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
-                    f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                    f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                    f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                    f"endif()",
-                    end_marker("FOOTER", comment_style),
-                ])
+            if not is_cmake:
+                # Non-cmake file: wrap existing content as HEADER block
+                lines = [
+                    start_marker("HEADER", comment_style),
+                    original.rstrip(),
+                    end_marker("HEADER", comment_style),
+                ]
+                for case in file_cases:
+                    lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+                if layer_id == "op_host":
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
+                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"endif()",
+                        end_marker("FOOTER", comment_style),
+                    ])
+                else:
+                    lines.append(start_marker("FOOTER", comment_style))
+                    lines.append(end_marker("FOOTER", comment_style))
+                content = "\n".join(lines) + "\n"
+                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+                return True
             else:
-                lines.append(start_marker("FOOTER", comment_style))
-                lines.append(end_marker("FOOTER", comment_style))
-            content = "\n".join(lines) + "\n"
-            ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-            self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
-            return True
+                # Cmake file: wrap with HEADER + FOOTER (FOOTER needed for _attest.cpp registration)
+                lines = [
+                    start_marker("HEADER", comment_style),
+                    original.rstrip(),
+                    end_marker("HEADER", comment_style),
+                ]
+                if layer_id == "op_host":
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"endif()",
+                        end_marker("FOOTER", comment_style),
+                    ])
+                else:
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        end_marker("FOOTER", comment_style),
+                    ])
+                content = "\n".join(lines) + "\n"
+                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+                return True
 
         ensure_parent(path)
+        op_name_b = str(file_entry.get("op_name", ""))
+        op_path_b = str(file_entry.get("op_path", ""))
+        if op_path_b and "/" in op_path_b:
+            op_name_b = op_path_b.split("/")[-1]
+        if not op_name_b:
+            parts = str(path).split("/")
+            for i, part in enumerate(parts):
+                if part == "math" and i + 1 < len(parts):
+                    op_name_b = parts[i + 1]
+                    break
+        boilerplate = ""
+        if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
+            has_source = False
+            if path.parent.exists():
+                source_files = [f for f in path.parent.glob("*.cpp") if not f.name.endswith("_attest.cpp")]
+                if source_files:
+                    has_source = True
+            if not has_source:
+                boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
         lines = [
             start_marker("HEADER", comment_style),
+            boilerplate.rstrip() if boilerplate else "",
             end_marker("HEADER", comment_style),
         ]
         for case in file_cases:
@@ -1582,6 +1737,24 @@ class AscendCodeGenStage(AscendBaseStage):
         content = "\n".join(lines) + "\n"
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+        if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
+            cmake_path = path.parent / "CMakeLists.txt"
+            if not cmake_path.exists():
+                cmake_path.parent.mkdir(parents=True, exist_ok=True)
+                if layer_id == "op_api":
+                    cmake_content = (
+                        "if(UT_TEST_ALL OR OP_API_UT)\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "endif()\n"
+                    )
+                else:
+                    cmake_content = (
+                        "if(UT_TEST_ALL OR OP_HOST_UT)\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "endif()\n"
+                    )
+                cmake_path.write_text(cmake_content, encoding="utf-8")
         return True
 
     def _select_target_blocks(self, project_root: Path, state, plan: Dict[str, Any], file_entry: Dict[str, Any], analysis_plan: Dict[str, Any], created: bool = False, uncovered_for_layer: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
@@ -1790,6 +1963,21 @@ Fix the file now."""
         cpp_name = Path(file_path).name
         cmake_path = project_root / str(Path(file_path).parent / "CMakeLists.txt")
         if not cmake_path.exists():
+            cmake_path.parent.mkdir(parents=True, exist_ok=True)
+            if layer_id == "op_api":
+                content = (
+                    "if(UT_TEST_ALL OR OP_API_UT)\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "endif()\n"
+                )
+            else:
+                content = (
+                    "if(UT_TEST_ALL OR OP_HOST_UT)\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "endif()\n"
+                )
+            cmake_path.write_text(content, encoding="utf-8")
             return
         content = cmake_path.read_text(encoding="utf-8")
         if cpp_name in content:
@@ -5025,8 +5213,111 @@ Begin now. Start with the first file of the `{layer}` layer."""
         for f in attest_dir.glob(f"*{op_name}*.cpp"):
             if "_attest" not in f.name:
                 return f
-        
+
+        # Broad fallback: any test_*.cpp that's not _attest
+        if attest_dir.exists():
+            candidates = sorted([
+                f for f in attest_dir.glob("test_*.cpp")
+                if not f.name.endswith("_attest.cpp")
+            ])
+            if candidates:
+                return candidates[0]
+
         return None
+
+    def _find_aclnn_header(self, project_root: Path, op_name: str) -> Optional[str]:
+        """Find the aclnn header relative include path for the operator."""
+        math_dir = project_root / "math" / op_name
+        if not math_dir.exists():
+            return None
+        headers = sorted(math_dir.rglob("aclnn_*.h"))
+        if not headers:
+            return None
+        best = None
+        for h in headers:
+            if op_name.replace("_", "") in h.stem.replace("_", ""):
+                best = h
+                break
+        if best is None:
+            best = headers[0]
+        rel = best.relative_to(math_dir)
+        depth = 3
+        return "/".join([".."] * depth + list(rel.parts))
+
+    def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
+        """Plan B: generate C++ test boilerplate when no source file exists."""
+        if layer_id == "op_api":
+            header_name = self._find_aclnn_header(project_root, op_name)
+            pascal = "".join(p.capitalize() for p in op_name.split("_") if p)
+            class_name = f"{op_name}_test"
+            aclnn_func = f"aclnn{pascal}"
+            include = f'#include "{header_name}"' if header_name else f"// TODO: #include \"aclnn_{op_name}.h\""
+            return (
+                "#include <array>\n"
+                "#include <vector>\n"
+                '#include "gtest/gtest.h"\n'
+                f"{include}\n"
+                '#include "op_api_ut_common/op_api_ut.h"\n'
+                '#include "op_api_ut_common/tensor_desc.h"\n'
+                "\n"
+                "using namespace std;\n"
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
+                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
+                "};\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float32) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float16) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT16, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_int32) {{\n"
+                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_INT32, ACL_FORMAT_ND);\n"
+                "  auto out_desc = TensorDesc(self_desc);\n"
+                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+            )
+        elif layer_id == "op_host":
+            pascal = "".join(p.capitalize() for p in op_name.split("_") if p)
+            class_name = f"{pascal}InferShape"
+            return (
+                "#include <gtest/gtest.h>\n"
+                "#include <iostream>\n"
+                '#include "infershape_context_faker.h"\n'
+                '#include "base/registry/op_impl_space_registry_v2.h"\n'
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ std::cout << \"{class_name} SetUp\" << std::endl; }}\n"
+                f"  static void TearDownTestCase() {{ std::cout << \"{class_name} TearDown\" << std::endl; }}\n"
+                "};\n"
+                "\n"
+                "static std::vector<int64_t> ToVector(const gert::Shape& shape) {\n"
+                "  size_t n = shape.GetDimNum();\n"
+                "  std::vector<int64_t> v(n, 0);\n"
+                "  for (size_t i = 0; i < n; i++) v[i] = shape.GetDim(i);\n"
+                "  return v;\n"
+                "}\n"
+            )
+        return ""
 
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
@@ -5037,11 +5328,11 @@ Begin now. Start with the first file of the `{layer}` layer."""
         # Plan A: Don't create _attest.cpp file from scratch, reuse source test file instead
         is_attest_gen = layer_id in ("op_api", "op_host") and path.name.endswith("_attest.cpp")
 
-        # Skip all CMake files (Plan A doesn't touch existing CMakeLists.txt)
-        if is_cmake:
+        # Skip cmake files that don't exist yet (nothing to wrap)
+        if is_cmake and not path.exists():
             return False
 
-        # Plan A: For operator tests, if _attest.cpp doesn't exist, copy source file
+        # Plan A: For non-cmake operator tests, if _attest.cpp doesn't exist, copy source file
         if is_attest_gen and not path.exists() and not is_cmake:
             op_name = str(file_entry.get("op_name", ""))
             if not op_name:
@@ -5056,6 +5347,9 @@ Begin now. Start with the first file of the `{layer}` layer."""
             if source_file:
                 try:
                     shutil.copy2(source_file, path)
+                    bak_file = source_file.with_suffix(source_file.suffix + ".bak")
+                    if source_file != path and source_file.exists() and not bak_file.exists():
+                        source_file.rename(bak_file)
                     return self._ensure_skeleton(project_root, file_entry, file_cases)
                 except Exception as e:
                     print(f"Warning: Failed to copy source file {source_file} to {path}: {e}")
@@ -5066,34 +5360,78 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 return False
             original = path.read_text(encoding="utf-8")
             layer_id_str = str(file_entry.get("layer_id", ""))
-            lines = [
-                start_marker("HEADER", comment_style),
-                original.rstrip(),
-                end_marker("HEADER", comment_style),
-            ]
-            for case in file_cases:
-                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-            if layer_id_str == "op_host":
-                lines.extend([
-                    start_marker("FOOTER", comment_style),
-                    f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
-                    f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                    f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                    f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                    f"endif()",
-                    end_marker("FOOTER", comment_style),
-                ])
+            if not is_cmake:
+                # Non-cmake file: wrap existing content as HEADER block
+                lines = [
+                    start_marker("HEADER", comment_style),
+                    original.rstrip(),
+                    end_marker("HEADER", comment_style),
+                ]
+                for case in file_cases:
+                    lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+                if layer_id_str == "op_host":
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
+                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"endif()",
+                        end_marker("FOOTER", comment_style),
+                    ])
+                else:
+                    lines.append(start_marker("FOOTER", comment_style))
+                    lines.append(end_marker("FOOTER", comment_style))
+                content = "\n".join(lines) + "\n"
+                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+                return True
             else:
-                lines.append(start_marker("FOOTER", comment_style))
-                lines.append(end_marker("FOOTER", comment_style))
-            content = "\n".join(lines) + "\n"
-            ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-            self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
-            return True
+                # Cmake file: wrap with HEADER + FOOTER (FOOTER needed for _attest.cpp registration)
+                lines = [
+                    start_marker("HEADER", comment_style),
+                    original.rstrip(),
+                    end_marker("HEADER", comment_style),
+                ]
+                if layer_id_str == "op_host":
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"endif()",
+                        end_marker("FOOTER", comment_style),
+                    ])
+                else:
+                    lines.extend([
+                        start_marker("FOOTER", comment_style),
+                        end_marker("FOOTER", comment_style),
+                    ])
+                content = "\n".join(lines) + "\n"
+                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+                return True
 
         ensure_parent(path)
+        op_name_b = str(file_entry.get("op_name", ""))
+        if not op_name_b:
+            parts = str(path).split("/")
+            for i, part in enumerate(parts):
+                if part == "math" and i + 1 < len(parts):
+                    op_name_b = parts[i + 1]
+                    break
+        boilerplate = ""
+        if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
+            has_source = False
+            if path.parent.exists():
+                source_files = [f for f in path.parent.glob("*.cpp") if not f.name.endswith("_attest.cpp")]
+                if source_files:
+                    has_source = True
+            if not has_source:
+                boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
         lines = [
             start_marker("HEADER", comment_style),
+            boilerplate.rstrip() if boilerplate else "",
             end_marker("HEADER", comment_style),
         ]
         for case in file_cases:
@@ -5103,6 +5441,24 @@ Begin now. Start with the first file of the `{layer}` layer."""
         content = "\n".join(lines) + "\n"
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+        if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
+            cmake_path = path.parent / "CMakeLists.txt"
+            if not cmake_path.exists():
+                cmake_path.parent.mkdir(parents=True, exist_ok=True)
+                if layer_id == "op_api":
+                    cmake_content = (
+                        "if(UT_TEST_ALL OR OP_API_UT)\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "endif()\n"
+                    )
+                else:
+                    cmake_content = (
+                        "if(UT_TEST_ALL OR OP_HOST_UT)\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                        "endif()\n"
+                    )
+                cmake_path.write_text(cmake_content, encoding="utf-8")
         return True
 
     def _ensure_cmake_attest_registration(
@@ -5117,6 +5473,21 @@ Begin now. Start with the first file of the `{layer}` layer."""
         cpp_name = Path(file_path).name
         cmake_path = project_root / str(Path(file_path).parent / "CMakeLists.txt")
         if not cmake_path.exists():
+            cmake_path.parent.mkdir(parents=True, exist_ok=True)
+            if layer_id == "op_api":
+                content = (
+                    "if(UT_TEST_ALL OR OP_API_UT)\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "endif()\n"
+                )
+            else:
+                content = (
+                    "if(UT_TEST_ALL OR OP_HOST_UT)\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    "endif()\n"
+                )
+            cmake_path.write_text(content, encoding="utf-8")
             return
         content = cmake_path.read_text(encoding="utf-8")
         if cpp_name in content:

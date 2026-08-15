@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eo pipefail
+export ATTEST_CONFIG_DIR=/root/.attest_cli_glm5
+export MODEL=glm
+exec bash /mnt/fangcr/ATTest/scripts/v15_model_batch_v9.sh.template "$@"

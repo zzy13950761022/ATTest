@@ -198,24 +198,29 @@ def test_ensure_skeleton_no_source():
         
         content = attest_path.read_text()
         
-        # Should have only minimal markers (no source content)
+        # Should have BLOCK markers
         assert "// ==== BLOCK:HEADER START ====" in content
         assert "// ==== BLOCK:HEADER END ====" in content
         assert "// ==== BLOCK:CASE_1 ====" in content
         assert "// ==== BLOCK:FOOTER START ====" in content
         assert "// ==== BLOCK:FOOTER END ====" in content
         
-        # Should NOT have any actual #include or class definition
-        assert "#include" not in content, "Should not have LLM-fabricated includes"
-        assert "class" not in content or "class :" in content, "Should not have LLM-fabricated class"
+        # Plan B: should include C++ boilerplate in HEADER block
+        assert "#include" in content, "Plan B should include C++ boilerplate"
+        assert "class" in content, "Plan B should include test class definition"
+        assert "testing::Test" in content, "Plan B should include gtest class"
         
-        print("  ✓ Created minimal skeleton without LLM fabrication")
+        print("  ✓ Created skeleton with Plan B C++ boilerplate when no source exists")
     
     print("✅ Test 3 passed\n")
 
-def test_ensure_skeleton_skip_cmake():
-    """Test that _ensure_skeleton doesn't modify existing CMakeLists.txt"""
-    print("🧪 Test 4: _ensure_skeleton skips existing CMakeLists.txt")
+def test_ensure_skeleton_wrap_cmake():
+    """Test that _ensure_skeleton adds BLOCK markers (including FOOTER) to existing CMakeLists.txt.
+    
+    This is required so that _ensure_cmake_attest_registration can insert the
+    *_attest.cpp file registration into the FOOTER block.
+    """
+    print("🧪 Test 4: _ensure_skeleton wraps existing CMakeLists.txt with BLOCK markers")
     
     with tempfile.TemporaryDirectory() as tmpdir:
         project_root = Path(tmpdir)
@@ -238,17 +243,23 @@ def test_ensure_skeleton_skip_cmake():
         file_entry = {
             "file_id": "FILE_SIGN_CMAKE_OP_API",
             "path": "math/sign/tests/ut/op_api/CMakeLists.txt",
-            "kind": "cmake"
+            "kind": "cmake",
+            "layer_id": "op_api",
+            "comment_style": "#",
         }
         
         result = stage._ensure_skeleton(project_root, file_entry, [])
         
-        # Should return False (skipped)
-        assert result is False, "Should skip existing CMakeLists.txt"
+        # Should return True (modified) - BLOCK markers added
+        assert result is True, "Should wrap existing CMakeLists.txt with BLOCK markers"
         
-        # Content should be unchanged
-        assert cmake_path.read_text() == original_content, "Should not modify existing CMakeLists.txt"
-        print("  ✓ Skipped existing CMakeLists.txt")
+        new_content = cmake_path.read_text()
+        assert "# ==== BLOCK:HEADER START ====" in new_content, "Should have HEADER START marker"
+        assert "# ==== BLOCK:HEADER END ====" in new_content, "Should have HEADER END marker"
+        assert "# ==== BLOCK:FOOTER START ====" in new_content, "Should have FOOTER START marker (needed for _attest.cpp registration)"
+        assert "# ==== BLOCK:FOOTER END ====" in new_content, "Should have FOOTER END marker"
+        assert original_content.rstrip() in new_content, "Should preserve original content inside HEADER block"
+        print("  ✓ Wrapped existing CMakeLists.txt with BLOCK markers (HEADER + FOOTER)")
     
     print("✅ Test 4 passed\n")
 
@@ -260,7 +271,7 @@ if __name__ == '__main__':
     test_find_source_test_file()
     test_ensure_skeleton_reuse()
     test_ensure_skeleton_no_source()
-    test_ensure_skeleton_skip_cmake()
+    test_ensure_skeleton_wrap_cmake()
     
     print("=" * 60)
     print("✅ All Plan A tests passed!")
