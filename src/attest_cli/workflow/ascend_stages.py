@@ -1605,7 +1605,83 @@ class AscendCodeGenStage(AscendBaseStage):
     def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
         """Plan B: generate C++ test boilerplate when no source file exists."""
         if layer_id == "op_api":
-            return ""
+            if not self._op_has_op_api_dir(project_root, op_name):
+                return ""
+            real_func, header_rel = self._scan_aclnn_functions(project_root, op_name)
+            if not real_func:
+                return ""
+            include_depth = 3
+            inc_path = "/".join([".."] * include_depth + header_rel.split("/"))
+            class_name = f"{op_name}_test"
+
+            ws_func = f"{real_func}GetWorkspaceSize"
+            math_dir = project_root / "math" / op_name
+            tensor_input_count = 1
+            has_scalar = False
+            has_aclscalar = False
+            for h in sorted(math_dir.rglob("aclnn_*.h")):
+                try:
+                    text = h.read_text(encoding="utf-8", errors="ignore")
+                    sig_match = re.search(
+                        r'\b' + re.escape(ws_func) + r'\s*\(([^)]+)\)', text
+                    )
+                    if not sig_match:
+                        continue
+                    sig = sig_match.group(1)
+                    tensor_params = len(re.findall(r'\bconst\s+aclTensor\s*\*', sig))
+                    has_int64 = bool(re.findall(r'\bint64_t\b', sig))
+                    has_aclscalar_param = bool(re.findall(r'\baclScalar\s*\*', sig))
+                    if tensor_params > 0:
+                        tensor_input_count = tensor_params
+                        has_scalar = has_int64
+                        has_aclscalar = has_aclscalar_param
+                        break
+                except Exception:
+                    continue
+
+            input_descs = "self_desc"
+            input_decls = "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);"
+            for i in range(1, tensor_input_count):
+                name = "other_desc" if i == 1 else f"extra{i}_desc"
+                input_decls += f"\n  auto {name} = TensorDesc({{2, 3, 4, 5}}, ACL_FLOAT, ACL_FORMAT_ND);"
+                input_descs += f", {name}"
+            if has_aclscalar:
+                input_decls += "\n  int64_t scalar_value = 1;\n  auto scalar_desc = ScalarDesc(scalar_value);"
+                input_descs += ", scalar_desc"
+            elif has_scalar:
+                input_decls += "\n  int64_t scalar_value = 1;"
+                input_descs += ", scalar_value"
+
+            has_aclscalar_include = (
+                '#include "op_api_ut_common/scalar_desc.h"\n' if has_aclscalar else ""
+            )
+
+            return (
+                "#include <array>\n"
+                "#include <vector>\n"
+                '#include "gtest/gtest.h"\n'
+                f'#include "{inc_path}"\n'
+                '#include "op_api_ut_common/op_api_ut.h"\n'
+                '#include "op_api_ut_common/tensor_desc.h"\n'
+                f'{has_aclscalar_include}'
+                "\n"
+                "using namespace std;\n"
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
+                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
+                "};\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float32) {{\n"
+                f"{input_decls}\n"
+                "  auto out_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
+                f"  auto ut = OP_API_UT({real_func}, INPUT({input_descs}), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+            )
         elif layer_id == "op_host":
             pascal = self._to_pascal_case(op_name)
             class_name = f"{pascal}InferShape"
@@ -5322,7 +5398,83 @@ Begin now. Start with the first file of the `{layer}` layer."""
     def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
         """Plan B: generate C++ test boilerplate when no source file exists."""
         if layer_id == "op_api":
-            return ""
+            if not self._op_has_op_api_dir(project_root, op_name):
+                return ""
+            real_func, header_rel = self._scan_aclnn_functions(project_root, op_name)
+            if not real_func:
+                return ""
+            include_depth = 3
+            inc_path = "/".join([".."] * include_depth + header_rel.split("/"))
+            class_name = f"{op_name}_test"
+
+            ws_func = f"{real_func}GetWorkspaceSize"
+            math_dir = project_root / "math" / op_name
+            tensor_input_count = 1
+            has_scalar = False
+            has_aclscalar = False
+            for h in sorted(math_dir.rglob("aclnn_*.h")):
+                try:
+                    text = h.read_text(encoding="utf-8", errors="ignore")
+                    sig_match = re.search(
+                        r'\b' + re.escape(ws_func) + r'\s*\(([^)]+)\)', text
+                    )
+                    if not sig_match:
+                        continue
+                    sig = sig_match.group(1)
+                    tensor_params = len(re.findall(r'\bconst\s+aclTensor\s*\*', sig))
+                    has_int64 = bool(re.findall(r'\bint64_t\b', sig))
+                    has_aclscalar_param = bool(re.findall(r'\baclScalar\s*\*', sig))
+                    if tensor_params > 0:
+                        tensor_input_count = tensor_params
+                        has_scalar = has_int64
+                        has_aclscalar = has_aclscalar_param
+                        break
+                except Exception:
+                    continue
+
+            input_descs = "self_desc"
+            input_decls = "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);"
+            for i in range(1, tensor_input_count):
+                name = "other_desc" if i == 1 else f"extra{i}_desc"
+                input_decls += f"\n  auto {name} = TensorDesc({{2, 3, 4, 5}}, ACL_FLOAT, ACL_FORMAT_ND);"
+                input_descs += f", {name}"
+            if has_aclscalar:
+                input_decls += "\n  int64_t scalar_value = 1;\n  auto scalar_desc = ScalarDesc(scalar_value);"
+                input_descs += ", scalar_desc"
+            elif has_scalar:
+                input_decls += "\n  int64_t scalar_value = 1;"
+                input_descs += ", scalar_value"
+
+            has_aclscalar_include = (
+                '#include "op_api_ut_common/scalar_desc.h"\n' if has_aclscalar else ""
+            )
+
+            return (
+                "#include <array>\n"
+                "#include <vector>\n"
+                '#include "gtest/gtest.h"\n'
+                f'#include "{inc_path}"\n'
+                '#include "op_api_ut_common/op_api_ut.h"\n'
+                '#include "op_api_ut_common/tensor_desc.h"\n'
+                f'{has_aclscalar_include}'
+                "\n"
+                "using namespace std;\n"
+                "\n"
+                f"class {class_name} : public testing::Test {{\n"
+                " protected:\n"
+                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
+                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
+                "};\n"
+                "\n"
+                f"TEST_F({class_name}, case_default_float32) {{\n"
+                f"{input_decls}\n"
+                "  auto out_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
+                f"  auto ut = OP_API_UT({real_func}, INPUT({input_descs}), OUTPUT(out_desc));\n"
+                "  uint64_t workspace_size = 0;\n"
+                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
+                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
+                "}\n"
+            )
         elif layer_id == "op_host":
             pascal = self._to_pascal_case(op_name)
             class_name = f"{pascal}InferShape"

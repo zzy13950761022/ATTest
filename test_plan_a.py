@@ -164,7 +164,7 @@ def test_ensure_skeleton_reuse():
 
 def test_ensure_skeleton_no_source():
     """Test that _ensure_skeleton falls back to minimal skeleton when no source"""
-    print("🧪 Test 3a: _ensure_skeleton for op_api creates minimal skeleton (no boilerplate)")
+    print("🧪 Test 3a: _ensure_skeleton for op_api generates header + test class with real aclnn")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         project_root = Path(tmpdir)
@@ -198,18 +198,20 @@ def test_ensure_skeleton_no_source():
         stage._ensure_skeleton(project_root, file_entry, file_cases)
 
         attest_path = project_root / file_entry["path"]
-        assert attest_path.exists(), "Should create attest file even without boilerplate"
+        assert attest_path.exists(), "Should create attest file"
         content = attest_path.read_text()
 
         # Should have block markers
         assert "// ==== BLOCK:HEADER START ====" in content
         assert "// ==== BLOCK:CASE_1 ====" in content
 
-        # Plan B for op_api: minimal skeleton (no boilerplate, LLM handles content)
-        assert "#include" not in content, "Plan B for op_api should NOT generate boilerplate"
-        assert "class" not in content.lower() or "class" not in content.split("CASE")[0], \
-            "Plan B for op_api should not generate test class"
-        print("  ✓ op_api has minimal skeleton when no source file (LLM handles content)")
+        # Plan B for op_api with real aclnn headers: includes + test class + TEST_F method
+        assert "#include" in content, "Plan B should include correct header"
+        assert "aclnn_myop.h" in content, "Plan B should use the real header"
+        assert "aclnnMyOp" in content, "Plan B should use real aclnn function from header"
+        assert "class myop_test" in content, "Plan B should include test class"
+        assert "TEST_F(" in content, "Plan B should include a baseline TEST_F method"
+        print("  ✓ Plan B generates includes + test class + TEST_F method for LLM to extend")
 
     print("✅ Test 3a passed\n")
 
