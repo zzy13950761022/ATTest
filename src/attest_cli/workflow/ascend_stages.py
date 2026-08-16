@@ -13,7 +13,7 @@ import shlex
 import shutil
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..ascend import AscendSkillProvider
 from ..block_utils import (
@@ -1538,6 +1538,66 @@ class AscendCodeGenStage(AscendBaseStage):
         depth = 3
         return "/".join([".."] * depth + list(rel.parts))
 
+    def _scan_aclnn_functions(self, project_root: Path, op_name: str) -> Tuple[str, str]:
+        """Scan all aclnn_*.h headers under math/<op_name>/ and extract real function names.
+
+        Returns (main_aclnn_func, header_relative_to_math_dir) or ("", "") if none found.
+        The returned path is relative to math/<op_name>/ (e.g. "op_api/aclnn_bitwiseand.h").
+        """
+        math_dir = project_root / "math" / op_name
+        if not math_dir.exists():
+            return "", ""
+        headers = sorted(math_dir.rglob("aclnn_*.h"))
+        if not headers:
+            return "", ""
+
+        candidates = []
+        best_header = None
+
+        for h in headers:
+            try:
+                text = h.read_text(encoding="utf-8", errors="ignore")
+                func_names = re.findall(r'\b(aclnn[A-Za-z0-9]+?)\s*\(', text)
+                non_ws = [f for f in func_names if "GetWorkspaceSize" not in f and "Inplace" not in f]
+                ws_funcs = [f for f in func_names if "GetWorkspaceSize" in f]
+
+                main_func = non_ws[0] if non_ws else (
+                    ws_funcs[0].replace("GetWorkspaceSize", "") if ws_funcs else None
+                )
+                if not main_func:
+                    continue
+
+                sig_match = re.search(
+                    r'\b' + re.escape(main_func) + r'GetWorkspaceSize\s*\(([^)]+)\)',
+                    text,
+                )
+                if sig_match:
+                    sig = sig_match.group(1)
+                    tensor_params = re.findall(r'\bconst\s+aclTensor\s*\*', sig)
+                    if len(tensor_params) != 1:
+                        continue
+
+                rel_path = h.relative_to(math_dir)
+                rel_path_str = "/".join(rel_path.parts)
+
+                if op_name.replace("_", "") in h.stem.replace("_", ""):
+                    candidates.insert(0, (main_func, rel_path_str))
+                else:
+                    candidates.append((main_func, rel_path_str))
+            except Exception:
+                continue
+
+        if not candidates:
+            return "", ""
+
+        best_func, best_include = candidates[0]
+        return best_func, best_include
+
+    @staticmethod
+    def _op_has_op_api_dir(project_root: Path, op_name: str) -> bool:
+        """Check if operator has an op_api directory (aclnn-based API)."""
+        return (project_root / "math" / op_name / "op_api").is_dir()
+
     @staticmethod
     def _to_pascal_case(snake: str) -> str:
         return "".join(part.capitalize() for part in snake.split("_") if part)
@@ -1545,54 +1605,7 @@ class AscendCodeGenStage(AscendBaseStage):
     def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
         """Plan B: generate C++ test boilerplate when no source file exists."""
         if layer_id == "op_api":
-            header_name = self._find_aclnn_header(project_root, op_name)
-            pascal = self._to_pascal_case(op_name)
-            class_name = f"{op_name}_test"
-            aclnn_func = f"aclnn{pascal}"
-            include = f'#include "{header_name}"' if header_name else f"// TODO: #include \"aclnn_{op_name}.h\""
-            return (
-                "#include <array>\n"
-                "#include <vector>\n"
-                '#include "gtest/gtest.h"\n'
-                f"{include}\n"
-                '#include "op_api_ut_common/op_api_ut.h"\n'
-                '#include "op_api_ut_common/tensor_desc.h"\n'
-                "\n"
-                "using namespace std;\n"
-                "\n"
-                f"class {class_name} : public testing::Test {{\n"
-                " protected:\n"
-                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
-                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
-                "};\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_float32) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_float16) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT16, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_int32) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_INT32, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-            )
+            return ""
         elif layer_id == "op_host":
             pascal = self._to_pascal_case(op_name)
             class_name = f"{pascal}InferShape"
@@ -5244,59 +5257,74 @@ Begin now. Start with the first file of the `{layer}` layer."""
         depth = 3
         return "/".join([".."] * depth + list(rel.parts))
 
+    def _scan_aclnn_functions(self, project_root: Path, op_name: str) -> Tuple[str, str]:
+        """Scan all aclnn_*.h headers under math/<op_name>/ and extract real function names.
+
+        Returns (main_aclnn_func, header_relative_path) or ("", "") if none found.
+        """
+        math_dir = project_root / "math" / op_name
+        if not math_dir.exists():
+            return "", ""
+        headers = sorted(math_dir.rglob("aclnn_*.h"))
+        if not headers:
+            return "", ""
+
+        candidates = []
+
+        for h in headers:
+            try:
+                text = h.read_text(encoding="utf-8", errors="ignore")
+                func_names = re.findall(r'\b(aclnn[A-Za-z0-9]+?)\s*\(', text)
+                non_ws = [f for f in func_names if "GetWorkspaceSize" not in f and "Inplace" not in f]
+                ws_funcs = [f for f in func_names if "GetWorkspaceSize" in f]
+
+                main_func = non_ws[0] if non_ws else (
+                    ws_funcs[0].replace("GetWorkspaceSize", "") if ws_funcs else None
+                )
+                if not main_func:
+                    continue
+
+                sig_match = re.search(
+                    r'\b' + re.escape(main_func) + r'GetWorkspaceSize\s*\(([^)]+)\)',
+                    text,
+                )
+                if sig_match:
+                    sig = sig_match.group(1)
+                    tensor_params = re.findall(r'\bconst\s+aclTensor\s*\*', sig)
+                    if len(tensor_params) != 1:
+                        continue
+
+                rel_path = h.relative_to(math_dir)
+                rel_path_str = "/".join(rel_path.parts)
+
+                if op_name.replace("_", "") in h.stem.replace("_", ""):
+                    candidates.insert(0, (main_func, rel_path_str))
+                else:
+                    candidates.append((main_func, rel_path_str))
+            except Exception:
+                continue
+
+        if not candidates:
+            return "", ""
+
+        best_func, best_include = candidates[0]
+        return best_func, best_include
+
+    @staticmethod
+    def _op_has_op_api_dir(project_root: Path, op_name: str) -> bool:
+        """Check if operator has an op_api directory (aclnn-based API)."""
+        return (project_root / "math" / op_name / "op_api").is_dir()
+
+    @staticmethod
+    def _to_pascal_case(snake: str) -> str:
+        return "".join(part.capitalize() for part in snake.split("_") if part)
+
     def _generate_cpp_boilerplate(self, layer_id: str, op_name: str, project_root: Path) -> str:
         """Plan B: generate C++ test boilerplate when no source file exists."""
         if layer_id == "op_api":
-            header_name = self._find_aclnn_header(project_root, op_name)
-            pascal = "".join(p.capitalize() for p in op_name.split("_") if p)
-            class_name = f"{op_name}_test"
-            aclnn_func = f"aclnn{pascal}"
-            include = f'#include "{header_name}"' if header_name else f"// TODO: #include \"aclnn_{op_name}.h\""
-            return (
-                "#include <array>\n"
-                "#include <vector>\n"
-                '#include "gtest/gtest.h"\n'
-                f"{include}\n"
-                '#include "op_api_ut_common/op_api_ut.h"\n'
-                '#include "op_api_ut_common/tensor_desc.h"\n'
-                "\n"
-                "using namespace std;\n"
-                "\n"
-                f"class {class_name} : public testing::Test {{\n"
-                " protected:\n"
-                f"  static void SetUpTestCase() {{ cout << \"{op_name}_test SetUp\" << endl; }}\n"
-                f"  static void TearDownTestCase() {{ cout << \"{op_name}_test TearDown\" << endl; }}\n"
-                "};\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_float32) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_float16) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_FLOAT16, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-                "\n"
-                f"TEST_F({class_name}, case_default_int32) {{\n"
-                "  auto self_desc = TensorDesc({2, 3, 4, 5}, ACL_INT32, ACL_FORMAT_ND);\n"
-                "  auto out_desc = TensorDesc(self_desc);\n"
-                f"  auto ut = OP_API_UT({aclnn_func}, INPUT(self_desc), OUTPUT(out_desc));\n"
-                "  uint64_t workspace_size = 0;\n"
-                "  aclnnStatus aclRet = ut.TestGetWorkspaceSize(&workspace_size);\n"
-                "  EXPECT_EQ(aclRet, ACL_SUCCESS);\n"
-                "}\n"
-            )
+            return ""
         elif layer_id == "op_host":
-            pascal = "".join(p.capitalize() for p in op_name.split("_") if p)
+            pascal = self._to_pascal_case(op_name)
             class_name = f"{pascal}InferShape"
             return (
                 "#include <gtest/gtest.h>\n"

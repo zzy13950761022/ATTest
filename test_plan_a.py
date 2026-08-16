@@ -164,20 +164,69 @@ def test_ensure_skeleton_reuse():
 
 def test_ensure_skeleton_no_source():
     """Test that _ensure_skeleton falls back to minimal skeleton when no source"""
-    print("🧪 Test 3: _ensure_skeleton fallback when no source file exists")
-    
+    print("🧪 Test 3a: _ensure_skeleton for op_api creates minimal skeleton (no boilerplate)")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         project_root = Path(tmpdir)
-        
-        # Setup directory WITHOUT source file
-        op_api_dir = project_root / "math" / "empty" / "tests" / "ut" / "op_api"
+
+        # Setup operator WITH real aclnn headers in op_api (simulating bitwise_and)
+        op_api_dir = project_root / "math" / "myop" / "op_api"
         op_api_dir.mkdir(parents=True, exist_ok=True)
-        
+        header_path = op_api_dir / "aclnn_myop.h"
+        header_path.write_text(
+            "extern aclnnStatus aclnnMyOpGetWorkspaceSize(const aclTensor *self, uint64_t *size);\n"
+            "extern aclnnStatus aclnnMyOp(const aclTensor *self, aclOpExecutor *executor);\n"
+        )
+
+        test_dir = project_root / "math" / "myop" / "tests" / "ut" / "op_api"
+        test_dir.mkdir(parents=True, exist_ok=True)
+
         llm = LLMClient()
         tool_registry = build_default_registry()
         tool_runner = ToolRunner(tool_registry)
         stage = AscendGenerationAgentLoopStage(llm, tool_runner)
-        
+
+        file_entry = {
+            "file_id": "FILE_MYOP_OP_API",
+            "path": "math/myop/tests/ut/op_api/test_aclnn_myop_attest.cpp",
+            "kind": "test_file",
+            "layer_id": "op_api",
+            "op_name": "myop"
+        }
+        file_cases = [{"block_id": "CASE_1", "description": "Test case 1"}]
+
+        stage._ensure_skeleton(project_root, file_entry, file_cases)
+
+        attest_path = project_root / file_entry["path"]
+        assert attest_path.exists(), "Should create attest file even without boilerplate"
+        content = attest_path.read_text()
+
+        # Should have block markers
+        assert "// ==== BLOCK:HEADER START ====" in content
+        assert "// ==== BLOCK:CASE_1 ====" in content
+
+        # Plan B for op_api: minimal skeleton (no boilerplate, LLM handles content)
+        assert "#include" not in content, "Plan B for op_api should NOT generate boilerplate"
+        assert "class" not in content.lower() or "class" not in content.split("CASE")[0], \
+            "Plan B for op_api should not generate test class"
+        print("  ✓ op_api has minimal skeleton when no source file (LLM handles content)")
+
+    print("✅ Test 3a passed\n")
+
+    print("🧪 Test 3b: _ensure_skeleton without aclnn headers creates minimal skeleton")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        project_root = Path(tmpdir)
+
+        # Setup directory WITHOUT any source file or headers (simulating diag_part: host-only)
+        op_api_dir = project_root / "math" / "empty" / "tests" / "ut" / "op_api"
+        op_api_dir.mkdir(parents=True, exist_ok=True)
+
+        llm = LLMClient()
+        tool_registry = build_default_registry()
+        tool_runner = ToolRunner(tool_registry)
+        stage = AscendGenerationAgentLoopStage(llm, tool_runner)
+
         file_entry = {
             "file_id": "FILE_EMPTY_OP_API",
             "path": "math/empty/tests/ut/op_api/test_aclnn_empty_attest.cpp",
@@ -185,34 +234,31 @@ def test_ensure_skeleton_no_source():
             "layer_id": "op_api",
             "op_name": "empty"
         }
-        
+
         file_cases = [
             {"block_id": "CASE_1", "description": "Test case 1"}
         ]
-        
+
         result = stage._ensure_skeleton(project_root, file_entry, file_cases)
-        # Should still succeed (return True or None - need to check actual return)
-        
+
         attest_path = project_root / file_entry["path"]
         assert attest_path.exists(), "Should create attest file even without source"
-        
+
         content = attest_path.read_text()
-        
+
         # Should have BLOCK markers
         assert "// ==== BLOCK:HEADER START ====" in content
         assert "// ==== BLOCK:HEADER END ====" in content
         assert "// ==== BLOCK:CASE_1 ====" in content
         assert "// ==== BLOCK:FOOTER START ====" in content
         assert "// ==== BLOCK:FOOTER END ====" in content
-        
-        # Plan B: should include C++ boilerplate in HEADER block
-        assert "#include" in content, "Plan B should include C++ boilerplate"
-        assert "class" in content, "Plan B should include test class definition"
-        assert "testing::Test" in content, "Plan B should include gtest class"
-        
-        print("  ✓ Created skeleton with Plan B C++ boilerplate when no source exists")
-    
-    print("✅ Test 3 passed\n")
+
+        # Plan B: when no aclnn headers found, generates minimal skeleton (no #include with aclnn)
+        # The LLM will fill in content via edit_file calls in later epochs
+        assert "aclnn" not in content, "Plan B without headers should NOT invent fake aclnn names"
+        print("  ✓ Created minimal skeleton (no boilerplate) when no aclnn headers exist")
+
+    print("✅ Test 3b passed\n")
 
 def test_ensure_skeleton_wrap_cmake():
     """Test that _ensure_skeleton adds BLOCK markers (including FOOTER) to existing CMakeLists.txt.
