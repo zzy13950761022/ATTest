@@ -1595,8 +1595,10 @@ class AscendCodeGenStage(AscendBaseStage):
 
     @staticmethod
     def _op_has_op_api_dir(project_root: Path, op_name: str) -> bool:
-        """Check if operator has an op_api directory (aclnn-based API)."""
-        return (project_root / "math" / op_name / "op_api").is_dir()
+        """Check if operator has an op_api directory (aclnn-based API).
+        Some aclnn_exclude operators nest op_api under op_host/op_api/."""
+        return (project_root / "math" / op_name / "op_api").is_dir() or \
+               (project_root / "math" / op_name / "op_host" / "op_api").is_dir()
 
     @staticmethod
     def _to_pascal_case(snake: str) -> str:
@@ -1754,11 +1756,11 @@ class AscendCodeGenStage(AscendBaseStage):
                 if layer_id == "op_host":
                     lines.extend([
                         start_marker("FOOTER", comment_style),
-                        f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
-                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"endif()",
+                        f"{comment_style} TODO: The CMake registration below should be in CMakeLists.txt FOOTER, not here",
+                        f"{comment_style} if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"{comment_style} endif()",
                         end_marker("FOOTER", comment_style),
                     ])
                 else:
@@ -1940,6 +1942,14 @@ class AscendCodeGenStage(AscendBaseStage):
             violations.append(
                 "Code defines main() function. "
                 "This conflicts with test_op_api_main.cpp. Remove the main() definition."
+            )
+        block_entries = build_block_entries(target_path)
+        case_entries = [e for e in block_entries if e["block_id"].startswith("CASE_")]
+        if case_entries and all(e["status"] == "placeholder" for e in case_entries):
+            violations.append(
+                "All CASE blocks are empty (no test code generated). "
+                "You MUST fill at least one CASE block with a working test. "
+                "Start with CASE_01: write a simple test that calls the operator with basic inputs."
             )
         return violations if violations else None
 
@@ -5388,8 +5398,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
 
     @staticmethod
     def _op_has_op_api_dir(project_root: Path, op_name: str) -> bool:
-        """Check if operator has an op_api directory (aclnn-based API)."""
-        return (project_root / "math" / op_name / "op_api").is_dir()
+        """Check if operator has an op_api directory (aclnn-based API).
+        Some aclnn_exclude operators nest op_api under op_host/op_api/."""
+        return (project_root / "math" / op_name / "op_api").is_dir() or \
+               (project_root / "math" / op_name / "op_host" / "op_api").is_dir()
 
     @staticmethod
     def _to_pascal_case(snake: str) -> str:
@@ -5552,11 +5564,11 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 if layer_id_str == "op_host":
                     lines.extend([
                         start_marker("FOOTER", comment_style),
-                        f"{comment_style} TODO: Verify or adjust the add_modules_ut_sources calls below for op_host UT support",
-                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"endif()",
+                        f"{comment_style} TODO: The CMake registration below should be in CMakeLists.txt FOOTER, not here",
+                        f"{comment_style} if(UT_TEST_ALL OR OP_HOST_UT)",
+                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                        f"{comment_style} endif()",
                         end_marker("FOOTER", comment_style),
                     ])
                 else:
