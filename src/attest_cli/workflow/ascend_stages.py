@@ -2067,6 +2067,10 @@ Fix the file now."""
                 content = (
                     "if(UT_TEST_ALL OR OP_API_UT)\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    f"    if(NOT TARGET ${{OP_API_MODULE_NAME}}_cases_obj)\n"
+                    f"        add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT)\n"
+                    f"    endif()\n"
+                    f"    target_sources(${{OP_API_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})\n"
                     "endif()\n"
                 )
             else:
@@ -2074,6 +2078,10 @@ Fix the file now."""
                     "if(UT_TEST_ALL OR OP_HOST_UT)\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    f"    if(NOT TARGET ${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj)\n"
+                    f"        add_library(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj OBJECT)\n"
+                    f"    endif()\n"
+                    f"    target_sources(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})\n"
                     "endif()\n"
                 )
             cmake_path.write_text(content, encoding="utf-8")
@@ -2103,8 +2111,10 @@ Fix the file now."""
         else:
             reg_lines = [
                 f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"    if(NOT TARGET ${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj)",
+                f"        add_library(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj OBJECT)",
+                f"    endif()",
+                f"    target_sources(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})",
                 f"endif()",
             ]
         new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
@@ -5670,6 +5680,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 content = (
                     "if(UT_TEST_ALL OR OP_API_UT)\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_API_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    f"    if(NOT TARGET ${{OP_API_MODULE_NAME}}_cases_obj)\n"
+                    f"        add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT)\n"
+                    f"    endif()\n"
+                    f"    target_sources(${{OP_API_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})\n"
                     "endif()\n"
                 )
             else:
@@ -5677,6 +5691,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     "if(UT_TEST_ALL OR OP_HOST_UT)\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_INFERSHAPE_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
                     "    add_modules_ut_sources(UT_NAME ${OP_TILING_MODULE_NAME} MODE PRIVATE DIR ${CMAKE_CURRENT_SOURCE_DIR})\n"
+                    f"    if(NOT TARGET ${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj)\n"
+                    f"        add_library(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj OBJECT)\n"
+                    f"    endif()\n"
+                    f"    target_sources(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})\n"
                     "endif()\n"
                 )
             cmake_path.write_text(content, encoding="utf-8")
@@ -5706,8 +5724,10 @@ Begin now. Start with the first file of the `{layer}` layer."""
         else:
             reg_lines = [
                 f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
+                f"    if(NOT TARGET ${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj)",
+                f"        add_library(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj OBJECT)",
+                f"    endif()",
+                f"    target_sources(${{OP_INFERSHAPE_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})",
                 f"endif()",
             ]
         new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
