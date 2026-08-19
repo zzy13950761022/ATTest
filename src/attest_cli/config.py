@@ -52,7 +52,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "profiles": {
         "ascend_ut": {
-            "skill_root": "/Users/zzf1sh/Documents/Project/ops-math/.claude/skills/ascendc-ut-develop",
+            "skill_root": "/mnt/fangcr/ops-math-round4/.claude/skills/ascendc-ut-develop",
             "default_soc": "Ascend910B",
             "commands": {
                 "build_help": "bash build.sh -h",

@@ -667,6 +667,26 @@ def _rewrite_context_for_project_root(context: Dict[str, Any], project_root: Pat
     return rewritten
 
 
+def _sanitize_cmake_footer(content: str) -> tuple:
+    """Strip LLM-generated duplicate registration lines from CMake FOOTER."""
+    footer_start = content.find("# ==== BLOCK:FOOTER START ====")
+    footer_end = content.find("# ==== BLOCK:FOOTER END ====")
+    if footer_start == -1 or footer_end == -1 or footer_end <= footer_start:
+        return content, False
+    before = content[: footer_start]
+    after = content[footer_end:]
+    header_marker = "# ==== BLOCK:FOOTER START ====\n"
+    footer_body_start = content.find("\n", footer_start) + 1
+    footer_body = content[footer_body_start:footer_end]
+    bad_keywords = ["add_modules_ut_sources", "add_library",
+                    "set(OP_API_TEST_SOURCES", "set(OP_HOST_TEST_SOURCES"]
+    kept = [l for l in footer_body.splitlines() if not any(k in l for k in bad_keywords)]
+    new_body = "\n".join(kept)
+    if len(kept) < len(footer_body.splitlines()):
+        return before + header_marker + new_body + ("\n" if new_body and not new_body.endswith("\n") else "") + after, True
+    return content, False
+
+
 def _sanitize_context_for_generation(context: Dict[str, Any]) -> Dict[str, Any]:
     sanitized = dict(context)
     generated_project_root = sanitized.get("generated_project_root")
@@ -2087,7 +2107,8 @@ Fix the file now."""
             cmake_path.write_text(content, encoding="utf-8")
             return
         content = cmake_path.read_text(encoding="utf-8")
-        if cpp_name in content:
+        content, sanitized = _sanitize_cmake_footer(content)
+        if cpp_name in content and not sanitized:
             return
         lines = content.splitlines()
         insert_idx = None
@@ -2098,15 +2119,25 @@ Fix the file now."""
                 break
         if insert_idx is None:
             return
+        footer_start_idx = None
+        for i in range(insert_idx - 1, -1, -1):
+            if "# ==== BLOCK:FOOTER START ====" in lines[i]:
+                footer_start_idx = i
+                break
+        if footer_start_idx is not None:
+            filtered = [l for l in lines[footer_start_idx + 1 : insert_idx]
+                        if "add_modules_ut_sources" not in l
+                        and "add_library" not in l
+                        and "set(OP_API_TEST_SOURCES" not in l
+                        and "set(OP_HOST_TEST_SOURCES" not in l]
+            lines = lines[: footer_start_idx + 1] + filtered + lines[insert_idx:]
+            insert_idx = footer_start_idx + 1 + len(filtered)
         if layer_id == "op_api":
             reg_lines = [
-                f"set(OP_API_TEST_SOURCES",
-                f"    {cpp_name}",
-                f")",
-                "",
-                f"if(DEFINED OP_API_MODULE_NAME)",
-                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT ${{OP_API_TEST_SOURCES}})",
+                f"if(NOT TARGET ${{OP_API_MODULE_NAME}}_cases_obj)",
+                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT)",
                 f"endif()",
+                f"target_sources(${{OP_API_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})",
             ]
         else:
             reg_lines = [
@@ -5700,7 +5731,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
             cmake_path.write_text(content, encoding="utf-8")
             return
         content = cmake_path.read_text(encoding="utf-8")
-        if cpp_name in content:
+        content, sanitized = _sanitize_cmake_footer(content)
+        if cpp_name in content and not sanitized:
             return
         lines = content.splitlines()
         insert_idx = None
@@ -5711,15 +5743,25 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 break
         if insert_idx is None:
             return
+        footer_start_idx = None
+        for i in range(insert_idx - 1, -1, -1):
+            if "# ==== BLOCK:FOOTER START ====" in lines[i]:
+                footer_start_idx = i
+                break
+        if footer_start_idx is not None:
+            filtered = [l for l in lines[footer_start_idx + 1 : insert_idx]
+                        if "add_modules_ut_sources" not in l
+                        and "add_library" not in l
+                        and "set(OP_API_TEST_SOURCES" not in l
+                        and "set(OP_HOST_TEST_SOURCES" not in l]
+            lines = lines[: footer_start_idx + 1] + filtered + lines[insert_idx:]
+            insert_idx = footer_start_idx + 1 + len(filtered)
         if layer_id == "op_api":
             reg_lines = [
-                f"set(OP_API_TEST_SOURCES",
-                f"    {cpp_name}",
-                f")",
-                "",
-                f"if(DEFINED OP_API_MODULE_NAME)",
-                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT ${{OP_API_TEST_SOURCES}})",
+                f"if(NOT TARGET ${{OP_API_MODULE_NAME}}_cases_obj)",
+                f"    add_library(${{OP_API_MODULE_NAME}}_cases_obj OBJECT)",
                 f"endif()",
+                f"target_sources(${{OP_API_MODULE_NAME}}_cases_obj PRIVATE {cpp_name})",
             ]
         else:
             reg_lines = [

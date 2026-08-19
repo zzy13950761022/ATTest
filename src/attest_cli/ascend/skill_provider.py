@@ -9,7 +9,7 @@ import re
 from typing import Dict
 
 
-DEFAULT_ASCEND_SKILL_ROOT = "/Users/zzf1sh/Documents/Project/ops-math/.claude/skills/ascendc-ut-develop"
+DEFAULT_ASCEND_SKILL_ROOT = "/mnt/fangcr/ops-math-round4/.claude/skills/ascendc-ut-develop"
 
 
 @dataclass
