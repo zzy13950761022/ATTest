@@ -1,0 +1,181 @@
+#!/bin/bash
+# v15 batch script template - fixed-v4 (Plan A + generated_repo fix)
+# Usage: ATTEST_CONFIG_DIR=/root/.attest_cli_ds_v4_pro MODEL=ds ./v15_model_batch_v4.sh.template
+# Or source with: MODEL=ds CONFIG_DIR=/root/.attest_cli_ds_v4_pro bash v15_model_batch_v4.sh.template
+
+set -eo pipefail
+
+: "${MODEL:?MODEL env var required (qwen, ds, glm)}"
+: "${CONFIG_DIR:-$ATTEST_CONFIG_DIR}"
+[ -z "${CONFIG_DIR:-}" ] && CONFIG_DIR="$ATTEST_CONFIG_DIR"
+[ -z "${CONFIG_DIR:-}" ] && { echo "Need CONFIG_DIR or ATTEST_CONFIG_DIR"; exit 1; }
+export ATTEST_CONFIG_DIR="$CONFIG_DIR"
+
+ATT_BIN=/root/miniconda3/envs/attest-py311/bin/attest
+[ ! -x "$ATT_BIN" ] && ATT_BIN=$(command -v attest) || true
+
+OPERATORS=(
+    abs add bitwise_and bitwise_not bitwise_or bitwise_xor
+    cholesky cross diag_part div div_no_nan dot
+    equal exp expm1 eye floor_div floor_mod
+    ger greater greater_equal less less_equal log
+    log1p logical_and logical_not logical_or mod mul
+    neg not_equal pow pows real_div reciprocal
+    rsqrt rsqrt_grad sign sqrt sqrt_grad square
+    squared_difference sub trace
+)
+
+PROJECT_ROOT="/mnt/fangcr/ops-math-round4"
+BASE_DIR="/mnt/fangcr/workspace-baseline-${MODEL}"
+WORKSPACES_DIR="${BASE_DIR}/v15_${MODEL}_epoch3_fixed-v13_batch"
+LOG_DIR="${WORKSPACES_DIR}/logs"
+EPOCH=3
+WORKERS=2
+PROFILE="ascend_ut_continuous"
+TIMEOUT=18000
+PARALLEL_JOBS=4
+BUILD_THREADS=32
+
+mkdir -p "$WORKSPACES_DIR" "$LOG_DIR"
+
+MODEL_DISPLAY="${MODEL_DISPLAY:-${MODEL}}"
+echo "========================================="
+echo "ATTest v15-${MODEL} Batch (EPOCH=${EPOCH} TIMEOUT=${TIMEOUT}) [FIXED-V13 (Bug#1+#2+#4+#5+skill_root+CMake)]"
+echo "Total operators: ${#OPERATORS[@]}"
+echo "Parallel jobs: $PARALLEL_JOBS"
+echo "Build threads: $BUILD_THREADS"
+echo "Workers/attest: $WORKERS  Epoch: $EPOCH"
+echo "Profile: $PROFILE"
+echo "Model: $MODEL_DISPLAY"
+echo "Config: $ATTEST_CONFIG_DIR"
+echo "Attest binary: ${ATT_BIN}"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "========================================="
+echo ""
+
+SUMMARY="${LOG_DIR}/batch_summary.csv"
+SUMMARY_LOCK="${LOG_DIR}/batch_summary.lock"
+echo "operator,status,op_api_line,op_host_line,overall_line,duration_seconds" > "$SUMMARY"
+
+COV_EXTRACT_PY='
+import os, json, glob, sys
+art_dir = sys.argv[1]
+current = os.path.join(art_dir, "current_coverage_summary.json")
+if os.path.exists(current):
+    files = [current]
+else:
+    files = sorted(glob.glob(os.path.join(art_dir, "v*_coverage_summary.json")))
+if not files:
+    print("N/A N/A N/A")
+else:
+    d = json.load(open(files[-1]))
+    pl = d.get("per_layer", {})
+    api = pl.get("op_api", {}).get("line_coverage", "N/A")
+    host = pl.get("op_host", {}).get("line_coverage", "N/A")
+    vals = []
+    for v in [api, host]:
+        vals.append(v if isinstance(v, (int, float)) else 0)
+    valid = sum(1 for v in vals if isinstance(v, (int, float)) and v > 0) if any(isinstance(v, (int,float)) for v in [api,host]) else 0
+    if valid:
+        ov = sum(vals) / valid
+    else:
+        ov = 0.0
+    print(f"{api} {host} {ov:.1f}")
+'
+
+process_op() {
+    local op="$1"
+    local num="$2"
+    local OP_WORKSPACE="${WORKSPACES_DIR}/attest-${op}"
+    local OP_LOG="${LOG_DIR}/${op}.log"
+    local OP_PROJECT="${WORKSPACES_DIR}/project-${op}"
+
+    rm -rf "$OP_WORKSPACE"
+    mkdir -p "$OP_WORKSPACE"
+
+    if [ ! -f "$OP_PROJECT/build.sh" ]; then
+        echo "[$num/$TOTAL] WARNING: project-${op}/build.sh missing, copying..."
+        cp -r "$PROJECT_ROOT" "$OP_PROJECT"
+        if [ ! -f "$OP_PROJECT/build.sh" ]; then
+            echo "[$num/$TOTAL] FATAL: cannot create project-${op}"
+            return 1
+        fi
+        sed -i "s/THREAD_NUM=8/THREAD_NUM=${BUILD_THREADS}/" "$OP_PROJECT/build.sh"
+    fi
+
+    local START_TIME=$(date +%s)
+    echo "[$num/$TOTAL] START $op at $(date '+%H:%M:%S')"
+
+    timeout "$TIMEOUT" "$ATT_BIN" ascend-ut run \
+        --op-path "math/${op}" \
+        -p "$OP_PROJECT" \
+        --workspace "$OP_WORKSPACE" \
+        --profile "$PROFILE" \
+        -m full-auto \
+        -e "$EPOCH" \
+        --workers "$WORKERS" \
+        > "$OP_LOG" 2>&1 || true
+
+    local END_TIME=$(date +%s)
+    local DURATION=$((END_TIME - START_TIME))
+
+    local STATUS="unknown" OP_API="N/A" OP_HOST="N/A" OVERALL="N/A"
+    local STATE_FILE="${OP_WORKSPACE}/.attest/state.json"
+
+    if [ -f "$STATE_FILE" ]; then
+        STATUS=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('current_stage','?'))" 2>/dev/null)
+        local COV_JSON
+        COV_JSON=$(python3 -c "$COV_EXTRACT_PY" "${OP_WORKSPACE}/.attest/artifacts/generate_code" 2>/dev/null || echo "N/A N/A N/A")
+        read -r OP_API OP_HOST OVERALL <<< "$COV_JSON"
+    fi
+
+    ( flock 200
+      echo "${op},${STATUS},${OP_API},${OP_HOST},${OVERALL},${DURATION}" >> "$SUMMARY"
+    ) 200>"$SUMMARY_LOCK"
+    echo "[$num/$TOTAL] DONE $op | ${STATUS} ${DURATION}s | op_api=${OP_API}% op_host=${OP_HOST}% at $(date '+%H:%M:%S')"
+}
+
+export -f process_op
+export PROJECT_ROOT WORKSPACES_DIR LOG_DIR EPOCH WORKERS PROFILE TIMEOUT PARALLEL_JOBS BUILD_THREADS ATT_BIN
+export SUMMARY SUMMARY_LOCK COV_EXTRACT_PY ATTEST_CONFIG_DIR
+TOTAL=${#OPERATORS[@]}
+export TOTAL
+
+START_TS=$(date +%s)
+
+echo "--- Creating per-operator project symlinks (reuse v7 projects) ---"
+V7_BATCH="${BASE_DIR}/v15_${MODEL}_epoch3_fixed-v7_batch"
+V6_BATCH="${BASE_DIR}/v15_${MODEL}_epoch3_fixed-v6_batch"
+for op in "${OPERATORS[@]}"; do
+    OP_PROJECT="${WORKSPACES_DIR}/project-${op}"
+    if [ ! -f "$OP_PROJECT/build.sh" ]; then
+        if [ -f "${V7_BATCH}/project-${op}/build.sh" ]; then
+            ln -sfn "${V7_BATCH}/project-${op}" "$OP_PROJECT"
+        elif [ -f "${V6_BATCH}/project-${op}/build.sh" ]; then
+            ln -sfn "${V6_BATCH}/project-${op}" "$OP_PROJECT"
+        else
+            echo "  WARNING: no v6/v7 project for ${op}, copying from ${PROJECT_ROOT}..."
+            cp -r "$PROJECT_ROOT" "$OP_PROJECT"
+            sed -i "s/THREAD_NUM=8/THREAD_NUM=${BUILD_THREADS}/" "$OP_PROJECT/build.sh"
+        fi
+    fi
+done
+
+echo "--- Starting parallel execution ($PARALLEL_JOBS concurrent) ---"
+
+ARGS=""
+for idx in "${!OPERATORS[@]}"; do
+    ARGS="${ARGS}${OPERATORS[$idx]} $((idx + 1))
+"
+done
+
+echo "$ARGS" | xargs -P "$PARALLEL_JOBS" -L 1 bash -c 'process_op "$@"' _
+
+END_TS=$(date +%s)
+WALL=$((END_TS - START_TS))
+echo ""
+echo "========================================="
+echo "v15-${MODEL} EPOCH=${EPOCH} FIXED-V13 (Bug#1+#2+#4+#5+skill_root+CMake) Batch Complete  $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  Wall time: $((WALL/3600))h $(( (WALL%3600)/60 ))m $((WALL%60))s"
+echo "  Summary: ${SUMMARY}"
+echo "========================================="

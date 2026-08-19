@@ -183,7 +183,100 @@ def _build_ws_sig_section(layer_id: str, slim_context: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _patch_build_sh_for_isolation(target_root: Path) -> None:
+_FEW_SHOT_OP_HOST_INFERSHAPE = '''## FEW-SHOT EXAMPLE: op_host InferShape test (CORRECT pattern)
+
+The CORRECT InferShape test pattern uses `InfershapeContextPara` + `ExecuteTestCase`.
+You MUST use this exact pattern — do NOT call `CreateInferShapeContext`, `gert::InferShape`,
+`gert::InferShapeContextFaker().Build()`, or any other API that is not in this example.
+
+```cpp
+// ==== BLOCK:HEADER START ====
+#include <gtest/gtest.h>
+#include <iostream>
+#include "infershape_context_faker.h"
+#include "infershape_case_executor.h"
+
+class MyOpInferShape : public testing::Test {
+ protected:
+  static void SetUpTestCase() { std::cout << "MyOpInferShape SetUp" << std::endl; }
+  static void TearDownTestCase() { std::cout << "MyOpInferShape TearDown" << std::endl; }
+};
+// ==== BLOCK:HEADER END ====
+// ==== BLOCK:CASE_01 START ====
+TEST_F(MyOpInferShape, case_01_valid_basic) {
+  gert::InfershapeContextPara infershapeContextPara(
+    "MyOpName",
+    {
+      {{{m, n}, {m, n}}, ge::DT_FLOAT, ge::FORMAT_ND},   // Input 1
+      {{{n, k}, {n, k}}, ge::DT_FLOAT, ge::FORMAT_ND},   // Input 2
+    },
+    {
+      {{{}, {}}, ge::DT_FLOAT, ge::FORMAT_ND},            // Output (empty; filled by InferShape)
+    });
+  std::vector<std::vector<int64_t>> expectOutputShape = {{m, k}};
+  ExecuteTestCase(infershapeContextPara, ge::GRAPH_SUCCESS, expectOutputShape);
+}
+// ==== BLOCK:CASE_01 END ====
+```
+
+Key rules:
+- Include `"infershape_context_faker.h"` and `"infershape_case_executor.h"` (NOT `base/registry/...`)
+- Use `gert::InfershapeContextPara` constructor (NOT `gert::CreateInferShapeContext`)
+- Use free function `ExecuteTestCase(para, ge::GRAPH_SUCCESS/FAILED, expectedShapes)`
+- For op_host tiling: use `gert::TilingContextPara` analogously (ask the skill docs if unsure)
+'''
+
+_FEW_SHOT_OP_API = '''## FEW-SHOT EXAMPLE: op_api test (CORRECT pattern)
+
+The CORRECT op_api test pattern uses `OP_API_UT`, `TensorDesc`, `ScalarDesc`, and `TestGetWorkspaceSize`.
+You MUST use these macros — do NOT guess API names like `CreateInferShapeContext` or similar.
+
+```cpp
+// ==== BLOCK:HEADER START ====
+#include <gtest/gtest.h>
+#include "op_api_ut_helper.h"
+
+class myop_test : public testing::Test {
+ protected:
+  static void SetUpTestCase() {}
+  static void TearDownTestCase() {}
+};
+// ==== BLOCK:HEADER END ====
+// ==== BLOCK:CASE_01 START ====
+TEST_F(myop_test, case_01_nullptr_input) {
+    auto out_desc = TensorDesc({3, 3}, ACL_FLOAT, ACL_FORMAT_ND);
+    auto ut = OP_API_UT(aclnnMyOp, INPUT((aclTensor*)nullptr), OUTPUT(out_desc));
+    uint64_t workspace_size = 0;
+    EXPECT_EQ(ut.TestGetWorkspaceSize(&workspace_size), ACLNN_ERR_PARAM_NULLPTR);
+}
+// ==== BLOCK:CASE_01 END ====
+// ==== BLOCK:CASE_02 START ====
+TEST_F(myop_test, case_02_valid_float) {
+    auto self_desc = TensorDesc({3, 3}, ACL_FLOAT, ACL_FORMAT_ND).ValueRange(-2.0, 2.0);
+    auto out_desc = TensorDesc({3, 3}, ACL_FLOAT, ACL_FORMAT_ND).Precision(0.0001, 0.0001);
+    auto ut = OP_API_UT(aclnnMyOp, INPUT(self_desc), OUTPUT(out_desc));
+    uint64_t workspace_size = 0;
+    EXPECT_EQ(ut.TestGetWorkspaceSize(&workspace_size), ACL_SUCCESS);
+}
+// ==== BLOCK:CASE_02 END ====
+```
+
+Common dtype values: `ACL_FLOAT`, `ACL_FLOAT16`, `ACL_INT32`, `ACL_INT64`, `ACL_INT8`, `ACL_UINT8`, `ACL_BOOL`.
+BITWISE ops ONLY accept integer types (`ACL_INT8`, `ACL_INT16`, `ACL_INT32`, `ACL_INT64`, `ACL_UINT8`, `ACL_BOOL`) — do NOT pass `ACL_FLOAT` to bitwise ops.
+Common formats: `ACL_FORMAT_ND`, `ACL_FORMAT_NCHW`, `ACL_FORMAT_NHWC`.
+'''
+
+
+def _get_few_shot_examples(layer_id: str) -> str:
+    """Return a few-shot example block for the given layer, or empty string."""
+    if layer_id == "op_host":
+        return _FEW_SHOT_OP_HOST_INFERSHAPE
+    if layer_id == "op_api":
+        return _FEW_SHOT_OP_API
+    return ""
+
+
+
     build_sh = target_root / "build.sh"
     if not build_sh.exists():
         return
@@ -2245,12 +2338,13 @@ NOTE: build.sh compiles AND runs tests automatically — no `--run` flag needed.
 """
 
         skill_packet = provider.get_stage_packet("generate_code", layer_id, generation_mode=generation_mode)
+        few_shot = _get_few_shot_examples(layer_id)
 
         prompt = f"""You are generating Ascend C++ UT code for multiple files in the `{layer_id}` layer.
 
 Operator context:
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
 ```
 
 {_build_ws_sig_section(layer_id, slim_context)}
@@ -2275,6 +2369,9 @@ Rules:
 6. After completing ALL files, compile and fix errors.
 7. Share fixture classes and helper functions across files in this layer (define in the first file, reference in others).
 8. Keep generated code compile-oriented and minimal.
+9. DO NOT rewrite an existing, non-empty file from scratch. If a case block already contains working code, leave it untouched. Use `sed` or a careful heredoc that preserves existing content when writing a block. Overwriting a file with fewer TEST_F cases than it already has is forbidden.
+
+{few_shot}
 
 Skill packet:
 ```text
@@ -2942,7 +3039,7 @@ Target blocks to fill or revise: {', '.join(target_blocks)}
 Rules:
 1. You have ONLY `exec_command` as a tool. Use it for ALL operations: read files (`cat`, `head`), search (`grep`, `find`), write/edit files (`cat >`, `sed`, `tee`), compile, run tests, and check coverage.
    - For writing file content, use heredoc: `exec_command(cmd="cat > path/file.cpp << 'EOF'\n...content...\nEOF")`
-2. Do not overwrite the whole file after the skeleton exists; fill only the listed blocks.
+2. DO NOT rewrite an existing, non-empty file or block from scratch. Fill only the listed target blocks. If a block already contains working test code, leave it untouched. Overwriting a file with fewer TEST_F cases than it contains is forbidden.
 3. Keep every generated gtest or helper name traceable to the BLOCK_ID. Include the BLOCK_ID in the test name.
 4. For `*.cpp`, use `// ==== BLOCK:... ====`.
 5. For `CMakeLists.txt`, use `# ==== BLOCK:... ====`.
@@ -2957,7 +3054,7 @@ Mode guidance:
 
 Operator context:
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
 ```
 
 {_build_ws_sig_section(str(file_entry['layer_id']), slim_context)}
@@ -3024,6 +3121,9 @@ Skill packet:
 ```text
 {provider.get_stage_packet('generate_code', str(file_entry['layer_id']), generation_mode=generation_mode)}
 ```
+
+{_get_few_shot_examples(str(file_entry['layer_id']))}
+
 {unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}{cross_file_section}
 Complete the file now."""
 
@@ -4796,6 +4896,9 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
         cmd_section = self._build_layer_cmd_section(plan, project_root)
         skill_text = ""
         for layer in enabled_layers:
+            fewshot = _get_few_shot_examples(str(layer))
+            if fewshot:
+                skill_text += f"\n{fewshot}\n"
             pkt = provider.get_stage_packet("generate_code", str(layer), generation_mode=generation_mode)
             if pkt:
                 skill_text += f"\n### Skill [{layer}]\n{pkt}\n"
@@ -4858,12 +4961,12 @@ repeat — until you are satisfied or turns are exhausted.
 - You have ONLY `exec_command`. Use bash commands (`cat`, `grep`, `sed`, `find`, `head`, `tail`, `awk`, heredocs) for ALL file operations.
 - NEVER guess an API signature. Always `grep` / `cat` the implementation before using a type.
 - Keep every test traceable to its BLOCK_ID marker.
-- Do NOT regenerate already-filled blocks unless you are improving them.
+- DO NOT regenerate already-filled blocks unless you are clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; instead, edit specific blocks only.
 - Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4500]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
 ```
 
 ## Test plan (files + cases)
@@ -4990,7 +5093,8 @@ Begin now. Start with the first file."""
         cmd_section = "\n".join(cmd_lines) + "\n"
 
         pkt = provider.get_stage_packet("generate_code", str(layer), generation_mode=generation_mode)
-        skill_text = f"\n### Skill [{layer}]\n{pkt}\n" if pkt else ""
+        fewshot = _get_few_shot_examples(str(layer))
+        skill_text = (f"\n{fewshot}\n" if fewshot else "") + (f"\n### Skill [{layer}]\n{pkt}\n" if pkt else "")
 
         augment_text = ""
         directive = plan.get("augment_directive") or {}
@@ -5042,14 +5146,14 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 ## Key rules
 - NEVER guess an API signature. Always `cat` / `grep` the implementation first.
 - Keep every test traceable to its BLOCK_ID marker.
-- Do NOT regenerate already-filled blocks unless improving them.
+- DO NOT regenerate already-filled blocks unless clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; edit specific blocks only.
 - Each exec_command output is your ground-truth.
 - **CRITICAL — CMakeLists.txt registration (Rule 15):** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your `*_attest.cpp` files already match these patterns and will be picked up automatically. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update its FOOTER block to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
 - NEVER rewrite an existing `CMakeLists.txt` HEADER block — it contains framework-required preamble. Only touch the FOOTER block to add source registration lines if needed.
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:4500]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
 ```
 
 ## Prior analysis plan (from previous epoch, if any)

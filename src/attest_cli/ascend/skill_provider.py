@@ -89,7 +89,8 @@ class AscendSkillProvider:
                 "op_kernel_aicpu": self.docs["op_kernel"].text,
             }
             text = mapping.get(layer_id or "", self.docs["workflow"].text)
-            return self._clip(text, limit=2600)
+            limit = 8000 if layer_id == "op_host" else 4000
+            return self._clip(text, limit=limit)
 
         if stage_name == "generate_report":
             parts = [
@@ -134,7 +135,7 @@ class AscendSkillProvider:
                 self._extract_heading(self.docs["ce_extract"].text, "覆盖率提升策略"),
                 mapping.get(layer_id or "", ""),
             ]
-            return self._join_nonempty(parts, limit=3200)
+            return self._join_nonempty(parts, limit=8000)
 
         if stage_name == "generate_report":
             parts = [
