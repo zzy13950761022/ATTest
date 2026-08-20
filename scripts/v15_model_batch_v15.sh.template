@@ -83,6 +83,7 @@ else:
 '
 
 process_op() {
+    set +e  # Disable set -e in sub-bash to prevent premature exit
     local op="$1"
     local num="$2"
     local OP_WORKSPACE="${WORKSPACES_DIR}/attest-${op}"
