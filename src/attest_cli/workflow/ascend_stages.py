@@ -276,7 +276,7 @@ def _get_few_shot_examples(layer_id: str) -> str:
     return ""
 
 
-
+def _patch_build_sh_for_isolation(target_root: Path) -> None:
     build_sh = target_root / "build.sh"
     if not build_sh.exists():
         return
