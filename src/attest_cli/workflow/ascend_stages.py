@@ -520,7 +520,7 @@ def _operator_source_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
     return []
 
 
-def _operator_remove_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
+def _operator_remove_patterns(meta: Dict[str, Any], layer: str, infra_overrides: Optional[Dict[str, Any]] = None) -> List[str]:
     category = str(meta.get("category") or "")
     op_name = str(meta.get("op_name") or "")
     if not category or not op_name:
@@ -528,8 +528,128 @@ def _operator_remove_patterns(meta: Dict[str, Any], layer: str) -> List[str]:
 
     root = f"*/{category}/{op_name}"
     if layer == "op_host":
+        if infra_overrides and infra_overrides.get("op_host", {}).get("skip_remove"):
+            return []
         return [f"{root}/op_host/op_api/*"]
     return []
+
+
+def _detect_op_host_layout(op_dir: Path) -> Dict[str, Any]:
+    op_host = op_dir / "op_host"
+    if not op_host.is_dir():
+        return {"exists": False}
+    cpp_files = list(op_host.glob("*.cpp"))
+    has_op_api_subdir = (op_host / "op_api").is_dir()
+    op_api_has_cpp = any((op_host / "op_api").glob("*.cpp")) if has_op_api_subdir else False
+    has_real_host_code = bool(cpp_files)
+    is_pure_opapi = has_op_api_subdir and not has_real_host_code
+    return {
+        "exists": True,
+        "op_host_cpp_files": [f.name for f in cpp_files],
+        "has_op_api_subdir": has_op_api_subdir,
+        "op_api_has_cpp": op_api_has_cpp,
+        "has_real_host_code": has_real_host_code,
+        "is_pure_opapi": is_pure_opapi,
+    }
+
+
+def _probe_cmake_info(op_dir: Path) -> Dict[str, Any]:
+    result: Dict[str, Any] = {"cmake_style": "unknown", "targets": {}, "macros": {}, "warnings": []}
+    top_cmake = op_dir / "CMakeLists.txt"
+    if top_cmake.exists():
+        text = top_cmake.read_text(encoding="utf-8", errors="replace")
+        if "add_all_modules_sources" in text:
+            result["cmake_style"] = "new_add_all_modules_sources"
+        elif "add_modules_sources" in text:
+            result["cmake_style"] = "old_add_modules_sources"
+        elif "foreach" in text and "add_subdirectory" in text:
+            result["cmake_style"] = "foreach_add_subdirectory"
+    op_host_cmake = op_dir / "op_host" / "CMakeLists.txt"
+    if op_host_cmake.exists():
+        text = op_host_cmake.read_text(encoding="utf-8", errors="replace")
+        if "add_modules_sources" in text:
+            m = re.search(r"add_modules_sources\(([^)]+)\)", text)
+            if m:
+                result["macros"]["op_host_build"] = f"add_modules_sources({m.group(1).strip()})"
+        if "add_all_modules_sources" in text:
+            result["macros"]["op_host_build"] = "add_all_modules_sources"
+    ut_op_host_cmake = op_dir / "tests" / "ut" / "op_host" / "CMakeLists.txt"
+    ut_op_host_exists = ut_op_host_cmake.exists()
+    result["test_cmake"] = {"op_host_exists": ut_op_host_exists}
+    if ut_op_host_exists:
+        text = ut_op_host_cmake.read_text(encoding="utf-8", errors="replace")
+        if "OP_TILING_MODULE_NAME" in text or "OP_INFERSHAPE_MODULE_NAME" in text:
+            result["targets"]["op_host_ut"] = ["${OP_TILING_MODULE_NAME}", "${OP_INFERSHAPE_MODULE_NAME}"]
+            result["test_register_macro"] = "add_modules_ut_sources"
+        for m in re.finditer(r"\$\{(\w+)\}_cases_obj", text):
+            result["targets"].setdefault("op_host_cases", []).append(f"${{{m.group(1)}}}_cases_obj")
+    ut_op_api_cmake = op_dir / "tests" / "ut" / "op_api" / "CMakeLists.txt"
+    ut_op_api_exists = ut_op_api_cmake.exists()
+    result["test_cmake"]["op_api_exists"] = ut_op_api_exists
+    if ut_op_api_exists:
+        text = ut_op_api_cmake.read_text(encoding="utf-8", errors="replace")
+        if "OP_API_MODULE_NAME" in text:
+            result["targets"]["op_api_ut"] = ["${OP_API_MODULE_NAME}"]
+    ut_op_host_op_api_cmake = op_dir / "tests" / "ut" / "op_host" / "op_api" / "CMakeLists.txt"
+    if ut_op_host_op_api_cmake.exists():
+        result["test_cmake"]["op_host_op_api_exists"] = True
+        result["warnings"].append(
+            "tests/ut/op_host/op_api/CMakeLists.txt exists — UT follows nested op_host/op_api source layout"
+        )
+    return result
+
+
+def _collect_infrastructure_context(
+    state, op_dir: Path, context: Dict[str, Any]
+) -> Dict[str, Any]:
+    op_name = state.op_name
+    category = state.category
+    layout = _detect_op_host_layout(op_dir)
+    cmake_info = _probe_cmake_info(op_dir)
+    enabled_layers = list(context.get("enabled_layers", []))
+    lcov_overrides: Dict[str, Dict[str, Any]] = {}
+    if layout.get("is_pure_opapi") and "op_host" in enabled_layers:
+        lcov_overrides["op_host"] = {
+            "skip_remove": True,
+            "reason": "op_host/ contains only op_api/ subdir — lcov --remove would wipe all records",
+        }
+    trackable: Dict[str, List[str]] = {}
+    op_host = op_dir / "op_host"
+    if op_host.is_dir() and layout.get("has_real_host_code"):
+        trackable["op_host"] = [f.name for f in op_host.glob("*.cpp")]
+    op_api = op_dir / "op_api"
+    if op_api.is_dir():
+        trackable["op_api"] = [f.name for f in op_api.glob("*.cpp")]
+    elif (op_host / "op_api").is_dir():
+        trackable["op_api"] = [f.name for f in (op_host / "op_api").glob("*.cpp")]
+    warnings: List[str] = list(cmake_info.get("warnings", []))
+    if layout.get("is_pure_opapi"):
+        warnings.append(
+            f"op_host/ for '{op_name}' contains no infershape/tiling .cpp files — "
+            "only op_api/ nesting. op_host coverage may be meaningless."
+        )
+    if not cmake_info["test_cmake"].get("op_host_exists"):
+        warnings.append("tests/ut/op_host/CMakeLists.txt does NOT exist — will be generated at runtime")
+    if not cmake_info["test_cmake"].get("op_api_exists"):
+        warnings.append("tests/ut/op_api/CMakeLists.txt does NOT exist — will be generated at runtime")
+
+    build_commands = context.get("build_commands", {})
+    build_cmd_template = ""
+    if build_commands:
+        cov = build_commands.get("combined_coverage", "")
+        compile = build_commands.get("combined_compile", "")
+        build_cmd_template = cov or compile or ""
+
+    return {
+        "op_name": op_name,
+        "category": category,
+        "op_host_layout": layout,
+        "cmake_info": cmake_info,
+        "trackable_sources": trackable,
+        "lcov_overrides": lcov_overrides,
+        "build_cmd_template": build_cmd_template[:500],
+        "warnings": warnings,
+    }
 
 
 def _normalize_case_block_id(raw_value: str) -> str:
@@ -626,6 +746,8 @@ def _coverage_error_reason(log_text: str) -> Optional[str]:
     if "lcov_source_missing" in lowered:
         return "lcov source info file is missing"
     if "lcov: error" in lowered:
+        if "no valid records found" in lowered:
+            return "ZeroTestsRegistered"
         return "lcov/genhtml reported an error"
     if re.search(r"lines\.+:\s*no data found", lowered):
         return "lcov summary contains no coverage data"
@@ -1158,13 +1280,362 @@ class AscendTestPlanStage(AscendBaseStage):
         self.config = StageConfig(
             name="design_test_plan",
             display_name="Design Test Plan",
-            description="Generate deterministic multi-file Ascend UT plan",
+            description="LLM-validated multi-file Ascend UT plan (with free exploration)",
             prompt_template="",
             input_artifacts=["operator_context.json", "requirements.md"],
             output_artifacts=["test_plan.md", "test_plan.json"],
-            tools=[],
+            tools=["exec_command", "read_file"],
             allow_skip=False,
         )
+
+    def _tool_schemas(self) -> List[Dict[str, Any]]:
+        allowed = set(self.config.tools)
+        return [
+            schema
+            for schema in self.tool_runner.registry.to_llm_schema()
+            if schema["function"]["name"] in allowed
+        ]
+
+    def _build_plan_agent_prompt(
+        self,
+        state,
+        context: Dict[str, Any],
+        infra_ctx: Dict[str, Any],
+        base_cases: Dict[str, Any],
+    ) -> str:
+        op = context.get("op_name", "?")
+        layout = infra_ctx.get("op_host_layout", {})
+        warnings = infra_ctx.get("warnings", [])
+        pure_opapi = layout.get("is_pure_opapi", False)
+        trackable = infra_ctx.get("trackable_sources", {})
+        op_host_files = trackable.get("op_host", [])
+        op_api_files = trackable.get("op_api", [])
+
+        cases_json = json.dumps(
+            {"cases": base_cases.get("cases", []), "count": len(base_cases.get("cases", []))},
+            ensure_ascii=False, indent=2,
+        )[:12000]
+        warnings_md = "\n".join(f"- {w}" for w in warnings) if warnings else "(无警告)"
+
+        infra_summary = json.dumps({
+            "is_pure_opapi": pure_opapi,
+            "has_real_host_code": layout.get("has_real_host_code", False),
+            "has_op_api_subdir": layout.get("has_op_api_subdir", False),
+            "op_host_cpp_files": op_host_files,
+            "op_api_cpp_files": op_api_files,
+        }, ensure_ascii=False, indent=2)
+
+        extra_rule = ""
+        if pure_opapi:
+            extra_rule = (
+                "⚠️ **CRITICAL**: op_host 是 pure_opapi 布局（只有 op_api/ 子目录，无 tiling/infershape .cpp）。\n"
+                "   → 删除所有 case_type 包含 tiling_ 或 infershape_ 的用例\n"
+                "   → 只保留 op_api 层的测试用例\n"
+            )
+
+        host_files_desc = ", ".join(op_host_files) if op_host_files else "(none)"
+        api_files_desc = ", ".join(op_api_files) if op_api_files else "(none)"
+
+        return f"""你是 Ascend C 算子和编译/覆盖率系统专家。你的任务是为 `{op}` 算子**验证并增强**一份自动生成的测试计划。
+
+## 算子基本信息
+- op_name: `{op}`
+- op_dir: `{context.get('operator_dir', '')}`
+- project_root: `{str(state.project_root)}`
+- op_host 源文件: {host_files_desc}
+- op_api 源文件: {api_files_desc}
+
+## 基础设施摘要
+```json
+{infra_summary}
+```
+
+## 基础设施警告
+{warnings_md}
+
+## 你的工具
+- `exec_command`: 执行 shell 命令探索源码
+- `read_file`: 读取文件内容
+
+## 三阶段探索（必须依次完成）
+
+### 阶段 A — 代码结构理解
+执行以下命令，**每条都要实际执行**，记录你看到的内容：
+1. `ls -la {context.get('operator_dir', '')}/op_host/` 列出 op_host 的所有源文件
+2. 对 op_host 下的每个 .cpp 文件，`head -50` 读取文件开头（了解函数签名和宏注册）
+3. `grep -rn 'aclnn\\|OP_API_UT' {context.get('operator_dir', '')}/op_api/ 2>/dev/null | head -60` 查找 API 层函数签名
+4. 如果 exist: `ls -la {context.get('operator_dir', '')}/op_host/op_api/` 检查嵌套 op_api
+5. `cat {context.get('operator_dir', '')}/tests/ut/op_host/CMakeLists.txt` 读取已有的 op_host 测试 CMake（如有）
+6. `cat {context.get('operator_dir', '')}/tests/ut/op_api/CMakeLists.txt` 读取已有的 op_api 测试 CMake（如有）
+7. `find {context.get('operator_dir', '')}/tests/ -name '*.cpp' 2>/dev/null` 查找已有测试文件
+
+### 阶段 B — 测试需求推导
+阅读完代码后，分析：
+- op_host 层的代码包含哪些可测试路径？（函数签名、分支条件、dtype 支持）
+- op_api 层的代码包含哪些可测试路径？（aclnn 函数、workspace 验证、shape/dtype 检查）
+- 哪些 test case type 与实际代码匹配？哪些不对应？
+- 是否发现了确定性计划**未覆盖**的可测试行为？
+
+### 阶段 C — 计划验证与增强
+对比「确定性候选计划」（见下方）与阶段 A-B 的发现：
+- **保留**：与实际代码匹配的 case（特别是 priority=High 的）
+- **删除**：只删除对应代码确实不存在的 case（需在 validation_notes 说明）
+- **增强**：添加 1-5 个新的 case（使用新的 CASE_NN），覆盖确定性计划遗漏的场景
+- ⚠️ **禁止**：不得大幅删减用例至 20 个以下（除非源代码确实很少）
+- ⚠️ **禁止**：不得删除 priority=High 的用例（它们覆盖最基本的代码路径）
+
+{extra_rule}
+
+## 确定性候选计划（待验证）
+```json
+{cases_json}
+```
+
+## 输出格式
+
+完成三个阶段后，输出一个 ```json ... ``` 块：
+
+```json
+{{
+  "cases": [...],
+  "smoke_set": ["CASE_01", ...],
+  "deferred_set": ["CASE_03", ...],
+  "validation_notes": "简要说明：(1) 每个 High-priority case 是否与代码匹配 (2) 删除了哪些 case 及原因 (3) 新增了什么 case 及原因",
+  "code_analysis_notes": "2-3 句话总结你对该算子代码结构的理解（函数签名、分支条件、dtype 支持）"
+}}
+```
+
+每个新增的 case 必须包含：
+```json
+{{"block_id": "CASE_NN", "tc_id": "TC-NN", "file_id": "FILE_02_OP_HOST_CPP",
+  "layer_id": "op_host", "case_type": "snake_case_name", "priority": "High|Medium|Low",
+  "name": "one-line description", "inputs": {{...}}, "expected": [...],
+  "origin": "plan_agent"}}
+```
+
+现在开始阶段 A 的探索。"""
+
+    def _parse_agent_output(self, llm_text: str) -> Dict[str, Any]:
+        """Extract the final ```json ... ``` block from LLM output, preferring the last one."""
+        matches = list(re.finditer(r"```json\s*(\{[\s\S]*?\})\s*```", llm_text or ""))
+        for m in reversed(matches):
+            try:
+                plan = json.loads(m.group(1))
+                if isinstance(plan, dict):
+                    return plan
+            except json.JSONDecodeError:
+                cleaned = re.sub(r",\s*([}\]])", r"\1", m.group(1))
+                try:
+                    plan = json.loads(cleaned)
+                    if isinstance(plan, dict):
+                        return plan
+                except json.JSONDecodeError:
+                    continue
+        return {}
+
+    def _run_plan_agent_session(
+        self, state, base_cases: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Run a free-exploration LLM session to validate/refine the base test plan."""
+        context = _load_json_artifact(state, "operator_context.json", default={})
+        infra_ctx = _load_json_artifact(state, "infrastructure_context.json", default={})
+        project_root = Path(state.project_root)
+        if not project_root.exists():
+            return None
+
+        prompt = self._build_plan_agent_prompt(state, context, infra_ctx, base_cases)
+        messages = [{"role": "user", "content": prompt}]
+        append_message(
+            session_id=getattr(state, "workflow_id", "workflow"),
+            role="user",
+            content={
+                "stage": self.config.name,
+                "mode": "plan_agent",
+                "prompt": prompt,
+            },
+            workspace=str(state.workspace),
+            stage=self.config.name,
+        )
+
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        tool_schemas = self._tool_schemas()
+
+        turn_limit = 50
+        stagnation_limit = 5
+        stagnation_streak = 0
+        last_tool_sig = ""
+        api429_retries = 0
+        api429_max = 3
+
+        for turn in range(turn_limit):
+            response = None
+            while response is None:
+                try:
+                    response = self.llm.chat(messages, tools=tool_schemas)
+                except Exception as exc:
+                    exc_str = str(exc)
+                    if ("429" in exc_str or "Throttl" in exc_str or "rate" in exc_str.lower()) and api429_retries < api429_max:
+                        api429_retries += 1
+                        delay = min(30 * api429_retries, 90)
+                        print(f"  ⚠️ Plan agent rate limited (turn {turn+1}), retry {api429_retries}/{api429_max} after {delay}s")
+                        import time
+                        time.sleep(delay)
+                        continue
+                    print(f"  ⚠️ Plan agent LLM call failed (turn {turn+1}): {exc}")
+                    return None
+
+            assistant_msg = {
+                "role": "assistant",
+                "content": response.content,
+                "reasoning_content": getattr(response, "reasoning_content", "") or "",
+            }
+            if response.tool_calls:
+                assistant_msg["tool_calls"] = response.tool_calls
+            messages.append(assistant_msg)
+            append_message(
+                session_id=getattr(state, "workflow_id", "workflow"),
+                role="assistant",
+                content=assistant_msg,
+                workspace=str(state.workspace),
+                stage=self.config.name,
+            )
+
+            if not response.has_tool_calls():
+                parsed = self._parse_agent_output(response.content or "")
+                if parsed and parsed.get("cases"):
+                    validated = self._validate_plan_agent_output(parsed, base_cases, infra_ctx)
+                    if validated:
+                        return validated
+                    return parsed
+                if turn < turn_limit - 3:
+                    nudge = (
+                        "你没有使用工具探索代码，或者输出的JSON格式不正确。"
+                        "请：(1) 先使用 exec_command 和 read_file 工具探索 op_host/op_api 目录结构和源文件，"
+                        "然后 (2) 在最后一轮输出 ```json ... ``` 格式的计划。"
+                    )
+                    messages.append({"role": "user", "content": nudge})
+                    continue
+                return None
+
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["function"]["name"]
+                try:
+                    tool_args = json.loads(tool_call["function"]["arguments"])
+                except json.JSONDecodeError:
+                    messages.append({
+                        "role": "user",
+                        "content": "Tool call JSON truncated. Split into smaller chunks.",
+                    })
+                    continue
+                tool_result = self.tool_runner.execute(tool_name, tool_args, ctx)
+                tool_output = (tool_result.output if tool_result.ok else (tool_result.error or ""))
+                if len(tool_output) > 8000:
+                    tool_output = tool_output[:8000] + "\n... (truncated by framework)"
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "content": tool_output,
+                })
+                append_message(
+                    session_id=getattr(state, "workflow_id", "workflow"),
+                    role="tool",
+                    content={
+                        "tool_call_id": tool_call["id"],
+                        "name": tool_name,
+                        "output": tool_output[:2000],
+                        "ok": tool_result.ok,
+                    },
+                    workspace=str(state.workspace),
+                    stage=self.config.name,
+                )
+
+            current_sig = json.dumps(
+                [{"fn": tc["function"]["name"], "args": tc["function"]["arguments"]}
+                 for tc in (response.tool_calls or [])],
+                sort_keys=True,
+            )
+            if current_sig == last_tool_sig:
+                stagnation_streak += 1
+            else:
+                stagnation_streak = 0
+            last_tool_sig = current_sig
+            if stagnation_streak >= stagnation_limit:
+                print(
+                    f"\n  ⚠️ Plan agent stagnation at turn {turn+1} "
+                    f"({stagnation_limit} rounds); exiting early"
+                )
+                return None
+
+            if len(messages) > 150:
+                messages = _compress_old_messages(messages, keep_recent=50)
+
+        return None
+
+    def _validate_plan_agent_output(
+        self,
+        agent_plan: Dict[str, Any],
+        base_cases: Dict[str, Any],
+        infra_ctx: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """Structurally validate the plan agent output.
+
+        - Must preserve all High-priority cases from base
+        - Must not blindly truncate below minimum
+        - Returns validated plan or None if output is structurally invalid
+        """
+        agent_cases = agent_plan.get("cases", [])
+        base_case_list = base_cases.get("cases", [])
+        if not agent_cases:
+            return None
+
+        high_priority_base_ids = {
+            c["block_id"] for c in base_case_list if c.get("priority") == "High"
+        }
+        agent_block_ids = {c.get("block_id", "") for c in agent_cases}
+
+        missing_high = high_priority_base_ids - agent_block_ids
+        if missing_high and len(missing_high) > len(high_priority_base_ids) * 0.3:
+            print(
+                f"  ⚠️ Plan agent dropped {len(missing_high)}/{len(high_priority_base_ids)} "
+                f"High-priority cases; restoring from base plan"
+            )
+            base_map = {c["block_id"]: c for c in base_case_list}
+            for bid in missing_high:
+                if bid in base_map:
+                    agent_cases.insert(0, base_map[bid])
+            agent_plan["cases"] = agent_cases
+            smoke = list(agent_plan.get("smoke_set", []))
+            for bid in missing_high:
+                if bid not in smoke:
+                    smoke.insert(0, bid)
+            agent_plan["smoke_set"] = smoke
+
+        min_cases = max(12, len(base_case_list) // 3)
+        pure_opapi = (infra_ctx.get("op_host_layout", {}) or {}).get("is_pure_opapi", False)
+        if pure_opapi:
+            min_cases = max(6, min_cases // 2)
+        if len(agent_cases) < min_cases:
+            print(
+                f"  ⚠️ Plan agent over-truncated to {len(agent_cases)} cases "
+                f"(min {min_cases}); restoring from base plan"
+            )
+            base_map = {c["block_id"]: c for c in base_case_list}
+            for c in base_case_list:
+                bid = c.get("block_id", "")
+                if bid and bid not in agent_block_ids:
+                    agent_cases.append(base_map[bid])
+                    agent_block_ids.add(bid)
+            agent_plan["cases"] = agent_cases
+            smoke = list(agent_plan.get("smoke_set", []))
+            deferred = list(agent_plan.get("deferred_set", []))
+            for c in base_case_list:
+                bid = c.get("block_id", "")
+                if bid not in smoke and bid not in deferred:
+                    (smoke if c.get("priority") == "High" else deferred).append(bid)
+            agent_plan["smoke_set"] = smoke
+            agent_plan["deferred_set"] = deferred
+
+        return agent_plan
 
     def _build_cases(self, state, context: Dict[str, Any]) -> Dict[str, Any]:
         files = context.get("suggested_files", [])
@@ -1434,6 +1905,32 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
                      else case_payload["deferred_set"]).append(c["block_id"])
                 llm_augment_count = len(new_cases)
 
+        # LLM-driven plan validation: free-exploration agent session
+        # (epoch 1 only; for epoch >1 the agent would see stale context)
+        agent_validation_notes = ""
+        if int(getattr(state, "epoch_current", 1) or 1) == 1 and not augment_request:
+            try:
+                agent_plan = self._run_plan_agent_session(state, case_payload)
+                if agent_plan and agent_plan.get("cases"):
+                    orig_count = len(case_payload["cases"])
+                    case_payload["cases"] = agent_plan["cases"]
+                    if "smoke_set" in agent_plan:
+                        case_payload["smoke_set"] = agent_plan["smoke_set"]
+                    if "deferred_set" in agent_plan:
+                        case_payload["deferred_set"] = agent_plan["deferred_set"]
+                    agent_validation_notes = str(agent_plan.get("validation_notes", "")) or ""
+                    new_count = len(case_payload["cases"])
+                    print(
+                        f"  ✅ Plan agent validated and refined test plan: "
+                        f"{orig_count} cases → {new_count} cases"
+                    )
+                    if agent_validation_notes:
+                        print(f"     Notes: {agent_validation_notes[:200]}")
+                else:
+                    print("  ℹ️ Plan agent session produced no usable output; using deterministic plan")
+            except Exception as exc:
+                print(f"  ⚠️ Plan agent session failed ({exc}); using deterministic plan")
+
         files = context.get("suggested_files", [])
         build_plan: Dict[str, Dict[str, str]] = {}
         combined_layers = []
@@ -1492,6 +1989,11 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
             "build_plan": build_plan,
             "reference_context": context.get("reference_context", {}),
         }
+        if agent_validation_notes:
+            plan["agent_validation_notes"] = agent_validation_notes
+            code_notes = agent_plan.get("code_analysis_notes", "") if agent_plan else ""
+            if code_notes:
+                plan["code_analysis_notes"] = str(code_notes)
         if augment_request:
             plan["augment_directive"] = augment_request
 
@@ -1559,6 +2061,9 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
             {"test_plan.json": plan_json, "test_plan.md": plan_md},
             message=f"Generated multi-file Ascend test plan with {len(plan['files'])} files and {len(plan['cases'])} cases{augment_note}",
         )
+
+
+_STUB_MAX_CASES_PER_FILE = 25
 
 
 class AscendCodeGenStage(AscendBaseStage):
@@ -1821,6 +2326,19 @@ class AscendCodeGenStage(AscendBaseStage):
             )
         return ""
 
+    @staticmethod
+    def _case_stub_lines(block_id: str, case_type: str, comment_style: str) -> List[str]:
+        safe_type = re.sub(r"[^A-Za-z0-9_]", "_", str(case_type))[:40] or "stub"
+        test_name = f"{block_id}_{safe_type}"
+        return [
+            start_marker(block_id, comment_style),
+            f"// STUB: replace this block with real test for case_type={case_type}",
+            f"TEST(AttestStubs, {test_name}) {{",
+            f'    GTEST_SKIP() << "STUB — case_type=\\"{case_type}\\". Replace with real test body.";',
+            f"}}",
+            end_marker(block_id, comment_style),
+        ]
+
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
@@ -1929,13 +2447,27 @@ class AscendCodeGenStage(AscendBaseStage):
                     has_source = True
             if not has_source:
                 boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
+        is_attest_gen_here = (
+            layer_id in ("op_api", "op_host")
+            and path.name.endswith("_attest.cpp")
+            and not is_cmake
+        )
+        use_stubs = is_attest_gen_here and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
+        if is_attest_gen_here and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
+            print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
         lines = [
             start_marker("HEADER", comment_style),
             boilerplate.rstrip() if boilerplate else "",
             end_marker("HEADER", comment_style),
         ]
-        for case in file_cases:
-            lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+        if use_stubs:
+            for case in file_cases:
+                block_id = str(case["block_id"])
+                case_type = str(case.get("case_type") or case.get("name") or block_id)
+                lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
+        else:
+            for case in file_cases:
+                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
         lines.append(start_marker("FOOTER", comment_style))
         lines.append(end_marker("FOOTER", comment_style))
         content = "\n".join(lines) + "\n"
@@ -2259,6 +2791,7 @@ Fix the file now."""
         case_inventory_context: str,
         generation_mode: str,
         provider,
+        infra_context_snippet: str = "",
     ) -> str:
         """Build a unified prompt for processing all files of one layer in a single session."""
         if not file_entries:
@@ -2377,7 +2910,7 @@ Skill packet:
 ```text
 {skill_packet}
 ```
-{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}
+{infra_context_snippet}{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}
 Complete all files now, then compile and verify."""
         return prompt
 
@@ -2396,6 +2929,7 @@ Complete all files now, then compile and verify."""
         case_inventory_context: str,
         generation_mode: str,
         provider,
+        infra_context_snippet: str = "",
     ) -> StageResult:
         """Run a single LLM session that processes all files of one layer together."""
         prompt = self._build_combined_layer_prompt(
@@ -2403,6 +2937,7 @@ Complete all files now, then compile and verify."""
             all_target_blocks, cases_by_file, slim_context, analysis_plan,
             uncovered_for_layer, prev_error_context, case_inventory_context,
             generation_mode, provider,
+            infra_context_snippet=infra_context_snippet,
         )
         # Give extra turns proportional to the number of files
         turn_limit = min(240, 100 * len(file_entries))
@@ -2576,6 +3111,56 @@ Complete all files now, then compile and verify."""
         )
         slim_context = {k: v for k, v in slim_context.items() if v is not None}
 
+        infra_context_snippet = ""
+        try:
+            infra_ctx = _load_json_artifact(state, "infrastructure_context.json", default={})
+            if infra_ctx:
+                layout = infra_ctx.get("op_host_layout", {})
+                cmake_info = infra_ctx.get("cmake_info", {})
+                warnings = infra_ctx.get("warnings", [])
+                infra_context_snippet_parts = ["\n## Infrastructure Context (MUST FOLLOW — verified by build probe)\n"]
+                if layout.get("is_pure_opapi"):
+                    infra_context_snippet_parts.append(
+                        "WARNING: op_host/ contains ONLY op_api/ nesting — no infershape/tiling .cpp files. "
+                        "DO NOT generate op_host tests unless you fully understand this layout. "
+                        "Focus on op_api tests."
+                    )
+                if cmake_info.get("cmake_style"):
+                    infra_context_snippet_parts.append(f"CMake style: `{cmake_info['cmake_style']}`")
+                if cmake_info.get("targets"):
+                    infra_context_snippet_parts.append(f"CMake UT targets: `{json.dumps(cmake_info['targets'])}`")
+                if cmake_info.get("test_register_macro"):
+                    infra_context_snippet_parts.append(f"Test register macro: `{cmake_info['test_register_macro']}`")
+                tc = cmake_info.get("test_cmake", {})
+                if tc.get("op_host_op_api_exists"):
+                    infra_context_snippet_parts.append(
+                        "IMPORTANT: tests/ut/op_host/op_api/ exists — op_api tests should be generated "
+                        "under tests/ut/op_host/op_api/, NOT under tests/ut/op_api/."
+                    )
+                if not tc.get("op_host_exists"):
+                    infra_context_snippet_parts.append(
+                        "tests/ut/op_host/CMakeLists.txt does NOT exist — framework will generate it. "
+                        "Use the standard `add_modules_ut_sources` registration pattern."
+                    )
+                if not tc.get("op_api_exists"):
+                    infra_context_snippet_parts.append(
+                        "tests/ut/op_api/CMakeLists.txt does NOT exist — framework will generate it. "
+                        "Use the standard `add_modules_ut_sources` registration pattern."
+                    )
+                for w in warnings:
+                    infra_context_snippet_parts.append(f"⚠️ {w}")
+                infra_context_snippet = "\n".join(infra_context_snippet_parts) + "\n"
+                infra_slime = {
+                    "op_host_layout": layout,
+                    "cmake_style": cmake_info.get("cmake_style"),
+                    "cmake_targets": cmake_info.get("targets"),
+                }
+                infra_slime = {k: v for k, v in infra_slime.items() if v}
+                if infra_slime:
+                    slim_context["infrastructure"] = infra_slime
+        except Exception:
+            pass
+
         uncovered_for_layer: Dict[str, Dict[str, Any]] = {}
         if int(getattr(state, "epoch_current", 1) or 1) > 1:
             try:
@@ -2740,6 +3325,7 @@ Complete all files now, then compile and verify."""
                     case_inventory_context=case_inventory_context,
                     generation_mode=generation_mode,
                     provider=provider,
+                    infra_context_snippet=infra_context_snippet,
                 )
                 session_ok = shared_result.success
 
@@ -3124,7 +3710,7 @@ Skill packet:
 
 {_get_few_shot_examples(str(file_entry['layer_id']))}
 
-{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}{cross_file_section}
+{infra_context_snippet}{unified_section}{uncovered_section}{case_inventory_context}{prev_error_context}{cross_file_section}
 Complete the file now."""
 
                     stage_result = self._run_llm_session(state, prompt, project_root)
@@ -3384,12 +3970,13 @@ class AscendExecutionStage(AscendBaseStage):
         plan: Dict[str, Any],
         layer: str,
         build_dir: str = "build",
+        infra_overrides: Optional[Dict[str, Any]] = None,
     ) -> tuple[Optional[float], Optional[float], Optional[float], str, bool, Optional[str]]:
         include_patterns = _operator_source_patterns(plan, layer)
         if not include_patterns:
             return None, None, None, "", False, "operator source pattern is unavailable"
 
-        remove_patterns = _operator_remove_patterns(plan, layer)
+        remove_patterns = _operator_remove_patterns(plan, layer, infra_overrides)
         cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
         source_info = f"{cov_root}/ops.info"
         extract_info = f"{cov_root}/attest_{layer}_extract.info"
@@ -3481,6 +4068,7 @@ class AscendExecutionStage(AscendBaseStage):
         layer: str,
         build_dir: str = "build",
         max_lines_per_file: int = 40,
+        infra_overrides: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         include_patterns = _operator_source_patterns(plan, layer)
         if not include_patterns:
@@ -3489,7 +4077,7 @@ class AscendExecutionStage(AscendBaseStage):
         source_info = f"{cov_root}/ops.info"
         extract_info = f"{cov_root}/attest_{layer}_extract.info"
         filtered_info = f"{cov_root}/attest_{layer}_filtered.info"
-        target_info = filtered_info if _operator_remove_patterns(plan, layer) else extract_info
+        target_info = filtered_info if _operator_remove_patterns(plan, layer, infra_overrides) else extract_info
 
         cmd = (
             f"if [ -f {shlex.quote(target_info)} ]; then "
@@ -3527,11 +4115,12 @@ class AscendExecutionStage(AscendBaseStage):
         plan: Dict[str, Any],
         layer: str,
         build_dir: str = "build",
+        infra_overrides: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         include_patterns = _operator_source_patterns(plan, layer)
         if not include_patterns:
             return []
-        remove_patterns = _operator_remove_patterns(plan, layer)
+        remove_patterns = _operator_remove_patterns(plan, layer, infra_overrides)
         cov_root = f"{build_dir}/tests/ut/cov_report/cpp_utest"
         source_info = f"{cov_root}/ops.info"
         extract_info = f"{cov_root}/attest_{layer}_extract.info"
@@ -3657,6 +4246,14 @@ class AscendExecutionStage(AscendBaseStage):
         exit_code = 0
         per_layer: Dict[str, Dict[str, Any]] = {}
 
+        infra_overrides: Optional[Dict[str, Any]] = None
+        if state_obj is not None:
+            try:
+                infra_ctx = _load_json_artifact(state_obj, "infrastructure_context.json", default={})
+                infra_overrides = infra_ctx.get("lcov_overrides") or None
+            except Exception:
+                pass
+
         op_name = plan.get("op_name", "")
         if op_name:
             build_dir = f"build_{label}_{op_name}"
@@ -3737,6 +4334,7 @@ class AscendExecutionStage(AscendBaseStage):
                         exit_code = 0
                         compile_failed = False
 
+        coverage_error = None
         try:
             # Phase 2: combined coverage build (single invocation preserves all layers)
             if use_coverage and combined_cov_cmd:
@@ -3748,7 +4346,9 @@ class AscendExecutionStage(AscendBaseStage):
                     )
                     cov_output = cov_result.output if cov_result.output else cov_result.error or ""
                     logs.append(f"=== {label} combined coverage ===\n{cov_output}")
-                    coverage_error = _coverage_error_reason(cov_output)
+                    _ce = _coverage_error_reason(cov_output)
+                    if coverage_error != "ZeroTestsRegistered":
+                        coverage_error = _ce
                     cov_ok = bool(cov_result.ok)
                     if not cov_ok:
                         if not coverage_error:
@@ -3757,6 +4357,15 @@ class AscendExecutionStage(AscendBaseStage):
                         self._recover_ops_info_if_missing(
                             project_root, ctx, label, logs, build_dir=build_dir
                         )
+                    if re.search(r"Running\s+0\s+tests\s+from\s+0\s+test\s+suite", cov_output):
+                        logs.append(
+                            f"=== {label} ZERO TESTS DETECTED: test binary has 0 TEST_F registrations. "
+                            "This likely means: (a) attest-generated *_attest.cpp files were quarantined "
+                            "due to compile errors, or (b) CMakeLists.txt does not pick up attest test "
+                            "files. Check compile errors in build log above. ==="
+                        )
+                        cov_ok = False
+                        coverage_error = "ZeroTestsRegistered"
                 else:
                     cov_result = None
                     cov_output = ""
@@ -3784,7 +4393,9 @@ class AscendExecutionStage(AscendBaseStage):
                         )
                         cov_output_local = cov_result_local.output if cov_result_local.output else cov_result_local.error or ""
                         logs.append(f"=== {label} {layer} coverage ===\n{cov_output_local}")
-                        coverage_error = _coverage_error_reason(cov_output_local)
+                        _ce = _coverage_error_reason(cov_output_local)
+                        if coverage_error != "ZeroTestsRegistered":
+                            coverage_error = _ce
                         cov_ok = bool(cov_result_local.ok)
                         if not cov_ok:
                             if not coverage_error:
@@ -3795,7 +4406,9 @@ class AscendExecutionStage(AscendBaseStage):
                             )
                     else:
                         cov_result_local = cov_result
-                        coverage_error = _coverage_error_reason(cov_output)
+                        _ce = _coverage_error_reason(cov_output)
+                        if coverage_error != "ZeroTestsRegistered":
+                            coverage_error = _ce
 
                     layer_value = None
                     function_value = None
@@ -3810,7 +4423,7 @@ class AscendExecutionStage(AscendBaseStage):
                         operator_lcov_output,
                         operator_lcov_valid,
                         operator_lcov_error,
-                    ) = self._extract_operator_lcov_coverage(ctx, plan, str(layer), build_dir=build_dir)
+                    ) = self._extract_operator_lcov_coverage(ctx, plan, str(layer), build_dir=build_dir, infra_overrides=infra_overrides)
                     
                     
                     if layer_value is not None:
@@ -3850,10 +4463,10 @@ class AscendExecutionStage(AscendBaseStage):
                             error_reason=coverage_error or operator_lcov_error or "coverage was not found for this layer",
                         )
 
-                    uncovered_funcs = self._extract_uncovered_functions(ctx, plan, str(layer), build_dir=build_dir)
+                    uncovered_funcs = self._extract_uncovered_functions(ctx, plan, str(layer), build_dir=build_dir, infra_overrides=infra_overrides)
                     if uncovered_funcs:
                         per_layer[str(layer)]["uncovered_functions"] = uncovered_funcs
-                    uncovered_lines = self._extract_uncovered_lines(ctx, plan, str(layer), build_dir=build_dir)
+                    uncovered_lines = self._extract_uncovered_lines(ctx, plan, str(layer), build_dir=build_dir, infra_overrides=infra_overrides)
                     if uncovered_lines:
                         per_layer[str(layer)]["uncovered_lines"] = uncovered_lines
                         total_uncovered = sum(e.get("total_uncovered", 0) for e in uncovered_lines)
@@ -3957,7 +4570,7 @@ class AscendExecutionStage(AscendBaseStage):
                 generated_values.append(generated_value)
             elif baseline_uncovered:
                 skipped_layers[str(layer)] = "baseline has no instrumented code for this layer"
-                if generated_valid and baseline_value > 0:
+                if generated_valid:
                     baseline_values.append(baseline_value)
                     generated_values.append(generated_value)
             else:
@@ -4012,7 +4625,7 @@ class AscendExecutionStage(AscendBaseStage):
 
         baseline_avg = sum(baseline_values) / len(baseline_values) if baseline_values else 0.0
         generated_avg = sum(generated_values) / len(generated_values) if generated_values else 0.0
-        coverage_valid = not invalid_layers and bool(baseline_values)
+        coverage_valid = not invalid_layers and (bool(baseline_values) or bool(generated_values))
         generated_meets_overall_threshold = coverage_valid and generated_avg >= overall_threshold
         generated_meets_threshold = generated_meets_layer_threshold and generated_meets_overall_threshold
 
@@ -4571,7 +5184,7 @@ class AscendAnalysisStage(AscendBaseStage):
             analysis["stop_reason"] = "Baseline op_host/op_api UT failed; coverage comparison is unavailable"
             state.auto_stop_reason = analysis["stop_reason"]
             errors = 1
-        elif compare_mode and not ((coverage.get("runs") or {}).get("baseline") or {}).get("coverage_valid", True):
+        elif compare_mode and not coverage.get("skipped_layers") and not ((coverage.get("runs") or {}).get("baseline") or {}).get("coverage_valid", True):
             baseline_errors = ((coverage.get("runs") or {}).get("baseline") or {}).get("coverage_errors") or {}
             ordered = _ordered_files(plan)
             first_test_file_id = next((f["file_id"] for f in ordered if f.get("kind") != "cmake"), "")
@@ -4598,21 +5211,36 @@ class AscendAnalysisStage(AscendBaseStage):
             failure = self._map_failure(state, plan, generated_log if compare_mode else log_text)
             analysis["failures"] = [failure]
             failed = 1
-            if failure["error_type"] in {"CompilationError", "CoverageCollectionError", "CoverageInstrumentationError"}:
+            if failure["error_type"] in {"CompilationError", "CoverageCollectionError", "CoverageInstrumentationError", "ZeroTestsRegistered"}:
                 errors = 1
             analysis["status"] = "failed"
         elif not coverage.get("coverage_valid", True):
             ordered = _ordered_files(plan)
             first_test_file_id = next((f["file_id"] for f in ordered if f.get("kind") != "cmake"), "")
             first_layer_id = next((f["layer_id"] for f in ordered if f.get("kind") != "cmake"), "")
+            cov_errors = coverage.get("coverage_errors") or {}
+            first_zero = next(
+                (v for v in cov_errors.values() if v == "ZeroTestsRegistered"), None
+            )
+            if first_zero:
+                error_type = "ZeroTestsRegistered"
+                action = "rewrite_block"
+                note = (
+                    f"test binary ran 0 tests — attest-generated *_attest.cpp was not compiled "
+                    f"into the binary or TEST_F registrations are missing: {cov_errors}"
+                )
+            else:
+                error_type = "CoverageCollectionError"
+                action = "fix_dependency"
+                note = f"coverage collection is invalid: {cov_errors}"
             failure = {
                 "test": "coverage_collection",
                 "block_id": "HEADER",
                 "file_id": str(first_test_file_id),
                 "layer_id": str(first_layer_id),
-                "error_type": "CoverageCollectionError",
-                "action": "fix_dependency",
-                "note": f"coverage collection is invalid: {coverage.get('coverage_errors') or {}}",
+                "error_type": error_type,
+                "action": action,
+                "note": note,
             }
             analysis["failures"] = [failure]
             failed = 1
@@ -4884,6 +5512,7 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
         provider,
         generation_mode: str,
         coverage_mode: str,
+        infra_context_snippet: str = "",
     ) -> str:
         epoch = getattr(state, "epoch_current", 1)
         epoch_total = getattr(state, "epoch_total", 1)
@@ -4963,6 +5592,15 @@ repeat — until you are satisfied or turns are exhausted.
 - Keep every test traceable to its BLOCK_ID marker.
 - DO NOT regenerate already-filled blocks unless you are clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; instead, edit specific blocks only.
 - Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
+- ⚠️ **CRITICAL — STUB REPLACEMENT** (rule 10): Every `// ==== BLOCK: CASE_NN START ====` block has been pre-populated with a STUB that looks like:
+    ```cpp
+    // STUB: replace this block with real test for case_type=...
+    TEST(AttestStubs, CASE_NN_...) {{ GTEST_SKIP() << "STUB — case_type=..."; }}
+    ```
+    Your job is to **replace every STUB with a real, working TEST_F** before finishing. A STUB that remains unfilled is suboptimal: it skips the test (no coverage contribution) instead of exercising the operator code. Before concluding the session, run `grep -n 'STUB: replace' <file>` on each test file — if ANY STUBs remain, go back and replace each one. The replacement must:
+    1. Call the real operator API (e.g. `OP_API_UT_EXPECT`, or build infershape inputs for op_host)
+    2. Use the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
+    3. Exercise the operator code path described by `case_type` (e.g. `infershape_basic` → basic shape inference)
 
 ## Operator context
 ```json
@@ -4978,7 +5616,7 @@ repeat — until you are satisfied or turns are exhausted.
 ```json
 {json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
 ```
-{prev_error_context}{case_inventory_context}
+{infra_context_snippet}{prev_error_context}{case_inventory_context}
 {augment_text}
 {skill_text}
 Begin now. Start with the first file."""
@@ -5052,6 +5690,7 @@ Begin now. Start with the first file."""
         case_inventory_context: str,
         provider,
         generation_mode: str,
+        infra_context_snippet: str = "",
     ) -> str:
         """Layer-scoped variant of _build_agent_loop_prompt for one parallel agent.
 
@@ -5148,6 +5787,11 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 - Keep every test traceable to its BLOCK_ID marker.
 - DO NOT regenerate already-filled blocks unless clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; edit specific blocks only.
 - Each exec_command output is your ground-truth.
+- ⚠️ **CRITICAL — STUB REPLACEMENT** (rule 10): Every `// ==== BLOCK: CASE_NN START ====` block has been pre-populated with a STUB `TEST(AttestStubs, ...)`. Your job is to **replace every STUB with a real, working TEST_F** that:
+    1. Calls the real operator API (e.g. `OP_API_UT_EXPECT` for op_api, or build infershape inputs for op_host)
+    2. Uses the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
+    3. Exercises the operator code path described by `case_type`
+  Before concluding, run `grep -c 'STUB: replace' <file>` on your output — if ANY STUBs remain, go back and replace each.
 - **CRITICAL — CMakeLists.txt registration (Rule 15):** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your `*_attest.cpp` files already match these patterns and will be picked up automatically. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update its FOOTER block to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
 - NEVER rewrite an existing `CMakeLists.txt` HEADER block — it contains framework-required preamble. Only touch the FOOTER block to add source registration lines if needed.
 
@@ -5160,7 +5804,7 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 ```json
 {json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
 ```
-{prev_error_context}{case_inventory_context}
+{infra_context_snippet}{prev_error_context}{case_inventory_context}
 {augment_text}
 {skill_text}
 Begin now. Start with the first file of the `{layer}` layer."""
@@ -5177,6 +5821,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
         case_inventory_context: str,
         provider,
         generation_mode: str,
+        infra_context_snippet: str = "",
     ):
         """Worker body run in a thread: one layer-scoped LLM generation session.
 
@@ -5185,6 +5830,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
         prompt = self._build_single_layer_prompt(
             state, plan, layer, project_root, slim_context, analysis_plan,
             prev_error_context, case_inventory_context, provider, generation_mode,
+            infra_context_snippet=infra_context_snippet,
         )
         res = self._run_llm_session(
             state, prompt, project_root, turn_limit=self._per_layer_turn_limit()
@@ -5656,6 +6302,19 @@ Begin now. Start with the first file of the `{layer}` layer."""
             )
         return ""
 
+    @staticmethod
+    def _case_stub_lines(block_id: str, case_type: str, comment_style: str) -> List[str]:
+        safe_type = re.sub(r"[^A-Za-z0-9_]", "_", str(case_type))[:40] or "stub"
+        test_name = f"{block_id}_{safe_type}"
+        return [
+            start_marker(block_id, comment_style),
+            f"// STUB: replace this block with real test for case_type={case_type}",
+            f"TEST(AttestStubs, {test_name}) {{",
+            f'    GTEST_SKIP() << "STUB — case_type=\\"{case_type}\\". Replace with real test body.";',
+            f"}}",
+            end_marker(block_id, comment_style),
+        ]
+
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
         comment_style = str(file_entry.get("comment_style") or detect_comment_style(path))
@@ -5704,8 +6363,17 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     original.rstrip(),
                     end_marker("HEADER", comment_style),
                 ]
-                for case in file_cases:
-                    lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+                use_stubs_existing = is_attest_gen and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
+                if is_attest_gen and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
+                    print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
+                if use_stubs_existing:
+                    for case in file_cases:
+                        block_id = str(case["block_id"])
+                        case_type = str(case.get("case_type") or case.get("name") or block_id)
+                        lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
+                else:
+                    for case in file_cases:
+                        lines.append(placeholder_marker(str(case["block_id"]), comment_style))
                 if layer_id_str == "op_host":
                     lines.extend([
                         start_marker("FOOTER", comment_style),
@@ -5766,13 +6434,27 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     has_source = True
             if not has_source:
                 boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
+        is_attest_gen_here = (
+            layer_id in ("op_api", "op_host")
+            and path.name.endswith("_attest.cpp")
+            and not is_cmake
+        )
+        use_stubs = is_attest_gen_here and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
+        if is_attest_gen_here and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
+            print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
         lines = [
             start_marker("HEADER", comment_style),
             boilerplate.rstrip() if boilerplate else "",
             end_marker("HEADER", comment_style),
         ]
-        for case in file_cases:
-            lines.append(placeholder_marker(str(case["block_id"]), comment_style))
+        if use_stubs:
+            for case in file_cases:
+                block_id = str(case["block_id"])
+                case_type = str(case.get("case_type") or case.get("name") or block_id)
+                lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
+        else:
+            for case in file_cases:
+                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
         lines.append(start_marker("FOOTER", comment_style))
         lines.append(end_marker("FOOTER", comment_style))
         content = "\n".join(lines) + "\n"
@@ -5879,6 +6561,226 @@ Begin now. Start with the first file of the `{layer}` layer."""
         new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
         cmake_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
+    def _ensure_companion_cpp_files(self, project_root: Path, plan: Dict[str, Any]) -> None:
+        """Create companion .cpp file alongside each *_attest.cpp.
+
+        The CMake glob in `add_modules_ut_sources` matches *.cpp files. If the
+        LLM renamed the original .cpp to .cpp.bak and no explicit target_sources
+        was registered, the build falls back to compiling empty.cpp → 0 tests.
+        Creating a sibling .cpp file (copy of _attest.cpp) guarantees the glob
+        picks it up and compiles the test registrations — belt and suspenders on
+        top of the explicit target_sources from _ensure_cmake_attest_registration.
+        """
+        for file_entry in _ordered_files(plan):
+            if str(file_entry.get("kind", "")) == "cmake":
+                continue
+            path = project_root / str(file_entry.get("path", ""))
+            if not path.name.endswith("_attest.cpp"):
+                continue
+            if not path.exists():
+                continue
+            # Companion = strip the `_attest` suffix: test_xxx_attest.cpp → test_xxx.cpp
+            companion = path.parent / path.name.replace("_attest.cpp", ".cpp")
+            if companion.exists():
+                continue
+            try:
+                shutil.copy2(path, companion)
+                print(f"  ✓ Created companion {companion.name} (copy of {path.name})")
+            except Exception as exc:
+                print(f"  ⚠ Failed to create companion {companion.name}: {exc}")
+
+    def _validate_test_registrations(self, project_root: Path, plan: Dict[str, Any]) -> Dict[str, int]:
+        """Count TEST_F/TEST/TEST_P macros in each generated test file.
+
+        Returns {path: count}. Prints a warning for files with 0 registrations.
+        Used to diagnose "0 tests from 0 test suites" failures early.
+        """
+        counts: Dict[str, int] = {}
+        for file_entry in _ordered_files(plan):
+            if str(file_entry.get("kind", "")) == "cmake":
+                continue
+            path = project_root / str(file_entry.get("path", ""))
+            if not path.name.endswith(".cpp"):
+                continue
+            if not path.exists():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+                n = (
+                    len(re.findall(r"\bTEST_F\s*\(", text))
+                    + len(re.findall(r"\bTEST\s*\(", text))
+                    + len(re.findall(r"\bTEST_P\s*\(", text))
+                )
+                counts[str(path)] = n
+                # Count remaining stubs separately
+                stub_count = text.count("STUB: replace")
+                if n == 0:
+                    print(
+                        f"  ⚠ {path.name}: 0 TEST_F/TEST macros found — "
+                        f"this file will contribute ZERO tests; codegen likely left "
+                        f"CASE blocks as empty placeholders"
+                    )
+                elif stub_count > 0:
+                    print(
+                        f"  ⚠ {path.name}: {n} TEST macro(s) registered, but "
+                        f"{stub_count} STUB(s) still unfilled — coverage will be "
+                        f"reduced until LLM replaces stubs with real tests"
+                    )
+                else:
+                    print(f"  ✓ {path.name}: {n} TEST macro(s) registered, all stubs replaced")
+            except Exception:
+                pass
+        return counts
+
+    def _count_remaining_stubs(self, project_root: Path, plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Scan generated .cpp files for `STUB: replace` markers that LLM didn't replace.
+
+        Returns a list of dicts: {"file": <path>, "count": N, "block_ids": [...]}.
+        Used to decide whether a focused repair session is needed.
+        """
+        stubs: List[Dict[str, Any]] = []
+        for file_entry in _ordered_files(plan):
+            if str(file_entry.get("kind", "")) == "cmake":
+                continue
+            path = project_root / str(file_entry.get("path", ""))
+            if not path.name.endswith(".cpp") or not path.exists():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            # Find each BLOCK marker + check if it contains the STUB marker comment
+            block_ids_with_stub: List[str] = []
+            current_block: Optional[str] = None
+            for line in text.splitlines():
+                m = re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:(\w+)\s+START\s*====", line)
+                if m:
+                    current_block = m.group(1)
+                    continue
+                if current_block and "STUB: replace" in line:
+                    block_ids_with_stub.append(current_block)
+                end_m = re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:\w+\s+END\s*====", line)
+                if end_m:
+                    current_block = None
+            if block_ids_with_stub:
+                stubs.append({
+                    "file": str(path),
+                    "count": len(block_ids_with_stub),
+                    "block_ids": block_ids_with_stub,
+                })
+        return stubs
+
+    def _repair_remaining_stubs(
+        self,
+        state,
+        project_root: Path,
+        plan: Dict[str, Any],
+        stubs: List[Dict[str, Any]],
+    ) -> None:
+        """Run a focused LLM session to replace remaining STUB blocks with real tests.
+
+        Only runs if stub count > 0. Budget: max 40 turns. The repair prompt gives the LLM
+        the exact list of CASE blocks still using STUBs and asks it to visit each block with
+        sed/heredoc and replace it.
+        """
+        if not stubs:
+            return
+        total = sum(s["count"] for s in stubs)
+        all_block_ids: List[str] = []
+        for s in stubs:
+            all_block_ids.extend(s["block_ids"])
+        files_desc = "\n".join(
+            f"  - {s['file']} :: {s['block_ids']} ({s['count']} stubs)"
+            for s in stubs
+        )
+        prompt = (
+            f"## ⚠️ STUB REPAIR REQUIRED\n"
+            f"There are {total} CASE blocks that still contain STUB markers (placeholder tests that GTEST_SKIP()). "
+            f"Your job is to visit EACH file+block below with `exec_command` and REPLACE the stub with a "
+            f"working `TEST_F(...)` test that actually exercises the operator code path described by `case_type`.\n\n"
+            f"### Files + blocks needing repair\n{files_desc}\n\n"
+            f"### Rules\n"
+            f"1. For each block, `cat -n <file>` to locate it precisely, then overwrite just that block's content.\n"
+            f"2. The replacement MUST use the test-fixture class defined in the HEADER (e.g. `TEST_F(XxxInferShape, ...)`).\n"
+            f"3. The replacement MUST call the actual operator API under test (not `GTEST_SKIP()`).\n"
+            f"4. After all repairs, run compile+test to confirm no compile errors and tests pass.\n"
+            f"5. Output a final `grep -c 'STUB: replace' <file>` count = 0 for each file.\n"
+            f"6. Finish with JSON: ```json {{\"stubs_remaining\": 0, \"repairs_done\": {total}}} ```\n"
+        )
+        print(f"  🔧 Running STUB repair session for {total} remaining stubs across {len(stubs)} file(s)...")
+        messages = [{"role": "user", "content": prompt}]
+        append_message(
+            session_id=getattr(state, "workflow_id", "workflow"),
+            role="user",
+            content={"stage": "generate_code", "mode": "stub_repair", "prompt": prompt},
+            workspace=str(state.workspace),
+            stage="generate_code",
+        )
+        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
+        tools = self._tool_schemas()
+        stagnation_streak = 0
+        last_sig = ""
+        api429_retries = 0
+        api429_max = 3
+        for turn in range(40):
+            resp = None
+            while resp is None:
+                try:
+                    resp = self.llm.chat(messages, tools=tools)
+                except Exception as exc:
+                    exc_str = str(exc)
+                    if ("429" in exc_str or "Throttl" in exc_str or "rate" in exc_str.lower()) and api429_retries < api429_max:
+                        api429_retries += 1
+                        delay = min(30 * api429_retries, 90)
+                        print(f"  ⚠ stub repair rate limited (turn {turn+1}), retry {api429_retries}/{api429_max} after {delay}s")
+                        import time
+                        time.sleep(delay)
+                        continue
+                    print(f"  ⚠ stub repair LLM call failed turn {turn+1}: {exc}")
+                    break
+            if resp is None:
+                break
+            assistant_msg = {
+                "role": "assistant",
+                "content": resp.content,
+                "reasoning_content": getattr(resp, "reasoning_content", "") or "",
+            }
+            if resp.tool_calls:
+                assistant_msg["tool_calls"] = resp.tool_calls
+            messages.append(assistant_msg)
+            append_message(
+                session_id=getattr(state, "workflow_id", "workflow"),
+                role="assistant", content=assistant_msg,
+                workspace=str(state.workspace), stage="generate_code",
+            )
+            if not resp.has_tool_calls():
+                break
+            for tc in resp.tool_calls:
+                try:
+                    tool_args = json.loads(tc["function"]["arguments"])
+                except json.JSONDecodeError:
+                    messages.append({"role": "user", "content": "Tool JSON truncated. Split into chunks."})
+                    continue
+                tr = self.tool_runner.execute(tc["function"]["name"], tool_args, ctx)
+                out = (tr.output if tr.ok else (tr.error or ""))
+                if len(out) > 6000:
+                    out = out[:6000] + "\n...(truncated)"
+                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out})
+            sig = json.dumps([{"fn": tc["function"]["name"], "args": tc["function"]["arguments"]}
+                              for tc in (resp.tool_calls or [])], sort_keys=True)
+            stagnation_streak = stagnation_streak + 1 if sig == last_sig else 0
+            last_sig = sig
+            if stagnation_streak >= 3:
+                print(f"  ⚠ stub repair stagnation at turn {turn+1}; stopping")
+                break
+        # Final count
+        new_stubs = self._count_remaining_stubs(project_root, plan)
+        if new_stubs:
+            rem = sum(s["count"] for s in new_stubs)
+            print(f"  ⚠ stub repair finished but {rem} stub(s) remain: {new_stubs}")
+        else:
+            print(f"  ✓ stub repair finished: all stubs replaced")
+
     # ------------------------------------------------------------------
     # execute()
     # ------------------------------------------------------------------
@@ -5943,6 +6845,42 @@ Begin now. Start with the first file of the `{layer}` layer."""
         )
         slim_context = {k: v for k, v in slim_context.items() if v is not None}
 
+        infra_context_snippet = ""
+        try:
+            infra_ctx = _load_json_artifact(state, "infrastructure_context.json", default={})
+            if infra_ctx:
+                layout = infra_ctx.get("op_host_layout", {})
+                cmake_info = infra_ctx.get("cmake_info", {})
+                warnings = infra_ctx.get("warnings", [])
+                infra_context_snippet_parts = ["\n## Infrastructure Context (MUST FOLLOW — verified by build probe)\n"]
+                if layout.get("is_pure_opapi"):
+                    infra_context_snippet_parts.append(
+                        "WARNING: op_host/ contains ONLY op_api/ nesting — no infershape/tiling .cpp files. "
+                        "DO NOT generate op_host tests unless you fully understand this layout. Focus on op_api tests."
+                    )
+                if cmake_info.get("cmake_style"):
+                    infra_context_snippet_parts.append(f"CMake style: `{cmake_info['cmake_style']}`")
+                if cmake_info.get("targets"):
+                    infra_context_snippet_parts.append(f"CMake UT targets: `{json.dumps(cmake_info['targets'])}`")
+                if cmake_info.get("test_register_macro"):
+                    infra_context_snippet_parts.append(f"Test register macro: `{cmake_info['test_register_macro']}`")
+                tc = cmake_info.get("test_cmake", {})
+                if tc.get("op_host_op_api_exists"):
+                    infra_context_snippet_parts.append(
+                        "IMPORTANT: tests/ut/op_host/op_api/ exists — op_api tests should be generated "
+                        "under tests/ut/op_host/op_api/, NOT under tests/ut/op_api/."
+                    )
+                for w in warnings:
+                    infra_context_snippet_parts.append(f"⚠️ {w}")
+                infra_context_snippet = "\n".join(infra_context_snippet_parts) + "\n"
+                slim_context["infrastructure"] = {
+                    "op_host_layout": layout,
+                    "cmake_style": cmake_info.get("cmake_style"),
+                    "cmake_targets": cmake_info.get("targets"),
+                }
+        except Exception:
+            pass
+
         # Layers that actually have files to generate
         enabled_layers = [
             l for l in plan.get("enabled_layers", []) if self._layer_files(plan, l)
@@ -5955,8 +6893,32 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 state, plan, context, project_root, slim_context, analysis_plan,
                 prev_error_context, case_inventory_context,
                 provider, generation_mode, coverage_mode,
+                infra_context_snippet=infra_context_snippet,
             )
             stage_result = self._run_llm_session(state, prompt, project_root, turn_limit=300)
+
+            # Post-codegen: register every *_attest.cpp in its parent CMakeLists.txt
+            # FOOTER with explicit `target_sources` — prevents the glob-based
+            # `add_modules_ut_sources` from falling back to empty.cpp when the
+            # companion `.cpp` file is absent (Fix for diag_part-style regressions).
+            for file_entry in _ordered_files(plan):
+                if str(file_entry.get("kind", "")) != "cmake":
+                    self._ensure_cmake_attest_registration(project_root, file_entry)
+
+            # Post-codegen: create companion .cpp files so CMake glob picks up tests
+            # even if the original .cpp was renamed to .bak (belt and suspenders).
+            self._ensure_companion_cpp_files(project_root, plan)
+
+            # Post-codegen: count TEST_F macros to catch empty-CASE regressions early
+            self._validate_test_registrations(project_root, plan)
+
+            # Post-codegen: run focused repair session for any CASE blocks LLM left
+            # as STUBs (the TEST(AttestStubs, ...) placeholder) so coverage improves.
+            remaining = self._count_remaining_stubs(project_root, plan)
+            if remaining:
+                self._repair_remaining_stubs(state, project_root, plan, remaining)
+                # Re-count after repair
+                self._validate_test_registrations(project_root, plan)
 
             manifest = [
                 {
@@ -6006,6 +6968,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
                             state, plan, layer, project_root, slim_context,
                             analysis_plan, prev_error_context, case_inventory_context,
                             provider, generation_mode,
+                            infra_context_snippet=infra_context_snippet,
                         ): layer
                         for layer in enabled_layers
                     }
@@ -6027,6 +6990,18 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 for file_entry in _ordered_files(plan):
                     if str(file_entry.get("kind", "")) != "cmake":
                         self._ensure_cmake_attest_registration(project_root, file_entry)
+
+                # Companion .cpp file creation — ensures CMake glob also finds tests
+                self._ensure_companion_cpp_files(project_root, plan)
+
+                # Count TEST_F macros to catch empty-CASE regressions early
+                self._validate_test_registrations(project_root, plan)
+
+                # Run focused repair for any CASE blocks still using STUBs
+                remaining = self._count_remaining_stubs(project_root, plan)
+                if remaining:
+                    self._repair_remaining_stubs(state, project_root, plan, remaining)
+                    self._validate_test_registrations(project_root, plan)
 
                 # Manifest (main thread)
                 manifest = [
@@ -6188,11 +7163,152 @@ class AscendReportStage(AscendBaseStage):
         return StageResult(True, {"final_report.md": content}, message="Final Ascend UT report generated")
 
 
+class AscendValidateInfrastructureStage(AscendBaseStage):
+    def __init__(self, llm, tool_runner):
+        super().__init__(llm, tool_runner)
+        self.config = StageConfig(
+            name="validate_infrastructure",
+            display_name="Validate Infrastructure",
+            description="Probe operator build system and coverage pipeline to pre-resolve infrastructure issues",
+            prompt_template="",
+            input_artifacts=["operator_context.json"],
+            output_artifacts=["infrastructure_context.json", "infrastructure_report.md"],
+            tools=["exec_command", "read_file"],
+            allow_skip=False,
+        )
+
+    def _run_smoke_probe(
+        self,
+        state,
+        op_dir: Path,
+        infra_ctx: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        ctx = ToolContext(cwd=str(state.project_root), auto_approve=True)
+        build_cmd_template = infra_ctx.get("build_cmd_template", "")
+        if not build_cmd_template:
+            return {"smoke_build_ran": False, "reason": "no build command template available"}
+        op_name = state.op_name
+        build_dir = f"build_infra_probe_{op_name}"
+        build_out_dir = f"build_out_infra_probe_{op_name}"
+        project_root = state.project_root
+        build_sh_path = project_root / "build.sh"
+        build_sh_backup: Optional[Path] = None
+        if build_sh_path.exists():
+            build_sh_backup = build_sh_path.with_suffix(".sh.probe.bak")
+            shutil.copy2(build_sh_path, build_sh_backup)
+        _patch_build_sh_for_isolation(project_root)
+        _ensure_cann_cmake_available(project_root)
+        env_prefix = (
+            f"BUILD_PATH={shlex.quote(str(project_root / build_dir))} "
+            f"BUILD_OUT_PATH={shlex.quote(str(project_root / build_out_dir))} "
+        )
+        probe_cmd = f"{env_prefix}{build_cmd_template}"
+        result = self.tool_runner.execute("exec_command", {"cmd": probe_cmd}, ctx, source="framework")
+        output = result.output if result.output else result.error or ""
+        gcda_cmd = f"find {shlex.quote(str(project_root / build_dir))} -name '*.gcda' 2>/dev/null | wc -l"
+        gcda_result = self.tool_runner.execute("exec_command", {"cmd": gcda_cmd}, ctx, source="framework")
+        gcda_count = 0
+        try:
+            gcda_count = int((gcda_result.output or "0").strip())
+        except (ValueError, TypeError):
+            pass
+        build_dir_path = project_root / build_dir
+        coverage_ok = gcda_count > 7
+        warnings: List[str] = []
+        if "Running 0 tests" in output:
+            warnings.append("Smoke build ran 0 tests — test binary has no TEST_F registrations")
+        if gcda_count <= 7:
+            warnings.append(
+                f"Smoke build produced only {gcda_count} .gcda files (≤7 = test framework only, "
+                "no operator code executed)"
+            )
+        cleanup_cmd = f"rm -rf {shlex.quote(str(project_root / build_dir))} {shlex.quote(str(project_root / build_out_dir))}"
+        self.tool_runner.execute("exec_command", {"cmd": cleanup_cmd}, ctx, source="framework")
+        if build_sh_backup and build_sh_backup.exists():
+            try:
+                shutil.copy2(build_sh_backup, build_sh_path)
+                build_sh_backup.unlink()
+            except Exception:
+                pass
+        return {
+            "smoke_build_ran": True,
+            "smoke_build_ok": bool(result.ok),
+            "gcda_count": gcda_count,
+            "coverage_ok": coverage_ok,
+            "warnings": warnings,
+            "build_log_snippet": output[:1500] if not coverage_ok else "",
+        }
+
+    def execute(self, state) -> StageResult:
+        context = _load_json_artifact(state, "operator_context.json")
+        if not context:
+            return StageResult(False, {}, error="operator_context.json not available")
+        op_dir_str = context.get("operator_dir", "")
+        if not op_dir_str:
+            return StageResult(False, {}, error="operator_dir not found in operator_context")
+        op_dir = Path(op_dir_str)
+        if not op_dir.is_dir():
+            return StageResult(False, {}, error=f"operator_dir does not exist: {op_dir}")
+        infra_ctx = _collect_infrastructure_context(state, op_dir, context)
+        smoke = self._run_smoke_probe(state, op_dir, infra_ctx)
+        infra_ctx["smoke_probe"] = smoke
+        for w in smoke.get("warnings", []):
+            infra_ctx.setdefault("warnings", []).append(w)
+        json_content = _render_json(infra_ctx)
+        state.save_artifact("infrastructure_context.json", json_content)
+        md_lines = [
+            f"# Infrastructure Validation Report — {state.op_name}",
+            "",
+            "## Directory Layout",
+            f"- op_host layout: `{'pure_opapi' if infra_ctx['op_host_layout'].get('is_pure_opapi') else 'standard'}`",
+            f"- op_host has real host code: {infra_ctx['op_host_layout'].get('has_real_host_code', False)}",
+            f"- op_host has op_api subdir: {infra_ctx['op_host_layout'].get('has_op_api_subdir', False)}",
+            "",
+            "## CMake",
+            f"- Style: `{infra_ctx['cmake_info'].get('cmake_style', 'unknown')}`",
+            f"- UT CMake targets: {json.dumps(infra_ctx['cmake_info'].get('targets', {}))}",
+            f"- Test register macro: `{infra_ctx['cmake_info'].get('test_register_macro', 'add_modules_ut_sources')}`",
+            f"- test_cmake: {json.dumps(infra_ctx['cmake_info'].get('test_cmake', {}))}",
+            "",
+            "## Smoke Probe",
+            f"- Build OK: {smoke.get('smoke_build_ok', False)}",
+            f"- .gcda files: {smoke.get('gcda_count', 0)}",
+            f"- Coverage OK: {smoke.get('coverage_ok', False)}",
+        ]
+        if smoke.get("warnings"):
+            md_lines.extend(["", "## Smoke Warnings"])
+            md_lines.extend(f"- {w}" for w in smoke["warnings"])
+        if infra_ctx.get("warnings"):
+            md_lines.extend(["", "## All Warnings"])
+            seen = set()
+            for w in infra_ctx["warnings"]:
+                if w not in seen:
+                    md_lines.append(f"- {w}")
+                    seen.add(w)
+        if infra_ctx["op_host_layout"].get("is_pure_opapi"):
+            md_lines.extend([
+                "",
+                "## LCOV Override",
+                "op_host `--remove` pattern is **disabled** because op_host/ contains only op_api/ — removing would wipe all records.",
+            ])
+        markdown = "\n".join(md_lines)
+        state.save_artifact("infrastructure_report.md", markdown)
+        outputs = {
+            "infrastructure_context.json": json_content,
+            "infrastructure_report.md": markdown,
+        }
+        msg = f"Infrastructure validated for '{state.op_name}'"
+        if infra_ctx.get("warnings"):
+            msg += f" ({len(infra_ctx['warnings'])} warning(s))"
+        return StageResult(True, outputs, message=msg)
+
+
 def build_ascend_stages(llm, tool_runner):
     return {
         "understand_function": AscendInspectOperatorStage(llm, tool_runner),
         "generate_requirements": AscendRequirementsStage(llm, tool_runner),
         "design_test_plan": AscendTestPlanStage(llm, tool_runner),
+        "validate_infrastructure": AscendValidateInfrastructureStage(llm, tool_runner),
         "generate_code": AscendCodeGenStage(llm, tool_runner),
         "execute_tests": AscendExecutionStage(llm, tool_runner),
         "analyze_results": AscendAnalysisStage(llm, tool_runner),
@@ -6205,11 +7321,13 @@ def build_ascend_continuous_stages(llm, tool_runner):
 
     Stages 4+5+6 are replaced by a single AscendGenerationAgentLoopStage that
     runs in one continuous LLM session. Stage 7 (generate_report) is unchanged.
+    Stage 3b (validate_infrastructure) probes the build system before code generation.
     """
     return {
         "understand_function": AscendInspectOperatorStage(llm, tool_runner),
         "generate_requirements": AscendRequirementsStage(llm, tool_runner),
         "design_test_plan": AscendTestPlanStage(llm, tool_runner),
+        "validate_infrastructure": AscendValidateInfrastructureStage(llm, tool_runner),
         "generate_code": AscendGenerationAgentLoopStage(llm, tool_runner),
         "generate_report": AscendReportStage(llm, tool_runner),
     }
