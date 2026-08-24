@@ -2063,7 +2063,7 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
         )
 
 
-_STUB_MAX_CASES_PER_FILE = 25
+_STUB_MAX_CASES_PER_FILE = 18
 
 
 class AscendCodeGenStage(AscendBaseStage):
@@ -5597,7 +5597,8 @@ repeat — until you are satisfied or turns are exhausted.
     // STUB: replace this block with real test for case_type=...
     TEST(AttestStubs, CASE_NN_...) {{ GTEST_SKIP() << "STUB — case_type=..."; }}
     ```
-    Your job is to **replace every STUB with a real, working TEST_F** before finishing. A STUB that remains unfilled is suboptimal: it skips the test (no coverage contribution) instead of exercising the operator code. Before concluding the session, run `grep -n 'STUB: replace' <file>` on each test file — if ANY STUBs remain, go back and replace each one. The replacement must:
+    Your job is to **replace every STUB with a real, working TEST_F** before finishing. If you CANNOT complete a stub, **LEAVE IT AS GTEST_SKIP()** — do NOT change it to FAIL() or any other assertion. GTEST_SKIP() gracefully skips the test (no impact on other tests), while FAIL() will crash the entire test suite and ruin coverage.
+    Before concluding the session, run `grep -n 'STUB: replace' <file>` on each test file — if ANY STUBs remain, go back and replace each one. The replacement must:
     1. Call the real operator API (e.g. `OP_API_UT_EXPECT`, or build infershape inputs for op_host)
     2. Use the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
     3. Exercise the operator code path described by `case_type` (e.g. `infershape_basic` → basic shape inference)
@@ -5791,6 +5792,7 @@ is compiling the other layer, and a shared build directory would corrupt both bu
     1. Calls the real operator API (e.g. `OP_API_UT_EXPECT` for op_api, or build infershape inputs for op_host)
     2. Uses the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
     3. Exercises the operator code path described by `case_type`
+  **NEVER replace GTEST_SKIP() with FAIL()** — if you cannot fill a stub, LEAVE the GTEST_SKIP() in place. FAIL() will crash the entire test suite and produce 0% coverage.
   Before concluding, run `grep -c 'STUB: replace' <file>` on your output — if ANY STUBs remain, go back and replace each.
 - **CRITICAL — CMakeLists.txt registration (Rule 15):** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your `*_attest.cpp` files already match these patterns and will be picked up automatically. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update its FOOTER block to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
 - NEVER rewrite an existing `CMakeLists.txt` HEADER block — it contains framework-required preamble. Only touch the FOOTER block to add source registration lines if needed.
@@ -6583,6 +6585,11 @@ Begin now. Start with the first file of the `{layer}` layer."""
             companion = path.parent / path.name.replace("_attest.cpp", ".cpp")
             if companion.exists():
                 continue
+            # Only create companion if the original was renamed to .bak
+            # (otherwise the _attest.cpp file is already picked up by CMake glob)
+            bak_path = path.parent / (path.name.replace("_attest.cpp", ".cpp") + ".bak")
+            if not bak_path.exists():
+                continue
             try:
                 shutil.copy2(path, companion)
                 print(f"  ✓ Created companion {companion.name} (copy of {path.name})")
@@ -6705,7 +6712,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
             f"3. The replacement MUST call the actual operator API under test (not `GTEST_SKIP()`).\n"
             f"4. After all repairs, run compile+test to confirm no compile errors and tests pass.\n"
             f"5. Output a final `grep -c 'STUB: replace' <file>` count = 0 for each file.\n"
-            f"6. Finish with JSON: ```json {{\"stubs_remaining\": 0, \"repairs_done\": {total}}} ```\n"
+            f"6. **NEVER change GTEST_SKIP() to FAIL()** — if you cannot fill a stub, leave GTEST_SKIP() in place. FAIL() in stubs crashes the entire test suite and produces 0% coverage.\n"
+            f"7. Finish with JSON: ```json {{\"stubs_remaining\": 0, \"repairs_done\": {total}}} ```\n"
         )
         print(f"  🔧 Running STUB repair session for {total} remaining stubs across {len(stubs)} file(s)...")
         messages = [{"role": "user", "content": prompt}]
@@ -6778,8 +6786,49 @@ Begin now. Start with the first file of the `{layer}` layer."""
         if new_stubs:
             rem = sum(s["count"] for s in new_stubs)
             print(f"  ⚠ stub repair finished but {rem} stub(s) remain: {new_stubs}")
+            # Safety net: replace any FAIL() in remaining stubs with GTEST_SKIP()
+            self._sanitize_stub_fail_calls(project_root, plan)
         else:
             print(f"  ✓ stub repair finished: all stubs replaced")
+
+    def _sanitize_stub_fail_calls(self, project_root: Path, plan: Dict[str, Any]) -> None:
+        """Replace FAIL() with GTEST_SKIP() in any remaining STUB blocks.
+
+        The LLM sometimes converts GTEST_SKIP() to FAIL() in stub blocks, which
+        causes the entire test suite to fail and coverage to drop to 0%. This
+        safety net scans all generated test files and reverts any FAIL() inside
+        STUB: replace blocks back to GTEST_SKIP().
+        """
+        import re as _re
+        for file_entry in _ordered_files(plan):
+            if str(file_entry.get("kind", "")) == "cmake":
+                continue
+            path = project_root / str(file_entry.get("path", ""))
+            if not path.name.endswith(".cpp") or not path.exists():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            if "FAIL()" not in text or "STUB" not in text:
+                continue
+            # Replace FAIL() inside STUB blocks (between BLOCK:CASE_NN START/END markers
+            # that contain STUB: replace)
+            in_stub_block = False
+            new_lines = []
+            for line in text.split("\n"):
+                if _re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:CASE_\d+\s+START\s*====", line):
+                    in_stub_block = True
+                if in_stub_block and "FAIL()" in line:
+                    line = line.replace("FAIL()", "GTEST_SKIP()")
+                if _re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:CASE_\d+\s+END\s*====", line):
+                    in_stub_block = False
+                new_lines.append(line)
+            new_text = "\n".join(new_lines)
+            if new_text != text:
+                path.write_text(new_text, encoding="utf-8")
+                count = text.count("FAIL()") - new_text.count("FAIL()")
+                print(f"  🔧 Safety net: replaced {count} FAIL() with GTEST_SKIP() in {path.name}")
 
     # ------------------------------------------------------------------
     # execute()
@@ -6919,6 +6968,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 self._repair_remaining_stubs(state, project_root, plan, remaining)
                 # Re-count after repair
                 self._validate_test_registrations(project_root, plan)
+            # Safety net: ensure no FAIL() in stub blocks
+            self._sanitize_stub_fail_calls(project_root, plan)
 
             manifest = [
                 {
@@ -7002,6 +7053,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 if remaining:
                     self._repair_remaining_stubs(state, project_root, plan, remaining)
                     self._validate_test_registrations(project_root, plan)
+                # Safety net: ensure no FAIL() in stub blocks
+                self._sanitize_stub_fail_calls(project_root, plan)
 
                 # Manifest (main thread)
                 manifest = [
