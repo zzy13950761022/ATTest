@@ -360,15 +360,6 @@ def _extract_workspace_signatures(op_dir: Path) -> List[Dict[str, Any]]:
     return results
 
 
-def _companion_path(existing_paths: List[str], default_path: str, stem_token: str, suffix_name: str, op_prefix: str) -> str:
-    for raw_path in existing_paths:
-        candidate = Path(raw_path)
-        if stem_token not in candidate.name:
-            continue
-        return str(Path(op_prefix) / candidate.with_name(suffix_name))
-    return default_path
-
-
 def _suggested_files(
     category: str,
     op_name: str,
@@ -380,8 +371,6 @@ def _suggested_files(
 ) -> List[Dict[str, Any]]:
     files: List[Dict[str, Any]] = []
     next_index = 1
-    existing_ut_by_layer = existing_ut_by_layer or {}
-    op_prefix = f"{category}/{op_name}"
 
     def add(layer_id: str, kind: str, relative_path: str, comment_style: str) -> None:
         nonlocal next_index
@@ -397,74 +386,15 @@ def _suggested_files(
             }
         )
 
-    if generation_mode == "ut_generate":
-        if "op_host" in enabled_layers:
-            add("op_host", "cmake", f"{category}/{op_name}/tests/ut/op_host/CMakeLists.txt", "#")
-            if not is_aclnn_exclude or is_tiling_only:
-                add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_tiling.cpp", "//")
-            if not is_tiling_only:
-                add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_infershape.cpp", "//")
-        if "op_api" in enabled_layers:
-            add("op_api", "cmake", f"{category}/{op_name}/tests/ut/op_api/CMakeLists.txt", "#")
-            add("op_api", "cpp", f"{category}/{op_name}/tests/ut/op_api/test_aclnn_{op_name}.cpp", "//")
-        return files
-
     if "op_host" in enabled_layers:
-        op_host_existing = existing_ut_by_layer.get("op_host", [])
         add("op_host", "cmake", f"{category}/{op_name}/tests/ut/op_host/CMakeLists.txt", "#")
         if not is_aclnn_exclude or is_tiling_only:
-            has_tiling = any("tiling" in Path(p).name for p in op_host_existing)
-            tiling_name = (
-                f"test_{op_name}_tiling.cpp" if not has_tiling else f"test_{op_name}_tiling_attest.cpp"
-            )
-            add(
-                "op_host",
-                "cpp",
-                _companion_path(
-                    op_host_existing,
-                    f"{category}/{op_name}/tests/ut/op_host/{tiling_name}",
-                    "tiling",
-                    tiling_name,
-                    op_prefix,
-                ),
-                "//",
-            )
+            add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_tiling.cpp", "//")
         if not is_tiling_only:
-            has_infershape = any("infershape" in Path(p).name for p in op_host_existing)
-            infershape_name = (
-                f"test_{op_name}_infershape.cpp" if not has_infershape else f"test_{op_name}_infershape_attest.cpp"
-            )
-            add(
-                "op_host",
-                "cpp",
-                _companion_path(
-                    op_host_existing,
-                    f"{category}/{op_name}/tests/ut/op_host/{infershape_name}",
-                    "infershape",
-                    infershape_name,
-                    op_prefix,
-                ),
-                "//",
-            )
+            add("op_host", "cpp", f"{category}/{op_name}/tests/ut/op_host/test_{op_name}_infershape.cpp", "//")
     if "op_api" in enabled_layers:
-        op_api_existing = existing_ut_by_layer.get("op_api", [])
-        has_op_api = bool(op_api_existing)
         add("op_api", "cmake", f"{category}/{op_name}/tests/ut/op_api/CMakeLists.txt", "#")
-        api_name = (
-            f"test_aclnn_{op_name}_attest.cpp" if has_op_api else f"test_aclnn_{op_name}.cpp"
-        )
-        add(
-            "op_api",
-            "cpp",
-            _companion_path(
-                op_api_existing,
-                f"{category}/{op_name}/tests/ut/op_api/{api_name}",
-                "aclnn",
-                api_name,
-                op_prefix,
-            ),
-            "//",
-        )
+        add("op_api", "cpp", f"{category}/{op_name}/tests/ut/op_api/test_aclnn_{op_name}.cpp", "//")
     return files
 
 

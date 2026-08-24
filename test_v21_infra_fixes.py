@@ -22,53 +22,14 @@ def make_stage():
     from unittest.mock import MagicMock
     stage = MagicMock(spec=AscendGenerationAgentLoopStage)
     for method in ('_ensure_cmake_attest_registration',
-                   '_ensure_companion_cpp_files',
                    '_validate_test_registrations'):
         setattr(stage, method, getattr(AscendGenerationAgentLoopStage, method).__get__(stage))
     return stage
 
 
 def test_ensure_companion_cpp_files():
-    """Companion .cpp should be created when missing."""
-    stage = make_stage()
-    project_root = Path(tempfile.mkdtemp())
-    try:
-        op_dir = project_root / "math" / "diag_part" / "tests" / "ut" / "op_host"
-        op_dir.mkdir(parents=True)
-
-        # Create attest.cpp content
-        attest = op_dir / "test_diag_part_infershape_attest.cpp"
-        attest.write_text("// test content\nTEST_F(DiagPart, test1) {}\n")
-
-        plan = {
-            "files": [
-                {
-                    "path": "math/diag_part/tests/ut/op_host/test_diag_part_infershape_attest.cpp",
-                    "layer_id": "op_host",
-                    "kind": "cpp",
-                }
-            ]
-        }
-
-        # Before: companion missing
-        companion = op_dir / "test_diag_part_infershape.cpp"
-        assert not companion.exists()
-
-        stage._ensure_companion_cpp_files(project_root, plan)
-
-        # After: companion created
-        assert companion.exists()
-        assert "TEST_F(DiagPart, test1)" in companion.read_text()
-        print("✓ _ensure_companion_cpp_files creates missing companion")
-
-        # Idempotent: re-running doesn't break anything
-        companion.write_text("// modified")
-        stage._ensure_companion_cpp_files(project_root, plan)
-        assert companion.read_text() == "// modified"
-        print("✓ _ensure_companion_cpp_files is idempotent (skips existing)")
-
-    finally:
-        shutil.rmtree(project_root)
+    """Companion .cpp method removed in B3 alignment — skip test."""
+    print("✓ _ensure_companion_cpp_files removed (B3 alignment: direct .cpp editing)")
 
 
 def test_validate_test_registrations():

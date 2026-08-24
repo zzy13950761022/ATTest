@@ -2063,7 +2063,6 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
         )
 
 
-_STUB_MAX_CASES_PER_FILE = 18
 
 
 class AscendCodeGenStage(AscendBaseStage):
@@ -2326,18 +2325,6 @@ class AscendCodeGenStage(AscendBaseStage):
             )
         return ""
 
-    @staticmethod
-    def _case_stub_lines(block_id: str, case_type: str, comment_style: str) -> List[str]:
-        safe_type = re.sub(r"[^A-Za-z0-9_]", "_", str(case_type))[:40] or "stub"
-        test_name = f"{block_id}_{safe_type}"
-        return [
-            start_marker(block_id, comment_style),
-            f"// STUB: replace this block with real test for case_type={case_type}",
-            f"TEST(AttestStubs, {test_name}) {{",
-            f'    GTEST_SKIP() << "STUB — case_type=\\"{case_type}\\". Replace with real test body.";',
-            f"}}",
-            end_marker(block_id, comment_style),
-        ]
 
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
@@ -2374,58 +2361,9 @@ class AscendCodeGenStage(AscendBaseStage):
             existing_blocks = build_block_entries(path)
             if existing_blocks:
                 return False
-            original = path.read_text(encoding="utf-8")
-            if not is_cmake:
-                # Non-cmake file: wrap existing content as HEADER block
-                lines = [
-                    start_marker("HEADER", comment_style),
-                    original.rstrip(),
-                    end_marker("HEADER", comment_style),
-                ]
-                for case in file_cases:
-                    lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-                if layer_id == "op_host":
-                    lines.extend([
-                        start_marker("FOOTER", comment_style),
-                        f"{comment_style} TODO: The CMake registration below should be in CMakeLists.txt FOOTER, not here",
-                        f"{comment_style} if(UT_TEST_ALL OR OP_HOST_UT)",
-                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"{comment_style} endif()",
-                        end_marker("FOOTER", comment_style),
-                    ])
-                else:
-                    lines.append(start_marker("FOOTER", comment_style))
-                    lines.append(end_marker("FOOTER", comment_style))
-                content = "\n".join(lines) + "\n"
-                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
-                return True
-            else:
-                # Cmake file: wrap with HEADER + FOOTER (FOOTER needed for _attest.cpp registration)
-                lines = [
-                    start_marker("HEADER", comment_style),
-                    original.rstrip(),
-                    end_marker("HEADER", comment_style),
-                ]
-                if layer_id == "op_host":
-                    lines.extend([
-                        start_marker("FOOTER", comment_style),
-                        f"if(UT_TEST_ALL OR OP_HOST_UT)",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"    add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"endif()",
-                        end_marker("FOOTER", comment_style),
-                    ])
-                else:
-                    lines.extend([
-                        start_marker("FOOTER", comment_style),
-                        end_marker("FOOTER", comment_style),
-                    ])
-                content = "\n".join(lines) + "\n"
-                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
-                return True
+            # B3 alignment: use existing file as-is, no BLOCK wrapping
+            # LLM will append tests directly to the original .cpp file
+            return True
 
         ensure_parent(path)
         op_name_b = str(file_entry.get("op_name", ""))
@@ -2447,30 +2385,7 @@ class AscendCodeGenStage(AscendBaseStage):
                     has_source = True
             if not has_source:
                 boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
-        is_attest_gen_here = (
-            layer_id in ("op_api", "op_host")
-            and path.name.endswith("_attest.cpp")
-            and not is_cmake
-        )
-        use_stubs = is_attest_gen_here and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
-        if is_attest_gen_here and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
-            print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
-        lines = [
-            start_marker("HEADER", comment_style),
-            boilerplate.rstrip() if boilerplate else "",
-            end_marker("HEADER", comment_style),
-        ]
-        if use_stubs:
-            for case in file_cases:
-                block_id = str(case["block_id"])
-                case_type = str(case.get("case_type") or case.get("name") or block_id)
-                lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
-        else:
-            for case in file_cases:
-                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-        lines.append(start_marker("FOOTER", comment_style))
-        lines.append(end_marker("FOOTER", comment_style))
-        content = "\n".join(lines) + "\n"
+        content = boilerplate if boilerplate else ""
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
         if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
@@ -5589,19 +5504,10 @@ repeat — until you are satisfied or turns are exhausted.
 ## Key rules
 - You have ONLY `exec_command`. Use bash commands (`cat`, `grep`, `sed`, `find`, `head`, `tail`, `awk`, heredocs) for ALL file operations.
 - NEVER guess an API signature. Always `grep` / `cat` the implementation before using a type.
-- Keep every test traceable to its BLOCK_ID marker.
-- DO NOT regenerate already-filled blocks unless you are clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; instead, edit specific blocks only.
+- DO NOT overwrite an existing file from scratch with fewer TEST_F cases than it already has; instead, append new cases to the existing file.
+- **Before modifying any file**, back it up: `cp <file> <file>.bak`
 - Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
-- ⚠️ **CRITICAL — STUB REPLACEMENT** (rule 10): Every `// ==== BLOCK: CASE_NN START ====` block has been pre-populated with a STUB that looks like:
-    ```cpp
-    // STUB: replace this block with real test for case_type=...
-    TEST(AttestStubs, CASE_NN_...) {{ GTEST_SKIP() << "STUB — case_type=..."; }}
-    ```
-    Your job is to **replace every STUB with a real, working TEST_F** before finishing. If you CANNOT complete a stub, **LEAVE IT AS GTEST_SKIP()** — do NOT change it to FAIL() or any other assertion. GTEST_SKIP() gracefully skips the test (no impact on other tests), while FAIL() will crash the entire test suite and ruin coverage.
-    Before concluding the session, run `grep -n 'STUB: replace' <file>` on each test file — if ANY STUBs remain, go back and replace each one. The replacement must:
-    1. Call the real operator API (e.g. `OP_API_UT_EXPECT`, or build infershape inputs for op_host)
-    2. Use the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
-    3. Exercise the operator code path described by `case_type` (e.g. `infershape_basic` → basic shape inference)
+- Write test cases by appending to the existing file using `cat >>` heredocs or `tee -a` — do NOT create new files
 
 ## Operator context
 ```json
@@ -5785,17 +5691,12 @@ is compiling the other layer, and a shared build directory would corrupt both bu
 
 ## Key rules
 - NEVER guess an API signature. Always `cat` / `grep` the implementation first.
-- Keep every test traceable to its BLOCK_ID marker.
-- DO NOT regenerate already-filled blocks unless clearly improving them. DO NOT overwrite a non-empty file from scratch with fewer TEST_F cases than it already has; edit specific blocks only.
+- DO NOT overwrite an existing file from scratch with fewer TEST_F cases than it already has; append new cases instead.
+- **Before modifying any file**, back it up: `cp <file> <file>.bak`
 - Each exec_command output is your ground-truth.
-- ⚠️ **CRITICAL — STUB REPLACEMENT** (rule 10): Every `// ==== BLOCK: CASE_NN START ====` block has been pre-populated with a STUB `TEST(AttestStubs, ...)`. Your job is to **replace every STUB with a real, working TEST_F** that:
-    1. Calls the real operator API (e.g. `OP_API_UT_EXPECT` for op_api, or build infershape inputs for op_host)
-    2. Uses the test-fixture class declared in the HEADER block (e.g. `TEST_F(MyTestClass, ...)`), not `TEST(AttestStubs, ...)`
-    3. Exercises the operator code path described by `case_type`
-  **NEVER replace GTEST_SKIP() with FAIL()** — if you cannot fill a stub, LEAVE the GTEST_SKIP() in place. FAIL() will crash the entire test suite and produce 0% coverage.
-  Before concluding, run `grep -c 'STUB: replace' <file>` on your output — if ANY STUBs remain, go back and replace each.
-- **CRITICAL — CMakeLists.txt registration (Rule 15):** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your `*_attest.cpp` files already match these patterns and will be picked up automatically. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update its FOOTER block to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
-- NEVER rewrite an existing `CMakeLists.txt` HEADER block — it contains framework-required preamble. Only touch the FOOTER block to add source registration lines if needed.
+- Write test cases by appending to the existing file using `cat >>` heredocs or `tee -a` — do NOT create new files.
+- **CRITICAL — CMakeLists.txt registration:** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your test files are already matched by these patterns. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update it to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
+- NEVER rewrite an existing `CMakeLists.txt` — it contains framework-required preamble. Only append to add source registration lines if needed.
 
 ## Operator context
 ```json
@@ -6304,18 +6205,6 @@ Begin now. Start with the first file of the `{layer}` layer."""
             )
         return ""
 
-    @staticmethod
-    def _case_stub_lines(block_id: str, case_type: str, comment_style: str) -> List[str]:
-        safe_type = re.sub(r"[^A-Za-z0-9_]", "_", str(case_type))[:40] or "stub"
-        test_name = f"{block_id}_{safe_type}"
-        return [
-            start_marker(block_id, comment_style),
-            f"// STUB: replace this block with real test for case_type={case_type}",
-            f"TEST(AttestStubs, {test_name}) {{",
-            f'    GTEST_SKIP() << "STUB — case_type=\\"{case_type}\\". Replace with real test body.";',
-            f"}}",
-            end_marker(block_id, comment_style),
-        ]
 
     def _ensure_skeleton(self, project_root: Path, file_entry: Dict[str, Any], file_cases: List[Dict[str, Any]]) -> bool:
         path = project_root / str(file_entry["path"])
@@ -6359,39 +6248,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
             original = path.read_text(encoding="utf-8")
             layer_id_str = str(file_entry.get("layer_id", ""))
             if not is_cmake:
-                # Non-cmake file: wrap existing content as HEADER block
-                lines = [
-                    start_marker("HEADER", comment_style),
-                    original.rstrip(),
-                    end_marker("HEADER", comment_style),
-                ]
-                use_stubs_existing = is_attest_gen and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
-                if is_attest_gen and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
-                    print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
-                if use_stubs_existing:
-                    for case in file_cases:
-                        block_id = str(case["block_id"])
-                        case_type = str(case.get("case_type") or case.get("name") or block_id)
-                        lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
-                else:
-                    for case in file_cases:
-                        lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-                if layer_id_str == "op_host":
-                    lines.extend([
-                        start_marker("FOOTER", comment_style),
-                        f"{comment_style} TODO: The CMake registration below should be in CMakeLists.txt FOOTER, not here",
-                        f"{comment_style} if(UT_TEST_ALL OR OP_HOST_UT)",
-                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_INFERSHAPE_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"{comment_style}     add_modules_ut_sources(UT_NAME ${{OP_TILING_MODULE_NAME}} MODE PRIVATE DIR ${{CMAKE_CURRENT_SOURCE_DIR}})",
-                        f"{comment_style} endif()",
-                        end_marker("FOOTER", comment_style),
-                    ])
-                else:
-                    lines.append(start_marker("FOOTER", comment_style))
-                    lines.append(end_marker("FOOTER", comment_style))
-                content = "\n".join(lines) + "\n"
-                ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-                self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
+                # B3 alignment: use existing file as-is, no BLOCK wrapping
                 return True
             else:
                 # Cmake file: wrap with HEADER + FOOTER (FOOTER needed for _attest.cpp registration)
@@ -6436,30 +6293,7 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     has_source = True
             if not has_source:
                 boilerplate = self._generate_cpp_boilerplate(layer_id, op_name_b, project_root)
-        is_attest_gen_here = (
-            layer_id in ("op_api", "op_host")
-            and path.name.endswith("_attest.cpp")
-            and not is_cmake
-        )
-        use_stubs = is_attest_gen_here and len(file_cases) <= _STUB_MAX_CASES_PER_FILE
-        if is_attest_gen_here and len(file_cases) > _STUB_MAX_CASES_PER_FILE:
-            print(f"  V23: {path.name} has {len(file_cases)} cases (>{_STUB_MAX_CASES_PER_FILE}), disabling stub pre-fill")
-        lines = [
-            start_marker("HEADER", comment_style),
-            boilerplate.rstrip() if boilerplate else "",
-            end_marker("HEADER", comment_style),
-        ]
-        if use_stubs:
-            for case in file_cases:
-                block_id = str(case["block_id"])
-                case_type = str(case.get("case_type") or case.get("name") or block_id)
-                lines.extend(self._case_stub_lines(block_id, case_type, comment_style))
-        else:
-            for case in file_cases:
-                lines.append(placeholder_marker(str(case["block_id"]), comment_style))
-        lines.append(start_marker("FOOTER", comment_style))
-        lines.append(end_marker("FOOTER", comment_style))
-        content = "\n".join(lines) + "\n"
+        content = boilerplate if boilerplate else ""
         ctx = ToolContext(cwd=str(project_root), auto_approve=True)
         self.tool_runner.execute("write_file", {"path": str(file_entry["path"]), "content": content}, ctx)
         if not is_cmake and layer_id in ("op_api", "op_host") and op_name_b:
@@ -6563,44 +6397,11 @@ Begin now. Start with the first file of the `{layer}` layer."""
         new_lines = lines[:insert_idx] + reg_lines + lines[insert_idx:]
         cmake_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
-    def _ensure_companion_cpp_files(self, project_root: Path, plan: Dict[str, Any]) -> None:
-        """Create companion .cpp file alongside each *_attest.cpp.
-
-        The CMake glob in `add_modules_ut_sources` matches *.cpp files. If the
-        LLM renamed the original .cpp to .cpp.bak and no explicit target_sources
-        was registered, the build falls back to compiling empty.cpp → 0 tests.
-        Creating a sibling .cpp file (copy of _attest.cpp) guarantees the glob
-        picks it up and compiles the test registrations — belt and suspenders on
-        top of the explicit target_sources from _ensure_cmake_attest_registration.
-        """
-        for file_entry in _ordered_files(plan):
-            if str(file_entry.get("kind", "")) == "cmake":
-                continue
-            path = project_root / str(file_entry.get("path", ""))
-            if not path.name.endswith("_attest.cpp"):
-                continue
-            if not path.exists():
-                continue
-            # Companion = strip the `_attest` suffix: test_xxx_attest.cpp → test_xxx.cpp
-            companion = path.parent / path.name.replace("_attest.cpp", ".cpp")
-            if companion.exists():
-                continue
-            # Only create companion if the original was renamed to .bak
-            # (otherwise the _attest.cpp file is already picked up by CMake glob)
-            bak_path = path.parent / (path.name.replace("_attest.cpp", ".cpp") + ".bak")
-            if not bak_path.exists():
-                continue
-            try:
-                shutil.copy2(path, companion)
-                print(f"  ✓ Created companion {companion.name} (copy of {path.name})")
-            except Exception as exc:
-                print(f"  ⚠ Failed to create companion {companion.name}: {exc}")
 
     def _validate_test_registrations(self, project_root: Path, plan: Dict[str, Any]) -> Dict[str, int]:
         """Count TEST_F/TEST/TEST_P macros in each generated test file.
 
         Returns {path: count}. Prints a warning for files with 0 registrations.
-        Used to diagnose "0 tests from 0 test suites" failures early.
         """
         counts: Dict[str, int] = {}
         for file_entry in _ordered_files(plan):
@@ -6619,216 +6420,19 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     + len(re.findall(r"\bTEST_P\s*\(", text))
                 )
                 counts[str(path)] = n
-                # Count remaining stubs separately
-                stub_count = text.count("STUB: replace")
                 if n == 0:
                     print(
                         f"  ⚠ {path.name}: 0 TEST_F/TEST macros found — "
-                        f"this file will contribute ZERO tests; codegen likely left "
-                        f"CASE blocks as empty placeholders"
-                    )
-                elif stub_count > 0:
-                    print(
-                        f"  ⚠ {path.name}: {n} TEST macro(s) registered, but "
-                        f"{stub_count} STUB(s) still unfilled — coverage will be "
-                        f"reduced until LLM replaces stubs with real tests"
+                        f"this file will contribute ZERO tests"
                     )
                 else:
-                    print(f"  ✓ {path.name}: {n} TEST macro(s) registered, all stubs replaced")
+                    print(f"  ✓ {path.name}: {n} TEST macro(s) registered")
             except Exception:
                 pass
         return counts
 
-    def _count_remaining_stubs(self, project_root: Path, plan: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Scan generated .cpp files for `STUB: replace` markers that LLM didn't replace.
 
-        Returns a list of dicts: {"file": <path>, "count": N, "block_ids": [...]}.
-        Used to decide whether a focused repair session is needed.
-        """
-        stubs: List[Dict[str, Any]] = []
-        for file_entry in _ordered_files(plan):
-            if str(file_entry.get("kind", "")) == "cmake":
-                continue
-            path = project_root / str(file_entry.get("path", ""))
-            if not path.name.endswith(".cpp") or not path.exists():
-                continue
-            try:
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                continue
-            # Find each BLOCK marker + check if it contains the STUB marker comment
-            block_ids_with_stub: List[str] = []
-            current_block: Optional[str] = None
-            for line in text.splitlines():
-                m = re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:(\w+)\s+START\s*====", line)
-                if m:
-                    current_block = m.group(1)
-                    continue
-                if current_block and "STUB: replace" in line:
-                    block_ids_with_stub.append(current_block)
-                end_m = re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:\w+\s+END\s*====", line)
-                if end_m:
-                    current_block = None
-            if block_ids_with_stub:
-                stubs.append({
-                    "file": str(path),
-                    "count": len(block_ids_with_stub),
-                    "block_ids": block_ids_with_stub,
-                })
-        return stubs
 
-    def _repair_remaining_stubs(
-        self,
-        state,
-        project_root: Path,
-        plan: Dict[str, Any],
-        stubs: List[Dict[str, Any]],
-    ) -> None:
-        """Run a focused LLM session to replace remaining STUB blocks with real tests.
-
-        Only runs if stub count > 0. Budget: max 40 turns. The repair prompt gives the LLM
-        the exact list of CASE blocks still using STUBs and asks it to visit each block with
-        sed/heredoc and replace it.
-        """
-        if not stubs:
-            return
-        total = sum(s["count"] for s in stubs)
-        all_block_ids: List[str] = []
-        for s in stubs:
-            all_block_ids.extend(s["block_ids"])
-        files_desc = "\n".join(
-            f"  - {s['file']} :: {s['block_ids']} ({s['count']} stubs)"
-            for s in stubs
-        )
-        prompt = (
-            f"## ⚠️ STUB REPAIR REQUIRED\n"
-            f"There are {total} CASE blocks that still contain STUB markers (placeholder tests that GTEST_SKIP()). "
-            f"Your job is to visit EACH file+block below with `exec_command` and REPLACE the stub with a "
-            f"working `TEST_F(...)` test that actually exercises the operator code path described by `case_type`.\n\n"
-            f"### Files + blocks needing repair\n{files_desc}\n\n"
-            f"### Rules\n"
-            f"1. For each block, `cat -n <file>` to locate it precisely, then overwrite just that block's content.\n"
-            f"2. The replacement MUST use the test-fixture class defined in the HEADER (e.g. `TEST_F(XxxInferShape, ...)`).\n"
-            f"3. The replacement MUST call the actual operator API under test (not `GTEST_SKIP()`).\n"
-            f"4. After all repairs, run compile+test to confirm no compile errors and tests pass.\n"
-            f"5. Output a final `grep -c 'STUB: replace' <file>` count = 0 for each file.\n"
-            f"6. **NEVER change GTEST_SKIP() to FAIL()** — if you cannot fill a stub, leave GTEST_SKIP() in place. FAIL() in stubs crashes the entire test suite and produces 0% coverage.\n"
-            f"7. Finish with JSON: ```json {{\"stubs_remaining\": 0, \"repairs_done\": {total}}} ```\n"
-        )
-        print(f"  🔧 Running STUB repair session for {total} remaining stubs across {len(stubs)} file(s)...")
-        messages = [{"role": "user", "content": prompt}]
-        append_message(
-            session_id=getattr(state, "workflow_id", "workflow"),
-            role="user",
-            content={"stage": "generate_code", "mode": "stub_repair", "prompt": prompt},
-            workspace=str(state.workspace),
-            stage="generate_code",
-        )
-        ctx = ToolContext(cwd=str(project_root), auto_approve=True)
-        tools = self._tool_schemas()
-        stagnation_streak = 0
-        last_sig = ""
-        api429_retries = 0
-        api429_max = 3
-        for turn in range(40):
-            resp = None
-            while resp is None:
-                try:
-                    resp = self.llm.chat(messages, tools=tools)
-                except Exception as exc:
-                    exc_str = str(exc)
-                    if ("429" in exc_str or "Throttl" in exc_str or "rate" in exc_str.lower()) and api429_retries < api429_max:
-                        api429_retries += 1
-                        delay = min(30 * api429_retries, 90)
-                        print(f"  ⚠ stub repair rate limited (turn {turn+1}), retry {api429_retries}/{api429_max} after {delay}s")
-                        import time
-                        time.sleep(delay)
-                        continue
-                    print(f"  ⚠ stub repair LLM call failed turn {turn+1}: {exc}")
-                    break
-            if resp is None:
-                break
-            assistant_msg = {
-                "role": "assistant",
-                "content": resp.content,
-                "reasoning_content": getattr(resp, "reasoning_content", "") or "",
-            }
-            if resp.tool_calls:
-                assistant_msg["tool_calls"] = resp.tool_calls
-            messages.append(assistant_msg)
-            append_message(
-                session_id=getattr(state, "workflow_id", "workflow"),
-                role="assistant", content=assistant_msg,
-                workspace=str(state.workspace), stage="generate_code",
-            )
-            if not resp.has_tool_calls():
-                break
-            for tc in resp.tool_calls:
-                try:
-                    tool_args = json.loads(tc["function"]["arguments"])
-                except json.JSONDecodeError:
-                    messages.append({"role": "user", "content": "Tool JSON truncated. Split into chunks."})
-                    continue
-                tr = self.tool_runner.execute(tc["function"]["name"], tool_args, ctx)
-                out = (tr.output if tr.ok else (tr.error or ""))
-                if len(out) > 6000:
-                    out = out[:6000] + "\n...(truncated)"
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": out})
-            sig = json.dumps([{"fn": tc["function"]["name"], "args": tc["function"]["arguments"]}
-                              for tc in (resp.tool_calls or [])], sort_keys=True)
-            stagnation_streak = stagnation_streak + 1 if sig == last_sig else 0
-            last_sig = sig
-            if stagnation_streak >= 3:
-                print(f"  ⚠ stub repair stagnation at turn {turn+1}; stopping")
-                break
-        # Final count
-        new_stubs = self._count_remaining_stubs(project_root, plan)
-        if new_stubs:
-            rem = sum(s["count"] for s in new_stubs)
-            print(f"  ⚠ stub repair finished but {rem} stub(s) remain: {new_stubs}")
-            # Safety net: replace any FAIL() in remaining stubs with GTEST_SKIP()
-            self._sanitize_stub_fail_calls(project_root, plan)
-        else:
-            print(f"  ✓ stub repair finished: all stubs replaced")
-
-    def _sanitize_stub_fail_calls(self, project_root: Path, plan: Dict[str, Any]) -> None:
-        """Replace FAIL() with GTEST_SKIP() in any remaining STUB blocks.
-
-        The LLM sometimes converts GTEST_SKIP() to FAIL() in stub blocks, which
-        causes the entire test suite to fail and coverage to drop to 0%. This
-        safety net scans all generated test files and reverts any FAIL() inside
-        STUB: replace blocks back to GTEST_SKIP().
-        """
-        import re as _re
-        for file_entry in _ordered_files(plan):
-            if str(file_entry.get("kind", "")) == "cmake":
-                continue
-            path = project_root / str(file_entry.get("path", ""))
-            if not path.name.endswith(".cpp") or not path.exists():
-                continue
-            try:
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                continue
-            if "FAIL()" not in text or "STUB" not in text:
-                continue
-            # Replace FAIL() inside STUB blocks (between BLOCK:CASE_NN START/END markers
-            # that contain STUB: replace)
-            in_stub_block = False
-            new_lines = []
-            for line in text.split("\n"):
-                if _re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:CASE_\d+\s+START\s*====", line):
-                    in_stub_block = True
-                if in_stub_block and "FAIL()" in line:
-                    line = line.replace("FAIL()", "GTEST_SKIP()")
-                if _re.match(r"^\s*(?:#|//)\s*====\s*BLOCK:CASE_\d+\s+END\s*====", line):
-                    in_stub_block = False
-                new_lines.append(line)
-            new_text = "\n".join(new_lines)
-            if new_text != text:
-                path.write_text(new_text, encoding="utf-8")
-                count = text.count("FAIL()") - new_text.count("FAIL()")
-                print(f"  🔧 Safety net: replaced {count} FAIL() with GTEST_SKIP() in {path.name}")
 
     # ------------------------------------------------------------------
     # execute()
@@ -6954,22 +6558,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 if str(file_entry.get("kind", "")) != "cmake":
                     self._ensure_cmake_attest_registration(project_root, file_entry)
 
-            # Post-codegen: create companion .cpp files so CMake glob picks up tests
-            # even if the original .cpp was renamed to .bak (belt and suspenders).
-            self._ensure_companion_cpp_files(project_root, plan)
-
-            # Post-codegen: count TEST_F macros to catch empty-CASE regressions early
+            # Post-codegen: count TEST_F macros to verify tests were generated
             self._validate_test_registrations(project_root, plan)
-
-            # Post-codegen: run focused repair session for any CASE blocks LLM left
-            # as STUBs (the TEST(AttestStubs, ...) placeholder) so coverage improves.
-            remaining = self._count_remaining_stubs(project_root, plan)
-            if remaining:
-                self._repair_remaining_stubs(state, project_root, plan, remaining)
-                # Re-count after repair
-                self._validate_test_registrations(project_root, plan)
-            # Safety net: ensure no FAIL() in stub blocks
-            self._sanitize_stub_fail_calls(project_root, plan)
 
             manifest = [
                 {
@@ -7042,19 +6632,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     if str(file_entry.get("kind", "")) != "cmake":
                         self._ensure_cmake_attest_registration(project_root, file_entry)
 
-                # Companion .cpp file creation — ensures CMake glob also finds tests
-                self._ensure_companion_cpp_files(project_root, plan)
-
-                # Count TEST_F macros to catch empty-CASE regressions early
+                # Count TEST_F macros to verify tests were generated
                 self._validate_test_registrations(project_root, plan)
-
-                # Run focused repair for any CASE blocks still using STUBs
-                remaining = self._count_remaining_stubs(project_root, plan)
-                if remaining:
-                    self._repair_remaining_stubs(state, project_root, plan, remaining)
-                    self._validate_test_registrations(project_root, plan)
-                # Safety net: ensure no FAIL() in stub blocks
-                self._sanitize_stub_fail_calls(project_root, plan)
 
                 # Manifest (main thread)
                 manifest = [
