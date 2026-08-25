@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": "allow",
   "provider": {
     "bailian": {
       "npm": "@ai-sdk/openai-compatible",
@@ -14,8 +15,14 @@
         },
 	"qwen3.7-max": {
 	  "name": "qwen3.7-max"
-  	}	  
+  	},
+        "deepseek-v4-pro": {
+	  "name": "deepseek-v4-pro"	
+        }
       }
     }
-  }
+  },
+  "plugin": [
+	  "@bdliyq/opencode-rate-limit-retry"
+  ]
 }
