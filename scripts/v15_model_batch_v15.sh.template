@@ -68,7 +68,11 @@ if not files:
     print("N/A N/A N/A")
 else:
     d = json.load(open(files[-1]))
-    pl = d.get("per_layer", {})
+    # Handle before_after_compare mode (nested structure)
+    if d.get("mode") == "before_after_compare":
+        pl = d.get("runs", {}).get("generated", {}).get("per_layer", {})
+    else:
+        pl = d.get("per_layer", {})
     api = pl.get("op_api", {}).get("line_coverage", "N/A")
     host = pl.get("op_host", {}).get("line_coverage", "N/A")
     vals = []
