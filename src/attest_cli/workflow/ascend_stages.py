@@ -106,11 +106,20 @@ _NOISE_KWS = (
     "Building CXX object", "Built target", "Consolidate compiler",
 )
 
+_COMPILE_ERROR_KWS = (
+    "error:", "fatal error:", "undefined reference", "collect2:",
+    "make[", "gmake[", "CMake Error", "No such file",
+    "was not declared", "no matching function", "could not convert",
+    "incomplete type", "invalid use of", "has no member",
+    "expected ';'", "expected ')'", "expected '}'",
+    "redefinition of", "first defined here",
+)
 
-def _extract_execution_summary(log_text: str, max_chars: int = 8000) -> str:
-    """Extract useful test-result / coverage sections from an execution log.
 
-    Keeps: gtest pass/fail lines, lcov coverage summary, uncovered lines.
+def _extract_execution_summary(log_text: str, max_chars: int = 16000) -> str:
+    """Extract useful test-result / coverage / compile-error sections from an execution log.
+
+    Keeps: gtest pass/fail lines, lcov coverage summary, uncovered lines, compile errors.
     Skips build-system noise (cmake progress, genhtml file processing).
     Falls back to the last 200 lines of the log if no markers match.
     """
@@ -123,7 +132,11 @@ def _extract_execution_summary(log_text: str, max_chars: int = 8000) -> str:
             continue
         is_gtest = any(kw in line for kw in _GTEST_RESULT_KWS)
         is_cov = any(kw in line for kw in _LCOV_SUMMARY_KWS)
+        is_compile_err = any(kw in line.lower() for kw in _COMPILE_ERROR_KWS)
         if is_gtest:
+            kept.append(line)
+            capture_cov = False
+        elif is_compile_err:
             kept.append(line)
             capture_cov = False
         elif is_cov:
@@ -137,7 +150,10 @@ def _extract_execution_summary(log_text: str, max_chars: int = 8000) -> str:
         kept = lines[-200:] if len(lines) > 200 else lines
     result = "\n".join(kept)
     if len(result) > max_chars:
-        result = result[-max_chars:]
+        # Keep head (first errors) + tail (final summary) rather than just tail
+        head_size = max_chars // 2
+        tail_size = max_chars - head_size
+        result = result[:head_size] + "\n... (truncated middle) ...\n" + result[-tail_size:]
     return result
 
 
@@ -1528,7 +1544,9 @@ class AscendTestPlanStage(AscendBaseStage):
                     })
                     continue
                 tool_result = self.tool_runner.execute(tool_name, tool_args, ctx)
-                tool_output = (tool_result.output if tool_result.ok else (tool_result.error or ""))
+                tool_output = (tool_result.output if tool_result.ok else (
+                    tool_result.output + "\n" + (tool_result.error or "")
+                ))
                 if len(tool_output) > 8000:
                     tool_output = tool_output[:8000] + "\n... (truncated by framework)"
                 messages.append({
@@ -2942,7 +2960,9 @@ Complete all files now, then compile and verify."""
                 tool_msg = {
                     "role": "tool",
                     "tool_call_id": tool_call["id"],
-                    "content": tool_result.output if tool_result.ok else tool_result.error or "",
+                    "content": tool_result.output if tool_result.ok else (
+                        tool_result.output + "\n" + (tool_result.error or "")
+                    ),
                 }
                 messages.append(tool_msg)
                 append_message(
@@ -3102,7 +3122,7 @@ Complete all files now, then compile and verify."""
                         "\n## Previous Epoch Test & Coverage Results\n"
                         "Below is a summary of test outcomes, coverage numbers, and uncovered line counts "
                         "from the previous epoch. Use this to avoid regressions and focus on remaining gaps.\n"
-                        "```\n" + str(prev_error_log)[:4000] + "\n```\n"
+                        "```\n" + str(prev_error_log)[:8000] + "\n```\n"
                     )
             except Exception:
                 pass
@@ -3287,7 +3307,7 @@ Complete all files now, then compile and verify."""
                     for repair_round in range(MAX_REPAIR_ROUNDS):
                         compile_ok, compile_output = self._run_compile_check(project_root, layer_id, plan)
                         if not compile_ok:
-                            error_summary = compile_output[:4000]
+                            error_summary = compile_output[:8000]
                             print(f"  ⚠️  Compile check failed for {file_id} (round {repair_round + 1}); "
                                   f"attempting LLM repair...")
                             repair_result = self._run_repair_with_verification(
@@ -3307,7 +3327,7 @@ Complete all files now, then compile and verify."""
                         abort_keywords = ("Assertion", "Aborted", "SIGSEGV", "core dumped",
                                           "terminate called", "Subprocess aborted")
                         if not run_ok or any(kw in run_output for kw in abort_keywords):
-                            abort_snippet = run_output[:4000]
+                            abort_snippet = run_output[:8000]
                             print(f"  ⚠️  Runtime abort/assertion failure for {file_id} (round {repair_round + 1}); "
                                   f"attempting in-session reflection fix...")
                             repair_result = self._run_repair_with_verification(
@@ -3668,7 +3688,7 @@ Complete the file now."""
                         for repair_round in range(MAX_REPAIR_ROUNDS):
                             compile_ok, compile_output = self._run_compile_check(project_root, layer_id, plan)
                             if not compile_ok:
-                                error_summary = compile_output[:4000]
+                                error_summary = compile_output[:8000]
                                 print(f"  ⚠️  Compile check failed for {file_id} (round {repair_round + 1}); "
                                       f"attempting LLM repair with exec_command access...")
                                 repair_result = self._run_repair_with_verification(
@@ -3689,7 +3709,7 @@ Complete the file now."""
                             abort_keywords = ("Assertion", "Aborted", "SIGSEGV", "core dumped",
                                               "terminate called", "Subprocess aborted")
                             if not run_ok or any(kw in run_output for kw in abort_keywords):
-                                abort_snippet = run_output[:4000]
+                                abort_snippet = run_output[:8000]
                                 print(f"  ⚠️  Runtime abort/assertion failure for {file_id} (round {repair_round + 1}); "
                                       f"attempting in-session reflection fix...")
                                 repair_result = self._run_repair_with_verification(
@@ -5905,7 +5925,9 @@ Begin now. Start with the first file of the `{layer}` layer."""
                 tool_msg = {
                     "role": "tool",
                     "tool_call_id": tool_call["id"],
-                    "content": tool_result.output if tool_result.ok else tool_result.error or "",
+                    "content": tool_result.output if tool_result.ok else (
+                        tool_result.output + "\n" + (tool_result.error or "")
+                    ),
                 }
                 messages.append(tool_msg)
                 append_message(
@@ -6458,8 +6480,8 @@ Begin now. Start with the first file of the `{layer}` layer."""
             prev_error_log = state.load_artifact("prev_epoch_error_log.txt") or ""
             if prev_error_log.strip():
                 prev_error_context = (
-                    f"\n## Previous Epoch Test & Coverage Results (up to 4000 chars)\n"
-                    f"```\n{prev_error_log[:4000]}\n```\n"
+                    f"\n## Previous Epoch Test & Coverage Results (up to 8000 chars)\n"
+                    f"```\n{prev_error_log[:8000]}\n```\n"
                 )
             inv = _load_json_artifact(state, "case_inventory.json", default={})
             if inv.get("generated_blocks"):
