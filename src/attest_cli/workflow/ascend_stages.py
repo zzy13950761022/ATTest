@@ -5479,74 +5479,52 @@ class AscendGenerationAgentLoopStage(AscendBaseStage):
                 f"```json\n{json.dumps(directive.get('uncovered', []), ensure_ascii=False, indent=2)[:2500]}\n```\n"
             )
 
-        return f"""You are an Ascend C++ unit-test generation agent with FULL autonomy.
-Epoch {epoch}/{epoch_total}. Operator: {slim_context.get('op_name', '?')}
+        return f"""You are an Ascend C++ unit-test generation agent. Epoch {epoch}/{epoch_total}. Op: {slim_context.get('op_name', '?')}
 
-## Your mission
-Generate thorough GTest unit-tests that maximise LINE coverage of the operator source code.
-Work completely within this conversation — write code, compile, run, check coverage, fill gaps,
-repeat — until you are satisfied or turns are exhausted.
+## CRITICAL: Every layer MUST have ≥1 TEST_F
+After writing code, verify: `grep -c 'TEST_F' <file>` and `grep -c 'TEST(' <file>`. If 0, you MUST add test cases.
+op_api uses `TEST_F(op_test, case_name)`, op_host uses `TEST_F(OpInferShape, case_name)`.
+Do NOT finish a file with 0 test registrations — that is a FAILURE.
 
-## Files to write (project root: {project_root})
-{chr(10).join(files_info)}
-
-{cmd_section}
-
-## Mandatory workflow (loop until coverage stabilises or turns run out)
-
-1. **For each file** (in order of layer priority: op_api first, then op_host):
-   a. Read the current block index to see what's already filled vs placeholder.
-   b. Fill every placeholder block with meaningful test cases.
-      - Use `exec_command` with heredoc to write file content: `cat > path/file.cpp << 'EOF'\n...content...\nEOF`
-      - Use `sed` to replace or update existing blocks.
-   c. Immediately compile+run: `exec_command(cmd="<compile_cmd_for_layer>")`
-   d. If compile fails: read the error (`cat` log), reason, read API source (`cat`, `grep`), fix, recompile.
-   e. If runtime abort/SIGSEGV: same loop. Do NOT move on until tests run cleanly.
-
-2. **After all files are done**, run coverage for each enabled layer and read the output (`cat` coverage files, `grep` for metrics).
-
-3. **Identify uncovered lines** — read the operator source around each uncovered line (`cat -n`, `sed -n`),
-   understand the branch condition, write a new TEST_F that exercises that path.
-
-4. **Recompile and re-run** after each gap-filling round. Repeat steps 2-4 until
-   coverage no longer improves or you have fewer than 20 turns remaining.
-
-5. **At the very end**, output a JSON block (surrounded by ```json ... ```) with this schema:
+## Workflow (loop until coverage plateau or turns exhausted)
+1. For each file, fill placeholders with real TEST_F cases. Use `cat >>` heredocs to append.
+2. Compile+run. If fail: cat error log, fix, retry. Do NOT move on until clean.
+3. Run coverage. For uncovered lines: cat source, understand branch, add TEST_F.
+4. Repeat until no improvement or <20 turns left.
+5. Output JSON summary:
 ```json
-{{
-  "status": "success" | "partial" | "compile_failed",
-  "coverage_per_layer": {{"op_api": 0.0, "op_host": 0.0}},
-  "failures": [],
-  "stop_reason": "coverage_plateau | turns_exhausted | compile_error"
-}}
+{{"status":"success|partial|compile_failed","coverage_per_layer":{{"op_api":0.0,"op_host":0.0}},"failures":[],"stop_reason":"coverage_plateau|turns_exhausted|compile_error"}}
 ```
 
-## Key rules
-- You have ONLY `exec_command`. Use bash commands (`cat`, `grep`, `sed`, `find`, `head`, `tail`, `awk`, heredocs) for ALL file operations.
-- NEVER guess an API signature. Always `grep` / `cat` the implementation before using a type.
-- DO NOT overwrite an existing file from scratch with fewer TEST_F cases than it already has; instead, append new cases to the existing file.
-- **Before modifying any file**, back it up: `cp <file> <file>.bak`
-- Each `exec_command` output is your ground-truth — trust it over your prior assumptions.
-- Write test cases by appending to the existing file using `cat >>` heredocs or `tee -a` — do NOT create new files
+## Files (project root: {project_root})
+{chr(10).join(files_info)}
+{cmd_section}
+
+## Rules
+- Only `exec_command`. Use bash (`cat`, `grep`, `sed`, `tee`, heredocs) for all file ops.
+- NEVER guess API signatures. `grep`/`cat` impl before using types.
+- Append with `cat >>` — do NOT overwrite with fewer TEST_F than existing.
+- Backup before modifying: `cp <file> <file>.bak`
+- Trust `exec_command` output over your assumptions.
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:5000]}
 ```
 
-## Test plan (files + cases)
+## Test plan
 ```json
-{json.dumps(plan, ensure_ascii=False, indent=2)[:3000]}
+{json.dumps(plan, ensure_ascii=False, indent=2)[:2000]}
 ```
 
-## Prior analysis plan (from previous epoch, if any)
+## Prior analysis
 ```json
-{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:1000]}
 ```
 {infra_context_snippet}{prev_error_context}{case_inventory_context}
 {augment_text}
 {skill_text}
-Begin now. Start with the first file."""
+Begin now."""
 
     # ------------------------------------------------------------------
     # Post-session: parse summary JSON from LLM response text
@@ -5674,58 +5652,43 @@ Begin now. Start with the first file."""
                 f"```json\n{json.dumps(uncovered, ensure_ascii=False, indent=2)[:2500]}\n```\n"
             )
 
-        return f"""You are an Ascend C++ unit-test generation agent with FULL autonomy.
-Epoch {epoch}/{epoch_total}. Operator: {op_name}. **You own ONLY the `{layer}` layer.**
+        return f"""You are an Ascend C++ unit-test generation agent. Epoch {epoch}/{epoch_total}. Op: {op_name}. **You own ONLY the `{layer}` layer.**
 
-## Your mission
-Generate thorough GTest unit-tests that maximise LINE coverage of the `{layer}` source code.
-Work only on the files listed below. Another agent owns the other layer(s) concurrently —
-do NOT touch files outside your layer. Write code, compile, run, check coverage, fill gaps,
-repeat — until you are satisfied or turns are exhausted.
+## CRITICAL: Your layer MUST have ≥1 TEST_F
+After writing code, verify: `grep -c 'TEST_F' <file>` and `grep -c 'TEST(' <file>`. If 0, you MUST add test cases.
+op_api uses `TEST_F(op_test, case_name)`, op_host uses `TEST_F(OpInferShape, case_name)`.
+Do NOT finish your layer with 0 test registrations — that is a FAILURE.
 
-## Files to write (project root: {project_root})
+## Files (project root: {project_root})
 {chr(10).join(files_info)}
-
 {cmd_section}
 ## CRITICAL: isolated build directory
-Always run the compile/coverage command with the EXACT `BUILD_PATH=... BUILD_OUT_PATH=...`
-prefix shown above. NEVER change BUILD_PATH or run a bare `bash build.sh` — a parallel agent
-is compiling the other layer, and a shared build directory would corrupt both builds.
+Always use the EXACT `BUILD_PATH=...` prefix — a parallel agent owns the other layer.
 
-## Mandatory workflow (loop until coverage stabilises or turns run out)
-1. For each file: read the current block index (`cat`), fill every placeholder block with meaningful
-   test cases using `cat > file << 'EOF'` heredoc or `sed` for updates.
-2. Immediately compile+run with the prefixed command above. If compile fails: read the error (`cat` log),
-   read the API source (`cat`/`grep`), fix (`sed`), recompile. Do NOT move on until tests run cleanly.
-3. Run coverage (prefixed command), read the output (`cat`/`grep`), identify uncovered lines, add TEST_F cases
-   that exercise those paths. Recompile. Repeat until coverage plateaus or <20 turns remain.
-4. At the very end, output a JSON block (```json ... ```) with this schema:
+## Workflow
+1. Fill placeholders with real TEST_F cases. Use `cat >>` heredocs. Append — don't overwrite.
+2. Compile+run with prefixed command. If fail: `cat` error log, fix, retry. No move-on until clean.
+3. Run coverage. `cat`/`grep` uncovered lines, add TEST_F. Repeat until plateau or <20 turns.
+4. Output JSON:
 ```json
-{{
-  "status": "success" | "partial" | "compile_failed",
-  "coverage_per_layer": {{"{layer}": 0.0}},
-  "failures": [],
-  "stop_reason": "coverage_plateau | turns_exhausted | compile_error"
-}}
+{{"status":"success|partial|compile_failed","coverage_per_layer":{{"{layer}":0.0}},"failures":[],"stop_reason":"coverage_plateau|turns_exhausted|compile_error"}}
 ```
 
-## Key rules
-- NEVER guess an API signature. Always `cat` / `grep` the implementation first.
-- DO NOT overwrite an existing file from scratch with fewer TEST_F cases than it already has; append new cases instead.
-- **Before modifying any file**, back it up: `cp <file> <file>.bak`
-- Each exec_command output is your ground-truth.
-- Write test cases by appending to the existing file using `cat >>` heredocs or `tee -a` — do NOT create new files.
-- **CRITICAL — CMakeLists.txt registration:** The Ascend build system uses GLOB patterns to auto-discover test files: op_host matches `test_*_infershape.cpp` / `test_*_tiling*.cpp`, op_api matches `test_aclnn_*.cpp`. Your test files are already matched by these patterns. If a `CMakeLists.txt` exists in your layer's test directory, you may need to update it to register new files. If no `CMakeLists.txt` exists, DO NOT create one — the build system handles discovery via GLOB.
-- NEVER rewrite an existing `CMakeLists.txt` — it contains framework-required preamble. Only append to add source registration lines if needed.
+## Rules
+- NEVER guess API signatures. `cat`/`grep` source first.
+- Append with `cat >>` — do NOT overwrite with fewer TEST_F than existing.
+- Backup before modifying: `cp <file> <file>.bak`
+- Trust `exec_command` output over your assumptions.
+- CMake uses GLOB to auto-discover test files. Do NOT create/rewrite CMakeLists.txt.
 
 ## Operator context
 ```json
-{json.dumps(slim_context, ensure_ascii=False, indent=2)[:8000]}
+{json.dumps(slim_context, ensure_ascii=False, indent=2)[:5000]}
 ```
 
-## Prior analysis plan (from previous epoch, if any)
+## Prior analysis
 ```json
-{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:2000]}
+{json.dumps(analysis_plan, ensure_ascii=False, indent=2)[:1000]}
 ```
 {infra_context_snippet}{prev_error_context}{case_inventory_context}
 {augment_text}

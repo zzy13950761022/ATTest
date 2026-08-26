@@ -89,7 +89,7 @@ class AscendSkillProvider:
                 "op_kernel_aicpu": self.docs["op_kernel"].text,
             }
             text = mapping.get(layer_id or "", self.docs["workflow"].text)
-            limit = 8000 if layer_id == "op_host" else 4000
+            limit = 4000 if layer_id == "op_host" else 2500
             return self._clip(text, limit=limit)
 
         if stage_name == "generate_report":
