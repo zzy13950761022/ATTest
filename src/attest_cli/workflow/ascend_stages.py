@@ -5500,6 +5500,11 @@ Do NOT finish a file with 0 test registrations — that is a FAILURE.
 {chr(10).join(files_info)}
 {cmd_section}
 
+## Reference examples
+If stuck on how to write tests, `cat /mnt/fangcr/ATTest/fewshot/<op>_op_host.cpp` and `fewshot/<op>_op_api.cpp` for working examples.
+- op_host uses `TEST_F(OpNameInferShape, case_name)` with `InfershapeContextFaker` for input/output shape testing
+- op_api uses `TEST_F(op_name_test, case_name)` with `OP_API_UT(api, INPUT(...), OUTPUT(...))` macro
+
 ## Rules
 - Only `exec_command`. Use bash (`cat`, `grep`, `sed`, `tee`, heredocs) for all file ops.
 - NEVER guess API signatures. `grep`/`cat` impl before using types.
@@ -5662,6 +5667,8 @@ Do NOT finish your layer with 0 test registrations — that is a FAILURE.
 ## Files (project root: {project_root})
 {chr(10).join(files_info)}
 {cmd_section}
+## Reference examples
+If stuck, `cat /mnt/fangcr/ATTest/fewshot/<op>_op_host.cpp` and `fewshot/<op>_op_api.cpp` for working examples.
 ## CRITICAL: isolated build directory
 Always use the EXACT `BUILD_PATH=...` prefix — a parallel agent owns the other layer.
 
