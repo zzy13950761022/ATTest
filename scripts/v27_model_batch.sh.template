@@ -1,0 +1,167 @@
+#!/bin/bash
+# V27 ablation: no plan agent (ATTEST_NO_PLAN_AGENT=1), EPOCH=3
+# Usage: ATTEST_CONFIG_DIR=/root/.attest_cli_qwen MODEL=qwen ./v27_model_batch.sh.template
+
+set -eo pipefail
+
+: "${MODEL:?MODEL env var required (qwen, ds, glm)}"
+: "${CONFIG_DIR:-$ATTEST_CONFIG_DIR}"
+[ -z "${CONFIG_DIR:-}" ] && CONFIG_DIR="$ATTEST_CONFIG_DIR"
+[ -z "${CONFIG_DIR:-}" ] && { echo "Need CONFIG_DIR or ATTEST_CONFIG_DIR"; exit 1; }
+export ATTEST_CONFIG_DIR="$CONFIG_DIR"
+export ATTEST_NO_PLAN_AGENT=1
+
+ATT_BIN=/root/miniconda3/envs/attest-py311/bin/attest
+[ ! -x "$ATT_BIN" ] && ATT_BIN=$(command -v attest) || true
+
+OPERATORS=(
+    abs add bitwise_and bitwise_not bitwise_or bitwise_xor
+    cholesky cross diag_part div div_no_nan dot
+    equal exp expm1 eye floor_div floor_mod
+    ger greater greater_equal less less_equal log
+    log1p logical_and logical_not logical_or mod mul
+    neg not_equal pow pows real_div reciprocal
+    rsqrt rsqrt_grad sign sqrt sqrt_grad square
+    squared_difference sub trace
+)
+
+PROJECT_ROOT="/mnt/fangcr/ops-math-round4"
+BASE_DIR="/mnt/fangcr/workspace-baseline-${MODEL}"
+WORKSPACES_DIR="${BASE_DIR}/v15_${MODEL}_epoch3_fixed-v27_batch"
+LOG_DIR="${WORKSPACES_DIR}/logs"
+EPOCH=3
+WORKERS=2
+PROFILE="ascend_ut_continuous"
+TIMEOUT=18000
+PARALLEL_JOBS=4
+BUILD_THREADS=32
+
+mkdir -p "$WORKSPACES_DIR" "$LOG_DIR"
+
+MODEL_DISPLAY="${MODEL_DISPLAY:-${MODEL}}"
+echo "========================================="
+echo "ATTest V27-${MODEL} Ablation: NO PLAN AGENT (EPOCH=${EPOCH} TIMEOUT=${TIMEOUT})"
+echo "Total operators: ${#OPERATORS[@]}"
+echo "Parallel jobs: $PARALLEL_JOBS"
+echo "Build threads: $BUILD_THREADS"
+echo "Model: $MODEL_DISPLAY"
+echo "ATTEST_NO_PLAN_AGENT: $ATTEST_NO_PLAN_AGENT"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "========================================="
+echo ""
+
+SUMMARY="${LOG_DIR}/batch_summary.csv"
+SUMMARY_LOCK="${LOG_DIR}/batch_summary.lock"
+echo "operator,status,op_api_line,op_host_line,overall_line,duration_seconds" > "$SUMMARY"
+
+COV_EXTRACT_PY='
+import os, json, glob, sys
+art_dir = sys.argv[1]
+current = os.path.join(art_dir, "current_coverage_summary.json")
+if os.path.exists(current):
+    files = [current]
+else:
+    files = sorted(glob.glob(os.path.join(art_dir, "v*_coverage_summary.json")))
+if not files:
+    sys.exit(0)
+with open(files[-1]) as f:
+    d = json.load(f)
+gen = d.get("runs", {}).get("generated", {})
+per = gen.get("per_layer", {}) or d.get("per_layer", {})
+api = per.get("op_api", {}).get("line_coverage", 0) or 0.0
+host = per.get("op_host", {}).get("line_coverage", 0) or 0.0
+ov = gen.get("overall", {}).get("line_coverage", 0)
+if ov is None:
+    ov = d.get("overall", {}).get("line_coverage", 0) or 0.0
+print(f"{api:.1f},{host:.1f},{ov:.1f}")
+'
+
+process_op() {
+    local op="$1"
+    local OP_WORKSPACE="${WORKSPACES_DIR}/attest-${op}"
+    local OP_PROJECT="${WORKSPACES_DIR}/project-${op}"
+    local LOG_FILE="${LOG_DIR}/${op}.log"
+    local START_TS
+    START_TS=$(date +%s)
+
+    if [ ! -d "$OP_PROJECT" ]; then
+        if [ -f "${PROJECT_ROOT}/build.sh" ]; then
+            ln -sfn "$PROJECT_ROOT" "$OP_PROJECT"
+        fi
+    fi
+
+    echo "[$(date '+%H:%M:%S')] Starting ${op}..." | tee -a "$LOG_FILE"
+
+    set +e
+    timeout "$TIMEOUT" "$ATT_BIN" ascend-ut run \
+        --op-path "math/${op}" \
+        --workspace "$OP_WORKSPACE" \
+        --project-root "$OP_PROJECT" \
+        --mode full-auto \
+        --epoch "$EPOCH" \
+        --profile "$PROFILE" \
+        --workers "$WORKERS" >> "$LOG_FILE" 2>&1
+    local rc=$?
+    set -e
+
+    local END_TS
+    END_TS=$(date +%s)
+    local DURATION=$((END_TS - START_TS))
+
+    local status="complete"
+    if [ $rc -eq 124 ]; then
+        status="timeout"
+    elif [ $rc -ne 0 ]; then
+        status="exit_${rc}"
+    fi
+
+    local api="-" host="-" ov="-"
+    local art_dir="${OP_WORKSPACE}/.attest/artifacts/generate_code"
+    if [ -d "$art_dir" ]; then
+        cov_out=$(python3 -c "$COV_EXTRACT_PY" "$art_dir" 2>/dev/null || true)
+        if [ -n "$cov_out" ]; then
+            api=$(echo "$cov_out" | cut -d',' -f1)
+            host=$(echo "$cov_out" | cut -d',' -f2)
+            ov=$(echo "$cov_out" | cut -d',' -f3)
+        fi
+    fi
+
+    (
+        flock 200
+        echo "${op},${status},${api},${host},${ov},${DURATION}" >> "$SUMMARY"
+    ) 200>"$SUMMARY_LOCK"
+
+    echo "[$(date '+%H:%M:%S')] ${op}: status=${status} api=${api} host=${host} ov=${ov} dur=${DURATION}s" | tee -a "$LOG_FILE"
+}
+
+export -f process_op
+export ATT_BIN WORKSPACES_DIR LOG_DIR SUMMARY SUMMARY_LOCK COV_EXTRACT_PY
+export EPOCH WORKERS PROFILE TIMEOUT PROJECT_ROOT ATTEST_NO_PLAN_AGENT
+
+# Run operators in parallel batches
+count=0
+batch=()
+for op in "${OPERATORS[@]}"; do
+    batch+=("$op")
+    count=$((count + 1))
+    if [ $count -ge "$PARALLEL_JOBS" ]; then
+        for b in "${batch[@]}"; do
+            process_op "$b" &
+        done
+        wait
+        batch=()
+        count=0
+    fi
+done
+if [ ${#batch[@]} -gt 0 ]; then
+    for b in "${batch[@]}"; do
+        process_op "$b" &
+    done
+    wait
+fi
+
+echo ""
+echo "========================================="
+echo "V27-${MODEL} Ablation Batch Complete  $(date '+%Y-%m-%d %H:%M:%S')"
+echo "========================================="
+cat "$SUMMARY"

@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import copy
 from dataclasses import dataclass
 import json
+import os
 import re
 import shlex
 import shutil
@@ -1926,7 +1927,8 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
         # LLM-driven plan validation: free-exploration agent session
         # (epoch 1 only; for epoch >1 the agent would see stale context)
         agent_validation_notes = ""
-        if int(getattr(state, "epoch_current", 1) or 1) == 1 and not augment_request:
+        _no_plan_agent = os.environ.get("ATTEST_NO_PLAN_AGENT", "").strip().lower() in ("1", "true", "yes")
+        if not _no_plan_agent and int(getattr(state, "epoch_current", 1) or 1) == 1 and not augment_request:
             try:
                 agent_plan = self._run_plan_agent_session(state, case_payload)
                 if agent_plan and agent_plan.get("cases"):
@@ -1948,6 +1950,8 @@ Focus each case on a concrete uncovered branch above. Wrap the array in ```json 
                     print("  ℹ️ Plan agent session produced no usable output; using deterministic plan")
             except Exception as exc:
                 print(f"  ⚠️ Plan agent session failed ({exc}); using deterministic plan")
+        elif _no_plan_agent:
+            print("  ℹ️ Plan agent skipped (ATTEST_NO_PLAN_AGENT=1, ablation mode)")
 
         files = context.get("suggested_files", [])
         build_plan: Dict[str, Dict[str, str]] = {}
@@ -6427,6 +6431,91 @@ Begin now. Start with the first file of the `{layer}` layer."""
 
 
     # ------------------------------------------------------------------
+    # LLM Review Agent
+    # ------------------------------------------------------------------
+
+    def _run_review_agent(
+        self,
+        state,
+        plan: Dict[str, Any],
+        project_root: Path,
+        analysis_result: StageResult,
+    ) -> Dict[str, Any]:
+        analysis_plan = _load_json_artifact(state, "analysis_plan.json", default={})
+        coverage = _load_json_artifact(state, "coverage_summary.json", default={})
+        exec_log = str(state.load_artifact("execution_log.txt") or "")[:4000]
+
+        op_name = plan.get("op_name", "?")
+        epoch = int(getattr(state, "epoch_current", 1) or 1)
+        epoch_total = int(getattr(state, "epoch_total", 1) or 1)
+
+        per_layer_cov = []
+        for layer in plan.get("enabled_layers", []):
+            ldata = coverage.get("per_layer", {}).get(str(layer), {})
+            lc = ldata.get("line_coverage")
+            if lc is not None:
+                per_layer_cov.append(f"{layer}={lc:.1f}%")
+
+        failures = analysis_plan.get("failures", [])
+        failure_summary = []
+        for f in failures[:8]:
+            failure_summary.append(
+                f"- {f.get('block_id', '?')} ({f.get('layer_id', '?')}): "
+                f"{f.get('error_type', '?')} → {f.get('action', '?')}"
+            )
+
+        prompt = f"""You are an Ascend C++ UT review agent. Analyze the results of epoch {epoch}/{epoch_total} for operator `{op_name}` and provide actionable suggestions for the next epoch.
+
+## Current Coverage
+{chr(10).join(per_layer_cov) if per_layer_cov else "No coverage data"}
+
+## Failures ({len(failures)} total)
+{chr(10).join(failure_summary) if failure_summary else "None"}
+
+## Execution Log (last 4000 chars)
+```
+{exec_log}
+```
+
+## Task
+1. Identify the ROOT CAUSE of each failure (wrong API usage? missing test cases? compilation error? type mismatch?)
+2. For each failure, suggest SPECIFIC code changes the generation agent should make
+3. If coverage is low on a layer, suggest what types of test cases would improve it
+4. Prioritize: focus on changes most likely to increase coverage
+
+Output a JSON object:
+```json
+{{
+  "diagnosis": "brief overall assessment",
+  "suggestions": [
+    {{
+      "target": "block_id or layer",
+      "issue": "what went wrong",
+      "fix": "specific code change to try"
+    }}
+  ],
+  "priority_layers": ["layer_id most needing improvement"],
+  "stop_recommended": false
+}}
+```"""
+
+        response = self.llm.chat([{"role": "user", "content": prompt}])
+        content = response.content or ""
+
+        review_data: Dict[str, Any] = {"diagnosis": "", "suggestions": [], "priority_layers": [], "stop_recommended": False}
+        import re as _re
+        m = _re.search(r"```json\s*(\{[\s\S]*?\})\s*```", content)
+        if m:
+            try:
+                review_data = json.loads(m.group(1))
+            except Exception:
+                review_data["diagnosis"] = content[:500]
+        else:
+            review_data["diagnosis"] = content[:500]
+
+        return review_data
+
+    # ------------------------------------------------------------------
     # execute()
     # ------------------------------------------------------------------
 
@@ -6461,6 +6550,19 @@ Begin now. Start with the first file of the `{layer}` layer."""
                     f"\n## Previous Epoch Case Status\n"
                     f"Already bounded ({len(bounded)} total, do NOT regenerate): {', '.join(bounded[:30]) or 'none'}\n"
                     f"Still placeholder ({len(placeholder)} total, FOCUS of this epoch): {', '.join(placeholder[:30]) or 'none'}\n"
+                )
+            review = _load_json_artifact(state, "review_notes.json", default={})
+            if review.get("suggestions") or review.get("diagnosis"):
+                suggestions_text = ""
+                for s in review.get("suggestions", [])[:6]:
+                    suggestions_text += (
+                        f"  - **{s.get('target', '?')}**: {s.get('issue', '?')} → {s.get('fix', '?')}\n"
+                    )
+                prev_error_context += (
+                    f"\n## Review Agent Suggestions (epoch {epoch - 1})\n"
+                    f"Diagnosis: {review.get('diagnosis', 'N/A')}\n"
+                    f"Priority layers: {', '.join(review.get('priority_layers', [])) or 'none'}\n"
+                    f"{suggestions_text}\n"
                 )
 
         # Ensure file skeletons exist
@@ -6663,6 +6765,23 @@ Begin now. Start with the first file of the `{layer}` layer."""
         # ------------------------------------------------------------------
         analysis_stage = AscendAnalysisStage(self.llm, self.tool_runner)
         analysis_result = analysis_stage.execute(state)
+
+        # ------------------------------------------------------------------
+        # LLM Review Agent: analyze failures and suggest improvements
+        # ------------------------------------------------------------------
+        _no_review = os.environ.get("ATTEST_NO_REVIEW_AGENT", "").strip().lower() in ("1", "true", "yes")
+        epoch_current = int(getattr(state, "epoch_current", 1) or 1)
+        epoch_total = int(getattr(state, "epoch_total", 1) or 1)
+        if not _no_review and epoch_current < epoch_total:
+            try:
+                review_notes = self._run_review_agent(state, plan, project_root, analysis_result)
+                if review_notes:
+                    state.save_artifact("review_notes.json", _render_json(review_notes))
+                    print(f"  ✅ Review agent: {len(review_notes.get('suggestions', []))} suggestions generated")
+            except Exception as exc:
+                print(f"  ⚠️ Review agent failed ({exc}); continuing without LLM review")
+        elif _no_review:
+            print("  ℹ️ Review agent skipped (ATTEST_NO_REVIEW_AGENT=1, ablation mode)")
 
         # ------------------------------------------------------------------
         # Return combined result
