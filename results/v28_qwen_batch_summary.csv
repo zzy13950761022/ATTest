@@ -11,7 +11,7 @@ diag_part,complete,0.0,100.0,100.0,2076
 div_no_nan,complete,0.0,0.0,0.0,2981
 dot,complete,92.4,100.0,0.0,5543
 div,complete,63.9,0.0,0.0,6385
-expm1,complete,0.0,0.0,0.0,4275
+expm1,complete,83.9,0.0,0.0,4546
 eye,complete,88.6,0.0,0.0,5990
 exp,complete,77.9,0.0,0.0,6691
 equal,complete,62.0,100.0,0.0,6929

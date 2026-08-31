@@ -11,8 +11,8 @@ diag_part,complete,0.0,100.0,100.0,1427
 div_no_nan,complete,0.0,0.0,0.0,1649
 dot,complete,92.4,100.0,0.0,4324
 div,complete,65.4,0.0,0.0,4723
-exp,complete,0.0,0.0,0.0,2556
-expm1,complete,0.0,0.0,0.0,3413
+exp,exit_1,87.5,0.0,0.0,1994
+expm1,complete,83.9,0.0,0.0,7276
 equal,complete,58.5,100.0,0.0,3917
 eye,complete,88.6,100.0,0.0,4667
 greater,complete,57.7,100.0,0.0,3068

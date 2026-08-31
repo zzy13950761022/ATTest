@@ -15,7 +15,7 @@ expm1,exit_1,67.8,0.0,0.0,1386
 exp,exit_1,75.0,0.0,0.0,1410
 eye,exit_1,0.0,100.0,0.0,4054
 equal,complete,58.5,100.0,0.0,5832
-ger,exit_1,0.0,0.0,0.0,1206
+ger,complete,95.7,100.0,0.0,6512
 floor_mod,exit_1,44.9,0.0,0.0,2223
 floor_div,exit_1,62.8,0.0,0.0,3977
 greater,complete,70.2,100.0,0.0,5901
